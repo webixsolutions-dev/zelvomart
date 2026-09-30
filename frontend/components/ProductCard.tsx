@@ -10,6 +10,8 @@ import { trackStoreEvent } from "@/lib/client-tracking";
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const addable = product.stockStatus === "instock" && !product.hasOptions;
+  const reviewCount = product.reviewCount ?? 0;
+  const averageRating = product.averageRating ?? 0;
 
   return (
     <article className="product-card">
@@ -22,7 +24,7 @@ export default function ProductCard({ product }: { product: Product }) {
       <div className="product-body">
         <span className="product-category">{product.categories[0]?.name || "Zelvomart"}</span>
         <Link className="product-title" href={`/product/${product.slug}/`}>{product.name}</Link>
-        {product.reviewCount > 0 ? <div className="mt-1 text-xs font-bold text-amber-500" aria-label={`${product.averageRating} out of 5 from ${product.reviewCount} reviews`}>★ {product.averageRating.toFixed(1)} <span className="font-medium text-slate-400">({product.reviewCount})</span></div> : null}
+        {reviewCount > 0 ? <div className="mt-1 text-xs font-bold text-amber-500" aria-label={`${averageRating} out of 5 from ${reviewCount} reviews`}>★ {averageRating.toFixed(1)} <span className="font-medium text-slate-400">({reviewCount})</span></div> : null}
         <div className="product-price">
           <strong>{money(product.price)}</strong>
           {product.onSale ? <del>{money(product.regularPrice)}</del> : null}

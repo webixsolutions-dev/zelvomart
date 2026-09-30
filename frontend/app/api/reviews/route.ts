@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
   if (parsed.data.orderNumber && parsed.data.phone) {
     try {
       const phone = normalizePakistanPhone(parsed.data.phone);
+      if (!phone) throw new Error("INVALID_PHONE");
       const order = await prisma.order.findFirst({
         where: {
           orderNumber: parsed.data.orderNumber.toUpperCase(),

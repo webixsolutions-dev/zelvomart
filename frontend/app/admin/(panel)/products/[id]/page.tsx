@@ -16,6 +16,7 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
     getSetting<number>("store.minimumSellingPrice", 1000),
   ]);
   if (!product) notFound();
+  const productSlug = product.slug;
 
   async function save(formData: FormData) {
     "use server";
@@ -56,7 +57,7 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
     await audit(user.id, "update", "Product", productId);
     revalidatePath(`/admin/products/${productId}`);
     revalidatePath("/admin/products");
-    revalidatePath(`/product/${product.slug}/`);
+    revalidatePath(`/product/${productSlug}/`);
   }
 
   async function addVariant(formData: FormData) {

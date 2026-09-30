@@ -49,13 +49,28 @@ function ChevronDown() {
   );
 }
 
-export default function Header({ categories }: { categories: Category[] }) {
+type HeaderProps = {
+  categories: Category[];
+  announcementItems?: string[];
+  phone?: string;
+};
+
+const DEFAULT_ANNOUNCEMENTS = [
+  "✅ Quality Checked Before Dispatch",
+  "💬 Order Via WhatsApp or Website",
+  "🚚 Cash on Delivery Across Pakistan",
+  "📦 Free Delivery on Orders Above Rs 8,000",
+];
+
+export default function Header({ categories, announcementItems = [], phone = "+92 300 2026711" }: HeaderProps) {
   const router = useRouter();
   const { totalItems, setOpen } = useCart();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
+  const tickerItems = announcementItems.length ? announcementItems : DEFAULT_ANNOUNCEMENTS;
+  const phoneHref = phone.replace(/[^\d+]/g, "");
 
   const orderedCategories = useMemo(() => {
     const used = new Set<string>();
@@ -123,17 +138,11 @@ export default function Header({ categories }: { categories: Category[] }) {
         <div className="zm-ticker" aria-label="Store benefits">
           <div className="zm-ticker-track">
             <div className="zm-ticker-group">
-              <span>✅ Quality Checked Before Dispatch</span>
-              <span>💬 Order Via WhatsApp or Website</span>
-              <span>🚚 Cash on Delivery Across Pakistan</span>
-              <span>📦 Free Delivery on Orders Above Rs 8,000</span>
+              {tickerItems.map((item, index) => <span key={`primary-${index}`}>{item}</span>)}
             </div>
 
             <div className="zm-ticker-group" aria-hidden="true">
-              <span>✅ Quality Checked Before Dispatch</span>
-              <span>💬 Order Via WhatsApp or Website</span>
-              <span>🚚 Cash on Delivery Across Pakistan</span>
-              <span>📦 Free Delivery on Orders Above Rs 8,000</span>
+              {tickerItems.map((item, index) => <span key={`repeat-${index}`}>{item}</span>)}
             </div>
           </div>
         </div>
@@ -164,8 +173,8 @@ export default function Header({ categories }: { categories: Category[] }) {
           </nav>
 
           <div className="zm-actions">
-            <a className="zm-phone" href="tel:+923002026711">
-              +92 300 2026711
+            <a className="zm-phone" href={`tel:${phoneHref}`}>
+              {phone}
             </a>
 
             <Link
