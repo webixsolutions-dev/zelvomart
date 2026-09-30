@@ -4,13 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run prisma:generate && next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate --schema=../backend/prisma/schema.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.890.0",
-    "@prisma/client": "^6.16.2",
+    "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.2",
     "next": "^16.0.0",
     "next-auth": "^5.0.0-beta.30",
@@ -31,6 +32,12 @@
     "@types/react-dom": "^19.1.9",
     "@types/sanitize-html": "^2.16.0",
     "tailwindcss": "^4.1.14",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "prisma": "^6.19.3"
+  },
+  "allowScripts": {
+    "@prisma/client": true,
+    "@prisma/engines": true,
+    "prisma": true
   }
 }
