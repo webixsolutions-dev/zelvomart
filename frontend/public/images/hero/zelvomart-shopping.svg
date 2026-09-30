@@ -1,0 +1,41 @@
+<svg width="1600" height="760" viewBox="0 0 1600 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="760" gradientUnits="userSpaceOnUse"><stop stop-color="#071B28"/><stop offset=".58" stop-color="#0C4257"/><stop offset="1" stop-color="#0B7894"/></linearGradient>
+  <linearGradient id="card" x1="950" y1="120" x2="1450" y2="650"><stop stop-color="#FFFFFF" stop-opacity=".98"/><stop offset="1" stop-color="#E9F7FB" stop-opacity=".9"/></linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#14B7EC"/><stop offset="1" stop-color="#057FB5"/></linearGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#02121B" flood-opacity=".32"/></filter>
+</defs>
+<rect width="1600" height="760" fill="url(#bg)"/>
+<circle cx="1380" cy="65" r="280" fill="#35C6EE" fill-opacity=".08"/>
+<circle cx="1230" cy="610" r="360" fill="#5BE0C4" fill-opacity=".07"/>
+<path d="M950 94C1075 66 1332 80 1438 163C1537 240 1541 535 1422 624C1318 701 1056 689 953 607C850 526 831 122 950 94Z" fill="url(#card)" filter="url(#shadow)"/>
+<!-- lamp -->
+<path d="M1094 225H1216L1181 345H1129L1094 225Z" fill="#F4D07B"/>
+<rect x="1151" y="342" width="8" height="116" rx="4" fill="#244251"/>
+<path d="M1108 466H1202" stroke="#244251" stroke-width="10" stroke-linecap="round"/>
+<!-- phone -->
+<rect x="1260" y="188" width="116" height="228" rx="22" fill="#152D3B" transform="rotate(8 1260 188)"/>
+<rect x="1273" y="207" width="91" height="185" rx="14" fill="url(#blue)" transform="rotate(8 1273 207)"/>
+<circle cx="1323" cy="400" r="5" fill="#A9B9C1"/>
+<!-- perfume / beauty -->
+<rect x="1245" y="478" width="105" height="112" rx="24" fill="#F6B4C9"/>
+<rect x="1273" y="449" width="49" height="34" rx="8" fill="#FCE4ED"/>
+<rect x="1282" y="440" width="31" height="13" rx="5" fill="#D981A0"/>
+<circle cx="1298" cy="533" r="22" fill="#FFF" fill-opacity=".52"/>
+<!-- watch -->
+<rect x="1030" y="452" width="42" height="151" rx="20" fill="#253D4A" transform="rotate(-14 1030 452)"/>
+<rect x="1002" y="495" width="99" height="91" rx="25" fill="#0C97C1" transform="rotate(-14 1002 495)"/>
+<circle cx="1050" cy="539" r="26" fill="#DFF8FF"/>
+<path d="M1050 539L1064 525" stroke="#0B6682" stroke-width="5" stroke-linecap="round"/>
+<!-- shopping bag -->
+<path d="M1362 429H1470L1458 595H1374L1362 429Z" fill="#19AEDD"/>
+<path d="M1390 446V419C1390 393 1443 393 1443 419V446" stroke="#EAFBFF" stroke-width="10" stroke-linecap="round"/>
+<path d="M1395 510L1413 527L1444 490" stroke="#FFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- earbuds -->
+<circle cx="1120" cy="155" r="50" fill="#FFF" fill-opacity=".96"/>
+<path d="M1104 139C1092 139 1087 148 1087 158V184" stroke="#19AEDD" stroke-width="13" stroke-linecap="round"/>
+<path d="M1136 139C1148 139 1153 148 1153 158V184" stroke="#19AEDD" stroke-width="13" stroke-linecap="round"/>
+<circle cx="1087" cy="183" r="9" fill="#0B7394"/><circle cx="1153" cy="183" r="9" fill="#0B7394"/>
+<!-- dots -->
+<g fill="#FFF" fill-opacity=".18"><circle cx="905" cy="176" r="8"/><circle cx="927" cy="176" r="8"/><circle cx="949" cy="176" r="8"/><circle cx="905" cy="198" r="8"/><circle cx="927" cy="198" r="8"/><circle cx="949" cy="198" r="8"/></g>
+</svg>

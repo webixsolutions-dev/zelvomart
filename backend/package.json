@@ -1,0 +1,32 @@
+{
+  "name": "@zelvomart/backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:push": "prisma db push --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "seed": "tsx prisma/seed.ts",
+    "worker": "tsx workers/main.ts",
+    "migrate:wordpress": "tsx scripts/migrate-wordpress.ts",
+    "qa:urls": "tsx scripts/check-urls.ts",
+    "migrate:urls": "tsx scripts/migration/export-wordpress-urls.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.890.0",
+    "@prisma/client": "^6.16.2",
+    "bcryptjs": "^3.0.2",
+    "pg": "^8.16.3",
+    "pg-boss": "^10.3.2",
+    "resend": "^6.1.0",
+    "sanitize-html": "^2.17.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "@types/pg": "^8.15.5",
+    "prisma": "^6.16.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,31 @@
+import { notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { OrderStatus } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { audit, requireAdmin } from "@/lib/admin";
+import { money } from "@/lib/format";
+import { postexTrackingUrl } from "@/lib/postex";
+import { restoreOrderStock } from "@/lib/order";
+import PrintButton from "@/components/PrintButton";
+
+export default async function OrderPage({params}:{params:Promise<{id:string}>}){
+  const user=await requireAdmin("orders.read"); const {id}=await params;
+  const order=await prisma.order.findUnique({where:{id},include:{items:true,statusHistory:{include:{user:true},orderBy:{createdAt:"desc"}},customer:true}}); if(!order) notFound();
+
+  async function updateStatus(formData:FormData){"use server"; const current=await requireAdmin("orders.write"); const orderId=String(formData.get("orderId")); const next=String(formData.get("status")) as OrderStatus; const existing=await prisma.order.findUnique({where:{id:orderId}}); if(!existing||!Object.values(OrderStatus).includes(next)) return; if(!["CANCELLED","RETURNED"].includes(existing.status)&&["CANCELLED","RETURNED"].includes(next)) await restoreOrderStock(orderId); await prisma.$transaction([prisma.order.update({where:{id:orderId},data:{status:next}}),prisma.orderStatusHistory.create({data:{orderId,from:existing.status,to:next,userId:current.id,note:String(formData.get("note")||"")||null}})]); await audit(current.id,"status_change","Order",orderId,{from:existing.status,to:next}); revalidatePath(`/admin/orders/${orderId}`);}
+  async function updateTracking(formData:FormData){"use server"; const current=await requireAdmin("orders.write"); const orderId=String(formData.get("orderId")); const tracking=String(formData.get("tracking")||"").trim(); const existing=await prisma.order.findUnique({where:{id:orderId},select:{status:true}}); if(!existing)return; await prisma.$transaction(async(tx)=>{await tx.order.update({where:{id:orderId},data:{postexTracking:tracking||null,status:tracking?"BOOKED":undefined}}); if(tracking&&existing.status!=="BOOKED") await tx.orderStatusHistory.create({data:{orderId,from:existing.status,to:"BOOKED",userId:current.id,note:`PostEx tracking ${tracking}`}});}); await audit(current.id,"tracking_update","Order",orderId,{tracking}); revalidatePath(`/admin/orders/${orderId}`);}
+
+  const wa=order.phone.replace(/\D/g,""); const message=encodeURIComponent(`Assalam o Alaikum ${order.fullName}, this is Zelvomart. Please confirm order ${order.orderNumber} for ${money(order.total)} to ${order.city}.`);
+  return <div className="print-order">
+    <div className="admin-title"><div><h1>{order.orderNumber}</h1><p className="mt-1 text-sm text-slate-500">{order.createdAt.toLocaleString("en-PK")}</p></div><div className="flex gap-2"><PrintButton label="Print invoice / packing slip"/><a className="btn-green" href={`https://wa.me/${wa}?text=${message}`} target="_blank" rel="noreferrer">Confirm on WhatsApp</a></div></div>
+    <div className="grid gap-4 lg:grid-cols-3">
+      <section className="admin-card lg:col-span-2"><h2 className="mb-4 font-black text-slate-800">Items</h2>{order.items.map(item=><div className="flex justify-between gap-4 border-b border-slate-100 py-3 text-sm" key={item.id}><div><b>{item.quantity} × {item.title}</b><div className="text-xs text-slate-500">{item.sku}{item.variantLabel?` • ${item.variantLabel}`:""}</div></div><b>{money(item.lineTotal)}</b></div>)}<div className="mt-4 grid gap-2 text-sm"><div className="flex justify-between"><span>Subtotal</span><b>{money(order.subtotal)}</b></div><div className="flex justify-between"><span>Bundle saving</span><b>-{money(order.bundleSaving)}</b></div><div className="flex justify-between"><span>Delivery</span><b>{money(order.deliveryFee)}</b></div><div className="flex justify-between text-lg"><span>Total</span><b>{money(order.total)}</b></div></div></section>
+      <aside className="admin-card"><h2 className="mb-3 font-black text-slate-800">Customer</h2><p className="text-sm"><b>{order.fullName}</b><br/>{order.phone}<br/>{order.email}<br/><br/>{order.address}<br/>{order.city} {order.postcode}</p><div className="mt-4 text-xs text-slate-500">Source: {order.source||"Direct"}<br/>Clarity ID: {order.clarityId||"—"}</div>{order.possibleDuplicate?<div className="mt-3 rounded-lg bg-amber-50 p-2 text-xs font-bold text-amber-800">Possible duplicate</div>:null}{order.blocklistedAtOrder?<div className="mt-2 rounded-lg bg-red-50 p-2 text-xs font-bold text-red-800">Customer blocklisted — hold shipment</div>:null}</aside>
+    </div>
+    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <section className="admin-card"><h2 className="mb-3 font-black text-slate-800">Update status</h2><form action={updateStatus} className="grid gap-2"><input type="hidden" name="orderId" value={order.id}/><select name="status" defaultValue={order.status} className="rounded-lg border border-slate-200 px-3 py-2">{Object.values(OrderStatus).map(s=><option key={s}>{s}</option>)}</select><input name="note" placeholder="Optional note" className="rounded-lg border border-slate-200 px-3 py-2"/><button className="btn-dark">Save status</button></form></section>
+      <section className="admin-card"><h2 className="mb-3 font-black text-slate-800">PostEx tracking</h2><form action={updateTracking} className="grid gap-2"><input type="hidden" name="orderId" value={order.id}/><input name="tracking" defaultValue={order.postexTracking||""} placeholder="Tracking number" className="rounded-lg border border-slate-200 px-3 py-2"/><button className="btn-dark">Save tracking</button></form>{order.postexTracking?<a className="mt-3 inline-block text-sm font-bold text-sky-700" href={postexTrackingUrl(order.postexTracking)} target="_blank" rel="noreferrer">Open courier tracking</a>:null}</section>
+    </div>
+    <section className="admin-card mt-4"><h2 className="mb-3 font-black text-slate-800">Timeline</h2><div className="grid gap-3">{order.statusHistory.map(row=><div className="border-l-2 border-sky-200 pl-3 text-sm" key={row.id}><b>{row.to.replace(/_/g," ")}</b><div className="text-xs text-slate-500">{row.createdAt.toLocaleString("en-PK")} • {row.user?.name||"System"}</div>{row.note?<p className="mt-1 text-xs text-slate-600">{row.note}</p>:null}</div>)}</div></section>
+  </div>;
+}

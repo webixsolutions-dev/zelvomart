@@ -1,0 +1,25 @@
+{
+  "name": "zelvomart",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "dotenv -e .env -- npm run dev --workspace frontend",
+    "build": "npm run prisma:generate && dotenv -e .env -- npm run build --workspace frontend",
+    "start": "dotenv -e .env -- npm run start --workspace frontend",
+    "typecheck": "dotenv -e .env -- npm run typecheck --workspace frontend",
+    "prisma:generate": "dotenv -e .env -- npm run prisma:generate --workspace backend",
+    "db:push": "dotenv -e .env -- npm run db:push --workspace backend",
+    "db:migrate": "dotenv -e .env -- npm run db:migrate --workspace backend",
+    "seed": "dotenv -e .env -- npm run seed --workspace backend",
+    "worker": "dotenv -e .env -- npm run worker --workspace backend",
+    "migrate:wordpress": "dotenv -e .env -- npm run migrate:wordpress --workspace backend",
+    "qa:urls": "dotenv -e .env -- npm run qa:urls --workspace backend"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0"
+  }
+}

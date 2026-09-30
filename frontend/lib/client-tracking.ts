@@ -1,0 +1,46 @@
+"use client";
+
+declare global {
+  interface Window {
+    fbq?: (...args: any[]) => void;
+    clarity?: (...args: any[]) => void;
+  }
+}
+
+export async function trackStoreEvent(
+  eventName: string,
+  params: Record<string, unknown> = {},
+  options: { eventId?: string; clarityEvent?: string } = {},
+) {
+  const eventId = options.eventId || crypto.randomUUID();
+  try {
+    window.fbq?.("track", eventName, params, { eventID: eventId });
+  } catch {}
+
+  if (options.clarityEvent) {
+    try { window.clarity?.("event", options.clarityEvent); } catch {}
+  }
+
+  try {
+    await fetch("/api/events", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      keepalive: true,
+      body: JSON.stringify({
+        eventName,
+        eventId,
+        sourceUrl: window.location.href,
+        params,
+        fbp: readCookie("_fbp"),
+        fbc: readCookie("_fbc"),
+      }),
+    });
+  } catch {}
+
+  return eventId;
+}
+
+export function readCookie(name: string) {
+  const row = document.cookie.split("; ").find((part) => part.startsWith(`${name}=`));
+  return row ? decodeURIComponent(row.slice(name.length + 1)) : undefined;
+}
