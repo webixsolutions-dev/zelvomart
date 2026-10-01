@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import ProductGrid from "@/components/ProductGrid";
 import { getProductBySlug, getProducts } from "@/lib/store";
 import { getSettings } from "@/lib/settings";
+import type { Product } from "@/types/product";
 
 export const revalidate = 120;
 
@@ -19,17 +21,43 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
+function uniqueRelated(product: Product, groups: Product[][]): Product[] {
+  const seen = new Set<string>([product.id]);
+  const result: Product[] = [];
+
+  for (const group of groups) {
+    for (const item of group) {
+      if (seen.has(item.id) || item.slug === product.slug) continue;
+      seen.add(item.id);
+      result.push(item);
+      if (result.length === 4) return result;
+    }
+  }
+
+  return result;
+}
+
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  const [settings, related] = await Promise.all([
+
+  const categorySlug = product.categorySlugs[0] || product.categories[0]?.slug;
+  const [settings, categoryProducts, featuredProducts, newestProducts] = await Promise.all([
     getSettings(["store.bundleDefaultDiscountPercent", "store.info"]),
-    getProducts({ category: product.categorySlugs[0], limit: 4 }),
+    categorySlug ? getProducts({ category: categorySlug, limit: 8 }) : Promise.resolve({ items: [], page: 1, limit: 8, total: 0, totalPages: 1 }),
+    getProducts({ featured: true, limit: 8 }),
+    getProducts({ limit: 8, sort: "newest" }),
   ]);
+
+  const related = uniqueRelated(product, [categoryProducts.items, featuredProducts.items, newestProducts.items]);
   const defaultDiscount = Number(settings["store.bundleDefaultDiscountPercent"] ?? 5);
-  const info = (settings["store.info"] || { whatsapp: "923002026711" }) as any;
+  const info = (settings["store.info"] || { whatsapp: "923002026711" }) as { whatsapp?: string };
+  const whatsapp = String(info.whatsapp || "923002026711").replace(/[^0-9]/g, "");
+  const categoryHref = categorySlug ? `/product-category/${categorySlug}/` : "/shop";
+  const categoryName = product.categories[0]?.name || "our store";
   const base = process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com";
+
   const schema = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -46,11 +74,57 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     },
     ...(product.reviewCount ? { aggregateRating: { "@type": "AggregateRating", ratingValue: product.averageRating, reviewCount: product.reviewCount } } : {}),
   };
-  const breadcrumb = { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Home", item: base },
-    ...(product.categories[0] ? [{ "@type": "ListItem", position: 2, name: product.categories[0].name, item: `${base}/product-category/${product.categories[0].slug}/` }] : []),
-    { "@type": "ListItem", position: product.categories[0] ? 3 : 2, name: product.name, item: `${base}/product/${product.slug}/` },
-  ] };
 
-  return <div className="product-page"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} /><div className="site-shell"><ProductDetailClient product={product} defaultBundleDiscount={defaultDiscount} whatsapp={String(info.whatsapp || "923002026711")} />{related.items.filter((row) => row.id !== product.id).length ? <section className="section pb-0"><div className="section-title"><div><h2>You may also like</h2><p>More products from this category.</p></div></div><ProductGrid products={related.items.filter((row) => row.id !== product.id).slice(0,4)} /></section> : null}</div></div>;
+  const breadcrumb = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: base },
+      ...(product.categories[0] ? [{ "@type": "ListItem", position: 2, name: product.categories[0].name, item: `${base}/product-category/${product.categories[0].slug}/` }] : []),
+      { "@type": "ListItem", position: product.categories[0] ? 3 : 2, name: product.name, item: `${base}/product/${product.slug}/` },
+    ],
+  };
+
+  return (
+    <div className="product-page">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
+
+      <div className="site-shell">
+        <ProductDetailClient product={product} defaultBundleDiscount={defaultDiscount} whatsapp={whatsapp} />
+      </div>
+
+      <section className="pdp-support-cta-wrap" aria-label="Zelvomart shopping support">
+        <div className="site-shell">
+          <div className="pdp-support-cta">
+            <div>
+              <span className="pdp-support-kicker">NEED HELP BEFORE ORDERING?</span>
+              <h2>Not sure if this product is right for you?</h2>
+              <p>Ask us on WhatsApp for product details, availability or delivery guidance. Our team will help before you place your order.</p>
+            </div>
+            <div className="pdp-support-actions">
+              <a className="btn-green" href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hi Zelvomart, I need help with ${product.name}.`)}`} target="_blank" rel="noreferrer">Ask on WhatsApp</a>
+              <Link className="btn-outline" href={categoryHref}>Shop {categoryName}</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {related.length ? (
+        <section className="section pdp-related-section">
+          <div className="site-shell">
+            <div className="section-title pdp-related-title">
+              <div>
+                <span className="pdp-related-kicker">MORE TO EXPLORE</span>
+                <h2>Related Products</h2>
+                <p>Four more picks you may like from Zelvomart.</p>
+              </div>
+              <Link href={categoryHref} className="btn-outline pdp-related-view">View All</Link>
+            </div>
+            <ProductGrid products={related.slice(0, 4)} />
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
 }

@@ -2,22 +2,26 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
 import { money } from "@/lib/format";
 import type { Product } from "@/types/product";
 import { trackStoreEvent } from "@/lib/client-tracking";
+import { getProductFallbackImage } from "@/lib/product-media";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const addable = product.stockStatus === "instock" && !product.hasOptions;
   const reviewCount = product.reviewCount ?? 0;
   const averageRating = product.averageRating ?? 0;
+  const fallbackImage = getProductFallbackImage(product);
+  const [imageSrc, setImageSrc] = useState(product.image || fallbackImage);
 
   return (
     <article className="product-card">
       <Link className="product-media" href={`/product/${product.slug}/`}>
-        {product.image ? (
-          <Image src={product.image} alt={product.name} fill sizes="(max-width: 700px) 50vw, (max-width: 1100px) 33vw, 25vw" />
+        {imageSrc ? (
+          <Image src={imageSrc} alt={product.name} fill sizes="(max-width: 700px) 50vw, (max-width: 1100px) 33vw, 25vw" onError={() => { if (imageSrc !== fallbackImage) setImageSrc(fallbackImage); }} />
         ) : null}
         {product.discountPercent > 0 ? <span className="discount-badge">{product.discountPercent}% OFF</span> : null}
       </Link>
@@ -37,7 +41,7 @@ export default function ProductCard({ product }: { product: Product }) {
                 productId: product.id,
                 slug: product.slug,
                 name: product.name,
-                image: product.image,
+                image: imageSrc,
                 price: product.price,
                 quantity: 1,
                 bundleSize: 1,

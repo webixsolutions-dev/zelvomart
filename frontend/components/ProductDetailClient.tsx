@@ -9,13 +9,15 @@ import { money } from "@/lib/format";
 import { trackStoreEvent } from "@/lib/client-tracking";
 import type { Product, Variant } from "@/types/product";
 import ReviewForm from "@/components/ReviewForm";
+import { getProductFallbackImage } from "@/lib/product-media";
 
 const tabs = ["Why Choose Zelvomart", "Shipping Process", "General FAQ", "Description", "Additional information", "Reviews"] as const;
 
 export default function ProductDetailClient({ product, defaultBundleDiscount = 5, whatsapp = "923002026711" }: { product: Product; defaultBundleDiscount?: number; whatsapp?: string }) {
   const router = useRouter();
   const { addItem } = useCart();
-  const [selectedImage, setSelectedImage] = useState(product.image || product.images[0]?.src || "");
+  const fallbackImage = getProductFallbackImage(product);
+  const [selectedImage, setSelectedImage] = useState(product.image || product.images[0]?.src || fallbackImage);
   const [variant, setVariant] = useState<Variant | null>(product.variants[0] || null);
   const [bundleSize, setBundleSize] = useState<1 | 2>(1);
   const [quantity, setQuantity] = useState(1);
@@ -90,7 +92,7 @@ export default function ProductDetailClient({ product, defaultBundleDiscount = 5
       <div className="product-layout">
         <div className="product-gallery">
           <button type="button" className="product-main-image cursor-zoom-in" onClick={() => selectedImage && setZoomOpen(true)} aria-label="Zoom product image">
-            {selectedImage ? <Image src={selectedImage} alt={product.name} fill priority sizes="(max-width:900px) 100vw, 50vw" /> : null}
+            {selectedImage ? <Image src={selectedImage} alt={product.name} fill priority sizes="(max-width:900px) 100vw, 50vw" onError={() => { if (selectedImage !== fallbackImage) setSelectedImage(fallbackImage); }} /> : null}
             {selectedImage ? <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1 text-xs font-extrabold text-slate-700 shadow">Zoom</span> : null}
           </button>
           {product.images.length > 1 || product.videoUrl ? (

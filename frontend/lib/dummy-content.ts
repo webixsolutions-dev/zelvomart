@@ -79,7 +79,7 @@ const homeDecor = [
 const beauty = [
   makeProduct("bw1", "shoulder-massager", "Cordless Neck & Shoulder Massager", 6499, "/images/categories/beauty-personal-care.svg", "Beauty & Personal Care", "beauty-personal-care"),
   makeProduct("bw2", "facial-cleaning-brush", "Facial Cleaning Brush", 1899, "/images/categories/beauty-personal-care.svg", "Beauty & Personal Care", "beauty-personal-care", 1499),
-  makeProduct("bw3", "matte-liquid-lipgloss", "Emelie Matte Liquid Lipgloss", 1299, "/images/categories/beauty-personal-care.svg", "Beauty & Personal Care", "beauty-personal-care", 999),
+  makeProduct("bw3", "matte-liquid-lipgloss", "Emelie Matte Liquid Lipgloss", 1299, "/images/products/matte-liquid-lipgloss.jpeg", "Beauty & Personal Care", "beauty-personal-care", 999),
   makeProduct("bw4", "lip-eye-pencil", "Emelie Paris Matte Lip & Eye Pencil", 1299, "/images/categories/beauty-personal-care.svg", "Beauty & Personal Care", "beauty-personal-care", 999),
 ];
 const tech = [
