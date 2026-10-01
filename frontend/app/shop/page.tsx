@@ -31,16 +31,27 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   };
 
   return (
-    <div className="site-shell pb-20">
+    <div className="site-shell shop-page pb-20">
       {q ? <SearchTracker query={q} /> : null}
-      <div className="page-head"><h1>{q ? `Search: ${q}` : "Shop"}</h1><p>Browse real products from the Zelvomart database.</p></div>
-      <form className="mb-7 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_220px_180px_auto]" action="/shop">
-        <input name="q" defaultValue={q} placeholder="Search products or categories" className="rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none" />
-        <select name="category" defaultValue={category} className="rounded-xl border border-slate-200 bg-white px-3 py-3"><option value="">All categories</option>{categories.map((row) => <option value={row.slug} key={row.id}>{row.name}</option>)}</select>
-        <select name="sort" defaultValue={sort} className="rounded-xl border border-slate-200 bg-white px-3 py-3"><option value="newest">Newest</option><option value="price-asc">Price: Low to High</option><option value="price-desc">Price: High to Low</option></select>
+      <div className="page-head shop-head">
+        <span className="static-page-kicker">SHOP ZELVOMART</span>
+        <h1>{q ? `Search: ${q}` : category ? categories.find((row) => row.slug === category)?.name || "Shop" : "Shop All Products"}</h1>
+        <p>Discover useful everyday products with Cash on Delivery across Pakistan.</p>
+      </div>
+
+      <div className="shop-category-pills">
+        <Link className={!category ? "active" : ""} href="/shop">All Products</Link>
+        {categories.slice(0,6).map((row) => <Link className={category === row.slug ? "active" : ""} href={`/product-category/${row.slug}/`} key={row.id}>{row.name}</Link>)}
+      </div>
+
+      <form className="shop-filter" action="/shop">
+        <input name="q" defaultValue={q} placeholder="Search products or categories" />
+        <select name="category" defaultValue={category}><option value="">All categories</option>{categories.slice(0,6).map((row) => <option value={row.slug} key={row.id}>{row.name}</option>)}</select>
+        <select name="sort" defaultValue={sort}><option value="newest">Newest</option><option value="price-asc">Price: Low to High</option><option value="price-desc">Price: High to Low</option></select>
         <button className="btn-dark">Apply</button>
       </form>
-      <div className="mb-5 text-sm text-slate-500">{result.total} product{result.total === 1 ? "" : "s"}</div>
+
+      <div className="shop-result-bar"><span>{result.total} product{result.total === 1 ? "" : "s"}</span><span>Quality checked • Cash on Delivery</span></div>
       <ProductGrid products={result.items} emptyText="Try a different search, or ask us on WhatsApp and we'll help." />
       {result.totalPages > 1 ? <nav className="mt-9 flex flex-wrap justify-center gap-2">{Array.from({ length: result.totalPages }, (_, index) => index + 1).map((n) => <Link className={`grid h-10 w-10 place-items-center rounded-lg border text-sm font-extrabold ${n === result.page ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white"}`} href={link(n)} key={n}>{n}</Link>)}</nav> : null}
     </div>

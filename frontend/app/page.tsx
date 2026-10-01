@@ -36,7 +36,7 @@ export default async function HomePage() {
       <section className="section section-soft">
         <div className="site-shell">
           <div className="section-title"><div><h2>Shop by Category</h2><p>Explore our categories and find exactly what you need.</p></div><Link href="/shop" className="btn-outline">View All</Link></div>
-          <CategoryGrid categories={categories} />
+          <CategoryGrid categories={categories.slice(0, 6)} />
         </div>
       </section>
 

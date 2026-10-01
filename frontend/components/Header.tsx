@@ -15,7 +15,6 @@ const CATEGORY_ORDER = [
   "Tech & Gadgets",
   "Fashion Accessories",
   "Sports & Fitness",
-  "Kids & Toys",
 ];
 
 const normalize = (value: string) =>
@@ -225,10 +224,10 @@ export default function Header({ categories, announcementItems = [], phone = "+9
         <div className="zm-search-row">
           <div className="zm-shell zm-search-row-inner">
             <div className="zm-compact-categories">
-              {orderedCategories.slice(0, 7).map((category) => (
+              {orderedCategories.slice(0, 6).map((category) => (
                 <Link
                   key={category.slug}
-                  href={`/category/${category.slug}`}
+                  href={`/product-category/${category.slug}/`}
                   className="zm-compact-category"
                 >
                   {category.name}
@@ -283,10 +282,10 @@ export default function Header({ categories, announcementItems = [], phone = "+9
           <div className="zm-mobile-section-title">Categories</div>
 
           <div className="zm-drawer-links">
-            {orderedCategories.map((category) => (
+            {orderedCategories.slice(0, 6).map((category) => (
               <Link
                 key={category.slug}
-                href={`/category/${category.slug}`}
+                href={`/product-category/${category.slug}/`}
                 onClick={() => setMobileOpen(false)}
               >
                 {category.name}
