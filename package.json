@@ -1,25 +1,19 @@
 {
-  "name": "zelvomart",
-  "version": "1.0.0",
-  "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
-  "scripts": {
-    "dev": "dotenv -e .env -- npm run dev --workspace frontend",
-    "build": "npm run prisma:generate && dotenv -e .env -- npm run build --workspace frontend",
-    "start": "dotenv -e .env -- npm run start --workspace frontend",
-    "typecheck": "dotenv -e .env -- npm run typecheck --workspace frontend",
-    "prisma:generate": "dotenv -e .env -- npm run prisma:generate --workspace backend",
-    "db:push": "dotenv -e .env -- npm run db:push --workspace backend",
-    "db:migrate": "dotenv -e .env -- npm run db:migrate --workspace backend",
-    "seed": "dotenv -e .env -- npm run seed --workspace backend",
-    "worker": "dotenv -e .env -- npm run worker --workspace backend",
-    "migrate:wordpress": "dotenv -e .env -- npm run migrate:wordpress --workspace backend",
-    "qa:urls": "dotenv -e .env -- npm run qa:urls --workspace backend"
+  "name":"zelvomart-separated","version":"2.0.0","private":true,
+  "workspaces":["frontend","backend"],
+  "scripts":{
+    "dev":"concurrently -n FRONTEND,BACKEND -c auto \"npm run dev --workspace frontend\" \"npm run dev --workspace backend\"",
+    "dev:frontend":"npm run dev --workspace frontend",
+    "dev:backend":"npm run dev --workspace backend",
+    "build":"npm run build --workspace backend && npm run build --workspace frontend",
+    "build:frontend":"npm run build --workspace frontend",
+    "build:backend":"npm run build --workspace backend",
+    "prisma:generate":"npm run prisma:generate --workspace backend",
+    "db:push":"npm run db:push --workspace backend",
+    "db:migrate":"npm run db:migrate --workspace backend",
+    "seed":"npm run seed --workspace backend",
+    "worker":"npm run worker --workspace backend"
   },
-  "devDependencies": {
-    "dotenv-cli": "^8.0.0"
-  }
+  "devDependencies":{"concurrently":"^9.1.2"},
+  "allowScripts":{"@prisma/client":true,"@prisma/engines":true,"prisma":true}
 }
