@@ -7,22 +7,21 @@ import PopularCollections from "@/components/PopularCollections";
 import Faq from "@/components/Faq";
 import FlashDealBanner from "@/components/FlashDealBanner";
 import PromoCta from "@/components/PromoCta";
-import { getCategories, getProducts } from "@/lib/store";
-import { getSetting } from "@/lib/settings";
+import { getProducts, getStoreBootstrap } from "@/lib/store";
 import { DUMMY_PRODUCTS } from "@/lib/dummy-content";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120;
 
 export default async function HomePage() {
-  const [categories, featured, latest, fashion, beauty, homeConfig] = await Promise.all([
-    getCategories(),
+  const [bootstrap, featured, latest, fashion, beauty] = await Promise.all([
+    getStoreBootstrap(),
     getProducts({ featured: true, limit: 8 }),
     getProducts({ limit: 12 }),
     getProducts({ category: "fashion-accessories", limit: 4 }),
     getProducts({ category: "beauty-personal-care", limit: 4 }),
-    getSetting<any>("homepage.config", {}),
   ]);
+  const categories = bootstrap.categories;
+  const homeConfig = (bootstrap.settings["homepage.config"] || {}) as any;
   const heroProducts = featured.items.length ? featured.items : (latest.items.length ? latest.items : DUMMY_PRODUCTS.best);
   const best = featured.items.length ? featured.items : (latest.items.length ? latest.items.slice(0, 8) : DUMMY_PRODUCTS.best);
   const fashionItems = fashion.items.length ? fashion.items : DUMMY_PRODUCTS.fashion;

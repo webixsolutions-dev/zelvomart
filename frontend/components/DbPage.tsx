@@ -11,7 +11,7 @@ function hasUsefulBody(value: unknown) {
 export default async function DbPage({slug,fallbackSlugs=[]}:{slug:string;fallbackSlugs?:string[]}){
   const q=fallbackSlugs.length?`?fallback=${encodeURIComponent(fallbackSlugs.join(','))}`:'';
   let page:any=null;
-  try{page=await apiFetch<any>(`/api/pages/${encodeURIComponent(slug)}${q}`);}catch{}
+  try{page=await apiFetch<any>(`/api/pages/${encodeURIComponent(slug)}${q}`, { next: { revalidate: 600, tags: ['pages', `page:${slug}`] } });}catch{}
   const fallback = STATIC_PAGES[slug] || fallbackSlugs.map((candidate) => STATIC_PAGES[candidate]).find(Boolean);
   if (!page && !fallback) return notFound();
 

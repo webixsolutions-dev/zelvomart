@@ -5,8 +5,7 @@ import PromoCta from "@/components/PromoCta";
 import { DUMMY_PRODUCTS } from "@/lib/dummy-content";
 import { getCategories, getProducts } from "@/lib/store";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

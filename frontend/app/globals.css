@@ -1154,3 +1154,6 @@ img { max-width: 100%; display: block; }
 .admin-password-toggle { position: absolute; right: 7px; top: 50%; width: 32px !important; height: 32px !important; min-height: 32px !important; margin: 0 !important; padding: 0 !important; transform: translateY(-50%); display: grid !important; place-items: center; border: 0 !important; border-radius: 8px !important; background: transparent !important; color: #60727d !important; box-shadow: none !important; }
 .admin-password-toggle:hover { background: #eef7fb !important; color: #087daf !important; }
 .admin-password-toggle svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Performance: keep the optimized Next/Image hero framed like the previous CSS background. */
+.hero-bg img { object-position: center right; }

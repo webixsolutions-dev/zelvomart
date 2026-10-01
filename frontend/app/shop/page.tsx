@@ -3,8 +3,7 @@ import ProductGrid from "@/components/ProductGrid";
 import { getCategories, getProducts } from "@/lib/store";
 import SearchTracker from "@/components/SearchTracker";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120;
 
 function value(input: string | string[] | undefined) { return Array.isArray(input) ? input[0] : input || ""; }
 

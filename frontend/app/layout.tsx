@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
-import { getCategories } from "@/lib/store";
-import { getSetting } from "@/lib/settings";
+import { getStoreBootstrap } from "@/lib/store";
 import CartDrawer from "@/components/CartDrawer";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -19,17 +18,16 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: "Zelvomart" },
 };
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 300;
+export const preferredRegion = "hnd1";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [categories, announcement, info, pixelId, clarityId] = await Promise.all([
-    getCategories(),
-    getSetting<any>("store.announcement", { enabled: true, items: [] }),
-    getSetting<any>("store.info", { phone: "0300-2026711", email: "zelvomart@gmail.com", whatsapp: "923002026711" }),
-    getSetting<string>("tracking.metaPixelId", process.env.NEXT_PUBLIC_META_PIXEL_ID || "1645715973642563"),
-    getSetting<string>("tracking.clarityId", process.env.NEXT_PUBLIC_CLARITY_ID || ""),
-  ]);
+  const bootstrap = await getStoreBootstrap();
+  const categories = bootstrap.categories;
+  const announcement = (bootstrap.settings["store.announcement"] || { enabled: true, items: [] }) as any;
+  const info = (bootstrap.settings["store.info"] || { phone: "0300-2026711", email: "zelvomart@gmail.com", whatsapp: "923002026711" }) as any;
+  const pixelId = String(bootstrap.settings["tracking.metaPixelId"] || process.env.NEXT_PUBLIC_META_PIXEL_ID || "1645715973642563");
+  const clarityId = String(bootstrap.settings["tracking.clarityId"] || process.env.NEXT_PUBLIC_CLARITY_ID || "");
 
   const phoneDisplay = String(info.phone || "0300-2026711").startsWith("+")
     ? info.phone

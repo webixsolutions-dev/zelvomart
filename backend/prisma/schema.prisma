@@ -104,8 +104,9 @@ model Product {
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
-  @@index([status, featured])
-  @@index([categoryId, status])
+  @@index([status, featured, createdAt])
+  @@index([categoryId, status, createdAt])
+  @@index([status, createdAt])
   @@index([createdAt])
 }
 
@@ -124,6 +125,7 @@ model Variant {
   updatedAt     DateTime @updatedAt
 
   @@index([productId])
+  @@index([productId, active])
 }
 
 model Customer {
@@ -340,7 +342,7 @@ model Review {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
-  @@index([productId, status])
+  @@index([productId, status, createdAt])
 }
 
 model AbandonedCheckout {

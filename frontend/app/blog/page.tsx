@@ -2,11 +2,11 @@ import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
 import { STATIC_BLOG_POSTS } from '@/lib/dummy-content';
 
-export const dynamic='force-dynamic';
+export const revalidate=300;
 
 export default async function BlogPage(){
   let page:any=null;
-  try{page=await apiFetch('/api/pages/blog')}catch{}
+  try{page=await apiFetch('/api/pages/blog', { next: { revalidate: 300, tags: ['pages', 'page:blog'] } })}catch{}
 
   return (
     <div className="site-shell blog-page pb-20">

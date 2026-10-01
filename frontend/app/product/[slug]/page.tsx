@@ -3,10 +3,9 @@ import { notFound } from "next/navigation";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import ProductGrid from "@/components/ProductGrid";
 import { getProductBySlug, getProducts } from "@/lib/store";
-import { getSetting } from "@/lib/settings";
+import { getSettings } from "@/lib/settings";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -24,11 +23,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  const [defaultDiscount, info, related] = await Promise.all([
-    getSetting<number>("store.bundleDefaultDiscountPercent", 5),
-    getSetting<any>("store.info", { whatsapp: "923002026711" }),
+  const [settings, related] = await Promise.all([
+    getSettings(["store.bundleDefaultDiscountPercent", "store.info"]),
     getProducts({ category: product.categorySlugs[0], limit: 4 }),
   ]);
+  const defaultDiscount = Number(settings["store.bundleDefaultDiscountPercent"] ?? 5);
+  const info = (settings["store.info"] || { whatsapp: "923002026711" }) as any;
   const base = process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com";
   const schema = {
     "@context": "https://schema.org",

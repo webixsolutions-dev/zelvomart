@@ -2,9 +2,30 @@ import type { Category, Product, ProductListResponse } from '@/types/product';
 import { apiFetch } from './api';
 import { ALL_DUMMY_PRODUCTS, DEFAULT_CATEGORIES, DUMMY_PRODUCTS, getDisplayCategories } from './dummy-content';
 
+export type StoreBootstrap = {
+  categories: Category[];
+  settings: Record<string, unknown>;
+};
+
+export async function getStoreBootstrap(): Promise<StoreBootstrap> {
+  try {
+    const result = await apiFetch<StoreBootstrap>('/api/store/bootstrap', {
+      next: { revalidate: 300, tags: ['store', 'categories', 'settings'] },
+    });
+    return {
+      categories: getDisplayCategories(result.categories || []),
+      settings: result.settings || {},
+    };
+  } catch {
+    return { categories: DEFAULT_CATEGORIES, settings: {} };
+  }
+}
+
 export async function getCategories(): Promise<Category[]> {
   try {
-    const rows = await apiFetch<Category[]>('/api/categories');
+    const rows = await apiFetch<Category[]>('/api/categories', {
+      next: { revalidate: 900, tags: ['categories'] },
+    });
     return getDisplayCategories(rows || []);
   } catch {
     return DEFAULT_CATEGORIES;
@@ -13,7 +34,9 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   try {
-    return await apiFetch<Product>(`/api/products/slug/${encodeURIComponent(slug)}`);
+    return await apiFetch<Product>(`/api/products/slug/${encodeURIComponent(slug)}`, {
+      next: { revalidate: 120, tags: ['products', `product:${slug}`] },
+    });
   } catch {
     return ALL_DUMMY_PRODUCTS.find((product) => product.slug === slug) || null;
   }
@@ -49,8 +72,14 @@ export async function getProducts(options: { category?: string; search?: string;
   if (options.sort) p.set('sort', options.sort);
   if (options.featured) p.set('featured', 'true');
 
+  const tags = ['products'];
+  if (options.category) tags.push(`category:${options.category}`);
+  if (options.featured) tags.push('featured-products');
+
   try {
-    const result = await apiFetch<ProductListResponse>(`/api/products?${p.toString()}`);
+    const result = await apiFetch<ProductListResponse>(`/api/products?${p.toString()}`, {
+      next: { revalidate: 120, tags },
+    });
     if (result?.items?.length) return result;
     return dummyResult(options);
   } catch {

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, WalletIcon } from "@/components/Icons";
@@ -28,11 +29,17 @@ export default function Hero({ products, config }: { products: Product[]; config
 
   return (
     <section className="hero-main">
-      <div
-        className="hero-bg"
-        aria-hidden="true"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      />
+      <div className="hero-bg" aria-hidden="true">
+        <Image
+          src={heroImage}
+          alt=""
+          fill
+          priority
+          fetchPriority="high"
+          sizes="100vw"
+          className="object-cover"
+        />
+      </div>
       <div className="hero-overlay" />
 
       <div className="site-shell hero-inner">
