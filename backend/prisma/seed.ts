@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { Prisma, PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -139,7 +139,7 @@ async function main() {
     await prisma.setting.upsert({
       where: { key },
       update: {},
-      create: { key, value },
+      create: { key, value: value as Prisma.InputJsonValue },
     });
   }
 

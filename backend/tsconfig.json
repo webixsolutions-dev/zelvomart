@@ -1,1 +1,15 @@
-{"compilerOptions":{"target":"ES2022","module":"CommonJS","moduleResolution":"Node","outDir":"dist","rootDir":".","strict":true,"esModuleInterop":true,"skipLibCheck":true,"resolveJsonModule":true},"include":["src/**/*.ts","workers/**/*.ts","prisma/**/*.ts","scripts/**/*.ts"]}
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "api/**/*.ts"],
+  "exclude": ["dist", "node_modules", "workers", "scripts", "prisma/seed.ts"]
+}

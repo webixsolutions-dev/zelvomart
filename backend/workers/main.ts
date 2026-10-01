@@ -1,10 +1,10 @@
 import { PrismaClient } from "@prisma/client";
-import { dispatchJobRow, getBoss } from "../../frontend/lib/jobs";
-import { sendCustomerOrderEmail, sendFailureAlert, sendOrderTeamEmail } from "../../frontend/lib/email";
-import { sendMetaServerEvent } from "../../frontend/lib/meta";
+import { dispatchJobRow, getBoss } from "../src/lib/jobs";
+import { sendCustomerOrderEmail, sendFailureAlert, sendOrderTeamEmail } from "../src/lib/email";
+import { sendMetaServerEvent } from "../src/lib/meta";
 import { Resend } from "resend";
-import { money } from "../../frontend/lib/format";
-import { getSetting } from "../../frontend/lib/settings";
+import { money } from "../src/lib/format";
+import { getSetting } from "../src/lib/settings";
 
 const prisma = new PrismaClient();
 

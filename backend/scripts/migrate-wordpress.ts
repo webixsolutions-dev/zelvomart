@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
-import { PrismaClient } from "@prisma/client";
-import { uploadObject } from "../../frontend/lib/storage";
+import { Prisma, PrismaClient } from "@prisma/client";
+import { uploadObject } from "../src/lib/storage";
 
 const prisma = new PrismaClient();
 const source = (process.env.SOURCE_STORE_URL || "https://zelvomart.com").replace(/\/$/, "");
@@ -165,7 +165,7 @@ async function importProductsAuthenticated() {
             productId: product.id,
             sku: variant.sku || `${product.sku}-${variationId}`,
             name,
-            attributes: Object.fromEntries((variant.attributes || []).map((attr: any) => [attr.name, attr.option])),
+            attributes: Object.fromEntries((variant.attributes || []).map((attr: any) => [String(attr.name), String(attr.option)])) as Prisma.InputJsonObject,
             priceOverride: variant.price ? Number(variant.price) : null,
             stock: variant.manage_stock ? Number(variant.stock_quantity || 0) : variant.stock_status === "instock" ? 9999 : 0,
             imageUrl: variant.image?.src ? await maybeRehost(variant.image.src) : null,
