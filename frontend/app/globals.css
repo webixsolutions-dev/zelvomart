@@ -1042,3 +1042,51 @@ img { max-width: 100%; display: block; }
 .admin-product-cell > div { min-width: 0; }
 .admin-product-cell b { display: block; max-width: 310px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-product-cell small { display: block; margin-top: 3px; color: #96a4ac; font-size: 8.5px; }
+
+/* Home showcase updates */
+.category-grid--showcase { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.category-card { min-height: 248px; }
+.category-card-copy { padding: 18px 18px 20px; }
+.category-card h3 { font-size: 17px; }
+.category-card span { font-size: 11px; max-width: 220px; }
+.category-card-btn { margin-top: 14px; display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 18px; border-radius: 999px; background: #12a8f0; color: #fff; font-size: 12px; font-style: normal; font-weight: 900; }
+
+.flash-section { padding-top: 8px; }
+.flash-banner { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-radius: 18px; padding: 24px 28px; color: #111827; background: linear-gradient(90deg,#f45613 0%,#ff7400 46%,#ff8b16 100%); box-shadow: 0 14px 28px rgba(240,89,25,.18); }
+.flash-copy { display: flex; align-items: center; gap: 18px; }
+.flash-icon { font-size: 42px; line-height: 1; }
+.flash-copy h2 { margin: 0; font-size: 42px; line-height: 1; letter-spacing: -.8px; }
+.flash-copy p { margin: 8px 0 0; font-size: 14px; font-weight: 700; }
+.flash-side { display: flex; align-items: center; gap: 16px; }
+.flash-timer { display: flex; align-items: center; gap: 10px; }
+.flash-box { min-width: 64px; padding: 10px 8px; border-radius: 10px; background: #111827; color: #fff; text-align: center; }
+.flash-box strong { display: block; font-size: 28px; line-height: 1; }
+.flash-box span { display: block; margin-top: 6px; font-size: 10px; font-weight: 700; opacity: .88; }
+
+.promo-section { padding-top: 12px; padding-bottom: 12px; }
+.promo-card { display: flex; align-items: center; justify-content: space-between; gap: 26px; border: 1px solid #dce7ee; border-radius: 22px; padding: 28px 32px; background: linear-gradient(135deg,#eaf8fe,#f8fcff); }
+.promo-kicker { display: inline-block; margin-bottom: 10px; color: #0a87bb; font-size: 11px; font-weight: 900; letter-spacing: 1px; }
+.promo-card h2 { margin: 0; color: #173044; font-size: 32px; letter-spacing: -.8px; }
+.promo-card p { max-width: 720px; margin: 10px 0 0; color: #627480; line-height: 1.7; }
+.promo-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+@media (max-width: 1100px) {
+  .category-grid--showcase { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .flash-banner, .promo-card { flex-direction: column; align-items: flex-start; }
+  .flash-side { width: 100%; justify-content: space-between; }
+}
+
+@media (max-width: 700px) {
+  .category-grid--showcase { grid-template-columns: 1fr; }
+  .flash-banner { padding: 20px 18px; }
+  .flash-copy { align-items: flex-start; }
+  .flash-copy h2 { font-size: 28px; }
+  .flash-copy p { font-size: 12px; }
+  .flash-icon { font-size: 34px; }
+  .flash-side { align-items: flex-start; flex-direction: column; }
+  .flash-timer { flex-wrap: wrap; }
+  .flash-box { min-width: 58px; }
+  .flash-box strong { font-size: 22px; }
+  .promo-card { padding: 22px 18px; }
+  .promo-card h2 { font-size: 24px; }
+}

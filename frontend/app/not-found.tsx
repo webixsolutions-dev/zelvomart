@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getCategories } from "@/lib/store";
+import type { Category } from "@/types/product";
 
 export default async function NotFound() {
-  let categories = [];
+  let categories: Category[] = [];
   try {
     categories = await getCategories();
   } catch (error) {

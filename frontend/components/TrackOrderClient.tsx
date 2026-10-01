@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { API_BASE } from "@/lib/client-api";
 
 export default function TrackOrderClient() {
   const [result, setResult] = useState<any>(null);

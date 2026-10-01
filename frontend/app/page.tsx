@@ -5,8 +5,11 @@ import CategoryGrid from "@/components/CategoryGrid";
 import ProductGrid from "@/components/ProductGrid";
 import PopularCollections from "@/components/PopularCollections";
 import Faq from "@/components/Faq";
+import FlashDealBanner from "@/components/FlashDealBanner";
+import PromoCta from "@/components/PromoCta";
 import { getCategories, getProducts } from "@/lib/store";
 import { getSetting } from "@/lib/settings";
+import { DUMMY_PRODUCTS } from "@/lib/dummy-content";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,8 +23,10 @@ export default async function HomePage() {
     getProducts({ category: "beauty-personal-care", limit: 4 }),
     getSetting<any>("homepage.config", {}),
   ]);
-  const heroProducts = featured.items.length ? featured.items : latest.items;
-  const best = featured.items.length ? featured.items : latest.items.slice(0, 8);
+  const heroProducts = featured.items.length ? featured.items : (latest.items.length ? latest.items : DUMMY_PRODUCTS.best);
+  const best = featured.items.length ? featured.items : (latest.items.length ? latest.items.slice(0, 8) : DUMMY_PRODUCTS.best);
+  const fashionItems = fashion.items.length ? fashion.items : DUMMY_PRODUCTS.fashion;
+  const beautyItems = beauty.items.length ? beauty.items : DUMMY_PRODUCTS.beauty;
 
   return (
     <>
@@ -37,13 +42,30 @@ export default async function HomePage() {
 
       <section className="section">
         <div className="site-shell">
-          <div className="section-title"><div><h2>Best Sellers</h2><p>Real products from the Zelvomart catalogue, available with Cash on Delivery.</p></div><Link href="/shop" className="btn-outline">Shop All</Link></div>
+          <div className="section-title"><div><h2>Best Selling Products</h2><p>Popular picks available with Cash on Delivery.</p></div><Link href="/shop" className="btn-outline">Shop All</Link></div>
           <ProductGrid products={best} />
         </div>
       </section>
 
-      {fashion.items.length ? <section className="section section-soft"><div className="site-shell"><div className="section-title"><div><h2>Fashion Accessories</h2><p>Popular accessories from the live catalogue.</p></div><Link href="/product-category/fashion-accessories/" className="btn-outline">View Category</Link></div><ProductGrid products={fashion.items} /></div></section> : null}
-      {beauty.items.length ? <section className="section"><div className="site-shell"><div className="section-title"><div><h2>Beauty & Personal Care</h2><p>Quality-checked beauty and personal care products.</p></div><Link href="/product-category/beauty-personal-care/" className="btn-outline">View Category</Link></div><ProductGrid products={beauty.items} /></div></section> : null}
+      <FlashDealBanner />
+
+      <section className="section section-soft">
+        <div className="site-shell">
+          <div className="section-title"><div><h2>Fashion Accessories</h2><p>Style essentials and gift-worthy picks.</p></div><Link href="/product-category/fashion-accessories/" className="btn-outline">View Category</Link></div>
+          <ProductGrid products={fashionItems} />
+        </div>
+      </section>
+
+      <PromoCta title="Need help with your order?" body="Place your order on the website or contact us on WhatsApp for quick support, stock checks and delivery details." buttonText="Order on WhatsApp" buttonHref="https://wa.me/923002026711" secondaryText="Contact Us" secondaryHref="/contact-us" />
+
+      <section className="section">
+        <div className="site-shell">
+          <div className="section-title"><div><h2>Beauty & Wellness</h2><p>Look good, move stronger and shop confidently.</p></div><Link href="/product-category/beauty-personal-care/" className="btn-outline">View Category</Link></div>
+          <ProductGrid products={beautyItems} />
+        </div>
+      </section>
+
+      <PromoCta title="Quality checked before dispatch" body="Every order is handled with care. Browse the catalogue, confirm your order and pay with Cash on Delivery where available." buttonText="Start Shopping" buttonHref="/shop" secondaryText="About Us" secondaryHref="/about-us" />
 
       <section className="section section-soft">
         <div className="site-shell">

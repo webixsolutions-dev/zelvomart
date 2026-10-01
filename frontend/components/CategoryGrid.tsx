@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Category } from "@/types/product";
+import { CATEGORY_BLURBS } from "@/lib/dummy-content";
 
 const CATEGORY_FALLBACKS: Record<string, string> = {
   "home-living": "/images/categories/home-living.svg",
@@ -14,9 +15,10 @@ const CATEGORY_FALLBACKS: Record<string, string> = {
 
 export default function CategoryGrid({ categories }: { categories: Category[] }) {
   return (
-    <div className="category-grid">
+    <div className="category-grid category-grid--showcase">
       {categories.map((category) => {
         const image = category.image || CATEGORY_FALLBACKS[category.slug];
+        const blurb = category.description || CATEGORY_BLURBS[category.slug] || "Explore the collection";
 
         return (
           <Link
@@ -29,7 +31,7 @@ export default function CategoryGrid({ categories }: { categories: Category[] })
                 src={image}
                 alt={category.name}
                 fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 25vw"
+                sizes="(max-width: 640px) 100vw, (max-width: 1100px) 50vw, 33vw"
               />
             ) : (
               <div className="category-card-fallback" aria-hidden="true" />
@@ -37,9 +39,8 @@ export default function CategoryGrid({ categories }: { categories: Category[] })
 
             <div className="category-card-copy">
               <h3>{category.name}</h3>
-              <span>
-                {category.count ? `${category.count} products` : "Explore collection"}
-              </span>
+              <span>{blurb}</span>
+              <em className="category-card-btn">Shop Now</em>
             </div>
           </Link>
         );
