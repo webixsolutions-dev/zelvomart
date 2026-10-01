@@ -11,7 +11,7 @@ export default function TrackOrderClient() {
     event.preventDefault();
     setLoading(true); setError(""); setResult(null);
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/orders/track", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderNumber: form.get("orderNumber"), phone: form.get("phone") }) });
+    const response = await fetch(`${API_BASE}/api/orders/track`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderNumber: form.get("orderNumber"), phone: form.get("phone") }) });
     const data = await response.json();
     if (!response.ok) setError(data.error || "Order not found"); else setResult(data);
     setLoading(false);

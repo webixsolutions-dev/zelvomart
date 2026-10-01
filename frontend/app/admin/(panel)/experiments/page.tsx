@@ -1,48 +1,6 @@
-import { revalidatePath } from "next/cache";
-import { ExperimentStatus } from "@prisma/client";
-import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin";
-import AdminModal from "@/components/admin/AdminModal";
-
-export default async function ExperimentsPage() {
-  await requireAdmin("reports.read");
-  const rows = await prisma.experiment.findMany({ orderBy: { createdAt: "desc" } });
-
-  async function create(formData: FormData) {
-    "use server";
-    await requireAdmin("content.write");
-    await prisma.experiment.create({ data: { name: String(formData.get("name") || ""), pagePattern: String(formData.get("pagePattern") || ""), variants: ["A", "B"], trafficSplit: { A: 50, B: 50 }, status: "DRAFT" } });
-    revalidatePath("/admin/experiments");
-  }
-
-  async function setStatus(formData: FormData) {
-    "use server";
-    await requireAdmin("content.write");
-    const id = String(formData.get("id"));
-    const status = String(formData.get("status")) as ExperimentStatus;
-    if (status === "RUNNING") {
-      const row = await prisma.experiment.findUnique({ where: { id } });
-      if (row) await prisma.experiment.updateMany({ where: { pagePattern: row.pagePattern, status: "RUNNING", id: { not: id } }, data: { status: "PAUSED" } });
-    }
-    await prisma.experiment.update({ where: { id }, data: { status, startsAt: status === "RUNNING" ? new Date() : undefined, endsAt: status === "ENDED" ? new Date() : undefined } });
-    revalidatePath("/admin/experiments");
-  }
-
-  return (
-    <>
-      <div className="admin-title">
-        <div><h1>Experiments</h1><p>P1 A/B testing framework. One experiment per page at a time.</p></div>
-        <AdminModal trigger={<><span className="text-base">＋</span> Create Experiment</>} title="Create Experiment" description="Create the experiment in draft, then start it from the list." size="md">
-          <form action={create} className="admin-reference-shell">
-            <div className="admin-reference-form">
-              <label className="field"><span>Experiment name</span><input name="name" placeholder="Required email field" required /></label>
-              <label className="field"><span>Page pattern</span><input name="pagePattern" placeholder="/product/*" required /></label>
-            </div>
-            <div className="admin-modal-footer-actions"><button className="admin-btn admin-btn-primary">Create A/B Test</button></div>
-          </form>
-        </AdminModal>
-      </div>
-      <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>Page</th><th>Status</th><th>Traffic</th><th>Action</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id}><td><b>{row.name}</b></td><td>{row.pagePattern}</td><td><span className="status-pill">{row.status}</span></td><td>{JSON.stringify(row.trafficSplit)}</td><td><form action={setStatus} className="admin-inline-action"><input type="hidden" name="id" value={row.id}/><select name="status" defaultValue={row.status}>{Object.values(ExperimentStatus).map((status) => <option key={status}>{status}</option>)}</select><button className="admin-row-action">Save</button></form></td></tr>)}</tbody></table></div>
-    </>
-  );
-}
+"use client";
+import AdminModal from '@/components/admin/AdminModal';
+import { clientApi } from '@/lib/client-api';
+import { useAdminData,AdminLoading,AdminError } from '@/components/admin/useAdminData';
+function Form({onSaved}:{onSaved:()=>void}){async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);await clientApi('/api/admin/experiments',{method:'POST',body:JSON.stringify({name:f.get('name'),pagePattern:f.get('pagePattern'),variants:['A','B'],trafficSplit:{A:50,B:50},status:'DRAFT'})},true);onSaved()}return <form className="admin-reference-form" onSubmit={submit}><label className="field"><span>Name</span><input name="name" required/></label><label className="field"><span>Page pattern</span><input name="pagePattern" placeholder="/product/example/" required/></label><button className="admin-reference-submit">Create Experiment</button></form>}
+export default function Experiments(){const {data,loading,error,reload}=useAdminData<any[]>('/api/admin/experiments',[]);if(loading)return <AdminLoading/>;if(error)return <AdminError message={error}/>;async function status(id:string,value:string){await clientApi(`/api/admin/experiments/${id}`,{method:'PATCH',body:JSON.stringify({status:value})},true);reload()}return <><div className="admin-title"><div><h1>Experiments</h1><p>A/B testing framework configuration.</p></div><AdminModal trigger={<>＋ Create Experiment</>} title="Create Experiment"><Form onSaved={reload}/></AdminModal></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>Page</th><th>Status</th><th>Variants</th><th></th></tr></thead><tbody>{data.map(r=><tr key={r.id}><td>{r.name}</td><td>{r.pagePattern}</td><td>{r.status}</td><td>{JSON.stringify(r.variants)}</td><td><select value={r.status} onChange={e=>status(r.id,e.target.value)}><option>DRAFT</option><option>RUNNING</option><option>PAUSED</option><option>ENDED</option></select></td></tr>)}</tbody></table></div></>}

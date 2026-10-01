@@ -14,7 +14,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
     const form = new FormData(event.currentTarget);
     const payload = Object.fromEntries(form.entries());
     try {
-      const response = await fetch("/api/reviews", {
+      const response = await fetch(`${API_BASE}/api/reviews`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...payload, productId }),

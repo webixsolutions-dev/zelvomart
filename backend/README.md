@@ -1,17 +1,18 @@
-# Backend
+# Zelvomart Backend
 
-This folder contains the non-UI backend/operations layer:
+Express + Prisma backend. All database, authentication, order, admin, email, tracking, upload and worker logic lives here.
 
-- `prisma/` — PostgreSQL schema and seed
-- `workers/` — pg-boss background jobs (emails, Meta Purchase, daily summary, tracking health)
-- `scripts/` — WordPress/WooCommerce migration, URL QA/export, backup/restore tools
-- `migration/` — migration support files
-
-Run backend commands from the project ROOT, not from this folder:
+Setup:
 
 ```bat
+copy .env.example .env
+npm install
 npm run prisma:generate
 npm run db:push
 npm run seed
-npm run worker
+npm run dev
 ```
+
+Frontend origin is controlled by `FRONTEND_URL`.
+
+For Vercel deploy this folder as a separate project. `api/index.ts` is the serverless entry and `vercel.json` rewrites `/api/*` to it.

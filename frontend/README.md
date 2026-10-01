@@ -1,17 +1,20 @@
-# Frontend
+# Zelvomart Frontend
 
-Next.js App Router application:
+Next.js UI only. It contains no database client and no private backend secrets.
 
-- Storefront pages
-- Homepage / hero / category visuals
-- Shop and product pages
-- Cart and COD checkout
-- Admin interface
-- Next.js API route handlers
-- SEO routes/feed/sitemap
-
-For normal development, run commands from the project ROOT:
+Setup:
 
 ```bat
+copy .env.example .env.local
+npm install
 npm run dev
 ```
+
+Required connection:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+BACKEND_URL=http://localhost:4000
+```
+
+Production points both variables to the deployed backend API URL.

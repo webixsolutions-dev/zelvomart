@@ -1,44 +1,5 @@
-import { AuthError } from "next-auth";
-import { redirect } from "next/navigation";
-import { signIn } from "@/auth";
-
-export default function LoginPage() {
-  async function login(formData: FormData) {
-    "use server";
-    try {
-      await signIn("credentials", {
-        email: String(formData.get("email") || ""),
-        password: String(formData.get("password") || ""),
-        redirectTo: "/admin",
-      });
-    } catch (error) {
-      if (error instanceof AuthError) redirect("/admin/login?error=1");
-      throw error;
-    }
-  }
-
-  return (
-    <div className="admin-login-page">
-      <div className="admin-login-card">
-        <div className="admin-login-brand">
-          <span className="admin-login-mark">Z</span>
-          <div>
-            <b>ZELVOMART</b>
-            <small>Admin Portal</small>
-          </div>
-        </div>
-        <div className="admin-login-copy">
-          <span>Welcome back</span>
-          <h1>Sign in to your dashboard</h1>
-          <p>Manage orders, products, customers and store operations.</p>
-        </div>
-        <form action={login} className="admin-login-form">
-          <label><span>Email address</span><input type="email" name="email" placeholder="owner@zelvomart.com" autoComplete="email" required /></label>
-          <label><span>Password</span><input type="password" name="password" placeholder="Enter your password" autoComplete="current-password" required /></label>
-          <button type="submit">Sign in</button>
-        </form>
-        <div className="admin-login-foot">Secure staff access • Zelvomart</div>
-      </div>
-    </div>
-  );
-}
+"use client";
+import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { clientApi, setAdminSession } from '@/lib/client-api';
+export default function AdminLogin(){const router=useRouter();const [error,setError]=useState('');const [busy,setBusy]=useState(false);async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setBusy(true);setError('');const f=new FormData(e.currentTarget);try{const r=await clientApi<{token:string;user:unknown}>('/api/auth/login',{method:'POST',body:JSON.stringify({email:f.get('email'),password:f.get('password')})});setAdminSession(r.token,r.user);router.replace('/admin');}catch(e){setError(e instanceof Error?e.message:'Login failed')}finally{setBusy(false)}}return <div className="admin-login-page"><div className="admin-login-card"><div className="admin-login-brand"><span>Z</span><div><b>ZELVOMART</b><small>ADMIN PORTAL</small></div></div><div className="admin-login-copy"><span>Store Management</span><h1>Sign in to admin</h1><p>Email and password only. Authentication is handled by the separate backend.</p></div><form className="admin-login-form" onSubmit={submit}><label>Email<input name="email" type="email" required/></label><label>Password<input name="password" type="password" required/></label>{error?<div className="field-error">{error.replace(/_/g,' ')}</div>:null}<button disabled={busy}>{busy?'Signing in…':'Sign in'}</button></form></div></div>}

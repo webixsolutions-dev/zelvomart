@@ -8,7 +8,8 @@ import Faq from "@/components/Faq";
 import { getCategories, getProducts } from "@/lib/store";
 import { getSetting } from "@/lib/settings";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function HomePage() {
   const [categories, featured, latest, fashion, beauty, homeConfig] = await Promise.all([

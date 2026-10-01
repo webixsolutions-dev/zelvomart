@@ -1,31 +1,3 @@
-import { prisma } from "@/lib/db";
-
-export async function getSetting<T>(key: string, fallback: T): Promise<T> {
-  const row = await prisma.setting.findUnique({ where: { key } });
-  return (row?.value as T | undefined) ?? fallback;
-}
-
-export async function getStoreSettings() {
-  const rows = await prisma.setting.findMany({
-    where: {
-      key: {
-        in: [
-          "store.info",
-          "store.announcement",
-          "store.bundleDefaultDiscountPercent",
-          "store.minimumSellingPrice",
-          "store.delivery",
-          "checkout.requiredFields",
-          "payments.methods",
-          "tracking.metaPixelId",
-          "tracking.clarityId",
-          "notifications.orderRecipients",
-          "postex.trackingBaseUrl",
-          "homepage.config",
-        ],
-      },
-    },
-  });
-
-  return Object.fromEntries(rows.map((row) => [row.key, row.value]));
-}
+import { apiFetch } from './api';
+export async function getSetting<T>(key:string,fallback:T):Promise<T>{ try { const r=await apiFetch<Record<string,T>>(`/api/settings/public?keys=${encodeURIComponent(key)}`); return (r[key] ?? fallback) as T; } catch { return fallback; } }
+export async function getSettings(keys:string[]){ try{return await apiFetch<Record<string,unknown>>(`/api/settings/public?keys=${encodeURIComponent(keys.join(','))}`);}catch{return {};}}

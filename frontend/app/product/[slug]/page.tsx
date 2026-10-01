@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import ProductGrid from "@/components/ProductGrid";
-import { cleanHtml } from "@/lib/sanitize";
 import { getProductBySlug, getProducts } from "@/lib/store";
 import { getSetting } from "@/lib/settings";
 
-export const revalidate = 180;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -24,7 +24,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  product.description = cleanHtml(product.description || "");
   const [defaultDiscount, info, related] = await Promise.all([
     getSetting<number>("store.bundleDefaultDiscountPercent", 5),
     getSetting<any>("store.info", { whatsapp: "923002026711" }),

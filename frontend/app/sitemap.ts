@@ -1,18 +1,4 @@
-import type { MetadataRoute } from "next";
-import { prisma } from "@/lib/db";
-
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com").replace(/\/$/, "");
-  const [products, categories, pages] = await Promise.all([
-    prisma.product.findMany({ where: { status: "PUBLISHED" }, select: { slug: true, updatedAt: true } }),
-    prisma.category.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.page.findMany({ where: { published: true }, select: { slug: true, updatedAt: true } }),
-  ]);
-  return [
-    { url: base, lastModified: new Date() },
-    { url: `${base}/shop/`, lastModified: new Date() },
-    ...products.map((row) => ({ url: `${base}/product/${row.slug}/`, lastModified: row.updatedAt })),
-    ...categories.map((row) => ({ url: `${base}/product-category/${row.slug}/`, lastModified: row.updatedAt })),
-    ...pages.map((row) => ({ url: `${base}/${row.slug}/`, lastModified: row.updatedAt })),
-  ];
-}
+import type { MetadataRoute } from 'next';
+import { apiFetch } from '@/lib/api';
+export const dynamic='force-dynamic';
+export default async function sitemap():Promise<MetadataRoute.Sitemap>{const base=(process.env.NEXT_PUBLIC_SITE_URL||'http://localhost:3000').replace(/\/$/,'');let d:any={products:[],categories:[],pages:[]};try{d=await apiFetch('/api/seo/sitemap');}catch{}const fixed=['','shop','about-us','contact-us','faq','shipping-delivery','returns-exchange','privacy-policy','terms','track-order'].map(path=>({url:`${base}/${path}${path?'/':''}`,lastModified:new Date()}));return [...fixed,...d.products.map((r:any)=>({url:`${base}/product/${r.slug}/`,lastModified:new Date(r.updatedAt)})),...d.categories.map((r:any)=>({url:`${base}/product-category/${r.slug}/`,lastModified:new Date(r.updatedAt)})),...d.pages.map((r:any)=>({url:`${base}/${r.slug}/`,lastModified:new Date(r.updatedAt)}))];}

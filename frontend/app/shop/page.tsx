@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import ProductGrid from "@/components/ProductGrid";
 import { getCategories, getProducts } from "@/lib/store";
-import { enforceRateLimit } from "@/lib/rate-limit";
-import { safeIp } from "@/lib/security";
 import SearchTracker from "@/components/SearchTracker";
 
-export const revalidate = 120;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function value(input: string | string[] | undefined) { return Array.isArray(input) ? input[0] : input || ""; }
 
@@ -17,16 +15,6 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const sortRaw = value(params.sort);
   const sort = sortRaw === "price-asc" || sortRaw === "price-desc" ? sortRaw : "newest";
   const page = Math.max(1, Number(value(params.page)) || 1);
-
-  let rateLimited = false;
-  if (q) {
-    const h = await headers();
-    try { await enforceRateLimit(`search:${safeIp(h)}`, 60, 10 * 60 * 1000); } catch { rateLimited = true; }
-  }
-
-  if (rateLimited) {
-    return <div className="site-shell py-20 text-center"><h1 className="text-3xl font-black text-slate-800">Too many searches</h1><p className="mx-auto mt-3 max-w-xl text-slate-500">Please wait a few minutes and try again. If you need help now, message Zelvomart on WhatsApp.</p><a className="btn-green mt-6" href="https://wa.me/923002026711" target="_blank" rel="noreferrer">Ask on WhatsApp</a></div>;
-  }
 
   const [result, categories] = await Promise.all([
     getProducts({ search: q || undefined, category: category || undefined, sort, page, limit: 12 }),

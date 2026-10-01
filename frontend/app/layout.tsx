@@ -19,7 +19,8 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: "Zelvomart" },
 };
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [categories, announcement, info, pixelId, clarityId] = await Promise.all([

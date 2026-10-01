@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/components/CartProvider";
 import { money } from "@/lib/format";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
+import { API_BASE } from "@/lib/client-api";
 
 const SESSION_KEY = "zm_checkout_form";
 const IDEMPOTENCY_KEY = "zm_checkout_idempotency";
@@ -78,7 +79,7 @@ export default function CheckoutClient({
     if (!/^\+?92|^03/.test(fields.phone.replace(/\s/g, ""))) return;
     if (abandonTimer.current) window.clearTimeout(abandonTimer.current);
     abandonTimer.current = window.setTimeout(() => {
-      fetch("/api/checkout/abandoned", {
+      fetch(`${API_BASE}/api/checkout/abandoned`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -122,7 +123,7 @@ export default function CheckoutClient({
       const idempotencyKey = sessionStorage.getItem(IDEMPOTENCY_KEY) || crypto.randomUUID();
       sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
 
-      const response = await fetch("/api/orders", {
+      const response = await fetch(`${API_BASE}/api/orders`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
+  async rewrites() {
+    const api = (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "");
+    return [{ source: "/feeds/meta.xml", destination: `${api}/api/feed/meta.xml` }];
+  },
 };
 
 export default nextConfig;
