@@ -12,6 +12,7 @@ import { getSetting, getSettings, setSetting } from './lib/settings';
 import { postexTrackingUrl } from './lib/postex';
 import { uploadObject } from './lib/storage';
 import { sendMetaServerEvent } from './lib/meta';
+import { fetchMetaAds, getMetaMarketingConfig, testMetaMarketingConnection } from './lib/meta-marketing';
 import { invalidateFrontendCache } from './lib/cache-invalidation';
 
 const app = express();
@@ -42,7 +43,7 @@ function setNoStore(res: express.Response) {
 }
 
 app.use((req, res, next) => {
-  if (/^\/api\/(auth|admin|orders|checkout|reviews|events)(?:\/|$)/.test(req.path)) setNoStore(res);
+  if (/^\/api\/(auth|admin|orders|checkout|reviews|events|session-replays)(?:\/|$)/.test(req.path)) setNoStore(res);
   next();
 });
 
@@ -111,6 +112,33 @@ async function audit(req: AuthedRequest, action: string, entity: string, entityI
   await prisma.auditLog.create({ data: { userId: req.admin?.id, action, entity, entityId, details: (details || {}) as any } });
 }
 
+function isSensitiveSettingKey(key: string) {
+  const normalized = key.toLowerCase();
+  return normalized.includes('token') || normalized.includes('secret') || normalized.includes('password');
+}
+
+function normalizeTrafficSource(value: unknown) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw || raw === 'direct' || raw === '(direct)') return 'direct';
+  if (['fb','facebook','facebook.com','m.facebook.com','l.facebook.com'].includes(raw) || raw.includes('facebook')) return 'facebook';
+  if (['ig','instagram','instagram.com','l.instagram.com'].includes(raw) || raw.includes('instagram')) return 'instagram';
+  if (raw.includes('google')) return 'google';
+  if (raw.includes('tiktok')) return 'tiktok';
+  if (raw.includes('youtube')) return 'youtube';
+  return raw;
+}
+
+let replayCleanupAt = 0;
+async function maybeCleanupOldSessionReplays() {
+  const days = Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
+  if (!Number.isFinite(days) || days <= 0) return;
+  const now = Date.now();
+  if (now - replayCleanupAt < 6 * 60 * 60 * 1000) return;
+  replayCleanupAt = now;
+  const cutoff = new Date(now - days * 86400000);
+  await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } }).catch(() => undefined);
+}
+
 app.get('/api/health', async (_req, res) => { setNoStore(res); try { await prisma.$queryRaw`SELECT 1`; res.json({ ok: true }); } catch (e: any) { res.status(503).json({ ok: false, error: e?.message || 'DB_UNAVAILABLE' }); } });
 
 app.get('/api/store/bootstrap', async (_req, res) => {
@@ -158,7 +186,56 @@ app.post('/api/orders/track', async (req,res) => { const orderNumber=String(req.
 app.get('/api/orders/confirmation/:orderNumber', async (req,res) => { const order=await prisma.order.findUnique({where:{orderNumber:routeParam(req, 'orderNumber').toUpperCase()},include:{items:true}}); if(!order)return res.status(404).json({error:'NOT_FOUND'}); const city=await prisma.city.findUnique({where:{name:order.city}}); res.json({...order,subtotal:Number(order.subtotal),bundleSaving:Number(order.bundleSaving),deliveryFee:Number(order.deliveryFee),codFee:Number(order.codFee),total:Number(order.total),items:order.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),deliveryEstimate:city?`${city.deliveryMinDays}-${city.deliveryMaxDays} days`:null}); });
 app.post('/api/checkout/abandoned', async (req,res) => { const phone=String(req.body.phone||'').trim(); if(phone.length<10)return res.json({ok:true}); const existing=await prisma.abandonedCheckout.findFirst({where:{phone,convertedAt:null},orderBy:{createdAt:'desc'}}); const data={phone,fullName:req.body.fullName||null,email:req.body.email||null,city:req.body.city||null,address:req.body.address||null,cart:req.body.cart||[],source:req.body.source||null}; if(existing) await prisma.abandonedCheckout.update({where:{id:existing.id},data}); else await prisma.abandonedCheckout.create({data}); res.json({ok:true}); });
 app.post('/api/reviews', async (req,res) => { const productId=String(req.body.productId||''); const name=String(req.body.name||'').trim(); const body=String(req.body.body||'').trim(); const rating=Number(req.body.rating||0); if(!productId||!name||!body||rating<1||rating>5)return res.status(400).json({error:'VALIDATION_ERROR'}); const product=await prisma.product.findUnique({where:{id:productId},select:{id:true}}); if(!product)return res.status(404).json({error:'PRODUCT_NOT_FOUND'}); const review=await prisma.review.create({data:{productId,name,body,rating,status:'PENDING'}}); res.status(201).json({ok:true,id:review.id}); });
-app.post('/api/events', async (req,res) => { const eventName=String(req.body.eventName||''); const eventId=String(req.body.eventId||''); if(!eventName||!eventId)return res.status(400).json({error:'INVALID_EVENT'}); const row=await prisma.eventLog.create({data:{eventName,eventId,channel:'browser',sourceUrl:req.body.sourceUrl||null,payload:req.body||{}}}); if(req.body.server===true){ sendMetaServerEvent({eventName,eventId,sourceUrl:req.body.sourceUrl,userAgent:req.get('user-agent')||undefined,ip:req.ip,customData:req.body.customData}).catch(()=>{}); } res.json({ok:true,id:row.id}); });
+app.post('/api/events', async (req,res) => { const eventName=String(req.body.eventName||''); const eventId=String(req.body.eventId||''); const sessionReplayId=String(req.body.replaySessionId||'').trim()||null; if(!eventName||!eventId)return res.status(400).json({error:'INVALID_EVENT'}); const row=await prisma.eventLog.create({data:{eventName,eventId,sessionReplayId,channel:'browser',sourceUrl:req.body.sourceUrl||null,payload:req.body||{}}}); if(sessionReplayId){ prisma.sessionReplay.updateMany({where:{id:sessionReplayId},data:{lastSeenAt:new Date(),lastUrl:String(req.body.sourceUrl||''),...(eventName==='PageView'?{pageViews:{increment:1}}:{})}}).catch(()=>{}); } if(req.body.server===true){ sendMetaServerEvent({eventName,eventId,sourceUrl:req.body.sourceUrl,userAgent:req.get('user-agent')||undefined,ip:req.ip,customData:req.body.customData}).catch(()=>{}); } res.json({ok:true,id:row.id}); });
+
+// Privacy-safe customer session replay ingestion. Input values are masked in the browser before these events arrive.
+app.post('/api/session-replays/start', async (req,res) => {
+  void maybeCleanupOldSessionReplays();
+  const sessionId=String(req.body.sessionId||'').trim();
+  const visitorId=String(req.body.visitorId||'').trim();
+  if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!/^[0-9a-f-]{36}$/i.test(visitorId)) return res.status(400).json({error:'INVALID_SESSION'});
+  const source=req.body.source&&typeof req.body.source==='object'?req.body.source:{};
+  const sourceName=normalizeTrafficSource((source as any).source||(source as any).utm_source||(source as any).lastTouch?.utm_source||(source as any).firstTouch?.utm_source||'direct');
+  const startedAt=new Date(req.body.startedAt||Date.now());
+  const landingUrl=String(req.body.landingUrl||req.body.currentUrl||'').slice(0,4000);
+  const lastUrl=String(req.body.currentUrl||landingUrl).slice(0,4000);
+  const now=new Date();
+  await prisma.sessionReplay.upsert({
+    where:{id:sessionId},
+    update:{lastSeenAt:now,lastUrl,status:'ACTIVE'},
+    create:{id:sessionId,visitorId,source:sourceName,medium:String((source as any).medium||(source as any).utm_medium||'').slice(0,120)||null,campaign:String((source as any).campaign||(source as any).utm_campaign||'').slice(0,240)||null,landingUrl,lastUrl,referrer:req.body.referrer?String(req.body.referrer).slice(0,4000):null,device:req.body.device?String(req.body.device).slice(0,40):null,viewport:req.body.viewport?String(req.body.viewport).slice(0,40):null,status:'ACTIVE',startedAt:Number.isNaN(startedAt.getTime())?now:startedAt,lastSeenAt:now,metadata:{firstTouch:(source as any).firstTouch||null,lastTouch:(source as any).lastTouch||null} as Prisma.InputJsonValue}
+  });
+  res.json({ok:true});
+});
+
+app.post('/api/session-replays/chunk', async (req,res) => {
+  const sessionId=String(req.body.sessionId||'').trim();
+  const sequence=Number(req.body.sequence);
+  const events=Array.isArray(req.body.events)?req.body.events:[];
+  if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!Number.isInteger(sequence)||sequence<0||events.length<1||events.length>100) return res.status(400).json({error:'INVALID_REPLAY_CHUNK'});
+  const currentUrl=String(req.body.currentUrl||'').slice(0,4000);
+  const now=new Date();
+  await prisma.$transaction(async(tx)=>{
+    await tx.sessionReplay.upsert({where:{id:sessionId},update:{lastSeenAt:now,lastUrl:currentUrl||undefined,status:'ACTIVE'},create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}});
+    const existing=await tx.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId,sequence}},select:{id:true,eventCount:true}});
+    if(existing){
+      await tx.sessionReplayChunk.update({where:{id:existing.id},data:{events:events as Prisma.InputJsonValue,eventCount:events.length}});
+      await tx.sessionReplay.update({where:{id:sessionId},data:{lastSeenAt:now,lastUrl:currentUrl||undefined,eventCount:{increment:events.length-existing.eventCount}}});
+    }else{
+      await tx.sessionReplayChunk.create({data:{sessionId,sequence,events:events as Prisma.InputJsonValue,eventCount:events.length}});
+      await tx.sessionReplay.update({where:{id:sessionId},data:{lastSeenAt:now,lastUrl:currentUrl||undefined,eventCount:{increment:events.length},chunkCount:{increment:1}}});
+    }
+  });
+  res.json({ok:true});
+});
+
+app.post('/api/session-replays/end', async (req,res) => {
+  const sessionId=String(req.body.sessionId||'').trim();
+  if(!/^[0-9a-f-]{36}$/i.test(sessionId)) return res.status(400).json({error:'INVALID_SESSION'});
+  const endedAt=new Date(req.body.endedAt||Date.now());
+  await prisma.sessionReplay.updateMany({where:{id:sessionId},data:{status:'ENDED',endedAt:Number.isNaN(endedAt.getTime())?new Date():endedAt,lastSeenAt:new Date(),lastUrl:String(req.body.currentUrl||'').slice(0,4000)}});
+  res.json({ok:true});
+});
 
 app.post('/api/auth/login', async (req,res) => { const email=String(req.body.email||'').trim().toLowerCase(); const password=String(req.body.password||''); const user=await prisma.user.findUnique({where:{email}}); if(!user?.active || !(await bcrypt.compare(password,user.passwordHash))) return res.status(401).json({error:'INVALID_CREDENTIALS'}); const identity={id:user.id,name:user.name,email:user.email,role:user.role}; res.json({token:signAdminToken(identity),user:identity}); });
 app.get('/api/auth/me', requireAuth(), async (req:AuthedRequest,res) => res.json({user:req.admin}));
@@ -189,7 +266,7 @@ app.patch('/api/admin/customers/:id/blocklist', requireAuth('customers.write'), 
 app.get('/api/admin/pages', requireAuth('content.write'), async (_req,res)=>res.json(await prisma.page.findMany({orderBy:{slug:'asc'}})));
 app.patch('/api/admin/pages/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const b=req.body;const row=await prisma.page.update({where:{id:routeParam(req, 'id')},data:{title:b.title,slug:b.slug,bodyHtml:b.bodyHtml,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false}});await audit(req,'update','Page',row.id);await invalidateFrontendCache(['pages']);res.json(row);});
 
-app.get('/api/admin/settings', requireAuth('settings.write'), async (_req,res)=>{const [settings,cities]=await Promise.all([prisma.setting.findMany(),prisma.city.findMany({orderBy:{name:'asc'}})]);res.json({settings:Object.fromEntries(settings.map(s=>[s.key,s.value])),cities});});
+app.get('/api/admin/settings', requireAuth('settings.write'), async (_req,res)=>{const [settings,cities]=await Promise.all([prisma.setting.findMany(),prisma.city.findMany({orderBy:{name:'asc'}})]);res.json({settings:Object.fromEntries(settings.filter(s=>!isSensitiveSettingKey(s.key)).map(s=>[s.key,s.value])),cities});});
 app.put('/api/admin/settings', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{for(const [key,value] of Object.entries(req.body||{}))await setSetting(key,value);await audit(req,'update','Settings',undefined,{keys:Object.keys(req.body||{})});await invalidateFrontendCache(['settings','store']);res.json({ok:true});});
 app.put('/api/admin/cities', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{const cities=Array.isArray(req.body.cities)?req.body.cities:[];for(const c of cities){if(!c.name)continue;await prisma.city.upsert({where:{name:String(c.name)},update:{deliveryMinDays:Number(c.deliveryMinDays||2),deliveryMaxDays:Number(c.deliveryMaxDays||5),active:c.active!==false},create:{name:String(c.name),deliveryMinDays:Number(c.deliveryMinDays||2),deliveryMaxDays:Number(c.deliveryMaxDays||5),active:c.active!==false}});}await audit(req,'update','Cities');await invalidateFrontendCache(['cities']);res.json({ok:true});});
 
@@ -202,12 +279,130 @@ app.patch('/api/admin/reviews/:id', requireAuth('content.write'), async (req:Aut
 app.get('/api/admin/redirects', requireAuth('settings.write'), async (_req,res)=>res.json(await prisma.redirect.findMany({orderBy:{sourcePath:'asc'}})));
 app.post('/api/admin/redirects', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{const row=await prisma.redirect.upsert({where:{sourcePath:String(req.body.sourcePath)},update:{destination:String(req.body.destination),permanent:req.body.permanent!==false},create:{sourcePath:String(req.body.sourcePath),destination:String(req.body.destination),permanent:req.body.permanent!==false}});await audit(req,'upsert','Redirect',row.id);await invalidateFrontendCache(['redirects']);res.json(row);});
 app.delete('/api/admin/redirects/:id', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{await prisma.redirect.delete({where:{id:routeParam(req, 'id')}});await audit(req,'delete','Redirect',routeParam(req, 'id'));await invalidateFrontendCache(['redirects']);res.json({ok:true});});
+app.get('/api/admin/session-replays', requireAuth('reports.read'), async (req,res)=>{
+  const source=String(req.query.source||'').trim().toLowerCase();
+  const q=String(req.query.q||'').trim();
+  const limit=Math.min(200,Math.max(20,Number(req.query.limit||100)));
+  const since=new Date(Date.now()-30*86400000);
+  const where:Prisma.SessionReplayWhereInput={...(source&&source!=='all'?{source}:{}),...(q?{OR:[{landingUrl:{contains:q,mode:'insensitive'}},{lastUrl:{contains:q,mode:'insensitive'}},{campaign:{contains:q,mode:'insensitive'}},{visitorId:{contains:q,mode:'insensitive'}}]}:{})};
+  const [sessions,total,last30,sourceGroups,ordered30]=await Promise.all([
+    prisma.sessionReplay.findMany({where,orderBy:{startedAt:'desc'},take:limit}),
+    prisma.sessionReplay.count({where}),
+    prisma.sessionReplay.count({where:{startedAt:{gte:since}}}),
+    prisma.sessionReplay.groupBy({by:['source'],where:{startedAt:{gte:since}},_count:{_all:true}}),
+    prisma.order.count({where:{createdAt:{gte:since},replaySessionId:{not:null}}}),
+  ]);
+  const ids=sessions.map(row=>row.id);
+  const orders=ids.length?await prisma.order.findMany({where:{replaySessionId:{in:ids}},select:{id:true,orderNumber:true,replaySessionId:true,total:true,createdAt:true},orderBy:{createdAt:'desc'}}):[];
+  const orderBySession=new Map(orders.filter(o=>o.replaySessionId).map(o=>[o.replaySessionId!,o]));
+  const outcome=String(req.query.outcome||'all');
+  const items=sessions.map(row=>{const order=orderBySession.get(row.id);return {...row,durationMs:Math.max(0,Number((row.endedAt||row.lastSeenAt).getTime()-row.startedAt.getTime())),order:order?{id:order.id,orderNumber:order.orderNumber,total:Number(order.total),createdAt:order.createdAt}:null};}).filter(row=>outcome==='ordered'?Boolean(row.order):outcome==='no-order'?!row.order:true);
+  res.json({total,items,stats:{last30,ordered30,sources:Object.fromEntries(sourceGroups.map(x=>[x.source,x._count._all]))}});
+});
+
+app.get('/api/admin/session-replays/:id', requireAuth('reports.read'), async (req,res)=>{
+  const id=routeParam(req,'id');
+  const [session,chunks,order,markers]=await Promise.all([
+    prisma.sessionReplay.findUnique({where:{id}}),
+    prisma.sessionReplayChunk.findMany({where:{sessionId:id},orderBy:{sequence:'asc'},take:500}),
+    prisma.order.findFirst({where:{replaySessionId:id},select:{id:true,orderNumber:true,total:true,source:true,createdAt:true}}),
+    prisma.eventLog.findMany({where:{sessionReplayId:id,eventName:{in:['PageView','ViewContent','AddToCart','InitiateCheckout','Purchase']}},select:{eventName:true,sourceUrl:true,createdAt:true,payload:true},orderBy:{createdAt:'asc'},take:500}),
+  ]);
+  if(!session) return res.status(404).json({error:'NOT_FOUND'});
+  const events=chunks.flatMap(chunk=>Array.isArray(chunk.events)?chunk.events:[]);
+  res.json({session:{...session,durationMs:Math.max(0,Number((session.endedAt||session.lastSeenAt).getTime()-session.startedAt.getTime()))},events,order:order?{...order,total:Number(order.total)}:null,markers});
+});
+
+app.delete('/api/admin/session-replays/:id', requireAuth('reports.read'), async (req:AuthedRequest,res)=>{
+  const id=routeParam(req,'id');
+  await prisma.sessionReplay.deleteMany({where:{id}});
+  await audit(req,'delete','SessionReplay',id);
+  res.json({ok:true});
+});
+
 app.get('/api/admin/experiments', requireAuth('reports.read'), async (_req,res)=>res.json(await prisma.experiment.findMany({orderBy:{createdAt:'desc'}})));
 app.post('/api/admin/experiments', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const row=await prisma.experiment.create({data:{name:String(req.body.name),pagePattern:String(req.body.pagePattern||'/'),variants:req.body.variants||{},trafficSplit:req.body.trafficSplit||{},status:(req.body.status||'DRAFT') as ExperimentStatus}});await audit(req,'create','Experiment',row.id);res.status(201).json(row);});
 app.patch('/api/admin/experiments/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const row=await prisma.experiment.update({where:{id:routeParam(req, 'id')},data:req.body});await audit(req,'update','Experiment',row.id);res.json(row);});
 app.get('/api/admin/jobs', requireAuth('reports.read'), async (_req,res)=>res.json(await prisma.job.findMany({orderBy:{createdAt:'desc'},take:500})));
 app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{const since=new Date(Date.now()-7*86400000);const events=await prisma.eventLog.findMany({where:{createdAt:{gte:since}},orderBy:{createdAt:'desc'},take:1000});const grouped=await prisma.eventLog.groupBy({by:['eventName'],where:{createdAt:{gte:since}},_count:{_all:true}});res.json({counts:Object.fromEntries(grouped.map(e=>[e.eventName,e._count._all])),errors:events.filter(e=>e.error||e.accepted===false).slice(0,100),lastSuccess:events.find(e=>e.accepted===true)?.createdAt||null});});
+app.get('/api/admin/cro', requireAuth('reports.read'), async (_req,res)=>{
+  const since=new Date(Date.now()-30*86400000);
+  const [orders,eventGroups,abandonedRows]=await Promise.all([
+    prisma.order.findMany({where:{createdAt:{gte:since}},select:{total:true,source:true,firstTouch:true,lastTouch:true}}),
+    prisma.eventLog.groupBy({by:['eventName'],where:{createdAt:{gte:since},channel:'browser'},_count:{_all:true}}),
+    prisma.abandonedCheckout.findMany({where:{createdAt:{gte:since}},select:{convertedAt:true}}),
+  ]);
+  const events=Object.fromEntries(eventGroups.map(e=>[e.eventName,e._count._all]));
+  const views=Number(events.ViewContent||0);
+  const addToCart=Number(events.AddToCart||0);
+  const checkout=Number(events.InitiateCheckout||0);
+  const orderCount=orders.length;
+  const revenue=orders.reduce((sum,o)=>sum+Number(o.total),0);
+  const rate=(part:number,total:number)=>total>0?(part/total)*100:0;
+  const bySource=new Map<string,{orders:number,revenue:number}>();
+  for(const order of orders){
+    const first=(order.firstTouch&&typeof order.firstTouch==='object'?order.firstTouch:{}) as any;
+    const last=(order.lastTouch&&typeof order.lastTouch==='object'?order.lastTouch:{}) as any;
+    const source=normalizeTrafficSource(order.source||last.utm_source||first.utm_source||'direct');
+    const row=bySource.get(source)||{orders:0,revenue:0};
+    row.orders+=1; row.revenue+=Number(order.total); bySource.set(source,row);
+  }
+  const sources=[...bySource.entries()].map(([source,value])=>({source,...value})).sort((a,b)=>b.orders-a.orders);
+  const abandoned=abandonedRows.length;
+  const recovered=abandonedRows.filter(row=>row.convertedAt).length;
+  const viewToCart=rate(addToCart,views);
+  const cartToCheckout=rate(checkout,addToCart);
+  const checkoutToOrder=rate(orderCount,checkout);
+  const overallConversion=rate(orderCount,views);
+  const recoveryRate=rate(recovered,abandoned);
+  const opportunities:Array<{level:string;title:string;detail:string}>=[];
+  if(views>=20&&viewToCart<8) opportunities.push({level:'high',title:'Product page → cart drop-off',detail:`Only ${viewToCart.toFixed(1)}% of product views become Add to Cart. Test stronger above-the-fold CTA, clearer price/offer, delivery promise, reviews and trust proof.`});
+  if(addToCart>=10&&cartToCheckout<45) opportunities.push({level:'high',title:'Cart → checkout drop-off',detail:`${cartToCheckout.toFixed(1)}% of carts reach checkout. Reduce distractions, make delivery/COD terms obvious and keep the checkout CTA visible.`});
+  if(checkout>=10&&checkoutToOrder<55) opportunities.push({level:'high',title:'Checkout completion is weak',detail:`${checkoutToOrder.toFixed(1)}% of initiated checkouts become orders. Review field count, validation errors, mobile form friction and COD confidence messaging.`});
+  if(abandoned>=5&&recoveryRate<15) opportunities.push({level:'medium',title:'Recover more abandoned checkouts',detail:`Recovery is ${recoveryRate.toFixed(1)}%. Prioritize WhatsApp follow-up and measure recovered revenue by source/campaign.`});
+  if(orderCount>0&&sources.length&&sources[0].source==='direct') opportunities.push({level:'medium',title:'Improve attribution coverage',detail:'Direct is the largest order source. Keep UTM parameters on Facebook/Instagram ads and links so CRO decisions can be split by channel and campaign.'});
+  if(!opportunities.length&&views>=20) opportunities.push({level:'low',title:'Funnel is collecting usable data',detail:'Keep testing one variable at a time through Experiments and compare conversion rate, not just clicks.'});
+  res.json({periodDays:30,views,addToCart,checkout,orders:orderCount,revenue,viewToCart,cartToCheckout,checkoutToOrder,overallConversion,abandoned,recovered,recoveryRate,averageOrderValue:orderCount?revenue/orderCount:0,sources,opportunities});
+});
+
 app.get('/api/admin/reports', requireAuth('reports.read'), async (_req,res)=>{const since=new Date(Date.now()-30*86400000);const [orders,events]=await Promise.all([prisma.order.findMany({where:{createdAt:{gte:since}},include:{items:true}}),prisma.eventLog.groupBy({by:['eventName'],where:{createdAt:{gte:since},channel:'browser'},_count:{_all:true}})]);const products=new Map<string,{title:string,qty:number,revenue:number}>();for(const o of orders)for(const i of o.items){const row=products.get(i.sku)||{title:i.title,qty:0,revenue:0};row.qty+=i.quantity;row.revenue+=Number(i.lineTotal);products.set(i.sku,row);}res.json({orders:orders.length,revenue:orders.reduce((s,o)=>s+Number(o.total),0),events:Object.fromEntries(events.map(e=>[e.eventName,e._count._all])),products:[...products.entries()].map(([sku,v])=>({sku,...v})).sort((a,b)=>b.revenue-a.revenue)});});
+app.get('/api/admin/marketing', requireAuth('reports.read'), async (_req,res)=>{
+  const since=new Date(Date.now()-30*86400000);
+  const orders=await prisma.order.findMany({where:{createdAt:{gte:since}},orderBy:{createdAt:'desc'},take:1000,select:{id:true,orderNumber:true,fullName:true,total:true,source:true,firstTouch:true,lastTouch:true,createdAt:true}});
+  const bySource=new Map<string,{orders:number,revenue:number}>();
+  for(const order of orders){
+    const last=(order.lastTouch&&typeof order.lastTouch==='object'&&!Array.isArray(order.lastTouch)?order.lastTouch:{}) as Record<string,unknown>;
+    const first=(order.firstTouch&&typeof order.firstTouch==='object'&&!Array.isArray(order.firstTouch)?order.firstTouch:{}) as Record<string,unknown>;
+    const source=normalizeTrafficSource(order.source||last.utm_source||first.utm_source||'direct');
+    const row=bySource.get(source)||{orders:0,revenue:0};row.orders+=1;row.revenue+=Number(order.total);bySource.set(source,row);
+  }
+  const sources=[...bySource.entries()].map(([source,v])=>({source,...v})).sort((a,b)=>b.orders-a.orders);
+  const recent=orders.slice(0,50).map(order=>{
+    const last=(order.lastTouch&&typeof order.lastTouch==='object'&&!Array.isArray(order.lastTouch)?order.lastTouch:{}) as Record<string,unknown>;
+    const first=(order.firstTouch&&typeof order.firstTouch==='object'&&!Array.isArray(order.firstTouch)?order.firstTouch:{}) as Record<string,unknown>;
+    return {id:order.id,orderNumber:order.orderNumber,fullName:order.fullName,total:Number(order.total),createdAt:order.createdAt,source:normalizeTrafficSource(order.source||last.utm_source||first.utm_source||'direct'),medium:String(last.utm_medium||first.utm_medium||''),campaign:String(last.utm_campaign||first.utm_campaign||''),content:String(last.utm_content||first.utm_content||''),adId:String(last.ad_id||first.ad_id||''),adsetId:String(last.adset_id||first.adset_id||''),campaignId:String(last.campaign_id||last.utm_id||first.campaign_id||first.utm_id||'')};
+  });
+  const config=await getMetaMarketingConfig();
+  let meta:any={configured:Boolean(config.accessToken&&config.adAccountId),ads:[],currency:null,adAccountName:null,error:null};
+  if(meta.configured){try{meta=await fetchMetaAds();}catch(error:any){meta={...meta,error:error?.message||'META_API_ERROR'};}}
+  res.json({periodDays:30,totalOrders:orders.length,totalRevenue:orders.reduce((sum,o)=>sum+Number(o.total),0),facebookOrders:sources.find(x=>x.source==='facebook')?.orders||0,instagramOrders:sources.find(x=>x.source==='instagram')?.orders||0,attributedOrders:orders.filter(o=>normalizeTrafficSource(o.source)!=='direct').length,sources,recent,meta:{...meta,pixelId:config.pixelId,adAccountId:config.adAccountId,pageId:config.pageId,instagramAccountId:config.instagramAccountId,accessTokenConfigured:Boolean(config.accessToken)}});
+});
+app.put('/api/admin/marketing/meta', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{
+  const b=req.body||{};
+  const updates:Record<string,unknown>={
+    'tracking.metaPixelId':String(b.pixelId||'').trim(),
+    'marketing.meta.adAccountId':String(b.adAccountId||'').trim(),
+    'marketing.meta.pageId':String(b.pageId||'').trim(),
+    'marketing.meta.instagramAccountId':String(b.instagramAccountId||'').trim(),
+  };
+  if(String(b.accessToken||'').trim()) updates['marketing.meta.accessToken']=String(b.accessToken).trim();
+  for(const [key,value] of Object.entries(updates)) await setSetting(key,value);
+  await audit(req,'update','MetaMarketing',undefined,{keys:Object.keys(updates).filter(key=>!isSensitiveSettingKey(key))});
+  await invalidateFrontendCache(['settings','store']);
+  res.json({ok:true,accessTokenConfigured:Boolean(String(b.accessToken||'').trim()||(await getMetaMarketingConfig()).accessToken)});
+});
+app.post('/api/admin/marketing/meta/test', requireAuth('settings.write'), async (_req,res)=>{try{res.json({ok:true,details:await testMetaMarketingConnection()});}catch(error:any){res.status(400).json({error:'META_CONNECTION_FAILED',message:error?.message||'Unable to connect to Meta'});}});
+
 app.get('/api/admin/abandoned', requireAuth('customers.read'), async (_req,res)=>res.json(await prisma.abandonedCheckout.findMany({orderBy:{createdAt:'desc'},take:500})));
 
 app.post('/api/admin/products/import', requireAuth('products.write'), async (req:AuthedRequest,res)=>{

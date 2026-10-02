@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import TrackingProvider from "@/components/TrackingProvider";
+import SessionReplayProvider from "@/components/SessionReplayProvider";
 import MetaPixelScript from "@/components/MetaPixelScript";
 import ClarityScript from "@/components/ClarityScript";
 import SiteChrome from "@/components/SiteChrome";
@@ -63,6 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           tracking={
             <Suspense fallback={null}>
               <TrackingProvider />
+              <SessionReplayProvider />
             </Suspense>
           }
           metaPixel={<MetaPixelScript pixelId={pixelId} />}

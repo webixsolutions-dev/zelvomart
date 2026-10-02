@@ -21,6 +21,18 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <section className="admin-form-section admin-ls-section">
+      <div className="admin-form-section-head">
+        <h3>{title}</h3>
+        {description ? <p>{description}</p> : null}
+      </div>
+      <div className="admin-ls-section-body">{children}</div>
+    </section>
+  );
+}
+
 export default function ProductForm({ categories, initial, onSaved }: ProductFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -39,7 +51,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   const [uploadBusy, setUploadBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
-  const [focusKeyword, setFocusKeyword] = useState("");
+  const [focusKeyword, setFocusKeyword] = useState(initial?.focusKeyword || "");
   const [seoTitle, setSeoTitle] = useState(initial?.seoTitle || "");
   const [seoDescription, setSeoDescription] = useState(initial?.seoDescription || "");
 
@@ -103,6 +115,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       seoTitle: formData.get("seoTitle") || null,
       seoDescription: formData.get("seoDescription") || null,
       canonicalUrl: formData.get("canonicalUrl") || null,
+      focusKeyword: focusKeyword.trim() || null,
     };
 
     try {
@@ -162,14 +175,17 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   }
 
   return (
-    <form ref={formRef} className="admin-product-form admin-product-form-reference" onSubmit={submit}>
+    <form ref={formRef} className="admin-product-form admin-product-form-reference admin-ls-product-form" onSubmit={submit}>
+      <div className="admin-product-form-intro">
+        <div>
+          <h2>{initial ? "Edit Product" : "Add Product"}</h2>
+          <p>{initial ? "Update product details, pricing, media and SEO." : "Create a new Zelvomart product using the same compact two-column workflow."}</p>
+        </div>
+      </div>
+
       <div className="admin-product-form-grid admin-product-form-grid-reference">
         <div className="admin-product-main">
-          <section className="admin-form-section admin-ls-section">
-            <div className="admin-form-section-head">
-              <h3>Basics</h3>
-              <p>Core product information shown across the storefront and catalog.</p>
-            </div>
+          <SectionCard title="Basics" description="Core product information shown across the storefront and catalog.">
             <div className="admin-reference-form admin-ls-form-grid">
               <label className="field full">
                 <span>Product Title <em>*</em></span>
@@ -194,13 +210,9 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                 <input name="sku" defaultValue={initial?.sku || ""} placeholder="ZVM-0001" required />
               </label>
             </div>
-          </section>
+          </SectionCard>
 
-          <section className="admin-form-section admin-ls-section">
-            <div className="admin-form-section-head">
-              <h3>Product Category</h3>
-              <p>Choose the primary Zelvomart category for this item.</p>
-            </div>
+          <SectionCard title="Product Category" description="Choose the primary Zelvomart category for this item.">
             <label className="field">
               <span>Category</span>
               <select name="categoryId" defaultValue={initial?.categoryId || initial?.category?.id || ""}>
@@ -208,47 +220,40 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                 {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
               </select>
             </label>
-          </section>
+          </SectionCard>
 
-          <section className="admin-form-section admin-ls-section">
-            <div className="admin-form-section-head">
-              <h3>Short Description</h3>
-              <p>Keep this concise. It appears near the product price and buying actions.</p>
-            </div>
+          <SectionCard title="Short Description" description="Keep this concise. It appears near the product price and buying actions.">
             <label className="field">
               <textarea name="shortDescription" rows={5} defaultValue={initial?.shortDescription || ""} placeholder="Key benefit, use case and important product detail..." />
             </label>
-          </section>
+          </SectionCard>
 
-          <section className="admin-form-section admin-ls-section">
-            <div className="admin-form-section-head">
-              <h3>Main Description</h3>
-              <p>Use headings, lists and links to create a complete product description.</p>
-            </div>
+          <SectionCard title="Main Description" description="Use headings, lists and links to create a complete product description.">
             <div className="field">
               <AdminRichTextEditor name="descriptionHtml" defaultValue={initial?.descriptionHtml || initial?.description || ""} />
             </div>
-          </section>
+          </SectionCard>
 
-          <section className="admin-form-section admin-ls-section">
-            <div className="admin-form-section-head">
-              <h3>Pricing &amp; Stock</h3>
-              <p>Set selling price, optional sale/cost price and available stock.</p>
-            </div>
+          <SectionCard title="Pricing & Stock" description="Set selling price, optional sale/cost price and available stock.">
             <div className="admin-reference-form admin-ls-pricing-grid">
               <label className="field"><span>Regular Price (PKR) <em>*</em></span><input name="price" type="number" min="0" step="0.01" defaultValue={initial?.regularPrice ?? initial?.price ?? ""} required /></label>
               <label className="field"><span>Sale Price (PKR)</span><input name="salePrice" type="number" min="0" step="0.01" defaultValue={initial?.salePrice ?? ""} /></label>
               <label className="field"><span>Cost Price (PKR)</span><input name="costPrice" type="number" min="0" step="0.01" defaultValue={initial?.costPrice ?? ""} /></label>
               <label className="field"><span>Stock <em>*</em></span><input name="stock" type="number" min="0" defaultValue={initial?.stock ?? initial?.stockQuantity ?? 0} required /></label>
             </div>
-          </section>
+          </SectionCard>
 
-          <section className="admin-form-section admin-ls-section">
-            <div className="admin-form-section-head admin-form-section-head-row">
-              <div>
-                <h3>Images</h3>
-                <p>Add up to 5 product images. The first image becomes the main product image.</p>
-              </div>
+          <SectionCard title="Storefront Options" description="Control featured placement and the optional buy-2 offer.">
+            <div className="admin-reference-form admin-ls-form-grid">
+              <label className="admin-check"><input type="checkbox" name="featured" defaultChecked={Boolean(initial?.featured)} /> Featured product</label>
+              <label className="admin-check"><input type="checkbox" name="bundleEnabled" defaultChecked={initial?.bundleEnabled !== false} /> Enable buy-2 bundle</label>
+              <label className="field"><span>Bundle discount %</span><input name="bundleDiscountPercent" type="number" min="0" max="99" step="0.01" defaultValue={initial?.bundleDiscountPercent ?? 5} /></label>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Images & Media" description="Add up to 5 product images. The first image becomes the main product image.">
+            <div className="admin-form-section-head-row admin-media-actions">
+              <div />
               <button type="button" className="admin-btn admin-btn-light" disabled={uploadBusy || images.length >= 5} onClick={() => fileRef.current?.click()}>
                 {uploadBusy ? "Uploading..." : "Upload Images"}
               </button>
@@ -274,19 +279,11 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
               <button type="button" className="admin-btn admin-btn-light" onClick={addManualImage} disabled={!manualImage.trim() || images.length >= 5}>Add URL</button>
             </div>
             <label className="field"><span>Product Video URL</span><input name="videoUrl" defaultValue={initial?.videoUrl || ""} placeholder="https://..." /></label>
-          </section>
+          </SectionCard>
         </div>
 
         <aside className="admin-product-sidebar admin-product-sidebar-reference">
-          <section className="admin-form-section admin-ls-section admin-sticky-section admin-publish-card">
-            <div className="admin-form-section-head"><h3>Publish</h3><p>Control product visibility and storefront options.</p></div>
-            <label className="field"><span>Status</span><select name="status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></select></label>
-            <label className="admin-check"><input type="checkbox" name="featured" defaultChecked={Boolean(initial?.featured)} /> Featured product</label>
-            <label className="admin-check"><input type="checkbox" name="bundleEnabled" defaultChecked={initial?.bundleEnabled !== false} /> Enable buy-2 bundle</label>
-            <label className="field"><span>Bundle discount %</span><input name="bundleDiscountPercent" type="number" min="0" max="99" step="0.01" defaultValue={initial?.bundleDiscountPercent ?? 5} /></label>
-          </section>
-
-          <section className="admin-form-section admin-ls-section admin-seo-card admin-seo-panel">
+          <section className="admin-form-section admin-ls-section admin-seo-card admin-seo-panel admin-sticky-section">
             <div className="admin-seo-panel-head">
               <h3>SEO Panel</h3>
               <span>{seoChecks.passed}/{seoChecks.total} checks</span>
@@ -330,6 +327,12 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
               <summary>Advanced SEO</summary>
               <label className="field"><span>Canonical URL</span><input name="canonicalUrl" defaultValue={initial?.canonicalUrl || ""} placeholder="https://zelvomart.com/product/..." /></label>
             </details>
+          </section>
+
+          <section className="admin-form-section admin-ls-section admin-product-status-card">
+            <div className="admin-form-section-head"><h3>Status</h3></div>
+            <label className="field"><span>Product Status</span><select name="status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></select></label>
+            <p className="admin-status-note">{initial ? "Editing existing product" : "New product draft"} · <b>{status === "PUBLISHED" ? "Published" : status === "ARCHIVED" ? "Archived" : "Draft"}</b></p>
           </section>
         </aside>
       </div>

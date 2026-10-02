@@ -168,6 +168,7 @@ model Order {
   fbp                String?
   fbc                String?
   clarityId          String?
+  replaySessionId    String?
   clientIp           String?
   clientUserAgent    String? @db.Text
   experiments        Json?
@@ -190,6 +191,7 @@ model Order {
   @@index([phone, createdAt])
   @@index([city])
   @@index([source])
+  @@index([replaySessionId])
 }
 
 model OrderItem {
@@ -232,6 +234,7 @@ model EventLog {
   order        Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
   eventName    String
   eventId      String
+  sessionReplayId String?
   channel      String
   sourceUrl    String?
   payload      Json
@@ -243,6 +246,49 @@ model EventLog {
   @@index([eventName, createdAt])
   @@index([eventId])
   @@index([orderId])
+  @@index([sessionReplayId, createdAt])
+}
+
+model SessionReplay {
+  id          String   @id
+  visitorId   String
+  source      String   @default("direct")
+  medium      String?
+  campaign    String?
+  landingUrl  String   @db.Text
+  lastUrl     String   @db.Text
+  referrer    String?  @db.Text
+  device      String?
+  viewport    String?
+  status      String   @default("ACTIVE")
+  startedAt   DateTime
+  lastSeenAt  DateTime
+  endedAt     DateTime?
+  eventCount  Int      @default(0)
+  chunkCount  Int      @default(0)
+  pageViews   Int      @default(1)
+  metadata    Json?
+  chunks      SessionReplayChunk[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([startedAt])
+  @@index([source, startedAt])
+  @@index([status, lastSeenAt])
+  @@index([visitorId, startedAt])
+}
+
+model SessionReplayChunk {
+  id         String        @id @default(cuid())
+  sessionId  String
+  session    SessionReplay @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sequence   Int
+  events     Json
+  eventCount Int
+  createdAt  DateTime      @default(now())
+
+  @@unique([sessionId, sequence])
+  @@index([sessionId, createdAt])
 }
 
 model Job {

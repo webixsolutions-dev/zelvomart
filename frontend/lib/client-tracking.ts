@@ -1,5 +1,7 @@
 "use client";
 
+import { getReplaySessionId } from "@/lib/session-replay-client";
+
 declare global {
   interface Window {
     fbq?: (...args: any[]) => void;
@@ -30,6 +32,7 @@ export async function trackStoreEvent(
       body: JSON.stringify({
         eventName,
         eventId,
+        replaySessionId: getReplaySessionId(),
         sourceUrl: window.location.href,
         params,
         fbp: readCookie("_fbp"),

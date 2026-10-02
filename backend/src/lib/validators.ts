@@ -26,6 +26,7 @@ export const checkoutSchema = z
     fbp: z.string().optional(),
     fbc: z.string().optional(),
     clarityId: z.string().optional(),
+    replaySessionId: z.string().uuid().optional(),
     experiments: z.record(z.string(), z.string()).optional(),
   })
   .transform((value, ctx) => {

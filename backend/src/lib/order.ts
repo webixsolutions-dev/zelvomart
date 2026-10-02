@@ -19,6 +19,7 @@ type CheckoutInput = {
   fbp?: string;
   fbc?: string;
   clarityId?: string;
+  replaySessionId?: string;
   clientIp?: string;
   clientUserAgent?: string;
   experiments?: Record<string, string>;
@@ -185,6 +186,17 @@ export async function createOrder(input: CheckoutInput) {
     }
 
     const source = input.source || {};
+    const firstTouch = source.firstTouch && typeof source.firstTouch === "object" ? source.firstTouch as Record<string, unknown> : {};
+    const lastTouch = source.lastTouch && typeof source.lastTouch === "object" ? source.lastTouch as Record<string, unknown> : {};
+    const rawSource = source.utm_source || lastTouch.utm_source || firstTouch.utm_source || "direct";
+    const sourceName = (() => {
+      const value = String(rawSource || "direct").trim().toLowerCase();
+      if (["fb", "facebook"].includes(value) || value.includes("facebook")) return "facebook";
+      if (["ig", "instagram"].includes(value) || value.includes("instagram")) return "instagram";
+      if (value.includes("google")) return "google";
+      if (value.includes("tiktok")) return "tiktok";
+      return value || "direct";
+    })();
     const order = await tx.order.create({
       data: {
         orderNumber,
@@ -206,12 +218,13 @@ export async function createOrder(input: CheckoutInput) {
         deliveryFee: decimal(deliveryFee),
         codFee: decimal(codFee),
         total: decimal(total),
-        source: typeof source.utm_source === "string" ? String(source.utm_source) : "direct",
+        source: sourceName,
         firstTouch: (source.firstTouch as any) || null,
         lastTouch: (source.lastTouch as any) || source as any,
         fbp: input.fbp,
         fbc: input.fbc,
         clarityId: input.clarityId,
+        replaySessionId: input.replaySessionId || null,
         clientIp: input.clientIp || null,
         clientUserAgent: input.clientUserAgent || null,
         experiments: input.experiments as any,

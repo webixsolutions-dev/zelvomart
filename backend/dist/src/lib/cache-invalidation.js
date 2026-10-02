@@ -1,0 +1,28 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.invalidateFrontendCache = invalidateFrontendCache;
+async function invalidateFrontendCache(tags) {
+    const secret = process.env.REVALIDATION_SECRET;
+    const configuredFrontend = process.env.FRONTEND_URL?.split(',').map((value) => value.trim()).find(Boolean);
+    if (!secret || !configuredFrontend || !tags.length)
+        return;
+    const endpoint = `${configuredFrontend.replace(/\/$/, '')}/api/revalidate`;
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                'x-revalidation-secret': secret,
+            },
+            body: JSON.stringify({ tags: [...new Set(tags)] }),
+            signal: AbortSignal.timeout(2500),
+        });
+        if (!response.ok && process.env.NODE_ENV === 'development') {
+            console.warn('Frontend cache invalidation failed:', response.status);
+        }
+    }
+    catch (error) {
+        if (process.env.NODE_ENV === 'development')
+            console.warn('Frontend cache invalidation error:', error);
+    }
+}

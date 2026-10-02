@@ -6,6 +6,7 @@ import { useCart } from "@/components/CartProvider";
 import { money } from "@/lib/format";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
 import { API_BASE } from "@/lib/client-api";
+import { getReplaySessionId } from "@/lib/session-replay-client";
 
 const SESSION_KEY = "zm_checkout_form";
 const IDEMPOTENCY_KEY = "zm_checkout_idempotency";
@@ -143,6 +144,7 @@ export default function CheckoutClient({
           fbp: readCookie("_fbp"),
           fbc: readCookie("_fbc"),
           clarityId: readCookie("_clck"),
+          replaySessionId: getReplaySessionId(),
         }),
       });
       const data = await response.json();
