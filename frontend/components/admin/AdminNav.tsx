@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { prefetchAdminData } from "./useAdminData";
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -28,6 +29,24 @@ const icons = {
   experiments: <Icon><path d="M9 3h6M10 3v5l-5 9a3 3 0 0 0 2.6 4h8.8A3 3 0 0 0 19 17l-5-9V3M8 15h8"/></Icon>,
   reviews: <Icon><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6-5.4-2.9-5.4 2.9 1-6-4.4-4.3 6.1-.9L12 3Z"/></Icon>,
   redirects: <Icon><path d="M4 7h10a5 5 0 0 1 5 5v1M16 10l3 3 3-3M20 17H10a5 5 0 0 1-5-5v-1M8 14l-3-3-3 3"/></Icon>,
+};
+
+const adminApiByHref: Record<string, string> = {
+  "/admin": "/api/admin/dashboard",
+  "/admin/products": "/api/admin/products",
+  "/admin/orders": "/api/admin/orders",
+  "/admin/categories": "/api/admin/categories",
+  "/admin/customers": "/api/admin/customers",
+  "/admin/content": "/api/admin/pages",
+  "/admin/settings": "/api/admin/settings",
+  "/admin/users": "/api/admin/users",
+  "/admin/reports": "/api/admin/reports",
+  "/admin/tracking": "/api/admin/tracking",
+  "/admin/jobs": "/api/admin/jobs",
+  "/admin/abandoned": "/api/admin/abandoned",
+  "/admin/experiments": "/api/admin/experiments",
+  "/admin/reviews": "/api/admin/reviews",
+  "/admin/redirects": "/api/admin/redirects",
 };
 
 const groups = [
@@ -74,7 +93,7 @@ export default function AdminNav() {
           {group.links.map(([href, label, icon]) => {
             const active = href === "/admin" ? pathname === href : pathname.startsWith(href);
             return (
-              <Link key={href} href={href} className={`admin-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined}>
+              <Link key={href} href={href} prefetch className={`admin-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined} onMouseEnter={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])} onFocus={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}>
                 <span className="admin-nav-icon">{icon}</span>
                 <span>{label}</span>
               </Link>

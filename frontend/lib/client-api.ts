@@ -8,6 +8,19 @@ export function setAdminSession(token: string, user: unknown) {
   localStorage.setItem('zelvomart_admin_token', token);
   localStorage.setItem('zelvomart_admin_user', JSON.stringify(user));
 }
+export function adminUser<T = unknown>(): T | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('zelvomart_admin_user');
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+export function setAdminUser(user: unknown) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('zelvomart_admin_user', JSON.stringify(user));
+}
 export function clearAdminSession() {
   localStorage.removeItem('zelvomart_admin_token');
   localStorage.removeItem('zelvomart_admin_user');

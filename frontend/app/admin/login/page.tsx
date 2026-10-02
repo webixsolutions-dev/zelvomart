@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clientApi, setAdminSession } from "@/lib/client-api";
+import { clearAdminDataCache } from "@/components/admin/useAdminData";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -28,6 +29,7 @@ export default function AdminLogin() {
         method: "POST",
         body: JSON.stringify({ email: f.get("email"), password: f.get("password") }),
       });
+      clearAdminDataCache();
       setAdminSession(r.token, r.user);
       router.replace("/admin");
     } catch (e) {
