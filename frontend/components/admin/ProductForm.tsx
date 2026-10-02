@@ -39,8 +39,34 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   const [uploadBusy, setUploadBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
+  const [focusKeyword, setFocusKeyword] = useState("");
+  const [seoTitle, setSeoTitle] = useState(initial?.seoTitle || "");
+  const [seoDescription, setSeoDescription] = useState(initial?.seoDescription || "");
 
   const publishedSlugLocked = Boolean(initial && initial.status === "PUBLISHED");
+  const seoPreviewTitle = seoTitle.trim() || title.trim() || "Product title";
+  const seoPreviewDescription = seoDescription.trim() || "Add a meta description to control how this product appears in search results.";
+  const normalizedKeyword = focusKeyword.trim().toLowerCase();
+  const seoChecks = useMemo(() => {
+    const effectiveTitle = seoPreviewTitle.toLowerCase();
+    const description = seoDescription.trim();
+    const normalizedSlug = slug.toLowerCase();
+    const checks = [
+      seoPreviewTitle.trim().length > 0 && seoPreviewTitle.trim().length <= 60,
+      description.length >= 70 && description.length <= 160,
+      normalizedKeyword.length >= 2,
+      Boolean(normalizedKeyword && effectiveTitle.includes(normalizedKeyword)),
+      Boolean(normalizedKeyword && description.toLowerCase().includes(normalizedKeyword)),
+      Boolean(normalizedKeyword && normalizedSlug.includes(slugify(normalizedKeyword))),
+      title.trim().length >= 20,
+      images.length > 0,
+      Boolean(slug.trim()),
+    ];
+    const passed = checks.filter(Boolean).length;
+    return { passed, total: checks.length, score: Math.round((passed / checks.length) * 100) };
+  }, [seoPreviewTitle, seoDescription, normalizedKeyword, slug, title, images.length]);
+
+  const seoStatus = seoChecks.score >= 80 ? "Great" : seoChecks.score >= 60 ? "Good" : "Needs Work";
 
   function onTitleChange(value: string) {
     setTitle(value);
@@ -260,11 +286,50 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             <label className="field"><span>Bundle discount %</span><input name="bundleDiscountPercent" type="number" min="0" max="99" step="0.01" defaultValue={initial?.bundleDiscountPercent ?? 5} /></label>
           </section>
 
-          <section className="admin-form-section admin-ls-section admin-seo-card">
-            <div className="admin-form-section-head"><h3>SEO</h3><p>Search result title, description and canonical URL.</p></div>
-            <label className="field"><span>SEO Title</span><input name="seoTitle" defaultValue={initial?.seoTitle || ""} placeholder={title || "Product SEO title"} /></label>
-            <label className="field"><span>Meta Description</span><textarea name="seoDescription" rows={5} defaultValue={initial?.seoDescription || ""} placeholder="Describe this product for search results..." /></label>
-            <label className="field"><span>Canonical URL</span><input name="canonicalUrl" defaultValue={initial?.canonicalUrl || ""} placeholder="https://zelvomart.com/product/..." /></label>
+          <section className="admin-form-section admin-ls-section admin-seo-card admin-seo-panel">
+            <div className="admin-seo-panel-head">
+              <h3>SEO Panel</h3>
+              <span>{seoChecks.passed}/{seoChecks.total} checks</span>
+            </div>
+
+            <div className="admin-seo-score-row">
+              <div className="admin-seo-score-ring" style={{ background: `conic-gradient(#0aa7d8 ${seoChecks.score * 3.6}deg, #e5eaee 0deg)` }}>
+                <div>{seoChecks.score}</div>
+              </div>
+              <div className="admin-seo-score-copy">
+                <strong>{seoStatus}</strong>
+                <span>SEO score / 100</span>
+              </div>
+            </div>
+
+            <label className="field admin-seo-field">
+              <span>Focus Keyword <small>{focusKeyword.length}/100</small></span>
+              <input value={focusKeyword} maxLength={100} onChange={(event) => setFocusKeyword(event.target.value)} placeholder="e.g. matte liquid lipgloss" />
+            </label>
+
+            <label className="field admin-seo-field">
+              <span>SEO Title <small className={seoTitle.length > 60 ? "over" : ""}>{seoTitle.length}/60</small></span>
+              <input name="seoTitle" value={seoTitle} maxLength={70} onChange={(event) => setSeoTitle(event.target.value)} placeholder="Meta title shown in search results" />
+            </label>
+
+            <label className="field admin-seo-field">
+              <span>Meta Description <small className={seoDescription.length > 160 ? "over" : ""}>{seoDescription.length}/160</small></span>
+              <textarea name="seoDescription" rows={4} value={seoDescription} maxLength={180} onChange={(event) => setSeoDescription(event.target.value)} placeholder="Meta description shown in search results" />
+            </label>
+
+            <div className="admin-search-preview">
+              <span>Search Preview</span>
+              <div className="admin-search-preview-card">
+                <small>https://zelvomart.com/product/{slug || "product-slug"}</small>
+                <strong>{seoPreviewTitle}</strong>
+                <p>{seoPreviewDescription}</p>
+              </div>
+            </div>
+
+            <details className="admin-seo-advanced">
+              <summary>Advanced SEO</summary>
+              <label className="field"><span>Canonical URL</span><input name="canonicalUrl" defaultValue={initial?.canonicalUrl || ""} placeholder="https://zelvomart.com/product/..." /></label>
+            </details>
           </section>
         </aside>
       </div>

@@ -109,31 +109,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="admin-product-tabs" aria-label="Product categories">
-        <button
-          type="button"
-          className={`admin-product-tab${activeCategory === "all" ? " active" : ""}`}
-          onClick={() => setActiveCategory("all")}
-        >
-          <span className="admin-product-tab-icon">▦</span>
-          <span>All</span>
-          <b>{products.length}</b>
-        </button>
-        {primaryCategories.map((category) => (
-          <button
-            type="button"
-            key={category.id}
-            className={`admin-product-tab${activeCategory === category.id ? " active" : ""}`}
-            onClick={() => setActiveCategory(category.id)}
-          >
-            <span className="admin-product-tab-icon">{categoryIcon(category.slug || category.name)}</span>
-            <span>{category.name}</span>
-            <b>{counts.get(category.id) || 0}</b>
-          </button>
-        ))}
-      </div>
-
-      <div className="admin-products-control-row">
+      <div className="admin-products-control-row admin-products-control-row-compact">
         <label className="admin-product-search admin-product-search-wide">
           <span aria-hidden="true">⌕</span>
           <input
@@ -143,6 +119,19 @@ export default function ProductsPage() {
             aria-label="Search products"
           />
         </label>
+
+        <label className="admin-category-filter">
+          <span>Category</span>
+          <select value={activeCategory} onChange={(event) => setActiveCategory(event.target.value)} aria-label="Filter products by category">
+            <option value="all">All products ({products.length})</option>
+            {primaryCategories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name} ({counts.get(category.id) || 0})
+              </option>
+            ))}
+          </select>
+        </label>
+
         <div className="admin-products-actions admin-products-actions-reference">
           <Link className="admin-btn admin-btn-primary admin-add-product-btn" href="/admin/products/add">
             + Add Product
