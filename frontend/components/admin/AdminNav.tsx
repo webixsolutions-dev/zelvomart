@@ -19,7 +19,6 @@ const icons = {
   products: <Icon><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></Icon>,
   categories: <Icon><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></Icon>,
   customers: <Icon><circle cx="9" cy="8" r="3"/><path d="M3.5 20c.5-4 2.4-6 5.5-6s5 2 5.5 6M16 5.5a3 3 0 0 1 0 5.8M16.5 14c2.4.3 3.7 2.2 4 5"/></Icon>,
-  content: <Icon><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></Icon>,
   settings: <Icon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></Icon>,
   users: <Icon><circle cx="9" cy="8" r="3"/><path d="M3.5 20c.5-4 2.4-6 5.5-6s5 2 5.5 6M17 10v6M14 13h6"/></Icon>,
   reports: <Icon><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></Icon>,
@@ -37,7 +36,6 @@ const adminApiByHref: Record<string, string> = {
   "/admin/orders": "/api/admin/orders",
   "/admin/categories": "/api/admin/categories",
   "/admin/customers": "/api/admin/customers",
-  "/admin/content": "/api/admin/pages",
   "/admin/settings": "/api/admin/settings",
   "/admin/users": "/api/admin/users",
   "/admin/reports": "/api/admin/reports",
@@ -63,7 +61,6 @@ const groups = [
   {
     label: "Management",
     links: [
-      ["/admin/content", "Content", icons.content],
       ["/admin/settings", "Settings", icons.settings],
       ["/admin/users", "Users & Roles", icons.users],
       ["/admin/reports", "Reports", icons.reports],

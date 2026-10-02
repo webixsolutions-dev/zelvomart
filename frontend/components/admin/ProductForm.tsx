@@ -1,12 +1,284 @@
 "use client";
-import { FormEvent, useState } from 'react';
-import AdminRichTextEditor from './AdminRichTextEditor';
-import { clientApi } from '@/lib/client-api';
 
-type Category={id:string;name:string};
-export default function ProductForm({categories,initial,onSaved}:{categories:Category[];initial?:any;onSaved?:()=>void}){
- const [busy,setBusy]=useState(false);const [error,setError]=useState('');
- async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setBusy(true);setError('');const f=new FormData(e.currentTarget);const payload:any={title:f.get('title'),slug:f.get('slug'),sku:f.get('sku'),categoryId:f.get('categoryId')||null,price:Number(f.get('price')||0),salePrice:f.get('salePrice')||null,costPrice:f.get('costPrice')||null,stock:Number(f.get('stock')||0),status:f.get('status'),featured:f.get('featured')==='on',bundleEnabled:f.get('bundleEnabled')==='on',bundleDiscountPercent:f.get('bundleDiscountPercent')||null,shortDescription:f.get('shortDescription'),descriptionHtml:f.get('descriptionHtml'),images:String(f.get('images')||'').split(/\n|\|/).map(x=>x.trim()).filter(Boolean),videoUrl:f.get('videoUrl'),seoTitle:f.get('seoTitle'),seoDescription:f.get('seoDescription'),canonicalUrl:f.get('canonicalUrl')};try{await clientApi(initial?`/api/admin/products/${initial.id}`:'/api/admin/products',{method:initial?'PATCH':'POST',body:JSON.stringify(payload)},true);onSaved?.();}catch(e){setError(e instanceof Error?e.message:'Save failed')}finally{setBusy(false)}}
- const rawImages=initial?.rawImages||initial?.images?.map((x:any)=>x.src)||[];
- return <form className="admin-product-form" onSubmit={submit}><div className="admin-product-form-grid"><div className="admin-product-main"><section className="admin-form-section"><div className="admin-form-section-head"><h3>Product Basics</h3><p>LaptopSouq-style structured product information.</p></div><div className="admin-reference-form"><label className="field"><span>Product title</span><input name="title" defaultValue={initial?.title||initial?.name||''} required/></label><label className="field"><span>Slug</span><input name="slug" defaultValue={initial?.slug||''} required/></label><label className="field"><span>SKU</span><input name="sku" defaultValue={initial?.sku||''} required/></label><label className="field"><span>Category</span><select name="categoryId" defaultValue={initial?.categoryId||initial?.category?.id||''}><option value="">Uncategorized</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label></div></section><section className="admin-form-section"><div className="admin-form-section-head"><h3>Pricing & Stock</h3><p>Manage regular, sale and cost price plus stock.</p></div><div className="admin-reference-form"><label className="field"><span>Price</span><input name="price" type="number" min="0" step="0.01" defaultValue={initial?.regularPrice??initial?.price??''} required/></label><label className="field"><span>Sale price</span><input name="salePrice" type="number" min="0" step="0.01" defaultValue={initial?.salePrice??''}/></label><label className="field"><span>Cost price</span><input name="costPrice" type="number" min="0" step="0.01" defaultValue={initial?.costPrice??''}/></label><label className="field"><span>Stock</span><input name="stock" type="number" min="0" defaultValue={initial?.stock??initial?.stockQuantity??0}/></label></div></section><section className="admin-form-section"><div className="admin-form-section-head"><h3>Descriptions</h3><p>Short description and formatted main product description.</p></div><label className="field"><span>Short Description</span><textarea name="shortDescription" rows={4} defaultValue={initial?.shortDescription||''}/></label><div className="field"><span>Main Description</span><AdminRichTextEditor name="descriptionHtml" defaultValue={initial?.descriptionHtml||initial?.description||''}/></div></section><section className="admin-form-section"><div className="admin-form-section-head"><h3>Media</h3><p>One image URL per line; later these can come from R2 upload.</p></div><label className="field"><span>Product Images</span><textarea name="images" rows={5} defaultValue={rawImages.join('\n')} placeholder="https://.../image-1.webp"/></label><label className="field"><span>Video URL</span><input name="videoUrl" defaultValue={initial?.videoUrl||''}/></label></section><section className="admin-form-section"><div className="admin-form-section-head"><h3>SEO</h3></div><div className="admin-reference-form"><label className="field"><span>SEO title</span><input name="seoTitle" defaultValue={initial?.seoTitle||''}/></label><label className="field"><span>Canonical URL</span><input name="canonicalUrl" defaultValue={initial?.canonicalUrl||''}/></label><label className="field full"><span>SEO description</span><textarea name="seoDescription" rows={3} defaultValue={initial?.seoDescription||''}/></label></div></section></div><aside className="admin-product-sidebar"><section className="admin-form-section admin-sticky-section"><div className="admin-form-section-head"><h3>Publish</h3></div><label className="field"><span>Status</span><select name="status" defaultValue={initial?.status||'DRAFT'}><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></select></label><label className="admin-check"><input type="checkbox" name="featured" defaultChecked={Boolean(initial?.featured)}/> Featured product</label><label className="admin-check"><input type="checkbox" name="bundleEnabled" defaultChecked={initial?.bundleEnabled!==false}/> Enable buy-2 bundle</label><label className="field"><span>Bundle discount %</span><input name="bundleDiscountPercent" type="number" min="0" max="99" step="0.01" defaultValue={initial?.bundleDiscountPercent??5}/></label>{error?<div className="admin-import-message error">{error.replace(/_/g,' ')}</div>:null}<div className="admin-product-savebar"><span>All product data saves to the separate backend.</span><button className="admin-btn admin-btn-primary" disabled={busy}>{busy?'Saving…':initial?'Save Product':'Add Product'}</button></div></section></aside></div></form>
+import { FormEvent, useMemo, useRef, useState } from "react";
+import AdminRichTextEditor from "./AdminRichTextEditor";
+import { clientApi } from "@/lib/client-api";
+
+type Category = { id: string; name: string };
+
+type ProductFormProps = {
+  categories: Category[];
+  initial?: any;
+  onSaved?: (product?: any) => void;
+};
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export default function ProductForm({ categories, initial, onSaved }: ProductFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const initialImages = useMemo<string[]>(
+    () => (initial?.rawImages || initial?.images?.map((image: any) => (typeof image === "string" ? image : image?.src)) || []).filter(Boolean),
+    [initial],
+  );
+
+  const [title, setTitle] = useState(initial?.title || initial?.name || "");
+  const [slug, setSlug] = useState(initial?.slug || "");
+  const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
+  const [status, setStatus] = useState(initial?.status || "DRAFT");
+  const [images, setImages] = useState<string[]>(initialImages.slice(0, 5));
+  const [manualImage, setManualImage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [savedMessage, setSavedMessage] = useState("");
+
+  const publishedSlugLocked = Boolean(initial && initial.status === "PUBLISHED");
+
+  function onTitleChange(value: string) {
+    setTitle(value);
+    if (!slugTouched && !publishedSlugLocked) setSlug(slugify(value));
+  }
+
+  async function saveForm(targetStatus?: "DRAFT" | "PUBLISHED") {
+    const form = formRef.current;
+    if (!form || busy) return;
+    if (!form.reportValidity()) return;
+
+    setBusy(true);
+    setError("");
+    setSavedMessage("");
+    const formData = new FormData(form);
+    const nextStatus = targetStatus || status;
+    const payload: any = {
+      title: title.trim(),
+      slug: slug.trim(),
+      sku: String(formData.get("sku") || "").trim(),
+      categoryId: formData.get("categoryId") || null,
+      price: Number(formData.get("price") || 0),
+      salePrice: formData.get("salePrice") || null,
+      costPrice: formData.get("costPrice") || null,
+      stock: Number(formData.get("stock") || 0),
+      status: nextStatus,
+      featured: formData.get("featured") === "on",
+      bundleEnabled: formData.get("bundleEnabled") === "on",
+      bundleDiscountPercent: formData.get("bundleDiscountPercent") || null,
+      shortDescription: formData.get("shortDescription") || null,
+      descriptionHtml: formData.get("descriptionHtml") || null,
+      images,
+      videoUrl: formData.get("videoUrl") || null,
+      seoTitle: formData.get("seoTitle") || null,
+      seoDescription: formData.get("seoDescription") || null,
+      canonicalUrl: formData.get("canonicalUrl") || null,
+    };
+
+    try {
+      const product = await clientApi<any>(
+        initial ? `/api/admin/products/${initial.id}` : "/api/admin/products",
+        { method: initial ? "PATCH" : "POST", body: JSON.stringify(payload) },
+        true,
+      );
+      setStatus(nextStatus);
+      setSavedMessage(nextStatus === "PUBLISHED" ? "Product published successfully." : "Draft saved successfully.");
+      onSaved?.(product);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await saveForm();
+  }
+
+  async function uploadImages(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith("image/"));
+    event.target.value = "";
+    if (!files.length) return;
+    const available = Math.max(0, 5 - images.length);
+    if (!available) {
+      setError("Maximum 5 product images are allowed.");
+      return;
+    }
+
+    setUploadBusy(true);
+    setError("");
+    try {
+      const uploaded: string[] = [];
+      for (const file of files.slice(0, available)) {
+        const data = new FormData();
+        data.append("file", file);
+        const response = await clientApi<{ url: string }>("/api/admin/upload", { method: "POST", body: data }, true);
+        if (response.url) uploaded.push(response.url);
+      }
+      setImages((current) => Array.from(new Set([...current, ...uploaded])).slice(0, 5));
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Image upload failed");
+    } finally {
+      setUploadBusy(false);
+    }
+  }
+
+  function addManualImage() {
+    const value = manualImage.trim();
+    if (!value || images.length >= 5) return;
+    setImages((current) => Array.from(new Set([...current, value])).slice(0, 5));
+    setManualImage("");
+  }
+
+  return (
+    <form ref={formRef} className="admin-product-form admin-product-form-reference" onSubmit={submit}>
+      <div className="admin-product-form-grid admin-product-form-grid-reference">
+        <div className="admin-product-main">
+          <section className="admin-form-section admin-ls-section">
+            <div className="admin-form-section-head">
+              <h3>Basics</h3>
+              <p>Core product information shown across the storefront and catalog.</p>
+            </div>
+            <div className="admin-reference-form admin-ls-form-grid">
+              <label className="field full">
+                <span>Product Title <em>*</em></span>
+                <input value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="e.g. Emelie Matte Liquid Lipgloss" required />
+              </label>
+              <label className="field">
+                <span>Slug {publishedSlugLocked ? <small className="admin-locked-label">Locked</small> : null}</span>
+                <input
+                  value={slug}
+                  readOnly={publishedSlugLocked}
+                  onChange={(event) => {
+                    setSlugTouched(true);
+                    setSlug(slugify(event.target.value));
+                  }}
+                  placeholder="auto-generated-from-title"
+                  required
+                />
+                <small>{publishedSlugLocked ? "Published slug is locked to protect SEO." : "Auto-fills from the title until you edit it."}</small>
+              </label>
+              <label className="field">
+                <span>SKU <em>*</em></span>
+                <input name="sku" defaultValue={initial?.sku || ""} placeholder="ZVM-0001" required />
+              </label>
+            </div>
+          </section>
+
+          <section className="admin-form-section admin-ls-section">
+            <div className="admin-form-section-head">
+              <h3>Product Category</h3>
+              <p>Choose the primary Zelvomart category for this item.</p>
+            </div>
+            <label className="field">
+              <span>Category</span>
+              <select name="categoryId" defaultValue={initial?.categoryId || initial?.category?.id || ""}>
+                <option value="">Uncategorized</option>
+                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+              </select>
+            </label>
+          </section>
+
+          <section className="admin-form-section admin-ls-section">
+            <div className="admin-form-section-head">
+              <h3>Short Description</h3>
+              <p>Keep this concise. It appears near the product price and buying actions.</p>
+            </div>
+            <label className="field">
+              <textarea name="shortDescription" rows={5} defaultValue={initial?.shortDescription || ""} placeholder="Key benefit, use case and important product detail..." />
+            </label>
+          </section>
+
+          <section className="admin-form-section admin-ls-section">
+            <div className="admin-form-section-head">
+              <h3>Main Description</h3>
+              <p>Use headings, lists and links to create a complete product description.</p>
+            </div>
+            <div className="field">
+              <AdminRichTextEditor name="descriptionHtml" defaultValue={initial?.descriptionHtml || initial?.description || ""} />
+            </div>
+          </section>
+
+          <section className="admin-form-section admin-ls-section">
+            <div className="admin-form-section-head">
+              <h3>Pricing &amp; Stock</h3>
+              <p>Set selling price, optional sale/cost price and available stock.</p>
+            </div>
+            <div className="admin-reference-form admin-ls-pricing-grid">
+              <label className="field"><span>Regular Price (PKR) <em>*</em></span><input name="price" type="number" min="0" step="0.01" defaultValue={initial?.regularPrice ?? initial?.price ?? ""} required /></label>
+              <label className="field"><span>Sale Price (PKR)</span><input name="salePrice" type="number" min="0" step="0.01" defaultValue={initial?.salePrice ?? ""} /></label>
+              <label className="field"><span>Cost Price (PKR)</span><input name="costPrice" type="number" min="0" step="0.01" defaultValue={initial?.costPrice ?? ""} /></label>
+              <label className="field"><span>Stock <em>*</em></span><input name="stock" type="number" min="0" defaultValue={initial?.stock ?? initial?.stockQuantity ?? 0} required /></label>
+            </div>
+          </section>
+
+          <section className="admin-form-section admin-ls-section">
+            <div className="admin-form-section-head admin-form-section-head-row">
+              <div>
+                <h3>Images</h3>
+                <p>Add up to 5 product images. The first image becomes the main product image.</p>
+              </div>
+              <button type="button" className="admin-btn admin-btn-light" disabled={uploadBusy || images.length >= 5} onClick={() => fileRef.current?.click()}>
+                {uploadBusy ? "Uploading..." : "Upload Images"}
+              </button>
+            </div>
+            <input ref={fileRef} hidden type="file" accept="image/*" multiple onChange={uploadImages} />
+
+            <div className="admin-product-image-grid">
+              {images.map((src, index) => (
+                <div className="admin-product-image-card" key={`${src}-${index}`}>
+                  <div className="admin-product-image-preview"><img src={src} alt="" /></div>
+                  <div className="admin-product-image-card-copy">
+                    <b>{index === 0 ? "Main image" : `Gallery image ${index + 1}`}</b>
+                    <small title={src}>{src}</small>
+                  </div>
+                  <button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => setImages((current) => current.filter((_, imageIndex) => imageIndex !== index))}>×</button>
+                </div>
+              ))}
+              {!images.length ? <div className="admin-product-image-empty">No images yet. Upload product images or add an image URL below.</div> : null}
+            </div>
+
+            <div className="admin-manual-image-row">
+              <input value={manualImage} onChange={(event) => setManualImage(event.target.value)} placeholder="Or paste an image URL..." />
+              <button type="button" className="admin-btn admin-btn-light" onClick={addManualImage} disabled={!manualImage.trim() || images.length >= 5}>Add URL</button>
+            </div>
+            <label className="field"><span>Product Video URL</span><input name="videoUrl" defaultValue={initial?.videoUrl || ""} placeholder="https://..." /></label>
+          </section>
+        </div>
+
+        <aside className="admin-product-sidebar admin-product-sidebar-reference">
+          <section className="admin-form-section admin-ls-section admin-sticky-section admin-publish-card">
+            <div className="admin-form-section-head"><h3>Publish</h3><p>Control product visibility and storefront options.</p></div>
+            <label className="field"><span>Status</span><select name="status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></select></label>
+            <label className="admin-check"><input type="checkbox" name="featured" defaultChecked={Boolean(initial?.featured)} /> Featured product</label>
+            <label className="admin-check"><input type="checkbox" name="bundleEnabled" defaultChecked={initial?.bundleEnabled !== false} /> Enable buy-2 bundle</label>
+            <label className="field"><span>Bundle discount %</span><input name="bundleDiscountPercent" type="number" min="0" max="99" step="0.01" defaultValue={initial?.bundleDiscountPercent ?? 5} /></label>
+          </section>
+
+          <section className="admin-form-section admin-ls-section admin-seo-card">
+            <div className="admin-form-section-head"><h3>SEO</h3><p>Search result title, description and canonical URL.</p></div>
+            <label className="field"><span>SEO Title</span><input name="seoTitle" defaultValue={initial?.seoTitle || ""} placeholder={title || "Product SEO title"} /></label>
+            <label className="field"><span>Meta Description</span><textarea name="seoDescription" rows={5} defaultValue={initial?.seoDescription || ""} placeholder="Describe this product for search results..." /></label>
+            <label className="field"><span>Canonical URL</span><input name="canonicalUrl" defaultValue={initial?.canonicalUrl || ""} placeholder="https://zelvomart.com/product/..." /></label>
+          </section>
+        </aside>
+      </div>
+
+      {error ? <div className="admin-import-message error admin-product-form-message">{error.replace(/_/g, " ")}</div> : null}
+      {savedMessage ? <div className="admin-import-message success admin-product-form-message">{savedMessage}</div> : null}
+
+      <div className="admin-product-footer-actions">
+        <button type="button" className="admin-btn admin-btn-light" onClick={() => window.history.back()}>Cancel</button>
+        <div>
+          <button type="button" className="admin-btn admin-btn-light admin-save-draft-btn" disabled={busy} onClick={() => saveForm("DRAFT")}>{busy ? "Saving..." : "Save Draft"}</button>
+          <button type="button" className="admin-btn admin-btn-primary" disabled={busy} onClick={() => saveForm("PUBLISHED")}>{busy ? "Saving..." : "Publish"}</button>
+        </div>
+      </div>
+    </form>
+  );
 }
