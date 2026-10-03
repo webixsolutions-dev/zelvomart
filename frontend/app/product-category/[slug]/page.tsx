@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ProductGrid from "@/components/ProductGrid";
 import PromoCta from "@/components/PromoCta";
-import { DUMMY_PRODUCTS } from "@/lib/dummy-content";
 import { getCategories, getProducts } from "@/lib/store";
 
 export const revalidate = 120;
@@ -22,16 +21,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
   const sortValue = Array.isArray(sp.sort) ? sp.sort[0] : sp.sort;
   const sort = sortValue === "price-asc" || sortValue === "price-desc" ? sortValue : "newest";
   const result = await getProducts({ category: slug, sort, limit: 24 });
-  const fallbackMap: Record<string, typeof DUMMY_PRODUCTS.best> = {
-    "fashion-accessories": DUMMY_PRODUCTS.fashion,
-    "beauty-personal-care": DUMMY_PRODUCTS.beauty,
-    "home-living": DUMMY_PRODUCTS.best.slice(0,4),
-    "home-decor": DUMMY_PRODUCTS.best.slice(4,8),
-    "tech-gadgets": DUMMY_PRODUCTS.best.slice(2,6),
-    "sports-fitness": DUMMY_PRODUCTS.best.slice(1,5),
-    "kids-toys": DUMMY_PRODUCTS.best.slice(4,8),
-  };
-  const items = result.items.length ? result.items : (fallbackMap[slug] || DUMMY_PRODUCTS.best);
+  const items = result.items;
 
   return (
     <div className="site-shell pb-20">

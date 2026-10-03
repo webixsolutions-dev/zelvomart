@@ -18,8 +18,11 @@ export default function SessionReplayPlayer({events}:{events:unknown[]}){
     import("@rrweb/replay").then(({Replayer})=>{
       if(cancelled||!mount.current) return;
       try{
-        const width=Math.min(1050,Math.max(720,mount.current.clientWidth||960));
-        const replayer=new Replayer(events as any[],{root:mount.current,width,height:Math.round(width*0.59),showWarning:false,mouseTail:true});
+        const replayer=new Replayer(events as any[],{
+          root:mount.current,
+          showWarning:false,
+          mouseTail:true,
+        });
         player.current=replayer as unknown as ReplayController;
         setReady(true);
       }catch(error){ setFailed(error instanceof Error?error.message:"Replay could not be prepared."); }

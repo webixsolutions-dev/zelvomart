@@ -1,58 +1,67 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
-function nextMidnight() {
+type Countdown = {
+  hours: number;
+  minutes: number;
+  seconds: number;
+};
+
+function getCountdown(): Countdown {
   const now = new Date();
-  const target = new Date(now);
-  target.setHours(23, 59, 59, 999);
-  return target;
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+  const diff = Math.max(0, end.getTime() - now.getTime());
+
+  return {
+    hours: Math.floor((diff % 86400000) / 3600000),
+    minutes: Math.floor((diff % 3600000) / 60000),
+    seconds: Math.floor((diff % 60000) / 1000),
+  };
 }
 
 export default function FlashDealBanner() {
-  const endAt = useMemo(() => nextMidnight().getTime(), []);
-  const [now, setNow] = useState(Date.now());
+  // Keep the server render deterministic. The real clock starts only after
+  // hydration, preventing the server/client one-second mismatch warning.
+  const [countdown, setCountdown] = useState<Countdown | null>(null);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    const update = () => setCountdown(getCountdown());
+    update();
+    const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const diff = Math.max(0, endAt - now);
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  const minutes = Math.floor((diff % 3600000) / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
   const items = [
-    { value: days, label: "Days" },
-    { value: hours, label: "Hours" },
-    { value: minutes, label: "Minutes" },
-    { value: seconds, label: "Seconds" },
+    { value: countdown?.hours, label: "Hours" },
+    { value: countdown?.minutes, label: "Minutes" },
+    { value: countdown?.seconds, label: "Seconds" },
   ];
 
   return (
-    <section className="section flash-section">
+    <section className="section flash-section brand-drop-section">
       <div className="site-shell">
-        <div className="flash-banner">
+        <div className="flash-banner brand-drop-banner">
           <div className="flash-copy">
-            <span className="flash-icon">⚡</span>
+            <span className="brand-drop-tag">LIMITED DROP</span>
             <div>
-              <h2>Flash Deal</h2>
-              <p>Hurry up! Deal ends soon. Grab your favourites with Cash on Delivery.</p>
+              <h2>Today’s Zelvo Deals</h2>
+              <p>Selected products, limited-time pricing and the same easy Cash on Delivery experience.</p>
             </div>
           </div>
 
           <div className="flash-side">
-            <div className="flash-timer">
+            <div className="flash-timer" aria-label="Deal countdown" aria-live="off">
               {items.map((item) => (
                 <div className="flash-box" key={item.label}>
-                  <strong>{String(item.value).padStart(2, "0")}</strong>
+                  <strong>{item.value == null ? "--" : String(item.value).padStart(2, "0")}</strong>
                   <span>{item.label}</span>
                 </div>
               ))}
             </div>
-            <Link href="/shop" className="btn-dark">Shop Deals</Link>
+            <Link href="/shop" className="brand-drop-button">Shop the drop <span aria-hidden="true">→</span></Link>
           </div>
         </div>
       </div>

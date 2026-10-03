@@ -2,81 +2,98 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, WalletIcon } from "@/components/Icons";
+import { useEffect, useState } from "react";
+import { ArrowRight } from "@/components/Icons";
 import type { Product } from "@/types/product";
 
-const DEFAULT_HERO_IMAGE = "/images/hero/zelvomart-shopping.svg";
+const HERO_SLIDES = [
+  {
+    image: "/images/hero/zelvomart-slider-01.webp",
+    kicker: "CURATED FOR EVERYDAY",
+    title: "Useful things, picked with better taste.",
+    body: "A cleaner way to shop fashion, home, beauty, tech and fitness essentials — with Cash on Delivery across Pakistan.",
+    primaryText: "Shop bestsellers",
+    primaryHref: "/shop",
+    secondaryText: "Explore collections",
+    secondaryHref: "/shop",
+  },
+  {
+    image: "/images/hero/zelvomart-slider-02.webp",
+    kicker: "TECH • PLAY • EVERYDAY",
+    title: "Good finds for the way you actually live.",
+    body: "Practical products, simple choices and real support when you need it. No clutter, no complicated checkout.",
+    primaryText: "Shop new finds",
+    primaryHref: "/shop",
+    secondaryText: "Why Zelvomart",
+    secondaryHref: "/about-us",
+  },
+] as const;
 
-export default function Hero({ products, config }: { products: Product[]; config?: any }) {
-  const slides = useMemo(
-    () => products.filter((product) => product.image).slice(0, 5),
-    [products],
-  );
+export default function Hero({ config }: { products: Product[]; config?: any }) {
   const [active, setActive] = useState(0);
 
   useEffect(() => {
-    if (slides.length < 2) return;
-    const timer = window.setInterval(
-      () => setActive((value) => (value + 1) % slides.length),
-      6500,
-    );
+    const timer = window.setInterval(() => {
+      setActive((value) => (value + 1) % HERO_SLIDES.length);
+    }, 7200);
     return () => window.clearInterval(timer);
-  }, [slides.length]);
+  }, []);
 
-  const current = slides[active];
-  const heroImage = current?.image || config?.heroImage || DEFAULT_HERO_IMAGE;
+  const current = HERO_SLIDES[active];
+  const title = active === 0 && config?.heroTitle ? String(config.heroTitle) : current.title;
+  const body = active === 0 && config?.heroBody ? String(config.heroBody) : current.body;
+  const kicker = active === 0 && config?.heroKicker ? String(config.heroKicker) : current.kicker;
 
   return (
-    <section className="hero-main">
-      <div className="hero-bg" aria-hidden="true">
-        <Image
-          src={heroImage}
-          alt=""
-          fill
-          priority
-          fetchPriority="high"
-          sizes="100vw"
-          className="object-cover"
-        />
+    <section className="premium-hero" aria-label="Zelvomart featured collection">
+      <div className="premium-hero-media" aria-hidden="true">
+        {HERO_SLIDES.map((slide, index) => (
+          <Image
+            key={slide.image}
+            src={slide.image}
+            alt=""
+            fill
+            priority={index === 0}
+            fetchPriority={index === 0 ? "high" : "auto"}
+            loading={index === 0 ? "eager" : undefined}
+            sizes="100vw"
+            unoptimized
+            className={index === active ? "premium-hero-image is-active" : "premium-hero-image"}
+          />
+        ))}
       </div>
-      <div className="hero-overlay" />
+      <div className="premium-hero-shade" aria-hidden="true" />
 
-      <div className="site-shell hero-inner">
-        <div className="hero-copy">
-          <span className="hero-kicker">
-            {config?.heroKicker || "ZELVOMART • CASH ON DELIVERY"}
-          </span>
-          <h1>{config?.heroTitle || "Everyday finds, delivered across Pakistan."}</h1>
-          <p>
-            {config?.heroBody ||
-              "Shop useful products for home, beauty, tech, fashion, fitness and more with convenient Cash on Delivery."}
-          </p>
-
-          <div className="hero-actions">
-            <Link href="/shop" className="hero-link">
-              Shop Now <ArrowRight size={18} />
+      <div className="site-shell premium-hero-inner">
+        <div className="premium-hero-copy">
+          <span className="premium-hero-kicker">{kicker}</span>
+          <h1>{title}</h1>
+          <p>{body}</p>
+          <div className="premium-hero-actions">
+            <Link href={current.primaryHref} className="premium-button premium-button-light">
+              {current.primaryText} <ArrowRight size={16} />
             </Link>
-            <Link href="/shipping-delivery" className="btn-green">
-              <WalletIcon size={18} /> Cash on Delivery
+            <Link href={current.secondaryHref} className="premium-text-link">
+              {current.secondaryText} <span aria-hidden="true">→</span>
             </Link>
           </div>
         </div>
-      </div>
 
-      {slides.length > 1 ? (
-        <div className="hero-dots" aria-label="Hero slides">
-          {slides.map((product, index) => (
-            <button
-              type="button"
-              key={product.id}
-              className={index === active ? "active" : ""}
-              aria-label={`Show slide ${index + 1}`}
-              onClick={() => setActive(index)}
-            />
-          ))}
+        <div className="premium-hero-controls" aria-label="Hero slides">
+          <span className="premium-hero-counter">0{active + 1} / 0{HERO_SLIDES.length}</span>
+          <div className="premium-hero-dots">
+            {HERO_SLIDES.map((slide, index) => (
+              <button
+                type="button"
+                key={slide.image}
+                className={index === active ? "is-active" : ""}
+                aria-label={`Show slide ${index + 1}`}
+                onClick={() => setActive(index)}
+              />
+            ))}
+          </div>
         </div>
-      ) : null}
+      </div>
     </section>
   );
 }

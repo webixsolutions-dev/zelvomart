@@ -1,6 +1,6 @@
 import type { Category, Product, ProductListResponse } from '@/types/product';
 import { apiFetch } from './api';
-import { ALL_DUMMY_PRODUCTS, DEFAULT_CATEGORIES, DUMMY_PRODUCTS, getDisplayCategories } from './dummy-content';
+import { DEFAULT_CATEGORIES, getDisplayCategories } from './dummy-content';
 import { withProductMedia } from './product-media';
 
 export type StoreBootstrap = {
@@ -40,30 +40,8 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     });
     return withProductMedia(product);
   } catch {
-    const fallback = ALL_DUMMY_PRODUCTS.find((product) => product.slug === slug) || null;
-    return fallback ? withProductMedia(fallback) : null;
+    return null;
   }
-}
-
-function dummyResult(options: { category?: string; search?: string; page?: number; limit?: number; sort?: 'newest'|'price-asc'|'price-desc'; featured?: boolean } = {}): ProductListResponse {
-  let items = options.category ? (DUMMY_PRODUCTS[options.category] || []) : ALL_DUMMY_PRODUCTS;
-
-  if (options.search) {
-    const q = options.search.toLowerCase();
-    items = items.filter((product) => `${product.name} ${product.categories.map((category) => category.name).join(' ')}`.toLowerCase().includes(q));
-  }
-
-  if (options.featured) items = DUMMY_PRODUCTS.best;
-  if (options.sort === 'price-asc') items = [...items].sort((a, b) => a.price - b.price);
-  if (options.sort === 'price-desc') items = [...items].sort((a, b) => b.price - a.price);
-
-  const page = Math.max(1, options.page || 1);
-  const limit = Math.max(1, options.limit || 12);
-  const total = items.length;
-  const start = (page - 1) * limit;
-  const pageItems = items.slice(start, start + limit);
-
-  return { items: pageItems.map(withProductMedia), page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) };
 }
 
 export async function getProducts(options: { category?: string; search?: string; page?: number; limit?: number; sort?: 'newest'|'price-asc'|'price-desc'; featured?: boolean } = {}): Promise<ProductListResponse> {
@@ -83,9 +61,21 @@ export async function getProducts(options: { category?: string; search?: string;
     const result = await apiFetch<ProductListResponse>(`/api/products?${p.toString()}`, {
       next: { revalidate: 120, tags },
     });
-    if (result?.items?.length) return { ...result, items: result.items.map(withProductMedia) };
-    return dummyResult(options);
+    return {
+      ...result,
+      items: Array.isArray(result?.items) ? result.items.map(withProductMedia) : [],
+      page: result?.page || options.page || 1,
+      limit: result?.limit || options.limit || 12,
+      total: result?.total || 0,
+      totalPages: Math.max(1, result?.totalPages || 1),
+    };
   } catch {
-    return dummyResult(options);
+    return {
+      items: [],
+      page: options.page || 1,
+      limit: options.limit || 12,
+      total: 0,
+      totalPages: 1,
+    };
   }
 }

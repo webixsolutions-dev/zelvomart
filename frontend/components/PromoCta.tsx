@@ -16,11 +16,12 @@ export default function PromoCta({
   secondaryHref?: string;
 }) {
   return (
-    <section className="section promo-section">
+    <section className="section promo-section brand-support-section">
       <div className="site-shell">
-        <div className="promo-card">
-          <div>
-            <span className="promo-kicker">ZELVOMART • QUALITY CHECKED</span>
+        <div className="promo-card brand-support-card">
+          <div className="brand-support-number">Z</div>
+          <div className="brand-support-copy">
+            <span className="promo-kicker">REAL PEOPLE • REAL SUPPORT</span>
             <h2>{title}</h2>
             <p>{body}</p>
           </div>

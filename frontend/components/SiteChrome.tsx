@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { CartProvider } from "@/components/CartProvider";
+import PageMotion from "@/components/PageMotion";
 
 export default function SiteChrome({
   children,
@@ -42,7 +43,8 @@ export default function SiteChrome({
       />
       <CartProvider>
         {header}
-        <main>{children}</main>
+        <main className="public-site-main">{children}</main>
+        <PageMotion />
         {footer}
         {cartDrawer}
         {whatsapp}

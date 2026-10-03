@@ -65,6 +65,12 @@ const defaultSettings: Record<string, unknown> = {
 
 const defaultPages = [
   {
+    slug: "blog",
+    title: "Blog",
+    bodyHtml:
+      "<h2>Useful ideas for everyday shopping</h2><p>The Zelvomart Blog shares practical buying guides, product ideas, care tips and store updates.</p><h3>Shopping guides</h3><p>Compare products, understand features and choose what fits your routine.</p><h3>Product inspiration</h3><p>Discover useful ideas across home, beauty, tech, fashion and fitness.</p><p><a href=\"/shop\"><strong>Explore the latest products →</strong></a></p>",
+  },
+  {
     slug: "about-us",
     title: "About Us",
     bodyHtml:

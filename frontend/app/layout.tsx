@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
+import "@rrweb/replay/dist/style.css";
 import { getStoreBootstrap } from "@/lib/store";
 import CartDrawer from "@/components/CartDrawer";
 import Header from "@/components/Header";
@@ -49,6 +50,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
+      <head>
+        <link rel="preload" as="image" type="image/webp" href="/images/hero/zelvomart-slider-01.webp" />
+      </head>
       <body>
         <SiteChrome
           header={
