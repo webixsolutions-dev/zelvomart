@@ -24,6 +24,11 @@ const REVEAL_SELECTOR = [
   "main .summary-card",
   "main .product-main-image",
   "main .product-info",
+  "main .professional-journal-card",
+  "main .professional-contact-cards > a",
+  "main .professional-values-grid article",
+  "main .premium-contact-form",
+  "main .professional-page-endcap",
 ].join(",");
 
 const CARD_SELECTOR = [
@@ -35,6 +40,10 @@ const CARD_SELECTOR = [
   ".brand-process-card",
   ".static-content-card",
   ".content-card",
+  ".professional-journal-card",
+  ".professional-contact-cards > a",
+  ".professional-values-grid article",
+  ".premium-contact-form",
 ].join(",");
 
 export default function PageMotion() {

@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { dispatchJobRow, getBoss } from "../src/lib/jobs";
-import { sendCustomerOrderEmail, sendFailureAlert, sendOrderTeamEmail } from "../src/lib/email";
+import { sendCustomerOrderEmail, sendCustomerStatusEmail, sendFailureAlert, sendOrderTeamEmail } from "../src/lib/email";
 import { sendMetaServerEvent } from "../src/lib/meta";
 import { Resend } from "resend";
 import { money } from "../src/lib/format";
@@ -49,6 +49,25 @@ async function main() {
   await boss.work("customer-order-email", async ([job]) => {
     const data = job.data as any;
     return withJobLog(data.jobLogId, () => sendCustomerOrderEmail(data.orderId));
+  });
+
+  await boss.work("customer-status-email", async ([job]) => {
+    const data = job.data as any;
+    return withJobLog(data.jobLogId, () => sendCustomerStatusEmail(data.orderId, data.status));
+  });
+
+  await boss.work("meta-event", async ([job]) => {
+    const data = job.data as any;
+    return withJobLog(data.jobLogId, () => sendMetaServerEvent({
+      eventName: String(data.eventName),
+      eventId: String(data.eventId),
+      sourceUrl: data.sourceUrl || undefined,
+      userAgent: data.userAgent || undefined,
+      ip: data.ip || undefined,
+      fbp: data.fbp || undefined,
+      fbc: data.fbc || undefined,
+      customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
+    }));
   });
 
   await boss.work("meta-purchase", async ([job]) => {
@@ -227,6 +246,12 @@ async function main() {
     });
   });
 
+  await boss.work("rate-limit-cleanup", async () => {
+    const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const result = await prisma.rateLimitBucket.deleteMany({ where: { updatedAt: { lt: cutoff } } });
+    return result.count;
+  });
+
   await boss.work("job-recovery", async () => {
     const cutoff = new Date(Date.now() - 60 * 1000);
     const stranded = await prisma.job.findMany({
@@ -248,6 +273,7 @@ async function main() {
   await boss.schedule("tracking-health-check", "15 4 * * *", {});
   await boss.schedule("abandoned-checkout-scan", "*/15 * * * *", {});
   await boss.schedule("job-recovery", "*/5 * * * *", {});
+  await boss.schedule("rate-limit-cleanup", "30 3 * * *", {});
 
   console.log("Zelvomart worker is running.");
 }

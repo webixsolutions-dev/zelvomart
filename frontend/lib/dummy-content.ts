@@ -115,30 +115,9 @@ export const DUMMY_PRODUCTS: Record<string, Product[]> = {
 
 export const ALL_DUMMY_PRODUCTS = DISPLAY_CATEGORY_SLUGS.flatMap((slug) => DUMMY_PRODUCTS[slug]);
 
-export const STATIC_BLOG_POSTS = [
-  { title: "How to Shop Smart with Cash on Delivery", excerpt: "A simple checklist for choosing products, confirming your order and receiving your parcel with confidence.", tag: "Shopping Guide", date: "October 2026" },
-  { title: "6 Everyday Products That Make Home Life Easier", excerpt: "Practical home and living picks designed to save time, reduce clutter and make daily routines simpler.", tag: "Home & Living", date: "October 2026" },
-  { title: "Beauty & Personal Care Picks for Your Daily Routine", excerpt: "Easy-to-use beauty essentials and self-care products you can add to your everyday routine.", tag: "Beauty", date: "September 2026" },
-  { title: "Tech Accessories Worth Keeping in Your Bag", excerpt: "From charging accessories to compact gadgets, here are useful tech products for work and travel.", tag: "Tech", date: "September 2026" },
-  { title: "Simple Fitness Gear for Home Workouts", excerpt: "Build a practical home setup with compact fitness accessories that are easy to store and use.", tag: "Fitness", date: "September 2026" },
-  { title: "What Happens After You Place an Order?", excerpt: "See how Zelvomart confirms, checks, dispatches and tracks orders before they reach your doorstep.", tag: "Orders", date: "August 2026" },
-];
+
 
 export const STATIC_PAGES: Record<string, { title: string; bodyHtml: string }> = {
-  blog: {
-    title: "Blog",
-    bodyHtml: `
-      <h2>Useful ideas for everyday shopping</h2>
-      <p>The Zelvomart Blog is where we share practical buying guides, product roundups, care tips and store updates.</p>
-      <h3>Shopping guides</h3>
-      <p>Simple advice to help you compare products, understand features and choose what fits your routine.</p>
-      <h3>Product inspiration</h3>
-      <p>Discover useful ideas across home, beauty, tech, fashion and fitness without unnecessary clutter.</p>
-      <h3>Order and delivery updates</h3>
-      <p>We also use this space to explain how Cash on Delivery, order confirmation, dispatch and customer support work.</p>
-      <p><a href="/shop"><strong>Explore the latest products →</strong></a></p>
-    `,
-  },
   "about-us": {
     title: "About Us",
     bodyHtml: `

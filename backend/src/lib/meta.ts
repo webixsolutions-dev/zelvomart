@@ -68,15 +68,34 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
     payload.test_event_code = process.env.META_TEST_EVENT_CODE;
   }
 
-  const response = await fetch(
-    `https://graph.facebook.com/${graphVersion}/${pixelId}/events?access_token=${encodeURIComponent(token)}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    },
-  );
-  const body = await response.json().catch(() => ({ status: response.status }));
+  let response: Response;
+  let body: any;
+  try {
+    response = await fetch(
+      `https://graph.facebook.com/${graphVersion}/${pixelId}/events?access_token=${encodeURIComponent(token)}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
+    body = await response.json().catch(() => ({ status: response.status }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await prisma.eventLog.create({
+      data: {
+        orderId: event.orderId,
+        eventName: event.eventName,
+        eventId: event.eventId,
+        channel: "server",
+        sourceUrl: event.sourceUrl,
+        payload: payload as any,
+        accepted: false,
+        error: message,
+      },
+    });
+    throw error;
+  }
 
   await prisma.eventLog.create({
     data: {

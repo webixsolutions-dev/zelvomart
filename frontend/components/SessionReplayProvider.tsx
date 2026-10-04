@@ -96,7 +96,9 @@ export default function SessionReplayProvider() {
         const stop = record({
           emit(event) {
             queue.push(event);
-            if (queue.length >= 45) flush();
+            // rrweb type 2 is the FullSnapshot. Persist it immediately so a
+            // short visit still produces a replayable session.
+            if ((event as { type?: number }).type === 2 || queue.length >= 45) flush();
           },
           maskAllInputs: true,
           maskTextSelector: "[data-replay-mask], [data-clarity-mask]",

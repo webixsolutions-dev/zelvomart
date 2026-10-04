@@ -23,6 +23,7 @@ const icons = {
   settings: <Icon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></Icon>,
   users: <Icon><circle cx="9" cy="8" r="3"/><path d="M3.5 20c.5-4 2.4-6 5.5-6s5 2 5.5 6M17 10v6M14 13h6"/></Icon>,
   reports: <Icon><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></Icon>,
+  marketing: <Icon><path d="M4 18V8l8-4 8 4v10l-8 3-8-3Z"/><path d="M8 11h8M8 15h5"/></Icon>,
   cro: <Icon><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-7"/><path d="M16 6h3v3"/></Icon>,
   replays: <Icon><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/></Icon>,
   tracking: <Icon><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></Icon>,
@@ -38,11 +39,11 @@ const adminApiByHref: Record<string, string> = {
   "/admin/products": "/api/admin/products",
   "/admin/orders": "/api/admin/orders",
   "/admin/categories": "/api/admin/categories",
-  "/admin/pages": "/api/admin/pages",
   "/admin/customers": "/api/admin/customers",
   "/admin/settings": "/api/admin/settings",
   "/admin/users": "/api/admin/users",
   "/admin/reports": "/api/admin/reports",
+  "/admin/marketing": "/api/admin/marketing",
   "/admin/cro": "/api/admin/cro",
   "/admin/session-replays": "/api/admin/session-replays",
   "/admin/tracking": "/api/admin/tracking",
@@ -61,7 +62,6 @@ const groups = [
       ["/admin/products", "Products", icons.products],
       ["/admin/orders", "Orders", icons.orders],
       ["/admin/categories", "Categories", icons.categories],
-      ["/admin/pages", "Pages", icons.pages],
       ["/admin/customers", "Customers", icons.customers],
     ],
   },
@@ -71,6 +71,7 @@ const groups = [
       ["/admin/settings", "Settings", icons.settings],
       ["/admin/users", "Users & Roles", icons.users],
       ["/admin/reports", "Reports", icons.reports],
+      ["/admin/marketing", "Meta & Attribution", icons.marketing],
       ["/admin/cro", "CRO", icons.cro],
       ["/admin/session-replays", "Session Replays", icons.replays],
     ],
@@ -88,15 +89,22 @@ const groups = [
   },
 ] as const;
 
-export default function AdminNav() {
+export default function AdminNav({ role = "OWNER" }: { role?: string }) {
   const pathname = usePathname();
+  const allowed = (href: string) => {
+    if (role === "OWNER") return true;
+    if (role === "ORDER_AGENT") return ["/admin", "/admin/orders", "/admin/customers"].includes(href);
+    if (role === "MANAGER") return !["/admin/settings", "/admin/users", "/admin/redirects"].includes(href);
+    if (role === "MARKETER") return ["/admin/products", "/admin/categories", "/admin/reports", "/admin/marketing", "/admin/cro", "/admin/session-replays", "/admin/tracking", "/admin/jobs", "/admin/experiments", "/admin/reviews"].includes(href);
+    return false;
+  };
 
   return (
     <nav className="admin-nav" aria-label="Admin sidebar">
       {groups.map((group) => (
         <div className="admin-nav-group" key={group.label}>
           <div className="admin-nav-label">{group.label}</div>
-          {group.links.map(([href, label, icon]) => {
+          {group.links.filter(([href]) => allowed(href)).map(([href, label, icon]) => {
             const active = href === "/admin" ? pathname === href : pathname.startsWith(href);
             return (
               <Link key={href} href={href} prefetch className={`admin-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined} onMouseEnter={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])} onFocus={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}>

@@ -14,7 +14,7 @@ function setCookie(name: string, value: string, maxAge = 2592000) {
 
 function sourceFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "fbclid"];
+  const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "campaign_id", "adset_id", "ad_id", "fbclid"];
   const source: Record<string, string> = {};
   for (const key of keys) {
     const value = params.get(key);
@@ -47,6 +47,13 @@ export default function TrackingProvider() {
       window.clarity?.("set", "utm_content", current.utm_content || "");
       window.clarity?.("set", "paid_meta", current.fbclid || current.utm_source?.toLowerCase().includes("facebook") || current.utm_source?.toLowerCase().includes("instagram") ? "yes" : "no");
       window.clarity?.("set", "device", window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop");
+      try {
+        const experiments = document.cookie.split("; ").find((row) => row.startsWith("zm_experiments="));
+        if (experiments) {
+          const parsed = JSON.parse(decodeURIComponent(experiments.slice("zm_experiments=".length)));
+          Object.entries(parsed || {}).forEach(([name, variant]) => window.clarity?.("set", `experiment_${name}`, String(variant)));
+        }
+      } catch {}
     } catch {}
   }, []);
 

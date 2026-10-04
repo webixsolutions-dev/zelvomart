@@ -14,6 +14,9 @@ import { uploadObject } from './lib/storage';
 import { sendMetaServerEvent } from './lib/meta';
 import { fetchMetaAds, getMetaMarketingConfig, testMetaMarketingConnection } from './lib/meta-marketing';
 import { invalidateFrontendCache } from './lib/cache-invalidation';
+import { sendContactTeamEmail } from './lib/email';
+import { consumeRateLimit, requestIp, isLikelyBot } from './lib/rate-limit';
+import { dispatchJobRow } from './lib/jobs';
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
@@ -43,7 +46,7 @@ function setNoStore(res: express.Response) {
 }
 
 app.use((req, res, next) => {
-  if (/^\/api\/(auth|admin|orders|checkout|reviews|events|session-replays)(?:\/|$)/.test(req.path)) setNoStore(res);
+  if (/^\/api\/(auth|admin|orders|checkout|reviews|events|session-replays|contact)(?:\/|$)/.test(req.path)) setNoStore(res);
   next();
 });
 
@@ -128,6 +131,45 @@ function normalizeTrafficSource(value: unknown) {
   return raw;
 }
 
+async function allowRequest(req: express.Request, res: express.Response, namespace: string, limit: number, windowMs: number, discriminator = '') {
+  const key = `${namespace}:${requestIp(req)}:${discriminator}`;
+  const result = await consumeRateLimit(key, limit, windowMs);
+  res.setHeader('X-RateLimit-Limit', String(limit));
+  res.setHeader('X-RateLimit-Remaining', String(result.remaining));
+  if (!result.allowed) {
+    res.setHeader('Retry-After', String(result.retryAfterSeconds));
+    res.status(429).json({ error: 'RATE_LIMITED', retryAfterSeconds: result.retryAfterSeconds });
+    return false;
+  }
+  return true;
+}
+
+
+async function assertProductPriceFloor(input: {
+  price: number;
+  salePrice?: number | null;
+  bundleEnabled?: boolean;
+  bundleDiscountPercent?: number | null;
+}) {
+  const minimum = Number(await getSetting<number>('store.minimumSellingPrice', 1000));
+  const defaultBundle = Number(await getSetting<number>('store.bundleDefaultDiscountPercent', 5));
+  const regular = Number(input.price || 0);
+  const sale = input.salePrice == null ? null : Number(input.salePrice);
+  const effective = sale != null && sale > 0 && sale < regular ? sale : regular;
+  if (!Number.isFinite(effective) || effective < minimum) {
+    throw new Error(`PRICE_FLOOR_VIOLATION: minimum selling price is PKR ${minimum}`);
+  }
+  if (input.bundleEnabled !== false) {
+    const discount = Number(input.bundleDiscountPercent ?? defaultBundle);
+    const perPiece = effective * (1 - discount / 100);
+    if (!Number.isFinite(perPiece) || perPiece < minimum) {
+      throw new Error(`PRICE_FLOOR_VIOLATION: bundle per-piece price must be at least PKR ${minimum}`);
+    }
+  }
+}
+
+const META_EVENT_NAMES = new Set(['PageView','ViewContent','Search','AddToCart','InitiateCheckout','Purchase','Contact']);
+
 let replayCleanupAt = 0;
 async function maybeCleanupOldSessionReplays() {
   const days = Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
@@ -140,6 +182,31 @@ async function maybeCleanupOldSessionReplays() {
 }
 
 app.get('/api/health', async (_req, res) => { setNoStore(res); try { await prisma.$queryRaw`SELECT 1`; res.json({ ok: true }); } catch (e: any) { res.status(503).json({ ok: false, error: e?.message || 'DB_UNAVAILABLE' }); } });
+
+app.post('/api/contact', async (req, res) => {
+  setNoStore(res);
+  if (!(await allowRequest(req, res, 'contact', 10, 60 * 60 * 1000))) return;
+  const name = String(req.body?.name || '').trim();
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const phone = String(req.body?.phone || '').trim();
+  const problem = String(req.body?.problem || '').trim();
+  const website = String(req.body?.website || '').trim();
+
+  // Honeypot: silently accept likely bot submissions.
+  if (website) return res.status(201).json({ ok: true });
+  if (!name || name.length > 100) return res.status(400).json({ error: 'INVALID_NAME', message: 'Please enter your name.' });
+  if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 160) return res.status(400).json({ error: 'INVALID_EMAIL', message: 'Please enter a valid email address.' });
+  if (phone.length < 7 || phone.length > 40) return res.status(400).json({ error: 'INVALID_PHONE', message: 'Please enter a valid phone number.' });
+  if (problem.length < 5 || problem.length > 2000) return res.status(400).json({ error: 'INVALID_MESSAGE', message: 'Please add a little more detail about the problem.' });
+
+  try {
+    await sendContactTeamEmail({ name, email, phone, problem, sourceUrl: String(req.get('referer') || '') });
+    return res.status(201).json({ ok: true });
+  } catch (error: any) {
+    console.error('Contact form email failed', error);
+    return res.status(503).json({ error: 'CONTACT_DELIVERY_FAILED', message: 'We could not send your message right now. Please use WhatsApp or try again shortly.' });
+  }
+});
 
 app.get('/api/store/bootstrap', async (_req, res) => {
   setPublicCache(res, 300, 1800, ['store', 'categories', 'settings']);
@@ -157,6 +224,7 @@ app.get('/api/categories', async (_req, res) => {
 });
 
 app.get('/api/products', async (req, res) => {
+  if (String(req.query.search || '').trim() && !(await allowRequest(req, res, 'search', 60, 60 * 1000))) return;
   const page = Math.max(1, Number(req.query.page || 1)); const limit = Math.min(100, Math.max(1, Number(req.query.limit || 12)));
   const search = String(req.query.search || '').trim(); const category = String(req.query.category || '').trim(); const sort = String(req.query.sort || 'newest');
   const featured = String(req.query.featured || '') === 'true';
@@ -175,20 +243,175 @@ app.get('/api/settings/public', async (req,res) => { setPublicCache(res, 300, 18
 app.get('/api/cities', async (_req,res) => { setPublicCache(res, 3600, 86400, ['cities']); res.json(await prisma.city.findMany({ where:{active:true}, orderBy:{name:'asc'} })); });
 app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 86400, ['seo']); const [products,categories,pages] = await Promise.all([prisma.product.findMany({where:{status:'PUBLISHED'},select:{slug:true,updatedAt:true}}),prisma.category.findMany({select:{slug:true,updatedAt:true}}),prisma.page.findMany({where:{published:true},select:{slug:true,updatedAt:true}})]); res.json({products,categories,pages}); });
 app.get('/api/redirects/resolve', async (req,res)=>{setPublicCache(res,3600,86400,['redirects']);const sourcePath=String(req.query.path||'');const row=await prisma.redirect.findUnique({where:{sourcePath}});if(!row)return res.status(404).json({error:'NOT_FOUND'});res.json(row);});
-app.get('/api/feed/meta.xml', async (_req,res)=>{setPublicCache(res,900,3600,['products','feed']);const products=await prisma.product.findMany({where:{status:'PUBLISHED'},include:{category:true,variants:{where:{active:true}}},orderBy:{updatedAt:'desc'}});const base=(process.env.NEXT_PUBLIC_SITE_URL||'https://zelvomart.com').replace(/\/$/,'');const x=(v:any)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');const items=products.map(p=>{const imgs=Array.isArray(p.images)?p.images.filter(i=>typeof i==='string'):[];const price=Number(p.price).toFixed(2);const sale=p.salePrice?Number(p.salePrice).toFixed(2):'';return `<item><g:id>${x(p.sku)}</g:id><g:title>${x(p.title)}</g:title><g:description>${x(p.shortDescription||p.title)}</g:description><g:availability>${p.stock>0?'in stock':'out of stock'}</g:availability><g:condition>new</g:condition><g:price>${price} PKR</g:price>${sale?`<g:sale_price>${sale} PKR</g:sale_price>`:''}<g:link>${x(`${base}/product/${p.slug}/`)}</g:link>${imgs[0]?`<g:image_link>${x(imgs[0])}</g:image_link>`:''}${imgs.slice(1,10).map(i=>`<g:additional_image_link>${x(i)}</g:additional_image_link>`).join('')}<g:brand>Zelvomart</g:brand><g:product_type>${x(p.category?.name||'')}</g:product_type></item>`}).join('');res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><rss xmlns:g="http://base.google.com/ns/1.0" version="2.0"><channel><title>Zelvomart</title><link>${base}</link><description>Zelvomart product feed</description>${items}</channel></rss>`);});
+app.get('/api/feed/meta.xml', async (_req,res)=>{
+  setPublicCache(res,900,3600,['products','feed']);
+  const products=await prisma.product.findMany({where:{status:'PUBLISHED'},include:{category:true,variants:{where:{active:true}}},orderBy:{updatedAt:'desc'}});
+  const base=(process.env.NEXT_PUBLIC_SITE_URL||'https://zelvomart.com').replace(/\/$/,'');
+  const x=(v:any)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const itemXml=(input:{id:string;groupId:string;title:string;description:string;stock:number;price:number;salePrice?:number|null;link:string;image?:string;extraImages:string[];productType:string})=>{
+    const regular=Number(input.price).toFixed(2);
+    const sale=input.salePrice!=null&&Number(input.salePrice)<Number(input.price)?Number(input.salePrice).toFixed(2):'';
+    return `<item><g:id>${x(input.id)}</g:id><g:item_group_id>${x(input.groupId)}</g:item_group_id><g:title>${x(input.title)}</g:title><g:description>${x(input.description)}</g:description><g:availability>${input.stock>0?'in stock':'out of stock'}</g:availability><g:condition>new</g:condition><g:price>${regular} PKR</g:price>${sale?`<g:sale_price>${sale} PKR</g:sale_price>`:''}<g:link>${x(input.link)}</g:link>${input.image?`<g:image_link>${x(input.image)}</g:image_link>`:''}${input.extraImages.slice(0,10).map(i=>`<g:additional_image_link>${x(i)}</g:additional_image_link>`).join('')}<g:brand>Zelvomart</g:brand><g:product_type>${x(input.productType)}</g:product_type></item>`;
+  };
+  const items:string[]=[];
+  for(const product of products){
+    const images=Array.isArray(product.images)?product.images.filter((i):i is string=>typeof i==='string'):[];
+    const link=`${base}/product/${product.slug}/`;
+    if(product.variants.length){
+      for(const variant of product.variants){
+        const hasOverride=variant.priceOverride!=null;
+        items.push(itemXml({
+          id:variant.sku,
+          groupId:product.sku,
+          title:variant.name?`${product.title} - ${variant.name}`:product.title,
+          description:product.shortDescription||product.title,
+          stock:variant.stock,
+          price:hasOverride?Number(variant.priceOverride):Number(product.price),
+          salePrice:hasOverride?null:(product.salePrice==null?null:Number(product.salePrice)),
+          link,
+          image:variant.imageUrl||images[0],
+          extraImages:images.filter(i=>i!==(variant.imageUrl||images[0])),
+          productType:product.category?.name||'',
+        }));
+      }
+    }else{
+      items.push(itemXml({
+        id:product.sku,
+        groupId:product.sku,
+        title:product.title,
+        description:product.shortDescription||product.title,
+        stock:product.stock,
+        price:Number(product.price),
+        salePrice:product.salePrice==null?null:Number(product.salePrice),
+        link,
+        image:images[0],
+        extraImages:images.slice(1),
+        productType:product.category?.name||'',
+      }));
+    }
+  }
+  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><rss xmlns:g="http://base.google.com/ns/1.0" version="2.0"><channel><title>Zelvomart</title><link>${base}</link><description>Zelvomart product feed</description>${items.join('')}</channel></rss>`);
+});
 
 app.post('/api/orders', async (req,res) => {
+  if (!(await allowRequest(req, res, 'checkout-ip', 12, 15 * 60 * 1000))) return;
+  const rawPhone = String(req.body?.phone || '').replace(/\D/g, '').slice(-10);
+  if (rawPhone && !(await allowRequest(req, res, 'checkout-phone', 6, 15 * 60 * 1000, rawPhone))) return;
   const parsed = checkoutSchema.safeParse(req.body); if(!parsed.success) return res.status(400).json({error:'VALIDATION_ERROR',issues:parsed.error.flatten()});
   try { const order = await createOrder({ ...parsed.data, email: parsed.data.email || undefined, postcode: parsed.data.postcode || undefined, orderNotes: parsed.data.orderNotes || undefined, clientIp:req.ip, clientUserAgent:req.get('user-agent') || undefined }); await invalidateFrontendCache(['products']); res.status(201).json({ orderNumber: order.orderNumber, id: order.id, total: Number(order.total) }); }
   catch(e:any){ res.status(400).json({error:e?.message || 'ORDER_FAILED'}); }
 });
-app.post('/api/orders/track', async (req,res) => { const orderNumber=String(req.body.orderNumber||'').toUpperCase(); const phone=String(req.body.phone||'').replace(/\D/g,''); const order=await prisma.order.findFirst({where:{orderNumber, OR:[{phone:{endsWith:phone.slice(-10)}},{phone:{endsWith:phone.slice(-11)}}]},select:{orderNumber:true,status:true,postexTracking:true,createdAt:true,total:true}}); if(!order)return res.status(404).json({error:'NOT_FOUND'}); res.json({...order,total:Number(order.total),trackingUrl:order.postexTracking?postexTrackingUrl(order.postexTracking):null}); });
-app.get('/api/orders/confirmation/:orderNumber', async (req,res) => { const order=await prisma.order.findUnique({where:{orderNumber:routeParam(req, 'orderNumber').toUpperCase()},include:{items:true}}); if(!order)return res.status(404).json({error:'NOT_FOUND'}); const city=await prisma.city.findUnique({where:{name:order.city}}); res.json({...order,subtotal:Number(order.subtotal),bundleSaving:Number(order.bundleSaving),deliveryFee:Number(order.deliveryFee),codFee:Number(order.codFee),total:Number(order.total),items:order.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),deliveryEstimate:city?`${city.deliveryMinDays}-${city.deliveryMaxDays} days`:null}); });
+app.post('/api/orders/track', async (req,res) => { if (!(await allowRequest(req, res, 'order-track', 30, 15 * 60 * 1000))) return; const orderNumber=String(req.body.orderNumber||'').toUpperCase(); const phone=String(req.body.phone||'').replace(/\D/g,''); const order=await prisma.order.findFirst({where:{orderNumber, OR:[{phone:{endsWith:phone.slice(-10)}},{phone:{endsWith:phone.slice(-11)}}]},select:{orderNumber:true,status:true,postexTracking:true,createdAt:true,total:true}}); if(!order)return res.status(404).json({error:'NOT_FOUND'}); res.json({...order,total:Number(order.total),trackingUrl:order.postexTracking?postexTrackingUrl(order.postexTracking):null}); });
+app.get('/api/orders/confirmation/:orderNumber', async (req,res) => {
+  const order=await prisma.order.findUnique({where:{orderNumber:routeParam(req, 'orderNumber').toUpperCase()},include:{items:true}});
+  if(!order)return res.status(404).json({error:'NOT_FOUND'});
+  // The confirmation page contains private delivery details, so the public order number alone is not enough.
+  // The opaque database ID is returned only to the browser that placed the order and is kept in the success URL.
+  if(String(req.query.key||'')!==order.id)return res.status(404).json({error:'NOT_FOUND'});
+  const city=await prisma.city.findUnique({where:{name:order.city}});
+  res.json({...order,subtotal:Number(order.subtotal),bundleSaving:Number(order.bundleSaving),deliveryFee:Number(order.deliveryFee),codFee:Number(order.codFee),total:Number(order.total),items:order.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),deliveryEstimate:city?`${city.deliveryMinDays}-${city.deliveryMaxDays} days`:null});
+});
 app.post('/api/checkout/abandoned', async (req,res) => { const phone=String(req.body.phone||'').trim(); if(phone.length<10)return res.json({ok:true}); const existing=await prisma.abandonedCheckout.findFirst({where:{phone,convertedAt:null},orderBy:{createdAt:'desc'}}); const data={phone,fullName:req.body.fullName||null,email:req.body.email||null,city:req.body.city||null,address:req.body.address||null,cart:req.body.cart||[],source:req.body.source||null}; if(existing) await prisma.abandonedCheckout.update({where:{id:existing.id},data}); else await prisma.abandonedCheckout.create({data}); res.json({ok:true}); });
-app.post('/api/reviews', async (req,res) => { const productId=String(req.body.productId||''); const name=String(req.body.name||'').trim(); const body=String(req.body.body||'').trim(); const rating=Number(req.body.rating||0); if(!productId||!name||!body||rating<1||rating>5)return res.status(400).json({error:'VALIDATION_ERROR'}); const product=await prisma.product.findUnique({where:{id:productId},select:{id:true}}); if(!product)return res.status(404).json({error:'PRODUCT_NOT_FOUND'}); const review=await prisma.review.create({data:{productId,name,body,rating,status:'PENDING'}}); res.status(201).json({ok:true,id:review.id}); });
-app.post('/api/events', async (req,res) => { const eventName=String(req.body.eventName||''); const eventId=String(req.body.eventId||''); const sessionReplayId=String(req.body.replaySessionId||'').trim()||null; if(!eventName||!eventId)return res.status(400).json({error:'INVALID_EVENT'}); const row=await prisma.eventLog.create({data:{eventName,eventId,sessionReplayId,channel:'browser',sourceUrl:req.body.sourceUrl||null,payload:req.body||{}}}); if(sessionReplayId){ prisma.sessionReplay.updateMany({where:{id:sessionReplayId},data:{lastSeenAt:new Date(),lastUrl:String(req.body.sourceUrl||''),...(eventName==='PageView'?{pageViews:{increment:1}}:{})}}).catch(()=>{}); } if(req.body.server===true){ sendMetaServerEvent({eventName,eventId,sourceUrl:req.body.sourceUrl,userAgent:req.get('user-agent')||undefined,ip:req.ip,customData:req.body.customData}).catch(()=>{}); } res.json({ok:true,id:row.id}); });
+app.post('/api/reviews', async (req,res) => {
+  if (!(await allowRequest(req, res, 'review', 10, 24 * 60 * 60 * 1000))) return;
+  if(String(req.body.honeypot||''))return res.status(201).json({ok:true});
+  const productId=String(req.body.productId||''); const name=String(req.body.name||'').trim(); const body=String(req.body.body||'').trim(); const rating=Number(req.body.rating||0);
+  const orderNumber=String(req.body.orderNumber||'').trim().toUpperCase(); const phone=String(req.body.phone||'').replace(/\D/g,'').slice(-10);
+  if(!productId||!name||!body||rating<1||rating>5||!orderNumber||phone.length!==10)return res.status(400).json({error:'DELIVERED_ORDER_REQUIRED'});
+  const order=await prisma.order.findFirst({where:{orderNumber,status:'DELIVERED',phone:{endsWith:phone},items:{some:{productId}}},select:{id:true,customerId:true}});
+  if(!order)return res.status(403).json({error:'REVIEW_NOT_VERIFIED',message:'Use the delivered order number and phone used at checkout.'});
+  const existing=await prisma.review.findFirst({where:{productId,orderId:order.id}});
+  if(existing)return res.status(409).json({error:'REVIEW_ALREADY_SUBMITTED'});
+  const review=await prisma.review.create({data:{productId,orderId:order.id,customerId:order.customerId,name,body,rating,verified:true,status:'PENDING'}});
+  res.status(201).json({ok:true,id:review.id,verified:true});
+});
+app.post('/api/events', async (req,res) => {
+  const userAgent = req.get('user-agent') || undefined;
+  if (isLikelyBot(userAgent)) return res.json({ ok: true, ignored: 'bot' });
+  if (!(await allowRequest(req, res, 'events', 240, 60 * 1000))) return;
+
+  const eventName = String(req.body.eventName || '');
+  const eventId = String(req.body.eventId || '');
+  const sessionReplayId = String(req.body.replaySessionId || '').trim() || null;
+  if (!META_EVENT_NAMES.has(eventName) || !eventId || eventId.length > 160) return res.status(400).json({ error: 'INVALID_EVENT' });
+
+  const sourceUrl = String(req.body.sourceUrl || '').slice(0, 4000) || null;
+  const params = req.body.params && typeof req.body.params === 'object' && !Array.isArray(req.body.params) ? req.body.params as Record<string, unknown> : {};
+  const row = await prisma.eventLog.create({
+    data: { eventName, eventId, sessionReplayId, channel: 'browser', sourceUrl, payload: req.body || {} },
+  });
+
+  if (sessionReplayId) {
+    prisma.sessionReplay.updateMany({
+      where: { id: sessionReplayId },
+      data: { lastSeenAt: new Date(), lastUrl: sourceUrl || '', ...(eventName === 'PageView' ? { pageViews: { increment: 1 } } : {}) },
+    }).catch(() => {});
+  }
+
+  // Purchase is dispatched from the order transaction. All other storefront events
+  // are queued to CAPI with the SAME event ID as the browser Pixel event.
+  if (eventName !== 'Purchase') {
+    const job = await prisma.job.create({
+      data: {
+        name: 'meta-event',
+        payload: {
+          eventName,
+          eventId,
+          sourceUrl,
+          userAgent,
+          ip: requestIp(req),
+          fbp: req.body.fbp || null,
+          fbc: req.body.fbc || null,
+          customData: params,
+        } as Prisma.InputJsonValue,
+      },
+    });
+    dispatchJobRow(job.id).catch(() => undefined);
+  }
+
+  res.json({ ok: true, id: row.id });
+});
 
 // Privacy-safe customer session replay ingestion. Input values are masked in the browser before these events arrive.
+app.get('/api/experiments/active', async (req,res) => {
+  setNoStore(res);
+  const path = String(req.query.path || '/');
+  const now = new Date();
+  const rows = await prisma.experiment.findMany({
+    where: {
+      status: 'RUNNING',
+      OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+      AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 25,
+  });
+  const matches = rows.filter((row) => {
+    const pattern = String(row.pagePattern || '/');
+    if (pattern === path) return true;
+    if (pattern.endsWith('*')) return path.startsWith(pattern.slice(0, -1));
+    return false;
+  });
+  const row = matches[0];
+  if (!row) return res.json({ experiment: null });
+  res.json({ experiment: { id: row.id, name: row.name, pagePattern: row.pagePattern, variants: row.variants, trafficSplit: row.trafficSplit } });
+});
+
+app.post('/api/experiments/exposure', async (req,res) => {
+  if (!(await allowRequest(req, res, 'experiment-exposure', 120, 60 * 1000))) return;
+  const experimentId=String(req.body.experimentId||'').trim();
+  const variant=String(req.body.variant||'').trim();
+  const visitorId=String(req.body.visitorId||'').trim();
+  const path=String(req.body.path||'').slice(0,1000);
+  if(!experimentId||!variant||!visitorId)return res.status(400).json({error:'INVALID_EXPOSURE'});
+  const experiment=await prisma.experiment.findUnique({where:{id:experimentId},select:{id:true,name:true,status:true}});
+  if(!experiment||experiment.status!=='RUNNING')return res.status(404).json({error:'EXPERIMENT_NOT_RUNNING'});
+  const eventId=`${experimentId}:${visitorId}`;
+  const exists=await prisma.eventLog.findFirst({where:{eventName:'ExperimentExposure',eventId}});
+  if(!exists) await prisma.eventLog.create({data:{eventName:'ExperimentExposure',eventId,channel:'browser',sourceUrl:path||null,payload:{experimentId,experimentName:experiment.name,variant,visitorId,path} as Prisma.InputJsonValue}});
+  res.json({ok:true});
+});
+
 app.post('/api/session-replays/start', async (req,res) => {
   void maybeCleanupOldSessionReplays();
   const sessionId=String(req.body.sessionId||'').trim();
@@ -237,17 +460,89 @@ app.post('/api/session-replays/end', async (req,res) => {
   res.json({ok:true});
 });
 
-app.post('/api/auth/login', async (req,res) => { const email=String(req.body.email||'').trim().toLowerCase(); const password=String(req.body.password||''); const user=await prisma.user.findUnique({where:{email}}); if(!user?.active || !(await bcrypt.compare(password,user.passwordHash))) return res.status(401).json({error:'INVALID_CREDENTIALS'}); const identity={id:user.id,name:user.name,email:user.email,role:user.role}; res.json({token:signAdminToken(identity),user:identity}); });
+app.post('/api/auth/login', async (req,res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+  if (!(await allowRequest(req, res, 'admin-login', 8, 15 * 60 * 1000, email))) return;
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user?.active || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
+
+  const identity = { id: user.id, name: user.name, email: user.email, role: user.role };
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ token: signAdminToken(identity), user: identity });
+});
+
 app.get('/api/auth/me', requireAuth(), async (req:AuthedRequest,res) => res.json({user:req.admin}));
 
-app.get('/api/admin/dashboard', requireAuth('orders.read'), async (_req,res) => { const start=new Date();start.setHours(0,0,0,0); const yesterday=new Date(start.getTime()-86400000); const [todayOrders,yesterdayOrders,products,customers,failedJobs,events,recent]=await Promise.all([prisma.order.findMany({where:{createdAt:{gte:start}}}),prisma.order.findMany({where:{createdAt:{gte:yesterday,lt:start}}}),prisma.product.count({where:{status:'PUBLISHED'}}),prisma.customer.count(),prisma.job.count({where:{status:'FAILED'}}),prisma.eventLog.groupBy({by:['eventName'],where:{createdAt:{gte:start}},_count:{_all:true}}),prisma.order.findMany({orderBy:{createdAt:'desc'},take:8})]); res.json({ordersToday:todayOrders.length,revenueToday:todayOrders.reduce((s,o)=>s+Number(o.total),0),ordersYesterday:yesterdayOrders.length,revenueYesterday:yesterdayOrders.reduce((s,o)=>s+Number(o.total),0),delivered:todayOrders.filter(o=>o.status==='DELIVERED').length,failedJobs,products,customers,events:Object.fromEntries(events.map(e=>[e.eventName,e._count._all])),recent:recent.map(o=>({...o,total:Number(o.total)}))}); });
+app.get('/api/admin/dashboard', requireAuth('orders.read'), async (_req,res) => {
+  const start=new Date();start.setHours(0,0,0,0); const yesterday=new Date(start.getTime()-86400000);
+  const [todayOrders,yesterdayOrders,products,customers,failedJobs,events,recent,acceptedPurchases,teamEmails]=await Promise.all([
+    prisma.order.findMany({where:{createdAt:{gte:start}}}),
+    prisma.order.findMany({where:{createdAt:{gte:yesterday,lt:start}}}),
+    prisma.product.count({where:{status:'PUBLISHED'}}),
+    prisma.customer.count(),
+    prisma.job.count({where:{status:'FAILED'}}),
+    prisma.eventLog.groupBy({by:['eventName'],where:{createdAt:{gte:start}},_count:{_all:true}}),
+    prisma.order.findMany({orderBy:{createdAt:'desc'},take:8}),
+    prisma.eventLog.count({where:{createdAt:{gte:start},channel:'server',eventName:'Purchase',accepted:true}}),
+    prisma.job.count({where:{createdAt:{gte:start},name:'order-team-email',status:'SUCCEEDED'}}),
+  ]);
+  const realOrders=todayOrders.filter(o=>!o.test&&!o.staffCreated).length;
+  res.json({ordersToday:todayOrders.length,revenueToday:todayOrders.reduce((s,o)=>s+Number(o.total),0),ordersYesterday:yesterdayOrders.length,revenueYesterday:yesterdayOrders.reduce((s,o)=>s+Number(o.total),0),delivered:todayOrders.filter(o=>o.status==='DELIVERED').length,failedJobs,products,customers,acceptedPurchases,trackingCoverage:realOrders?Math.round(acceptedPurchases/realOrders*1000)/10:100,teamEmails,emailCoverage:todayOrders.length?Math.round(teamEmails/todayOrders.length*1000)/10:100,events:Object.fromEntries(events.map(e=>[e.eventName,e._count._all])),recent:recent.map(o=>({...o,total:Number(o.total)}))});
+});
 
 app.get('/api/admin/products', requireAuth('products.write'), async (req,res) => { const q=String(req.query.q||''); const status=String(req.query.status||''); const categoryId=String(req.query.categoryId||''); const where:Prisma.ProductWhereInput={...(q?{OR:[{title:{contains:q,mode:'insensitive'}},{sku:{contains:q,mode:'insensitive'}}]}:{}),...(status?{status:status as ProductStatus}:{}),...(categoryId?{categoryId}:{})}; const rows=await prisma.product.findMany({where,include:{category:true,variants:true,reviews:true},orderBy:{updatedAt:'desc'},take:1000}); res.json(rows.map(jsonProduct)); });
 app.get('/api/admin/products/:id', requireAuth('products.write'), async (req,res) => { const row=await prisma.product.findUnique({where:{id:routeParam(req, 'id')},include:{category:true,variants:true,reviews:true}}); if(!row)return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row)); });
-app.post('/api/admin/products', requireAuth('products.write'), async (req:AuthedRequest,res) => { const b=req.body; const row=await prisma.product.create({data:{title:String(b.title),slug:String(b.slug),sku:String(b.sku),categoryId:b.categoryId||null,price:new Prisma.Decimal(Number(b.price||0)),salePrice:b.salePrice?new Prisma.Decimal(Number(b.salePrice)):null,costPrice:b.costPrice?new Prisma.Decimal(Number(b.costPrice)):null,stock:Number(b.stock||0),status:(b.status||'DRAFT') as ProductStatus,featured:Boolean(b.featured),bundleEnabled:b.bundleEnabled!==false,bundleDiscountPercent:b.bundleDiscountPercent?new Prisma.Decimal(Number(b.bundleDiscountPercent)):null,shortDescription:b.shortDescription||null,descriptionHtml:b.descriptionHtml||null,images:Array.isArray(b.images)?b.images:[],videoUrl:b.videoUrl||null,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,canonicalUrl:b.canonicalUrl||null}}); await audit(req,'create','Product',row.id); await invalidateFrontendCache(['products','featured-products','categories','store',`product:${row.slug}`]); res.status(201).json(row); });
-app.patch('/api/admin/products/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => { const b=req.body; const data:any={}; for(const k of ['title','slug','sku','categoryId','stock','status','featured','bundleEnabled','shortDescription','descriptionHtml','images','videoUrl','seoTitle','seoDescription','canonicalUrl']) if(k in b) data[k]=b[k] === '' ? null : b[k]; for(const k of ['price','salePrice','costPrice','bundleDiscountPercent']) if(k in b) data[k]=b[k]===''||b[k]==null?null:new Prisma.Decimal(Number(b[k])); if('stock'in data)data.stock=Number(data.stock||0); const row=await prisma.product.update({where:{id:routeParam(req, 'id')},data}); await audit(req,'update','Product',row.id); await invalidateFrontendCache(['products','featured-products','categories','store',`product:${row.slug}`]); res.json(row); });
+app.post('/api/admin/products', requireAuth('products.write'), async (req:AuthedRequest,res) => {
+  try {
+    const b=req.body||{};
+    const price=Number(b.price||0);
+    const salePrice=b.salePrice==null||b.salePrice===''?null:Number(b.salePrice);
+    const bundleEnabled=b.bundleEnabled!==false;
+    const bundleDiscountPercent=b.bundleDiscountPercent==null||b.bundleDiscountPercent===''?null:Number(b.bundleDiscountPercent);
+    await assertProductPriceFloor({price,salePrice,bundleEnabled,bundleDiscountPercent});
+    const row=await prisma.product.create({data:{title:String(b.title),slug:String(b.slug),sku:String(b.sku),categoryId:b.categoryId||null,price:new Prisma.Decimal(price),salePrice:salePrice==null?null:new Prisma.Decimal(salePrice),costPrice:b.costPrice?new Prisma.Decimal(Number(b.costPrice)):null,stock:Number(b.stock||0),status:(b.status||'DRAFT') as ProductStatus,featured:Boolean(b.featured),bundleEnabled,bundleDiscountPercent:bundleDiscountPercent==null?null:new Prisma.Decimal(bundleDiscountPercent),shortDescription:b.shortDescription||null,descriptionHtml:b.descriptionHtml||null,images:Array.isArray(b.images)?b.images:[],videoUrl:b.videoUrl||null,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,canonicalUrl:b.canonicalUrl||null}});
+    await audit(req,'create','Product',row.id);
+    await invalidateFrontendCache(['products','featured-products','categories','store',`product:${row.slug}`]);
+    res.status(201).json(row);
+  } catch(error:any) {
+    res.status(400).json({error:error?.message||'PRODUCT_CREATE_FAILED'});
+  }
+});
+app.patch('/api/admin/products/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => {
+  try {
+    const id=routeParam(req,'id');
+    const current=await prisma.product.findUnique({where:{id}});
+    if(!current)return res.status(404).json({error:'NOT_FOUND'});
+    const b=req.body||{};
+    const nextPrice='price' in b?Number(b.price):Number(current.price);
+    const nextSale='salePrice' in b?(b.salePrice===''||b.salePrice==null?null:Number(b.salePrice)):(current.salePrice==null?null:Number(current.salePrice));
+    const nextBundle='bundleEnabled' in b?Boolean(b.bundleEnabled):current.bundleEnabled;
+    const nextDiscount='bundleDiscountPercent' in b?(b.bundleDiscountPercent===''||b.bundleDiscountPercent==null?null:Number(b.bundleDiscountPercent)):(current.bundleDiscountPercent==null?null:Number(current.bundleDiscountPercent));
+    await assertProductPriceFloor({price:nextPrice,salePrice:nextSale,bundleEnabled:nextBundle,bundleDiscountPercent:nextDiscount});
+    const data:any={};
+    for(const k of ['title','slug','sku','categoryId','stock','status','featured','bundleEnabled','shortDescription','descriptionHtml','images','videoUrl','seoTitle','seoDescription','canonicalUrl']) if(k in b) data[k]=b[k] === '' ? null : b[k];
+    for(const k of ['price','salePrice','costPrice','bundleDiscountPercent']) if(k in b) data[k]=b[k]===''||b[k]==null?null:new Prisma.Decimal(Number(b[k]));
+    if('stock'in data)data.stock=Number(data.stock||0);
+    const row=await prisma.product.update({where:{id},data});
+    await audit(req,'update','Product',row.id);
+    await invalidateFrontendCache(['products','featured-products','categories','store',`product:${row.slug}`]);
+    res.json(row);
+  } catch(error:any) {
+    res.status(400).json({error:error?.message||'PRODUCT_UPDATE_FAILED'});
+  }
+});
 app.delete('/api/admin/products/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => { await prisma.product.delete({where:{id:routeParam(req, 'id')}}); await audit(req,'delete','Product',routeParam(req, 'id')); await invalidateFrontendCache(['products','featured-products','categories','store']); res.json({ok:true}); });
-app.post('/api/admin/products/:id/variants', requireAuth('products.write'), async (req:AuthedRequest,res) => { const b=req.body; const row=await prisma.variant.create({data:{productId:routeParam(req, 'id'),sku:String(b.sku),name:String(b.name),attributes:b.attributes||{},priceOverride:b.priceOverride?new Prisma.Decimal(Number(b.priceOverride)):null,stock:Number(b.stock||0),imageUrl:b.imageUrl||null,active:b.active!==false}}); await audit(req,'create','Variant',row.id); await invalidateFrontendCache(['products']); res.status(201).json(row); });
+app.post('/api/admin/products/:id/variants', requireAuth('products.write'), async (req:AuthedRequest,res) => {
+  try {
+    const b=req.body||{};
+    const product=await prisma.product.findUnique({where:{id:routeParam(req,'id')}});
+    if(!product)return res.status(404).json({error:'NOT_FOUND'});
+    if(b.priceOverride!==''&&b.priceOverride!=null) await assertProductPriceFloor({price:Number(b.priceOverride),salePrice:null,bundleEnabled:product.bundleEnabled,bundleDiscountPercent:product.bundleDiscountPercent==null?null:Number(product.bundleDiscountPercent)});
+    const row=await prisma.variant.create({data:{productId:product.id,sku:String(b.sku),name:String(b.name),attributes:b.attributes||{},priceOverride:b.priceOverride?new Prisma.Decimal(Number(b.priceOverride)):null,stock:Number(b.stock||0),imageUrl:b.imageUrl||null,active:b.active!==false}});
+    await audit(req,'create','Variant',row.id);await invalidateFrontendCache(['products']);res.status(201).json(row);
+  } catch(error:any) { res.status(400).json({error:error?.message||'VARIANT_CREATE_FAILED'}); }
+});
 app.delete('/api/admin/variants/:id', requireAuth('products.write'), async (req:AuthedRequest,res)=>{await prisma.variant.delete({where:{id:routeParam(req, 'id')}});await audit(req,'delete','Variant',routeParam(req, 'id'));await invalidateFrontendCache(['products']);res.json({ok:true});});
 
 app.get('/api/admin/categories', requireAuth('products.write'), async (_req,res) => { const rows=await prisma.category.findMany({orderBy:{sortOrder:'asc'},include:{_count:{select:{products:true}}}}); res.json(rows.map(r=>({...r,count:r._count.products}))); });
@@ -255,10 +550,66 @@ app.post('/api/admin/categories', requireAuth('products.write'), async (req:Auth
 app.patch('/api/admin/categories/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => { const b=req.body; const row=await prisma.category.update({where:{id:routeParam(req, 'id')},data:{name:b.name,slug:b.slug,sortOrder:b.sortOrder==null?undefined:Number(b.sortOrder),imageUrl:b.imageUrl===undefined?undefined:(b.imageUrl||null),description:b.description===undefined?undefined:(b.description||null),seoTitle:b.seoTitle===undefined?undefined:(b.seoTitle||null),seoDescription:b.seoDescription===undefined?undefined:(b.seoDescription||null)}});await audit(req,'update','Category',row.id);await invalidateFrontendCache(['categories','products','store']);res.json(row);});
 app.delete('/api/admin/categories/:id', requireAuth('products.write'), async (req:AuthedRequest,res)=>{await prisma.category.delete({where:{id:routeParam(req, 'id')}});await audit(req,'delete','Category',routeParam(req, 'id'));await invalidateFrontendCache(['categories','products','store']);res.json({ok:true});});
 
-app.get('/api/admin/orders', requireAuth('orders.read'), async (req,res)=>{const q=String(req.query.q||'');const status=String(req.query.status||'');const city=String(req.query.city||'');const source=String(req.query.source||'');const where:Prisma.OrderWhereInput={...(status?{status:status as OrderStatus}:{}),...(city?{city:{contains:city,mode:'insensitive'}}:{}),...(source?{source:{contains:source,mode:'insensitive'}}:{}),...(q?{OR:[{orderNumber:{contains:q,mode:'insensitive'}},{fullName:{contains:q,mode:'insensitive'}},{phone:{contains:q}}]}:{})};const rows=await prisma.order.findMany({where,orderBy:{createdAt:'desc'},take:1000});res.json(rows.map(r=>({...r,total:Number(r.total)})));});
+app.get('/api/admin/orders', requireAuth('orders.read'), async (req,res)=>{
+  const q=String(req.query.q||'');const status=String(req.query.status||'');const city=String(req.query.city||'');const source=String(req.query.source||'');
+  const fromRaw=String(req.query.from||'');const toRaw=String(req.query.to||'');
+  const from=fromRaw?new Date(`${fromRaw}T00:00:00`):null;const to=toRaw?new Date(`${toRaw}T23:59:59.999`):null;
+  const createdAt=(from&&!Number.isNaN(from.getTime()))||(to&&!Number.isNaN(to.getTime()))?{...(from&&!Number.isNaN(from.getTime())?{gte:from}:{}),...(to&&!Number.isNaN(to.getTime())?{lte:to}:{})}:undefined;
+  const where:Prisma.OrderWhereInput={...(status?{status:status as OrderStatus}:{}),...(city?{city:{contains:city,mode:'insensitive'}}:{}),...(source?{source:{contains:source,mode:'insensitive'}}:{}),...(createdAt?{createdAt}:{}),...(q?{OR:[{orderNumber:{contains:q,mode:'insensitive'}},{fullName:{contains:q,mode:'insensitive'}},{phone:{contains:q}}]}:{})};
+  const rows=await prisma.order.findMany({where,orderBy:{createdAt:'desc'},take:1000});res.json(rows.map(r=>({...r,total:Number(r.total)})));
+});
+app.patch('/api/admin/orders/bulk-status', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{
+  const ids=Array.isArray(req.body.ids)?req.body.ids.map(String).slice(0,100):[];const next=String(req.body.status) as OrderStatus;
+  if(!ids.length||!Object.values(OrderStatus).includes(next))return res.status(400).json({error:'INVALID_BULK_UPDATE'});
+  let updated=0;
+  for(const id of ids){
+    const existing=await prisma.order.findUnique({where:{id}});if(!existing||existing.status===next)continue;
+    if(!['CANCELLED','RETURNED'].includes(existing.status)&&['CANCELLED','RETURNED'].includes(next))await restoreOrderStock(id);
+    await prisma.$transaction([
+      prisma.order.update({where:{id},data:{status:next}}),
+      prisma.orderStatusHistory.create({data:{orderId:id,from:existing.status,to:next,userId:req.admin?.id,note:'Bulk status update'}}),
+      ...(next==='RETURNED'&&existing.customerId?[prisma.customer.update({where:{id:existing.customerId},data:{refusalCount:{increment:1}}})]:[]),
+    ]);
+    if(['CONFIRMED','BOOKED','DELIVERED'].includes(next)){const job=await prisma.job.create({data:{name:'customer-status-email',orderId:id,payload:{orderId:id,status:next}}});dispatchJobRow(job.id).catch(()=>undefined);}
+    updated+=1;
+  }
+  await audit(req,'bulk_status_change','Order',undefined,{ids,status:next,updated});if(['CANCELLED','RETURNED'].includes(next))await invalidateFrontendCache(['products']);res.json({ok:true,updated});
+});
 app.get('/api/admin/orders/:id', requireAuth('orders.read'), async (req,res)=>{const row=await prisma.order.findUnique({where:{id:routeParam(req, 'id')},include:{items:true,statusHistory:{include:{user:true},orderBy:{createdAt:'desc'}},customer:true}});if(!row)return res.status(404).json({error:'NOT_FOUND'});res.json({...row,total:Number(row.total),subtotal:Number(row.subtotal),bundleSaving:Number(row.bundleSaving),deliveryFee:Number(row.deliveryFee),codFee:Number(row.codFee),items:row.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),trackingUrl:row.postexTracking?postexTrackingUrl(row.postexTracking):null});});
-app.patch('/api/admin/orders/:id/status', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{const next=String(req.body.status) as OrderStatus;if(!Object.values(OrderStatus).includes(next))return res.status(400).json({error:'INVALID_STATUS'});const existing=await prisma.order.findUnique({where:{id:routeParam(req, 'id')}});if(!existing)return res.status(404).json({error:'NOT_FOUND'});if(!['CANCELLED','RETURNED'].includes(existing.status)&&['CANCELLED','RETURNED'].includes(next))await restoreOrderStock(routeParam(req, 'id'));await prisma.$transaction([prisma.order.update({where:{id:routeParam(req, 'id')},data:{status:next}}),prisma.orderStatusHistory.create({data:{orderId:routeParam(req, 'id'),from:existing.status,to:next,userId:req.admin?.id,note:req.body.note||null}})]);await audit(req,'status_change','Order',routeParam(req, 'id'),{from:existing.status,to:next});if(['CANCELLED','RETURNED'].includes(next))await invalidateFrontendCache(['products']);res.json({ok:true});});
-app.patch('/api/admin/orders/:id/tracking', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{const tracking=String(req.body.tracking||'').trim();const existing=await prisma.order.findUnique({where:{id:routeParam(req, 'id')}});if(!existing)return res.status(404).json({error:'NOT_FOUND'});await prisma.order.update({where:{id:routeParam(req, 'id')},data:{postexTracking:tracking||null,status:tracking?'BOOKED':existing.status}});if(tracking&&existing.status!=='BOOKED')await prisma.orderStatusHistory.create({data:{orderId:routeParam(req, 'id'),from:existing.status,to:'BOOKED',userId:req.admin?.id,note:`PostEx tracking ${tracking}`}});await audit(req,'tracking_update','Order',routeParam(req, 'id'),{tracking});res.json({ok:true});});
+app.patch('/api/admin/orders/:id/status', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{
+  const id=routeParam(req,'id');
+  const next=String(req.body.status) as OrderStatus;
+  if(!Object.values(OrderStatus).includes(next)) return res.status(400).json({error:'INVALID_STATUS'});
+  const existing=await prisma.order.findUnique({where:{id}});
+  if(!existing) return res.status(404).json({error:'NOT_FOUND'});
+  if(!['CANCELLED','RETURNED'].includes(existing.status)&&['CANCELLED','RETURNED'].includes(next)) await restoreOrderStock(id);
+  await prisma.$transaction([
+    prisma.order.update({where:{id},data:{status:next}}),
+    prisma.orderStatusHistory.create({data:{orderId:id,from:existing.status,to:next,userId:req.admin?.id,note:req.body.note||null}}),
+    ...(next==='RETURNED'&&existing.customerId&&existing.status!=='RETURNED'?[prisma.customer.update({where:{id:existing.customerId},data:{refusalCount:{increment:1}}})]:[]),
+  ]);
+  await audit(req,'status_change','Order',id,{from:existing.status,to:next});
+  if(['CANCELLED','RETURNED'].includes(next)) await invalidateFrontendCache(['products']);
+  if(existing.status!==next && ['CONFIRMED','BOOKED','DELIVERED'].includes(next)) {
+    const job=await prisma.job.create({data:{name:'customer-status-email',orderId:id,payload:{orderId:id,status:next}}});
+    dispatchJobRow(job.id).catch(()=>undefined);
+  }
+  res.json({ok:true});
+});
+app.patch('/api/admin/orders/:id/tracking', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{
+  const id=routeParam(req,'id');
+  const tracking=String(req.body.tracking||'').trim();
+  const existing=await prisma.order.findUnique({where:{id}});
+  if(!existing)return res.status(404).json({error:'NOT_FOUND'});
+  await prisma.order.update({where:{id},data:{postexTracking:tracking||null,status:tracking?'BOOKED':existing.status}});
+  if(tracking&&existing.status!=='BOOKED') {
+    await prisma.orderStatusHistory.create({data:{orderId:id,from:existing.status,to:'BOOKED',userId:req.admin?.id,note:`PostEx tracking ${tracking}`}});
+    const job=await prisma.job.create({data:{name:'customer-status-email',orderId:id,payload:{orderId:id,status:'BOOKED'}}});
+    dispatchJobRow(job.id).catch(()=>undefined);
+  }
+  await audit(req,'tracking_update','Order',id,{tracking});
+  res.json({ok:true,trackingUrl:tracking?postexTrackingUrl(tracking):null});
+});
 
 app.get('/api/admin/customers', requireAuth('customers.read'), async (_req,res)=>{const rows=await prisma.customer.findMany({include:{orders:{select:{total:true,status:true}}},orderBy:{updatedAt:'desc'},take:1000});res.json(rows.map(c=>({...c,totalSpent:c.orders.reduce((s,o)=>s+Number(o.total),0),orderCount:c.orders.length})));});
 app.patch('/api/admin/customers/:id/blocklist', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{const current=await prisma.customer.findUnique({where:{id:routeParam(req, 'id')}});if(!current)return res.status(404).json({error:'NOT_FOUND'});const row=await prisma.customer.update({where:{id:routeParam(req, 'id')},data:{blocklisted:!current.blocklisted}});await audit(req,'toggle_blocklist','Customer',row.id,{blocklisted:row.blocklisted});res.json(row);});
@@ -273,7 +624,7 @@ app.put('/api/admin/cities', requireAuth('settings.write'), async (req:AuthedReq
 
 app.get('/api/admin/users', requireAuth('users.write'), async (_req,res)=>res.json(await prisma.user.findMany({select:{id:true,name:true,email:true,role:true,active:true,createdAt:true,updatedAt:true},orderBy:{createdAt:'desc'}})));
 app.post('/api/admin/users', requireAuth('users.write'), async (req:AuthedRequest,res)=>{const password=String(req.body.password||'');if(password.length<8)return res.status(400).json({error:'PASSWORD_TOO_SHORT'});const row=await prisma.user.create({data:{name:String(req.body.name),email:String(req.body.email).toLowerCase(),passwordHash:await bcrypt.hash(password,12),role:(req.body.role||'ORDER_AGENT') as Role,active:req.body.active!==false}});await audit(req,'create','User',row.id);res.status(201).json({id:row.id,name:row.name,email:row.email,role:row.role,active:row.active});});
-app.patch('/api/admin/users/:id', requireAuth('users.write'), async (req:AuthedRequest,res)=>{const data:any={};for(const k of ['name','email','role','active'])if(k in req.body)data[k]=req.body[k];if(req.body.password)data.passwordHash=await bcrypt.hash(String(req.body.password),12);const row=await prisma.user.update({where:{id:routeParam(req, 'id')},data});await audit(req,'update','User',row.id);res.json({id:row.id,name:row.name,email:row.email,role:row.role,active:row.active});});
+app.patch('/api/admin/users/:id', requireAuth('users.write'), async (req:AuthedRequest,res)=>{const data:any={};for(const k of ['name','email','role','active'])if(k in req.body)data[k]=req.body[k];if(req.body.password){const nextPassword=String(req.body.password);if(nextPassword.length<8)return res.status(400).json({error:'PASSWORD_TOO_SHORT'});data.passwordHash=await bcrypt.hash(nextPassword,12);}const row=await prisma.user.update({where:{id:routeParam(req, 'id')},data});await audit(req,'update','User',row.id);res.json({id:row.id,name:row.name,email:row.email,role:row.role,active:row.active});});
 
 app.get('/api/admin/reviews', requireAuth('content.write'), async (_req,res)=>res.json(await prisma.review.findMany({include:{product:{select:{title:true,sku:true}}},orderBy:{createdAt:'desc'}})));
 app.patch('/api/admin/reviews/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const status=String(req.body.status) as ReviewStatus;if(!Object.values(ReviewStatus).includes(status))return res.status(400).json({error:'INVALID_STATUS'});const row=await prisma.review.update({where:{id:routeParam(req, 'id')},data:{status}});await audit(req,'review_status','Review',row.id,{status});await invalidateFrontendCache(['products']);res.json(row);});
@@ -321,11 +672,74 @@ app.delete('/api/admin/session-replays/:id', requireAuth('reports.read'), async 
   res.json({ok:true});
 });
 
-app.get('/api/admin/experiments', requireAuth('reports.read'), async (_req,res)=>res.json(await prisma.experiment.findMany({orderBy:{createdAt:'desc'}})));
-app.post('/api/admin/experiments', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const row=await prisma.experiment.create({data:{name:String(req.body.name),pagePattern:String(req.body.pagePattern||'/'),variants:req.body.variants||{},trafficSplit:req.body.trafficSplit||{},status:(req.body.status||'DRAFT') as ExperimentStatus}});await audit(req,'create','Experiment',row.id);res.status(201).json(row);});
-app.patch('/api/admin/experiments/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const row=await prisma.experiment.update({where:{id:routeParam(req, 'id')},data:req.body});await audit(req,'update','Experiment',row.id);res.json(row);});
+app.get('/api/admin/experiments', requireAuth('reports.read'), async (_req,res)=>{
+  const [rows,orders,exposures]=await Promise.all([
+    prisma.experiment.findMany({orderBy:{createdAt:'desc'}}),
+    prisma.order.findMany({where:{experiments:{not:Prisma.DbNull}},select:{experiments:true},take:5000}),
+    prisma.eventLog.findMany({where:{eventName:'ExperimentExposure'},select:{payload:true,eventId:true},take:20000}),
+  ]);
+  const enriched=rows.map(row=>{
+    const variants=Array.isArray(row.variants)?row.variants.map(String):Object.keys((row.variants||{}) as any);
+    const report:Record<string,{visitors:number;orders:number;orderRate:number}>={};
+    for(const variant of variants) report[variant]={visitors:0,orders:0,orderRate:0};
+    for(const exposure of exposures){
+      const payload=(exposure.payload&&typeof exposure.payload==='object'&&!Array.isArray(exposure.payload)?exposure.payload:{}) as Record<string,unknown>;
+      if(String(payload.experimentId||'')!==row.id)continue;
+      const variant=String(payload.variant||'');
+      if(!variant)continue;
+      if(!report[variant])report[variant]={visitors:0,orders:0,orderRate:0};
+      report[variant].visitors+=1;
+    }
+    for(const order of orders){
+      const map=(order.experiments&&typeof order.experiments==='object'&&!Array.isArray(order.experiments)?order.experiments:{}) as Record<string,unknown>;
+      const variant=String(map[row.id]||map[row.name]||'');
+      if(!variant)continue;
+      if(!report[variant])report[variant]={visitors:0,orders:0,orderRate:0};
+      report[variant].orders+=1;
+    }
+    for(const variant of Object.keys(report)) report[variant].orderRate=report[variant].visitors?Math.round(report[variant].orders/report[variant].visitors*1000)/10:0;
+    return {...row,report};
+  });
+  res.json(enriched);
+});
+app.post('/api/admin/experiments', requireAuth('content.write'), async (req:AuthedRequest,res)=>{
+  const pagePattern=String(req.body.pagePattern||'/').trim()||'/';
+  const row=await prisma.experiment.create({data:{name:String(req.body.name),pagePattern,variants:req.body.variants||['A','B'],trafficSplit:req.body.trafficSplit||{A:50,B:50},status:(req.body.status||'DRAFT') as ExperimentStatus}});
+  await audit(req,'create','Experiment',row.id);res.status(201).json(row);
+});
+app.patch('/api/admin/experiments/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{
+  const id=routeParam(req,'id');
+  const existing=await prisma.experiment.findUnique({where:{id}});if(!existing)return res.status(404).json({error:'NOT_FOUND'});
+  const nextStatus=req.body.status as ExperimentStatus|undefined;
+  if(nextStatus==='RUNNING') await prisma.experiment.updateMany({where:{id:{not:id},pagePattern:existing.pagePattern,status:'RUNNING'},data:{status:'PAUSED'}});
+  const row=await prisma.experiment.update({where:{id},data:req.body});await audit(req,'update','Experiment',row.id);res.json(row);
+});
 app.get('/api/admin/jobs', requireAuth('reports.read'), async (_req,res)=>res.json(await prisma.job.findMany({orderBy:{createdAt:'desc'},take:500})));
-app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{const since=new Date(Date.now()-7*86400000);const events=await prisma.eventLog.findMany({where:{createdAt:{gte:since}},orderBy:{createdAt:'desc'},take:1000});const grouped=await prisma.eventLog.groupBy({by:['eventName'],where:{createdAt:{gte:since}},_count:{_all:true}});res.json({counts:Object.fromEntries(grouped.map(e=>[e.eventName,e._count._all])),errors:events.filter(e=>e.error||e.accepted===false).slice(0,100),lastSuccess:events.find(e=>e.accepted===true)?.createdAt||null});});
+app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
+  const since=new Date(Date.now()-7*86400000);
+  const [events,grouped,orders,settings]=await Promise.all([
+    prisma.eventLog.findMany({where:{createdAt:{gte:since}},orderBy:{createdAt:'desc'},take:3000}),
+    prisma.eventLog.groupBy({by:['eventName','channel'],where:{createdAt:{gte:since}},_count:{_all:true}}),
+    prisma.order.count({where:{createdAt:{gte:since},test:false,staffCreated:false}}),
+    getSettings(['tracking.metaPixelId','tracking.clarityId']),
+  ]);
+  const browser:Record<string,number>={};const server:Record<string,number>={};
+  for(const row of grouped){const target=row.channel==='server'?server:browser;target[row.eventName]=row._count._all;}
+  const browserIds=new Set(events.filter(e=>e.channel==='browser').map(e=>`${e.eventName}:${e.eventId}`));
+  const serverIds=new Set(events.filter(e=>e.channel==='server'&&e.accepted===true).map(e=>`${e.eventName}:${e.eventId}`));
+  const pairEligibleIds=[...browserIds].filter(id=>!id.startsWith('Purchase:'));
+  const paired=pairEligibleIds.filter(id=>serverIds.has(id)).length;
+  const pairEligible=pairEligibleIds.length;
+  const acceptedPurchases=events.filter(e=>e.channel==='server'&&e.eventName==='Purchase'&&e.accepted===true).length;
+  res.json({
+    browser,server,orders,acceptedPurchases,
+    purchaseCoverage:orders?Math.round((acceptedPurchases/orders)*1000)/10:100,
+    paired,pairEligible,dedupeCoverage:pairEligible?Math.round((paired/pairEligible)*1000)/10:100,
+    lastSuccess:events.find(e=>e.channel==='server'&&e.accepted===true)?.createdAt||null,
+    errors:events.filter(e=>e.channel==='server'&&(e.error||e.accepted===false)).slice(0,100),
+    config:{pixelId:String(settings['tracking.metaPixelId']||''),clarityId:String(settings['tracking.clarityId']||''),capiConfigured:Boolean(process.env.META_CAPI_TOKEN),testEventCodeConfigured:Boolean(process.env.META_TEST_EVENT_CODE),appEnv:process.env.APP_ENV||'development'},
+  });
+});
 app.get('/api/admin/cro', requireAuth('reports.read'), async (_req,res)=>{
   const since=new Date(Date.now()-30*86400000);
   const [orders,eventGroups,abandonedRows]=await Promise.all([
@@ -366,7 +780,20 @@ app.get('/api/admin/cro', requireAuth('reports.read'), async (_req,res)=>{
   res.json({periodDays:30,views,addToCart,checkout,orders:orderCount,revenue,viewToCart,cartToCheckout,checkoutToOrder,overallConversion,abandoned,recovered,recoveryRate,averageOrderValue:orderCount?revenue/orderCount:0,sources,opportunities});
 });
 
-app.get('/api/admin/reports', requireAuth('reports.read'), async (_req,res)=>{const since=new Date(Date.now()-30*86400000);const [orders,events]=await Promise.all([prisma.order.findMany({where:{createdAt:{gte:since}},include:{items:true}}),prisma.eventLog.groupBy({by:['eventName'],where:{createdAt:{gte:since},channel:'browser'},_count:{_all:true}})]);const products=new Map<string,{title:string,qty:number,revenue:number}>();for(const o of orders)for(const i of o.items){const row=products.get(i.sku)||{title:i.title,qty:0,revenue:0};row.qty+=i.quantity;row.revenue+=Number(i.lineTotal);products.set(i.sku,row);}res.json({orders:orders.length,revenue:orders.reduce((s,o)=>s+Number(o.total),0),events:Object.fromEntries(events.map(e=>[e.eventName,e._count._all])),products:[...products.entries()].map(([sku,v])=>({sku,...v})).sort((a,b)=>b.revenue-a.revenue)});});
+app.get('/api/admin/reports', requireAuth('reports.read'), async (_req,res)=>{
+  const since=new Date(Date.now()-30*86400000);
+  const [orders,eventGroups,eventRows]=await Promise.all([
+    prisma.order.findMany({where:{createdAt:{gte:since}},include:{items:true}}),
+    prisma.eventLog.groupBy({by:['eventName'],where:{createdAt:{gte:since},channel:'browser'},_count:{_all:true}}),
+    prisma.eventLog.findMany({where:{createdAt:{gte:since},channel:'browser',eventName:{in:['ViewContent','AddToCart']}},select:{eventName:true,payload:true},take:10000}),
+  ]);
+  const products=new Map<string,{title:string,qty:number,revenue:number,views:number,carts:number,orders:number}>();
+  const ensure=(sku:string,title=sku)=>{const row=products.get(sku)||{title,qty:0,revenue:0,views:0,carts:0,orders:0};products.set(sku,row);return row;};
+  for(const o of orders){const ordered=new Set<string>();for(const i of o.items){const row=ensure(i.sku,i.title);row.qty+=i.quantity;row.revenue+=Number(i.lineTotal);ordered.add(i.sku);}for(const sku of ordered)ensure(sku).orders+=1;}
+  for(const e of eventRows){const payload=(e.payload&&typeof e.payload==='object'&&!Array.isArray(e.payload)?e.payload:{}) as any;const params=(payload.params&&typeof payload.params==='object'?payload.params:{});const ids=Array.isArray(params.content_ids)?params.content_ids.map(String):[];for(const sku of new Set(ids)){const row=ensure(sku);if(e.eventName==='ViewContent')row.views+=1;if(e.eventName==='AddToCart')row.carts+=1;}}
+  const productRows=[...products.entries()].map(([sku,v])=>({sku,...v,viewToCart:v.views?Math.round(v.carts/v.views*1000)/10:0,orderRate:v.views?Math.round(v.orders/v.views*1000)/10:0})).sort((a,b)=>b.revenue-a.revenue);
+  res.json({orders:orders.length,revenue:orders.reduce((s,o)=>s+Number(o.total),0),events:Object.fromEntries(eventGroups.map(e=>[e.eventName,e._count._all])),products:productRows});
+});
 app.get('/api/admin/marketing', requireAuth('reports.read'), async (_req,res)=>{
   const since=new Date(Date.now()-30*86400000);
   const orders=await prisma.order.findMany({where:{createdAt:{gte:since}},orderBy:{createdAt:'desc'},take:1000,select:{id:true,orderNumber:true,fullName:true,total:true,source:true,firstTouch:true,lastTouch:true,createdAt:true}});
@@ -409,7 +836,7 @@ app.get('/api/admin/abandoned', requireAuth('customers.read'), async (_req,res)=
 app.post('/api/admin/products/import', requireAuth('products.write'), async (req:AuthedRequest,res)=>{
   const rows=Array.isArray(req.body?.rows)?req.body.rows:[]; let created=0,updated=0,skipped=0; const errors:string[]=[];
   const categories=await prisma.category.findMany(); const byName=new Map(categories.map(c=>[c.name.toLowerCase(),c])); const bySlug=new Map(categories.map(c=>[c.slug.toLowerCase(),c]));
-  for(let i=0;i<rows.length;i++){const r=rows[i]||{};try{const sku=String(r.sku||'').trim();const title=String(r.title||r.name||'').trim();if(!sku||!title){skipped++;continue;} const slug=String(r.slug||title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')).trim(); const catRaw=String(r.category||r.categoryName||'').trim().toLowerCase(); const cat=byName.get(catRaw)||bySlug.get(catRaw); const images=String(r.imageUrls||r.images||'').split(/[|;]/).map((x:string)=>x.trim()).filter(Boolean); const data:any={title,slug,categoryId:cat?.id||null,price:new Prisma.Decimal(Number(r.price||0)),salePrice:r.salePrice?new Prisma.Decimal(Number(r.salePrice)):null,costPrice:r.costPrice?new Prisma.Decimal(Number(r.costPrice)):null,stock:Number(r.stock||0),status:(String(r.status||'DRAFT').toUpperCase() as ProductStatus),featured:['1','true','yes'].includes(String(r.featured||'').toLowerCase()),shortDescription:r.shortDescription||null,descriptionHtml:r.descriptionHtml||null,images,videoUrl:r.videoUrl||null,seoTitle:r.seoTitle||null,seoDescription:r.seoDescription||null}; const existing=await prisma.product.findUnique({where:{sku}}); if(existing){await prisma.product.update({where:{id:existing.id},data});updated++;}else{await prisma.product.create({data:{...data,sku}});created++;}}catch(e:any){errors.push(`Row ${i+2}: ${e?.message||'failed'}`);skipped++;}}
+  for(let i=0;i<rows.length;i++){const r=rows[i]||{};try{const sku=String(r.sku||'').trim();const title=String(r.title||r.name||'').trim();if(!sku||!title){skipped++;continue;} const slug=String(r.slug||title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')).trim(); const catRaw=String(r.category||r.categoryName||'').trim().toLowerCase(); const cat=byName.get(catRaw)||bySlug.get(catRaw); const images=String(r.imageUrls||r.images||'').split(/[|;]/).map((x:string)=>x.trim()).filter(Boolean); const importPrice=Number(r.price||0); const importSale=r.salePrice?Number(r.salePrice):null; await assertProductPriceFloor({price:importPrice,salePrice:importSale,bundleEnabled:true,bundleDiscountPercent:null}); const data:any={title,slug,categoryId:cat?.id||null,price:new Prisma.Decimal(importPrice),salePrice:importSale==null?null:new Prisma.Decimal(importSale),costPrice:r.costPrice?new Prisma.Decimal(Number(r.costPrice)):null,stock:Number(r.stock||0),status:(String(r.status||'DRAFT').toUpperCase() as ProductStatus),featured:['1','true','yes'].includes(String(r.featured||'').toLowerCase()),shortDescription:r.shortDescription||null,descriptionHtml:r.descriptionHtml||null,images,videoUrl:r.videoUrl||null,seoTitle:r.seoTitle||null,seoDescription:r.seoDescription||null}; const existing=await prisma.product.findUnique({where:{sku}}); if(existing){await prisma.product.update({where:{id:existing.id},data});updated++;}else{await prisma.product.create({data:{...data,sku}});created++;}}catch(e:any){errors.push(`Row ${i+2}: ${e?.message||'failed'}`);skipped++;}}
   await audit(req,'csv_import','Product',undefined,{created,updated,skipped,errors:errors.slice(0,25)}); await invalidateFrontendCache(['products','featured-products','categories','store']); res.json({created,updated,skipped,errors});
 });
 app.get('/api/admin/products/template.csv', requireAuth('products.write'), (_req,res)=>{res.type('text/csv').send('title,slug,sku,category,price,salePrice,costPrice,stock,status,featured,shortDescription,descriptionHtml,imageUrls,videoUrl,seoTitle,seoDescription\n');});

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useMemo, useRef, useState } from "react";
-import { API_BASE, adminToken, clientApi } from "@/lib/client-api";
+import { adminFetch, clientApi } from "@/lib/client-api";
 
 type ProductLike = {
   id: string;
@@ -56,7 +56,7 @@ function toObjects(rows: string[][]) {
 }
 
 async function download(path: string, name: string) {
-  const response = await fetch(`${API_BASE}${path}`, { headers: { authorization: `Bearer ${adminToken()}` } });
+  const response = await adminFetch(path);
   if (!response.ok) throw new Error("Download failed");
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);

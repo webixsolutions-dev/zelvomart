@@ -1,38 +1,47 @@
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
 
-export function adminToken() {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('zelvomart_admin_token') || '';
+const ADMIN_PROXY_PREFIX = '/api/admin-proxy';
+
+export function adminProxyUrl(path: string) {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${ADMIN_PROXY_PREFIX}${normalized}`;
 }
-export function setAdminSession(token: string, user: unknown) {
-  localStorage.setItem('zelvomart_admin_token', token);
-  localStorage.setItem('zelvomart_admin_user', JSON.stringify(user));
-}
-export function adminUser<T = unknown>(): T | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('zelvomart_admin_user');
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-export function setAdminUser(user: unknown) {
+
+export async function logoutAdminSession() {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('zelvomart_admin_user', JSON.stringify(user));
-}
-export function clearAdminSession() {
   localStorage.removeItem('zelvomart_admin_token');
   localStorage.removeItem('zelvomart_admin_user');
+  try {
+    await fetch('/api/admin-session/logout', { method: 'POST', credentials: 'same-origin', cache: 'no-store' });
+  } catch {}
 }
+
+async function handleUnauthorized(response: Response) {
+  if (response.status !== 401 || typeof window === 'undefined') return;
+  await logoutAdminSession();
+  if (!window.location.pathname.startsWith('/admin/login')) {
+    window.location.replace('/admin/login');
+  }
+}
+
+export async function adminFetch(path: string, init: RequestInit = {}) {
+  const response = await fetch(adminProxyUrl(path), {
+    ...init,
+    credentials: 'same-origin',
+    cache: 'no-store',
+  });
+  await handleUnauthorized(response);
+  return response;
+}
+
 export async function clientApi<T>(path: string, init: RequestInit = {}, auth = false): Promise<T> {
   const headers = new Headers(init.headers || {});
   if (!(init.body instanceof FormData) && !headers.has('content-type')) headers.set('content-type', 'application/json');
-  if (auth) {
-    const token = adminToken();
-    if (token) headers.set('authorization', `Bearer ${token}`);
-  }
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
+
+  const response = auth
+    ? await adminFetch(path, { ...init, headers })
+    : await fetch(`${API_BASE}${path}`, { ...init, headers });
+
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error(body?.error || body?.message || `API_${response.status}`);
   return body as T;

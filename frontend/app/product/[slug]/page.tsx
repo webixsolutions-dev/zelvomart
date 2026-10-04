@@ -55,7 +55,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const info = (settings["store.info"] || { whatsapp: "923002026711" }) as { whatsapp?: string };
   const whatsapp = String(info.whatsapp || "923002026711").replace(/[^0-9]/g, "");
   const categoryHref = categorySlug ? `/product-category/${categorySlug}/` : "/shop";
-  const categoryName = product.categories[0]?.name || "our store";
   const base = process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com";
 
   const schema = {
@@ -91,24 +90,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
 
       <div className="site-shell">
+        <nav className="pdp-reference-breadcrumb" aria-label="Breadcrumb">
+          <Link href="/">Home</Link><span>›</span><Link href="/shop">Shop</Link><span>›</span><span>{product.name}</span>
+        </nav>
         <ProductDetailClient product={product} defaultBundleDiscount={defaultDiscount} whatsapp={whatsapp} />
       </div>
-
-      <section className="pdp-support-cta-wrap" aria-label="Zelvomart shopping support">
-        <div className="site-shell">
-          <div className="pdp-support-cta">
-            <div>
-              <span className="pdp-support-kicker">NEED HELP BEFORE ORDERING?</span>
-              <h2>Not sure if this product is right for you?</h2>
-              <p>Ask us on WhatsApp for product details, availability or delivery guidance. Our team will help before you place your order.</p>
-            </div>
-            <div className="pdp-support-actions">
-              <a className="btn-green" href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Hi Zelvomart, I need help with ${product.name}.`)}`} target="_blank" rel="noreferrer">Ask on WhatsApp</a>
-              <Link className="btn-outline" href={categoryHref}>Shop {categoryName}</Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {related.length ? (
         <section className="section pdp-related-section">

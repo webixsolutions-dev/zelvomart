@@ -11,7 +11,16 @@ export async function invalidateFrontendCache(tags: string[]) {
         'content-type': 'application/json',
         'x-revalidation-secret': secret,
       },
-      body: JSON.stringify({ tags: [...new Set(tags)] }),
+      body: JSON.stringify({
+        tags: [...new Set(tags)],
+        paths: tags.some((tag) =>
+          ['products', 'featured-products', 'categories', 'store'].includes(tag) ||
+          tag.startsWith('product:') ||
+          tag.startsWith('category:')
+        )
+          ? ['/', '/shop']
+          : [],
+      }),
       signal: AbortSignal.timeout(2500),
     });
     if (!response.ok && process.env.NODE_ENV === 'development') {

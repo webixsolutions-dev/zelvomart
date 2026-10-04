@@ -64,9 +64,10 @@ export default function CheckoutClient({
     } catch {}
 
     trackStoreEvent("InitiateCheckout", {
-      content_ids: items.map((item) => item.variantId || item.productId),
+      content_ids: items.map((item) => item.sku || item.productId),
+      contents: items.map((item) => ({ id: item.sku || item.productId, quantity: item.quantity * item.bundleSize, item_price: item.price })),
       num_items: items.reduce((sum, item) => sum + item.quantity * item.bundleSize, 0),
-      value: subtotal,
+      value: total,
       currency: "PKR",
     }, { clarityEvent: "begin_checkout" }).catch(() => undefined);
     try { window.clarity?.("upgrade", "checkout"); } catch {}
@@ -108,6 +109,7 @@ export default function CheckoutClient({
     if (!fields.city.trim()) next.city = "City is required.";
     if (!fields.address.trim()) next.address = "Address is required.";
     if (required.postcode && !fields.postcode.trim()) next.postcode = "Postcode is required.";
+    if (required.orderNotes && !fields.orderNotes.trim()) next.orderNotes = "Order notes are required.";
     if (required.terms && !fields.terms) next.terms = "Please accept the terms.";
     setErrors(next);
     Object.keys(next).forEach((field) => { try { window.clarity?.("event", `checkout_error_${field}`); } catch {} });
@@ -120,7 +122,7 @@ export default function CheckoutClient({
     setSubmitting(true);
     setServerError("");
     try {
-      await trackStoreEvent("InitiateCheckout", { value: total, currency: "PKR" }, { clarityEvent: "place_order_tap" });
+      try { window.clarity?.("event", "place_order_tap"); } catch {}
       const idempotencyKey = sessionStorage.getItem(IDEMPOTENCY_KEY) || crypto.randomUUID();
       sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
 
@@ -145,6 +147,7 @@ export default function CheckoutClient({
           fbc: readCookie("_fbc"),
           clarityId: readCookie("_clck"),
           replaySessionId: getReplaySessionId(),
+          experiments: parseJsonCookie("zm_experiments"),
         }),
       });
       const data = await response.json();
@@ -154,7 +157,7 @@ export default function CheckoutClient({
       clear();
       sessionStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
-      router.push(`/checkout/success/${encodeURIComponent(data.orderNumber)}`);
+      router.push(`/checkout/success/${encodeURIComponent(data.orderNumber)}?key=${encodeURIComponent(data.id)}`);
     } catch (error) {
       setServerError(error instanceof Error ? error.message.replace(/_/g, " ") : "Could not place order");
     } finally {
@@ -177,7 +180,7 @@ export default function CheckoutClient({
           <div className="field"><label>City *</label><input list="pakistan-cities" value={fields.city} onChange={(e) => update("city", e.target.value)} /><datalist id="pakistan-cities">{cities.map((city) => <option key={city.name} value={city.name} />)}</datalist>{errors.city ? <span className="field-error">{errors.city}</span> : null}</div>
           <div className="field full"><label>Address *</label><textarea data-clarity-mask="true" rows={3} value={fields.address} onChange={(e) => update("address", e.target.value)} />{errors.address ? <span className="field-error">{errors.address}</span> : null}</div>
           <div className="field"><label>Postcode {required.postcode ? "*" : ""}</label><input data-clarity-mask="true" value={fields.postcode} onChange={(e) => update("postcode", e.target.value)} />{errors.postcode ? <span className="field-error">{errors.postcode}</span> : null}</div>
-          <div className="field"><label>Order notes</label><input value={fields.orderNotes} onChange={(e) => update("orderNotes", e.target.value)} /></div>
+          <div className="field"><label>Order notes {required.orderNotes ? "*" : ""}</label><input value={fields.orderNotes} onChange={(e) => update("orderNotes", e.target.value)} />{errors.orderNotes ? <span className="field-error">{errors.orderNotes}</span> : null}</div>
           <div className="hidden" aria-hidden="true"><label>Website</label><input tabIndex={-1} autoComplete="off" value={fields.website} onChange={(e) => update("website", e.target.value)} /></div>
           <label className="field full flex-row items-start gap-2"><input type="checkbox" checked={fields.terms} onChange={(e) => update("terms", e.target.checked)} className="mt-1 w-auto" /><span className="text-xs text-slate-600">I agree to the terms and confirm the delivery details are correct. {errors.terms ? <b className="field-error ml-1">{errors.terms}</b> : null}</span></label>
         </div>

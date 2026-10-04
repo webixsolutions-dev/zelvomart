@@ -93,6 +93,23 @@ export default function Hero({ config }: { products: Product[]; config?: any }) 
             ))}
           </div>
         </div>
+
+        <div className="premium-hero-mobile-arrows" aria-label="Hero navigation">
+          <button
+            type="button"
+            aria-label="Previous slide"
+            onClick={() => setActive((value) => (value - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="Next slide"
+            onClick={() => setActive((value) => (value + 1) % HERO_SLIDES.length)}
+          >
+            ›
+          </button>
+        </div>
       </div>
     </section>
   );

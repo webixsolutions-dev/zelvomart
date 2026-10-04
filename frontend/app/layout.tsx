@@ -11,6 +11,7 @@ import TrackingProvider from "@/components/TrackingProvider";
 import SessionReplayProvider from "@/components/SessionReplayProvider";
 import MetaPixelScript from "@/components/MetaPixelScript";
 import ClarityScript from "@/components/ClarityScript";
+import ExperimentProvider from "@/components/ExperimentProvider";
 import SiteChrome from "@/components/SiteChrome";
 
 export const metadata: Metadata = {
@@ -69,6 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Suspense fallback={null}>
               <TrackingProvider />
               <SessionReplayProvider />
+              <ExperimentProvider />
             </Suspense>
           }
           metaPixel={<MetaPixelScript pixelId={pixelId} />}

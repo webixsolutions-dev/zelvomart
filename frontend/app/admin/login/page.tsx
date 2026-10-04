@@ -1,8 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clientApi, setAdminSession } from "@/lib/client-api";
 import { clearAdminDataCache } from "@/components/admin/useAdminData";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -19,21 +18,34 @@ export default function AdminLogin() {
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    fetch('/api/admin-proxy/api/auth/me', { cache: 'no-store', credentials: 'same-origin' })
+      .then((response) => { if (response.ok) router.replace('/admin'); })
+      .catch(() => undefined);
+  }, [router]);
+
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     setError("");
     const f = new FormData(e.currentTarget);
+    const email = String(f.get("email") || "").trim();
+    const password = String(f.get("password") || "");
+
     try {
-      const r = await clientApi<{ token: string; user: unknown }>("/api/auth/login", {
+      const response = await fetch('/api/admin-session/login', {
         method: "POST",
-        body: JSON.stringify({ email: f.get("email"), password: f.get("password") }),
+        headers: { "content-type": "application/json" },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email, password }),
       });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.error || data?.message || "Login failed");
       clearAdminDataCache();
-      setAdminSession(r.token, r.user);
       router.replace("/admin");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Login failed");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setBusy(false);
     }
@@ -50,7 +62,7 @@ export default function AdminLogin() {
         <div className="admin-login-copy">
           <span>Store Management</span>
           <h1>Sign in to admin</h1>
-          <p>Email and password only. Authentication is handled by the separate backend.</p>
+          <p>Use your staff email and password. Your secure admin session stays active for up to 8 hours.</p>
         </div>
 
         <form className="admin-login-form" onSubmit={submit}>
@@ -59,13 +71,7 @@ export default function AdminLogin() {
             Password
             <span className="admin-password-wrap">
               <input name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required />
-              <button
-                type="button"
-                className="admin-password-toggle"
-                onClick={() => setShowPassword((value) => !value)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                title={showPassword ? "Hide password" : "Show password"}
-              >
+              <button type="button" className="admin-password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"}>
                 <EyeIcon open={showPassword} />
               </button>
             </span>

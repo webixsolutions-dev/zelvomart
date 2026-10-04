@@ -130,3 +130,59 @@ export async function sendFailureAlert(subject: string, details: string) {
     html: `<pre style="white-space:pre-wrap">${escapeHtml(details)}</pre>`,
   });
 }
+
+export async function sendContactTeamEmail(input: {
+  name: string;
+  email: string;
+  phone: string;
+  problem: string;
+  sourceUrl?: string;
+}) {
+  const resend = client();
+  if (!resend) throw new Error("RESEND_API_KEY is not configured");
+
+  const html = `
+    <h2>New Zelvomart contact request</h2>
+    <p><strong>Name:</strong> ${escapeHtml(input.name)}</p>
+    <p><strong>Email:</strong> <a href="mailto:${escapeHtml(input.email)}">${escapeHtml(input.email)}</a></p>
+    <p><strong>Phone:</strong> <a href="tel:${escapeHtml(input.phone)}">${escapeHtml(input.phone)}</a></p>
+    <p><strong>Problem / message:</strong></p>
+    <p style="white-space:pre-wrap">${escapeHtml(input.problem)}</p>
+    ${input.sourceUrl ? `<p><strong>Source:</strong> ${escapeHtml(input.sourceUrl)}</p>` : ""}
+  `;
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "Zelvomart Support <orders@zelvomart.com>",
+    to: await recipients(),
+    replyTo: input.email,
+    subject: `Contact request • ${input.name}`,
+    html,
+  });
+}
+
+export async function sendCustomerStatusEmail(orderId: string, status: "CONFIRMED" | "BOOKED" | "DELIVERED") {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: { include: { product: { select: { slug: true } } } } } });
+  if (!order?.email) return;
+  const resend = client();
+  if (!resend) throw new Error("RESEND_API_KEY is not configured");
+
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com").replace(/\/$/, "");
+  const trackingUrl = order.postexTracking
+    ? `${process.env.POSTEX_TRACKING_BASE_URL || "https://postex.pk/tracking"}/${encodeURIComponent(order.postexTracking)}`
+    : `${base}/track-order`;
+  const reviewSlug = order.items[0]?.product?.slug;
+  const reviewUrl = reviewSlug ? `${base}/product/${encodeURIComponent(reviewSlug)}/` : base;
+
+  const content = status === "CONFIRMED"
+    ? { subject: `Order confirmed • ${order.orderNumber}`, html: `<h2>Your Zelvomart order is confirmed.</h2><p>Hi ${escapeHtml(order.fullName)}, we have confirmed <strong>${escapeHtml(order.orderNumber)}</strong>.</p><p>We will update you when it is booked with the courier.</p>` }
+    : status === "BOOKED"
+      ? { subject: `Your order has shipped • ${order.orderNumber}`, html: `<h2>Your order is on the way.</h2><p>Order <strong>${escapeHtml(order.orderNumber)}</strong> has been booked with the courier.</p><p><a href="${escapeHtml(trackingUrl)}">Track your parcel</a></p>` }
+      : { subject: `Delivered • ${order.orderNumber}`, html: `<h2>We hope you enjoy your order.</h2><p>Order <strong>${escapeHtml(order.orderNumber)}</strong> is marked delivered.</p><p>If you have a moment, you can leave a review on the product page: <a href="${escapeHtml(reviewUrl)}">Review your purchase</a>.</p>` };
+
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || "Zelvomart Orders <orders@zelvomart.com>",
+    to: order.email,
+    subject: content.subject,
+    html: content.html,
+  });
+}

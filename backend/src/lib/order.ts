@@ -55,6 +55,7 @@ export async function createOrder(input: CheckoutInput) {
   if (!paymentMethods.includes(input.paymentMethod)) throw new Error("PAYMENT_METHOD_DISABLED");
   if (requiredFields.email && !input.email) throw new Error("EMAIL_REQUIRED");
   if (requiredFields.postcode && !input.postcode) throw new Error("POSTCODE_REQUIRED");
+  if (requiredFields.orderNotes && !input.orderNotes) throw new Error("ORDER_NOTES_REQUIRED");
   if (requiredFields.terms && !input.terms) throw new Error("TERMS_REQUIRED");
 
   const productIds = [...new Set(input.cart.map((item) => item.productId))];
@@ -253,6 +254,14 @@ export async function createOrder(input: CheckoutInput) {
       },
       include: { items: true },
     });
+
+    const phoneTail = input.phone.replace(/\D/g, "").slice(-10);
+    if (phoneTail) {
+      await tx.abandonedCheckout.updateMany({
+        where: { phone: { endsWith: phoneTail }, convertedAt: null },
+        data: { convertedAt: new Date() },
+      });
+    }
 
     const jobs = await Promise.all([
       tx.job.create({ data: { name: "order-team-email", orderId: order.id, payload: { orderId: order.id } } }),

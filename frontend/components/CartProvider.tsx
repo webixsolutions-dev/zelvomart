@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 export type CartItem = {
   productId: string;
   variantId?: string | null;
+  sku?: string;
   slug: string;
   name: string;
   image?: string;
