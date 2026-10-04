@@ -228,7 +228,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             </label>
           </SectionCard>
 
-          <SectionCard title="Main Description" description="Use headings, lists and links to create a complete product description.">
+          <SectionCard title="Main Description" description="Format the product description with paragraphs, headings, alignment, emphasis, lists and internal links. SEO updates live as you edit.">
             <div className="field">
               <AdminRichTextEditor name="descriptionHtml" defaultValue={initial?.descriptionHtml || initial?.description || ""} />
             </div>

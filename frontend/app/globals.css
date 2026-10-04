@@ -6379,3 +6379,170 @@ form.admin-reference-form { border-color: #d8ded9; }
   .product-details-modern .product-details-nav button { min-height:50px; padding-inline:17px; }
   .product-details-modern .product-details-body { padding:24px 2px 18px; }
 }
+
+/* ==========================================================================\n   2026-10-04 — LaptopSouq-style main product description editor\n   ========================================================================== */
+.admin-rich-editor-pro {
+  overflow: hidden;
+  border: 1px solid #d7e0e5;
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+.admin-rich-editor-pro:focus-within {
+  border-color: #13a6a4;
+  box-shadow: 0 0 0 2px rgba(19,166,164,.08);
+}
+.admin-rich-editor-pro .admin-rich-toolbar {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  border-bottom: 1px solid #dfe5e9;
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(21,45,61,.04);
+}
+.admin-rich-editor-pro .admin-rich-toolbar-row {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 14px;
+}
+.admin-rich-editor-pro .admin-rich-toolbar-row-secondary {
+  min-height: 50px;
+  padding-top: 0;
+}
+.admin-rich-editor-pro .admin-rich-toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.admin-rich-editor-pro .admin-rich-toolbar button {
+  min-width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #182f3d;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .14s ease, color .14s ease, border-color .14s ease;
+}
+.admin-rich-editor-pro .admin-rich-toolbar button:hover,
+.admin-rich-editor-pro .admin-rich-toolbar button:focus-visible {
+  border-color: #dce6ea;
+  background: #f5f8f9;
+  color: #0f7477;
+  outline: 0;
+}
+.admin-rich-editor-pro .admin-rich-toolbar .admin-rich-text-action {
+  min-width: auto;
+  padding-inline: 11px;
+  font-size: 12px;
+}
+.admin-rich-editor-pro .admin-rich-icon-group button {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+  font-size: 14px;
+}
+.admin-rich-editor-pro .admin-rich-format-select {
+  width: 156px;
+  height: 42px;
+  padding: 0 34px 0 12px;
+  border: 1px solid #dce4e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #203746;
+  outline: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+}
+.admin-rich-editor-pro .admin-rich-format-select:focus {
+  border-color: #8acfd0;
+  box-shadow: 0 0 0 2px rgba(19,166,164,.07);
+}
+.admin-rich-editor-pro .admin-rich-separator {
+  width: 1px;
+  height: 31px;
+  margin: 0 3px;
+  background: #dfe5e9;
+}
+.admin-rich-editor-pro .admin-rich-surface {
+  min-height: 390px;
+  padding: 25px 28px;
+  outline: 0;
+  color: #243d4b;
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.75;
+}
+.admin-rich-editor-pro .admin-rich-surface:empty::before {
+  content: attr(data-placeholder);
+  color: #a4b0b8;
+  pointer-events: none;
+}
+.admin-rich-editor-pro .admin-rich-surface h2 {
+  margin: 18px 0 10px;
+  color: #102c3f;
+  font-size: 24px;
+  line-height: 1.25;
+}
+.admin-rich-editor-pro .admin-rich-surface h3 {
+  margin: 16px 0 9px;
+  color: #173a4d;
+  font-size: 20px;
+  line-height: 1.3;
+}
+.admin-rich-editor-pro .admin-rich-surface h4 {
+  margin: 14px 0 8px;
+  color: #21485b;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.admin-rich-editor-pro .admin-rich-surface p { margin: 0 0 12px; }
+.admin-rich-editor-pro .admin-rich-surface ul,
+.admin-rich-editor-pro .admin-rich-surface ol { margin: 8px 0 14px; padding-left: 25px; }
+.admin-rich-editor-pro .admin-rich-surface li + li { margin-top: 5px; }
+.admin-rich-editor-pro .admin-rich-surface blockquote {
+  margin: 14px 0;
+  padding: 10px 14px;
+  border-left: 3px solid #13a6a4;
+  background: #f5faf9;
+  color: #49616f;
+}
+.admin-rich-editor-pro .admin-rich-surface a {
+  color: #087eaf;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .admin-rich-editor-pro .admin-rich-toolbar-row {
+    min-height: 0;
+    gap: 5px;
+    padding: 8px;
+  }
+  .admin-rich-editor-pro .admin-rich-toolbar-row-secondary { padding-top: 0; }
+  .admin-rich-editor-pro .admin-rich-toolbar button {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+  .admin-rich-editor-pro .admin-rich-format-select {
+    width: 132px;
+    height: 38px;
+    font-size: 10px;
+  }
+  .admin-rich-editor-pro .admin-rich-separator { height: 26px; margin-inline: 1px; }
+  .admin-rich-editor-pro .admin-rich-surface { min-height: 310px; padding: 18px; font-size: 12px; }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   name: string;
@@ -8,33 +8,160 @@ type Props = {
   placeholder?: string;
 };
 
-export default function AdminRichTextEditor({ name, defaultValue = "", placeholder = "Write the product description..." }: Props) {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const [html, setHtml] = useState(defaultValue);
+type EditorCommand =
+  | "undo"
+  | "redo"
+  | "bold"
+  | "italic"
+  | "underline"
+  | "strikeThrough"
+  | "justifyLeft"
+  | "justifyCenter"
+  | "justifyRight"
+  | "justifyFull"
+  | "insertUnorderedList"
+  | "insertOrderedList"
+  | "unlink"
+  | "removeFormat";
 
-  function run(command: string, value?: string) {
-    editorRef.current?.focus();
-    document.execCommand(command, false, value);
+export default function AdminRichTextEditor({
+  name,
+  defaultValue = "",
+  placeholder = "Write the full product description...",
+}: Props) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const savedRangeRef = useRef<Range | null>(null);
+  const [html, setHtml] = useState(defaultValue);
+  const [blockType, setBlockType] = useState("p");
+
+  useEffect(() => {
+    setHtml(defaultValue);
+    if (editorRef.current && editorRef.current.innerHTML !== defaultValue) {
+      editorRef.current.innerHTML = defaultValue;
+    }
+  }, [defaultValue]);
+
+  function syncHtml() {
     setHtml(editorRef.current?.innerHTML || "");
   }
 
+  function saveSelection() {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+    if (editorRef.current?.contains(range.commonAncestorContainer)) {
+      savedRangeRef.current = range.cloneRange();
+    }
+  }
+
+  function restoreSelection() {
+    const range = savedRangeRef.current;
+    if (!range) return;
+    const selection = window.getSelection();
+    if (!selection) return;
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function run(command: EditorCommand, value?: string) {
+    editorRef.current?.focus();
+    restoreSelection();
+    document.execCommand(command, false, value);
+    saveSelection();
+    syncHtml();
+  }
+
+  function changeBlock(value: string) {
+    setBlockType(value);
+    editorRef.current?.focus();
+    restoreSelection();
+    document.execCommand("formatBlock", false, value);
+    saveSelection();
+    syncHtml();
+  }
+
   function addLink() {
-    const url = window.prompt("Link URL");
-    if (url) run("createLink", url);
+    saveSelection();
+    const url = window.prompt("Enter link URL", "https://");
+    if (!url) return;
+    editorRef.current?.focus();
+    restoreSelection();
+    document.execCommand("createLink", false, url.trim());
+    saveSelection();
+    syncHtml();
+  }
+
+  function clearFormatting() {
+    run("removeFormat");
+    document.execCommand("formatBlock", false, "p");
+    setBlockType("p");
+    syncHtml();
   }
 
   return (
-    <div className="admin-rich-editor">
-      <div className="admin-rich-toolbar" aria-label="Description formatting">
-        <button type="button" onClick={() => run("bold")}><b>B</b></button>
-        <button type="button" onClick={() => run("italic")}><i>I</i></button>
-        <button type="button" onClick={() => run("formatBlock", "H2")}>H2</button>
-        <button type="button" onClick={() => run("formatBlock", "H3")}>H3</button>
-        <button type="button" onClick={() => run("insertUnorderedList")}>• List</button>
-        <button type="button" onClick={() => run("insertOrderedList")}>1. List</button>
-        <button type="button" onClick={addLink}>Link</button>
-        <button type="button" onClick={() => run("removeFormat")}>Clear</button>
+    <div className="admin-rich-editor admin-rich-editor-pro">
+      <div className="admin-rich-toolbar" aria-label="Main description formatting toolbar">
+        <div className="admin-rich-toolbar-row">
+          <div className="admin-rich-toolbar-group">
+            <button type="button" className="admin-rich-text-action" onMouseDown={(event) => event.preventDefault()} onClick={() => run("undo")} title="Undo">
+              Undo
+            </button>
+            <button type="button" className="admin-rich-text-action" onMouseDown={(event) => event.preventDefault()} onClick={() => run("redo")} title="Redo">
+              Redo
+            </button>
+          </div>
+
+          <span className="admin-rich-separator" aria-hidden="true" />
+
+          <select
+            className="admin-rich-format-select"
+            value={blockType}
+            onMouseDown={saveSelection}
+            onChange={(event) => changeBlock(event.target.value)}
+            aria-label="Text style"
+          >
+            <option value="p">Paragraph</option>
+            <option value="h2">Heading 2</option>
+            <option value="h3">Heading 3</option>
+            <option value="h4">Heading 4</option>
+            <option value="blockquote">Quote</option>
+          </select>
+
+          <span className="admin-rich-separator" aria-hidden="true" />
+
+          <div className="admin-rich-toolbar-group admin-rich-icon-group">
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("bold")} title="Bold" aria-label="Bold"><strong>B</strong></button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("italic")} title="Italic" aria-label="Italic"><em>I</em></button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("underline")} title="Underline" aria-label="Underline"><u>U</u></button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("strikeThrough")} title="Strikethrough" aria-label="Strikethrough"><s>S</s></button>
+          </div>
+        </div>
+
+        <div className="admin-rich-toolbar-row admin-rich-toolbar-row-secondary">
+          <div className="admin-rich-toolbar-group">
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("justifyLeft")} title="Align left">Left</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("justifyCenter")} title="Align center">Center</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("justifyRight")} title="Align right">Right</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("justifyFull")} title="Justify">Justify</button>
+          </div>
+
+          <span className="admin-rich-separator" aria-hidden="true" />
+
+          <div className="admin-rich-toolbar-group">
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("insertUnorderedList")} title="Bulleted list">Bullets</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("insertOrderedList")} title="Numbered list">1.</button>
+          </div>
+
+          <span className="admin-rich-separator" aria-hidden="true" />
+
+          <div className="admin-rich-toolbar-group">
+            <button type="button" onMouseDown={saveSelection} onClick={addLink} title="Insert link">Link</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => run("unlink")} title="Remove link">Unlink</button>
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={clearFormatting} title="Clear formatting" aria-label="Clear formatting">Tx</button>
+          </div>
+        </div>
       </div>
+
       <div
         ref={editorRef}
         className="admin-rich-surface"
@@ -42,7 +169,10 @@ export default function AdminRichTextEditor({ name, defaultValue = "", placehold
         suppressContentEditableWarning
         data-placeholder={placeholder}
         dangerouslySetInnerHTML={{ __html: defaultValue }}
-        onInput={(event) => setHtml(event.currentTarget.innerHTML)}
+        onInput={syncHtml}
+        onKeyUp={saveSelection}
+        onMouseUp={saveSelection}
+        onFocus={saveSelection}
       />
       <textarea name={name} value={html} readOnly hidden />
     </div>
