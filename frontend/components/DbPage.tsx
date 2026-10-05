@@ -49,10 +49,10 @@ export default async function DbPage({ slug, fallbackSlugs = [] }: { slug: strin
       <div className="site-shell premium-content-body">
         <article className="content-card static-content-card premium-dynamic-content" dangerouslySetInnerHTML={{ __html: data.bodyHtml || "" }} />
         <div className="static-page-cta premium-content-cta">
-          <div><strong>Need a hand?</strong><span>Browse the store or message our team for product, order and delivery help.</span></div>
+          <div><strong>Need help choosing?</strong><span>Browse products or message our team for quick order and delivery support.</span></div>
           <div className="static-page-cta-actions">
-            <Link href="/shop" className="btn-outline">Shop</Link>
-            <Link href="/contact-us" className="btn-dark">Contact</Link>
+            <Link href="/shop" className="btn-outline">Browse products</Link>
+            <Link href="/contact-us" className="btn-dark">Contact us</Link>
           </div>
         </div>
       </div>

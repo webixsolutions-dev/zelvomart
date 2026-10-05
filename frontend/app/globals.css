@@ -7237,3 +7237,274 @@ body{
   .mock-pdp-lifestyle h2,.mock-pdp-comparison h2,.mock-pdp-reviews h2,.mock-pdp-faq h2{font-size:28px}
   .mock-pdp-specs p{grid-template-columns:125px 1fr}
 }
+
+
+/* ==========================================================================
+   2026-10-05 — compact storefront typography + CTA rhythm pass
+   Goal: stronger readable text, less empty height, tighter section rhythm.
+   ========================================================================== */
+
+/* Base rhythm */
+.public-site-main{
+  font-size:15px;
+  line-height:1.55;
+}
+.public-site-main :where(p){
+  margin-top:.45em;
+  margin-bottom:.45em;
+}
+.public-site-main :where(h1,h2,h3){
+  margin-top:0;
+}
+.mock-eyebrow{
+  margin-bottom:7px!important;
+  font-size:11px!important;
+  line-height:1.2!important;
+}
+.mock-btn-dark,.mock-btn-light{
+  min-height:40px!important;
+  padding:0 15px!important;
+  font-size:12.5px!important;
+  border-radius:7px!important;
+}
+
+/* Home: reduce section height without shrinking readability */
+.mock-home-section{padding:42px 0!important}
+.mock-section-head{margin-bottom:18px!important;gap:20px!important}
+.mock-section-head h2{font-size:30px!important;line-height:1.08!important}
+.mock-section-head p{margin-top:5px!important;font-size:13px!important;line-height:1.5!important}
+.mock-category-feature{min-height:340px!important}
+.mock-category-minis>a{min-height:165px!important}
+.mock-standard-section{padding:42px 0!important}
+.mock-standard-grid{gap:44px!important}
+.mock-standard-grid h2{font-size:34px!important;line-height:1.02!important}
+.mock-standard-grid>div:first-child>p{font-size:13px!important;line-height:1.55!important}
+.mock-standard-cards article{min-height:108px!important;padding:16px 17px!important}
+.mock-standard-cards article b{margin:13px 0 4px!important;font-size:14px!important}
+.mock-standard-cards article p{font-size:11.5px!important;line-height:1.45!important}
+.mock-editorial-grid{padding:42px 0 8px!important}
+.mock-editorial{min-height:255px!important;padding:20px!important}
+.mock-editorial h3{font-size:22px!important;line-height:1.08!important}
+.mock-editorial>span,.mock-editorial>b{font-size:10.5px!important}
+.mock-review-section{padding:42px 0!important}
+.mock-review-media b{font-size:11.5px!important}
+.mock-review-media small{font-size:10px!important}
+.mock-order-steps{padding:40px 0!important}
+.mock-order-steps h2{margin-bottom:18px!important;font-size:28px!important}
+.mock-step-grid article{min-height:125px!important;padding:15px!important}
+.mock-step-grid article h3{margin:17px 0 4px!important;font-size:13.5px!important}
+.mock-step-grid article p{font-size:11px!important;line-height:1.45!important}
+.mock-unbox{padding:42px 0!important;gap:42px!important}
+.mock-unbox-art{min-height:225px!important}
+.mock-unbox h2{font-size:32px!important;line-height:1.04!important}
+.mock-unbox p{font-size:13px!important;line-height:1.55!important}
+.mock-unbox ul{font-size:12px!important;line-height:1.7!important}
+
+/* Category/shop: screenshot section specifically */
+.mock-listing-page,.mock-category-page{padding-bottom:46px!important}
+.mock-listing-intro{padding:30px 0 20px!important}
+.mock-listing-intro h1,.mock-category-hero h1,.mock-bestseller-hero h1,.mock-newin-hero h1{
+  line-height:1.03!important;
+}
+.mock-category-hero{
+  min-height:260px!important;
+  margin-top:20px!important;
+}
+.mock-category-hero>div:first-child{padding:34px 36px!important}
+.mock-category-hero-art{min-height:260px!important}
+.mock-category-about{
+  margin-top:38px!important;
+  padding:34px 0!important;
+}
+.mock-category-about h2{
+  margin:0 0 16px!important;
+  font-size:26px!important;
+  line-height:1.12!important;
+}
+.mock-category-about-grid{
+  grid-template-columns:.9fr 1.1fr!important;
+  gap:48px!important;
+  align-items:start!important;
+}
+.mock-category-about-grid>p{
+  margin:0!important;
+  max-width:500px!important;
+  font-size:13px!important;
+  line-height:1.58!important;
+}
+.mock-category-about-grid details{
+  padding:10px 0!important;
+  font-size:12.5px!important;
+}
+.mock-category-about-grid summary{
+  font-size:12.5px!important;
+  line-height:1.35!important;
+  cursor:pointer;
+}
+.mock-category-about-grid details p{
+  margin:5px 0 0!important;
+  font-size:12px!important;
+  line-height:1.5!important;
+}
+.mock-other-cats{padding:38px 0!important}
+
+/* About */
+.mock-about-page{padding-bottom:48px!important}
+.mock-about-hero{min-height:350px!important}
+.mock-about-hero>div:first-child{padding:48px 44px!important}
+.mock-about-hero h1{font-size:42px!important}
+.mock-about-hero p{font-size:13px!important;line-height:1.55!important}
+.mock-about-stats{padding:18px 0!important}
+.mock-about-story{padding:44px 0!important;gap:52px!important}
+.mock-about-story>div:last-child>p,.mock-about-cms{font-size:13px!important;line-height:1.62!important}
+.mock-about-how{padding:42px 0!important}
+.mock-about-promise{padding:44px 0!important}
+.mock-about-promise>.site-shell{gap:42px!important}
+.mock-about-promise-grid article{padding:16px!important}
+.mock-about-promise-grid h3{font-size:13.5px!important}
+.mock-about-promise-grid p{font-size:11.5px!important}
+.mock-about-testimonials{padding:44px 0!important}
+.mock-about-testimonials article{padding:18px!important}
+.mock-about-testimonials p{font-size:12.5px!important}
+.mock-about-cta{
+  padding:22px 26px!important;
+  border-radius:14px!important;
+  min-height:0!important;
+}
+.mock-about-cta h2{font-size:24px!important;line-height:1.1!important}
+.mock-about-cta p{margin:4px 0 0!important;font-size:12px!important}
+.mock-about-cta a{padding:9px 13px!important;font-size:12px!important}
+
+/* Contact */
+.mock-contact-page{padding-bottom:48px!important}
+.mock-contact-hero{min-height:220px!important;padding:34px 38px!important}
+.mock-contact-hero h1{font-size:40px!important}
+.mock-contact-hero p{font-size:13px!important;line-height:1.55!important}
+.mock-contact-cards{padding:16px 0 38px!important}
+.mock-contact-cards>a{min-height:170px!important;padding:18px!important}
+.mock-contact-cards h3{margin:12px 0 4px!important;font-size:14px!important}
+.mock-contact-cards p{font-size:11.5px!important;line-height:1.45!important}
+.mock-contact-cards strong{min-height:34px!important;font-size:11.5px!important}
+.mock-order-help{padding-bottom:38px!important}
+.mock-order-help>div{margin-top:16px!important}
+.mock-order-help>div>a{min-height:100px!important;padding:15px!important}
+.mock-contact-form-layout{padding-bottom:42px!important}
+
+/* Cart + checkout */
+.mock-cart-page{padding-bottom:50px!important}
+.mock-cart-page h1{margin:8px 0 16px!important;font-size:34px!important}
+.mock-cart-progress{margin-bottom:18px!important}
+.mock-cart-saving{min-height:50px!important;margin-bottom:14px!important}
+.mock-cart-item{padding:15px!important}
+.mock-cart-summary{padding:17px!important}
+.mock-cart-note{margin-top:15px!important}
+.mock-checkout-page{padding-bottom:50px!important}
+.mock-checkout-title{padding:26px 0 17px!important}
+.mock-checkout-title h1{font-size:34px!important}
+.mock-checkout-section{padding:17px!important}
+.mock-checkout-section-title{margin-bottom:14px!important}
+.mock-checkout-summary{padding:17px!important}
+.mock-place-order{height:46px!important}
+
+/* Tracking + success */
+.mock-track-page{padding-bottom:48px!important}
+.mock-track-hero{padding:38px 0 42px!important}
+.mock-track-hero h1{font-size:35px!important}
+.mock-track-hero>.site-shell>p{font-size:13px!important}
+.mock-track-widget{margin-top:18px!important}
+.mock-track-help{padding:38px 0!important}
+.mock-track-help article{padding:17px!important}
+.mock-success-page{padding-bottom:50px!important}
+.mock-success-layout{padding-top:28px!important;padding-bottom:42px!important}
+.mock-success-hero{padding:26px!important}
+
+/* Static/policy/blog content pages */
+.premium-content-hero-inner{
+  min-height:190px!important;
+  padding-top:34px!important;
+  padding-bottom:30px!important;
+}
+.premium-content-hero h1{
+  margin:8px 0 8px!important;
+  font-size:clamp(36px,4vw,52px)!important;
+  line-height:1!important;
+}
+.premium-content-hero p{font-size:13px!important;line-height:1.55!important}
+.premium-content-body{padding-top:28px!important;padding-bottom:42px!important}
+.premium-content-cta{
+  max-width:none!important;
+  margin:18px 0 0!important;
+  padding:18px 20px!important;
+  border-radius:12px!important;
+}
+.static-page-cta{
+  gap:18px!important;
+  padding:18px 20px!important;
+}
+.static-page-cta strong{font-size:17px!important;line-height:1.2!important}
+.static-page-cta span{font-size:12px!important;line-height:1.45!important}
+.static-page-cta-actions{gap:8px!important}
+.static-page-cta-actions .btn-outline,
+.static-page-cta-actions .btn-dark{
+  min-height:38px!important;
+  padding:0 14px!important;
+  font-size:12px!important;
+}
+
+/* Product page compact but prominent */
+.product-page{padding-bottom:58px!important}
+.pdp-reference-breadcrumb{padding:15px 0 13px!important}
+.mock-pdp-top{gap:38px!important}
+.mock-pdp-buy-card{padding:23px!important}
+.mock-pdp-buy-card:before{margin:-23px -23px 19px!important}
+.mock-pdp-buy-card h1{font-size:clamp(31px,3vw,39px)!important}
+.mock-pdp-short-description{font-size:13.5px!important;line-height:1.55!important}
+.mock-pdp-price strong{font-size:32px!important}
+.mock-pdp-quick-facts{margin:12px 0 14px!important}
+.mock-pdp-quick-facts span{padding:9px 10px!important}
+.mock-pdp-main-actions>.order{height:49px!important}
+.mock-pdp-lifestyle,
+.mock-pdp-comparison,
+.mock-pdp-reviews,
+.mock-pdp-faq{padding-top:42px!important;padding-bottom:42px!important}
+.mock-pdp-lifestyle h2,.mock-pdp-comparison h2,.mock-pdp-reviews h2,.mock-pdp-faq h2{font-size:32px!important}
+
+/* Footer */
+.mock-footer{margin-top:44px!important}
+.mock-footer-main{padding-top:38px!important;padding-bottom:30px!important}
+.mock-footer-brand p{font-size:12.5px!important;line-height:1.5!important}
+.mock-footer-col a,.mock-footer-col>span{font-size:12px!important;line-height:1.5!important}
+
+/* Mobile stays compact and legible. */
+@media(max-width:900px){
+  .mock-home-section,.mock-review-section,.mock-order-steps,.mock-unbox,
+  .mock-about-story,.mock-about-how,.mock-about-promise,.mock-about-testimonials{
+    padding-top:34px!important;
+    padding-bottom:34px!important;
+  }
+  .mock-category-about{margin-top:28px!important;padding:30px 0!important}
+  .mock-category-about-grid{grid-template-columns:1fr!important;gap:16px!important}
+  .mock-category-about h2{font-size:24px!important}
+  .mock-contact-hero{padding:28px 22px!important}
+  .mock-contact-cards>a{min-height:155px!important}
+  .premium-content-hero-inner{min-height:160px!important;padding:28px 0 24px!important}
+  .static-page-cta{padding:16px!important}
+}
+@media(max-width:560px){
+  .mock-home-section{padding:30px 0!important}
+  .mock-section-head{margin-bottom:14px!important}
+  .mock-section-head h2{font-size:25px!important}
+  .mock-category-about{padding:26px 0!important}
+  .mock-category-about h2{font-size:22px!important}
+  .mock-category-about-grid>p{font-size:12.5px!important}
+  .mock-category-about-grid details{padding:9px 0!important}
+  .mock-about-cta{padding:18px!important}
+  .mock-about-cta h2{font-size:21px!important}
+  .mock-contact-hero h1{font-size:34px!important}
+  .mock-checkout-title h1,.mock-cart-page h1{font-size:30px!important}
+  .premium-content-hero h1{font-size:34px!important}
+  .premium-content-cta{padding:16px!important}
+  .static-page-cta{gap:12px!important}
+  .mock-pdp-buy-card{padding:17px!important}
+  .mock-pdp-buy-card:before{margin:-17px -17px 16px!important}
+}
