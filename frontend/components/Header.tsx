@@ -150,7 +150,7 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
           <nav className="mock-drawer-categories">
             {orderedCategories.map((category) => <Link key={category.id} href={`/product-category/${category.slug}/`} onClick={() => setMobileOpen(false)}><span className="mock-mobile-cat-image"><Image src={category.image} alt="" fill sizes="46px" unoptimized={category.image.startsWith("/images/")} /></span><span>{category.displayName}</span><i>→</i></Link>)}
           </nav>
-          <nav className="mock-drawer-links"><Link href="/new-in" onClick={() => setMobileOpen(false)}>New in</Link><Link href="/bestsellers" onClick={() => setMobileOpen(false)}>Bestsellers</Link><Link href="/track-order" onClick={() => setMobileOpen(false)}>Track order</Link><Link href="/contact-us" onClick={() => setMobileOpen(false)}>Help & contact</Link></nav>
+          <nav className="mock-drawer-links"><Link href="/new-in" onClick={() => setMobileOpen(false)}>New in</Link><Link href="/bestsellers" onClick={() => setMobileOpen(false)}>Bestsellers</Link><Link href="/shop?gift=1" onClick={() => setMobileOpen(false)}>Gift sets</Link><Link href="/track-order" onClick={() => setMobileOpen(false)}>Track order</Link><Link href="/contact-us" onClick={() => setMobileOpen(false)}>Help & contact</Link></nav>
         </aside>
       </div>
     </>
