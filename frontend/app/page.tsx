@@ -253,9 +253,14 @@ export default async function HomePage() {
 
       <section className="site-shell mock-faq-section">
         <div className="mock-faq-intro">
-          <span className="mock-eyebrow">FAQ</span><h2>Questions,<br />answered.</h2>
+          <span className="mock-eyebrow">FAQ</span>
+          <h2>Questions,<br />answered.</h2>
           <p>Everything people ask before they place an order.</p>
-          <div><span>⌕ 0300-2026711</span><span>◉ Chat on WhatsApp</span><span>✉ zelvomart@gmail.com</span></div>
+          <div className="mock-faq-contact-card">
+            <span className="mock-faq-contact-item"><i>☎</i><b>0300-2026711</b></span>
+            <span className="mock-faq-contact-item whatsapp"><i>◉</i><b>Chat on WhatsApp</b></span>
+            <span className="mock-faq-contact-item"><i>✉</i><b>zelvomart@gmail.com</b></span>
+          </div>
         </div>
         <Faq />
       </section>
