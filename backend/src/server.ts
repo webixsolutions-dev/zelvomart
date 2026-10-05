@@ -181,7 +181,7 @@ async function maybeCleanupOldSessionReplays() {
   await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } }).catch(() => undefined);
 }
 
-app.get('/api/health', async (_req, res) => { setNoStore(res); try { await prisma.$queryRaw`SELECT 1`; res.json({ ok: true }); } catch (e: any) { res.status(503).json({ ok: false, error: e?.message || 'DB_UNAVAILABLE' }); } });
+app.get('/api/health', async (_req, res) => { setNoStore(res); try { await prisma.$queryRaw`SELECT 1`; res.json({ ok: true, version: '2.0.0', features: { cro: true, marketing: true, sessionReplays: true, tracking: true, capi: true } }); } catch (e: any) { res.status(503).json({ ok: false, version: '2.0.0', error: e?.message || 'DB_UNAVAILABLE' }); } });
 
 app.post('/api/contact', async (req, res) => {
   setNoStore(res);

@@ -24,8 +24,7 @@ export async function trackStoreEvent(
   }
 
   try {
-    const api = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "");
-    await fetch(`${api}/api/events`, {
+    await fetch(`/api/store-proxy/api/events`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       keepalive: true,

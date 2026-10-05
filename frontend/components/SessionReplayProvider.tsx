@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { API_BASE } from "@/lib/client-api";
 import { readCookie } from "@/lib/client-tracking";
 import { getReplaySessionId, getReplayVisitorId, sessionReplayEnabled } from "@/lib/session-replay-client";
 
@@ -26,7 +25,7 @@ function trafficMeta() {
 }
 
 function send(path: string, body: unknown) {
-  return fetch(`${API_BASE}${path}`, {
+  return fetch(`/api/store-proxy${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     keepalive: true,
