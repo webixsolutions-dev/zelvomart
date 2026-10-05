@@ -96,3 +96,9 @@ export function sessionReplayEnabled() {
 export function setSessionReplayOptOut(optOut: boolean) {
   try { window.localStorage.setItem(OPT_OUT_KEY, optOut ? "1" : "0"); } catch {}
 }
+
+/** Ask the active replay recorder to upload its latest buffered events now. */
+export function requestReplayFlush() {
+  if (typeof window === "undefined") return;
+  try { window.dispatchEvent(new Event("zelvo:replay-flush")); } catch {}
+}

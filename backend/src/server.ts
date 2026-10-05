@@ -423,10 +423,28 @@ app.post('/api/session-replays/start', async (req,res) => {
   const landingUrl=String(req.body.landingUrl||req.body.currentUrl||'').slice(0,4000);
   const lastUrl=String(req.body.currentUrl||landingUrl).slice(0,4000);
   const now=new Date();
+  const medium=String((source as any).medium||(source as any).utm_medium||'').slice(0,120)||null;
+  const campaign=String((source as any).campaign||(source as any).utm_campaign||'').slice(0,240)||null;
+  const pageView=req.body.pageView===true;
+  const metadata={firstTouch:(source as any).firstTouch||null,lastTouch:(source as any).lastTouch||null} as Prisma.InputJsonValue;
+  const updateData:Prisma.SessionReplayUpdateInput={
+    visitorId,
+    source:sourceName,
+    medium,
+    campaign,
+    lastSeenAt:now,
+    lastUrl,
+    referrer:req.body.referrer?String(req.body.referrer).slice(0,4000):undefined,
+    device:req.body.device?String(req.body.device).slice(0,40):undefined,
+    viewport:req.body.viewport?String(req.body.viewport).slice(0,40):undefined,
+    status:'ACTIVE',
+    metadata,
+    ...(pageView?{pageViews:{increment:1}}:{}),
+  };
   await prisma.sessionReplay.upsert({
     where:{id:sessionId},
-    update:{lastSeenAt:now,lastUrl,status:'ACTIVE'},
-    create:{id:sessionId,visitorId,source:sourceName,medium:String((source as any).medium||(source as any).utm_medium||'').slice(0,120)||null,campaign:String((source as any).campaign||(source as any).utm_campaign||'').slice(0,240)||null,landingUrl,lastUrl,referrer:req.body.referrer?String(req.body.referrer).slice(0,4000):null,device:req.body.device?String(req.body.device).slice(0,40):null,viewport:req.body.viewport?String(req.body.viewport).slice(0,40):null,status:'ACTIVE',startedAt:Number.isNaN(startedAt.getTime())?now:startedAt,lastSeenAt:now,metadata:{firstTouch:(source as any).firstTouch||null,lastTouch:(source as any).lastTouch||null} as Prisma.InputJsonValue}
+    update:updateData,
+    create:{id:sessionId,visitorId,source:sourceName,medium,campaign,landingUrl,lastUrl,referrer:req.body.referrer?String(req.body.referrer).slice(0,4000):null,device:req.body.device?String(req.body.device).slice(0,40):null,viewport:req.body.viewport?String(req.body.viewport).slice(0,40):null,status:'ACTIVE',startedAt:Number.isNaN(startedAt.getTime())?now:startedAt,lastSeenAt:now,metadata}
   });
   res.json({ok:true});
 });
@@ -656,7 +674,7 @@ app.get('/api/admin/session-replays/:id', requireAuth('reports.read'), async (re
   const id=routeParam(req,'id');
   const [session,chunks,order,markers]=await Promise.all([
     prisma.sessionReplay.findUnique({where:{id}}),
-    prisma.sessionReplayChunk.findMany({where:{sessionId:id},orderBy:{sequence:'asc'},take:500}),
+    prisma.sessionReplayChunk.findMany({where:{sessionId:id},orderBy:{sequence:'asc'},take:2500}),
     prisma.order.findFirst({where:{replaySessionId:id},select:{id:true,orderNumber:true,total:true,source:true,createdAt:true}}),
     prisma.eventLog.findMany({where:{sessionReplayId:id,eventName:{in:['PageView','ViewContent','AddToCart','InitiateCheckout','Purchase']}},select:{eventName:true,sourceUrl:true,createdAt:true,payload:true},orderBy:{createdAt:'asc'},take:500}),
   ]);

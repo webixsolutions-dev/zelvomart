@@ -1,10 +1,11 @@
 "use client";
 
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { clearPersistedCart, useCart } from "@/components/CartProvider";
 import { money } from "@/lib/format";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
-import { getReplaySessionId } from "@/lib/session-replay-client";
+import { getReplaySessionId, requestReplayFlush } from "@/lib/session-replay-client";
 
 const SESSION_KEY = "zm_checkout_form";
 const IDEMPOTENCY_KEY = "zm_checkout_idempotency";
@@ -55,11 +56,13 @@ export default function CheckoutClient({
   required: Record<string, boolean>;
   delivery: { mode?: string; flatRate?: number; freeAbove?: number; codFee?: number };
 }) {
-  const { items, subtotal, bundleSaving, ready } = useCart();
+  const router = useRouter();
+  const { items, subtotal, bundleSaving, ready, clear } = useCart();
   const [fields, setFields] = useState<Fields>(empty);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState("");
   const [serverError, setServerError] = useState("");
   const [activeStep, setActiveStep] = useState(0);
   const [restored, setRestored] = useState(false);
@@ -244,6 +247,7 @@ export default function CheckoutClient({
     if (!ready || !items.length || submitting || redirecting || !validateAll()) return;
     setSubmitting(true);
     setServerError("");
+    requestReplayFlush();
     try {
       try { window.clarity?.("event", "place_order_tap"); } catch {}
       const idempotencyKey = sessionStorage.getItem(IDEMPOTENCY_KEY) || crypto.randomUUID();
@@ -278,16 +282,19 @@ export default function CheckoutClient({
 
       try { window.clarity?.("event", "order_placed"); window.clarity?.("identify", data.orderNumber); } catch {}
 
-      // Keep React cart state intact while leaving checkout so the successful
-      // response never flashes "Your cart is empty". Clear only the persisted
-      // cookie, then perform a hard replace; the success page mounts with an
-      // empty cart while the replay session survives in sessionStorage.
+      // Keep the root layout mounted while moving to confirmation. Using the
+      // Next router instead of window.location.replace prevents the rrweb
+      // recorder from being torn down at the most important moment of the
+      // journey, so checkout + confirmation stay in the same replay.
+      setConfirmedOrder(String(data.orderNumber || ""));
       setRedirecting(true);
+      requestReplayFlush();
       clearPersistedCart();
+      clear();
       sessionStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       const successUrl = `/checkout/success/${encodeURIComponent(data.orderNumber)}?key=${encodeURIComponent(data.id)}`;
-      window.location.replace(successUrl);
+      router.replace(successUrl, { scroll: true });
     } catch (error) {
       setServerError(error instanceof Error ? error.message.replace(/_/g, " ") : "Could not place order");
       setSubmitting(false);
@@ -306,7 +313,12 @@ export default function CheckoutClient({
   }
 
   if (redirecting) {
-    return <div className="mock-checkout-redirect" aria-live="polite"><span>✓</span><h2>Order placed</h2><p>Opening your confirmation…</p></div>;
+    return <div className="mock-checkout-redirect mock-checkout-confirming" aria-live="polite">
+      <span className="mock-confirm-success">✓</span>
+      <h2>Order confirmed{confirmedOrder ? ` · #${confirmedOrder}` : ""}</h2>
+      <p>Opening your confirmation page…</p>
+      <div className="mock-confirm-route-loader"><i /><i /><i /></div>
+    </div>;
   }
 
   if (!items.length) {
@@ -370,12 +382,23 @@ export default function CheckoutClient({
       <div className="mock-checkout-review-row"><span>▣</span><div><small>Delivery</small><b>Standard delivery · {selectedCity ? `${selectedCity.deliveryMinDays}–${selectedCity.deliveryMaxDays} working days` : "Tracked across Pakistan"}</b></div><strong>{deliveryFee ? money(deliveryFee) : "FREE"}</strong></div>
       <div className="mock-checkout-review-row"><span>₨</span><div><small>Payment</small><b>Cash on Delivery</b></div><strong>COD</strong></div>
       <label className="mock-checkout-terms mock-progressive-terms"><input type="checkbox" checked={fields.terms} onChange={(e) => update("terms", e.target.checked)} /><span>I agree to the terms and confirm my delivery details are correct.{errors.terms ? <b className="field-error"> {errors.terms}</b> : null}</span></label>
-      <button type="submit" className="mock-progressive-place-order" disabled={submitting || (required.terms && !fields.terms)}>{submitting ? "Placing order…" : `Place order · ${money(total)} →`}</button>
+      <button type="submit" className="mock-progressive-place-order" disabled={submitting || (required.terms && !fields.terms)}>{submitting ? <><span className="mock-order-button-spinner" /> Confirming order…</> : `Place order · ${money(total)} →`}</button>
     </div>;
   };
 
   return (
-    <form className="mock-checkout-layout mock-progressive-checkout" onSubmit={submit}>
+    <>
+      {submitting ? <div className="mock-order-processing-overlay" role="status" aria-live="polite">
+        <div className="mock-order-processing-card">
+          <div className="mock-order-orbit" aria-hidden="true"><i /><i /><b>✓</b></div>
+          <span className="mock-order-processing-kicker">SECURE CHECKOUT</span>
+          <h2>Confirming your order…</h2>
+          <p>Please stay on this page for a moment. We’re reserving your items and creating your confirmation.</p>
+          <div className="mock-order-processing-progress"><i /></div>
+          <small>Cash on Delivery · No payment is being charged online</small>
+        </div>
+      </div> : null}
+      <form className="mock-checkout-layout mock-progressive-checkout" onSubmit={submit}>
       <section className="mock-checkout-form">
         <div className="mock-checkout-progress-wrap">
           <div className="mock-checkout-progress-top"><span>{currentStep.eyebrow}</span><b>{progress}% complete</b></div>
@@ -411,9 +434,10 @@ export default function CheckoutClient({
         {codFee ? <div><span>COD fee</span><b>{money(codFee)}</b></div> : null}
         <div className="total"><span>Total</span><b>{money(total)}</b></div>
         <div className="mock-pay-arrival">✓ Pay cash when your parcel arrives</div>
-        <button type="submit" className="mock-place-order" disabled={submitting || activeStep !== steps.length - 1 || (required.terms && !fields.terms)}>{activeStep === steps.length - 1 ? (submitting ? "Placing order…" : "Place order →") : `Complete step ${activeStep + 1} →`}</button>
+        <button type="submit" className="mock-place-order" disabled={submitting || activeStep !== steps.length - 1 || (required.terms && !fields.terms)}>{activeStep === steps.length - 1 ? (submitting ? <><span className="mock-order-button-spinner" /> Confirming…</> : "Place order →") : `Complete step ${activeStep + 1} →`}</button>
         <p className="mock-order-help">Need help? Call <b>0300-2026711</b> or message us on WhatsApp.</p>
       </aside>
-    </form>
+      </form>
+    </>
   );
 }

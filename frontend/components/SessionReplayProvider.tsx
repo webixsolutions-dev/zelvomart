@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { readCookie } from "@/lib/client-tracking";
 import {
   claimReplaySequence,
@@ -43,9 +44,40 @@ function send(path: string, body: unknown, keepalive = false) {
   }).then((response) => response.ok).catch(() => false);
 }
 
-type PendingChunk = { sequence: number; events: unknown[] };
+type PendingChunk = { sequence: number; events: unknown[]; currentUrl: string };
+
+type RecordWithSnapshot = ((options: Record<string, unknown>) => unknown) & {
+  takeFullSnapshot?: () => void;
+};
+
+async function announceSession(pageView = false) {
+  const sessionId = getReplaySessionId();
+  const visitorId = getReplayVisitorId();
+  if (!sessionId || !visitorId) return false;
+  const source = trafficMeta();
+  return send("/api/session-replays/start", {
+    sessionId,
+    visitorId,
+    startedAt: getReplayStartedAt(),
+    landingUrl: getReplayLandingUrl(),
+    currentUrl: window.location.href,
+    referrer: document.referrer || null,
+    source,
+    device: window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop",
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    pageView,
+  });
+}
 
 export default function SessionReplayProvider() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const routeKey = useMemo(() => `${pathname || "/"}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`, [pathname, searchParams]);
+  const takeSnapshotRef = useRef<null | (() => void)>(null);
+  const flushRef = useRef<null | ((keepalive?: boolean) => Promise<boolean>)>(null);
+  const lastRouteRef = useRef(routeKey);
+  const recorderReadyRef = useRef(false);
+
   useEffect(() => {
     if (!sessionReplayEnabled()) return;
 
@@ -60,16 +92,13 @@ export default function SessionReplayProvider() {
     let queue: unknown[] = [];
     let pending: PendingChunk | undefined;
     let flushing = false;
-    const pageStartedAt = Date.now();
-    const journeyStartedAt = getReplayStartedAt();
-    const landingUrl = getReplayLandingUrl();
 
     const scheduleRetry = () => {
       if (stopped || retryTimer) return;
       retryTimer = window.setTimeout(() => {
         retryTimer = undefined;
         void flush(false);
-      }, 1_800);
+      }, 1_200);
     };
 
     const flush = async (keepalive = false) => {
@@ -78,10 +107,11 @@ export default function SessionReplayProvider() {
       flushing = true;
 
       if (!pending) {
-        const count = Math.min(queue.length, 30);
+        const count = Math.min(queue.length, 24);
         pending = {
           sequence: claimReplaySequence(),
           events: queue.splice(0, count),
+          currentUrl: window.location.href,
         };
       }
 
@@ -90,7 +120,7 @@ export default function SessionReplayProvider() {
         sessionId,
         sequence: chunk.sequence,
         events: chunk.events,
-        currentUrl: window.location.href,
+        currentUrl: chunk.currentUrl,
       }, keepalive);
 
       if (ok) {
@@ -100,9 +130,11 @@ export default function SessionReplayProvider() {
       }
       flushing = false;
 
-      if (ok && queue.length >= 30) void flush(false);
+      if (ok && queue.length) void flush(false);
       return ok;
     };
+
+    flushRef.current = flush;
 
     const stopPageRecorder = () => {
       if (stopped) return;
@@ -110,40 +142,25 @@ export default function SessionReplayProvider() {
       if (timer) window.clearInterval(timer);
       if (retryTimer) window.clearTimeout(retryTimer);
       try { stopRecording?.(); } catch {}
-      // Do NOT end the journey here. A page unload/reload is still the same
-      // shopper session. Persisted session id + chunk sequence lets the next
-      // page continue the same A-to-Z replay.
+      // Keep the same replay session alive across the shopper journey.
+      // A final small keepalive flush is attempted for the last interaction batch.
       void flush(true);
     };
 
-    const start = async () => {
-      const source = trafficMeta();
-      const started = await send("/api/session-replays/start", {
-        sessionId,
-        visitorId,
-        startedAt: journeyStartedAt,
-        landingUrl,
-        currentUrl: window.location.href,
-        referrer: document.referrer || null,
-        source,
-        device: window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop",
-        viewport: `${window.innerWidth}x${window.innerHeight}`,
-        pageStartedAt: new Date(pageStartedAt).toISOString(),
-      });
-
-      if (!started || stopped) return;
+    const startRecorder = async () => {
       try {
-        const { record } = await import("@rrweb/record");
+        // Start rrweb first. The API announcement intentionally runs in parallel,
+        // so a slow backend can never make us miss the shopper's landing actions.
+        const rrwebModule = await import("@rrweb/record");
+        if (stopped) return;
+        const record = rrwebModule.record as unknown as RecordWithSnapshot;
         const stop = record({
-          emit(event) {
+          emit(event: unknown) {
             queue.push(event);
             const eventType = Number((event as { type?: number }).type);
-            // Each real document load gets a FullSnapshot. Because the replay id
-            // is shared across the whole tab journey, these snapshots form clean
-            // page boundaries inside one order-linked recording.
-            if (eventType === 2) {
-              void flush(false);
-            } else if (queue.length >= 30) {
+            // Full snapshots are valuable and can be large: upload them immediately
+            // while the document is still active rather than waiting for unload.
+            if (eventType === 2 || queue.length >= 24) {
               void flush(false);
             }
           },
@@ -153,7 +170,7 @@ export default function SessionReplayProvider() {
           recordCanvas: false,
           collectFonts: false,
           inlineImages: false,
-          checkoutEveryNms: 60_000,
+          checkoutEveryNms: 30_000,
           sampling: {
             mousemove: 75,
             scroll: 180,
@@ -162,30 +179,67 @@ export default function SessionReplayProvider() {
           },
           slimDOMOptions: "all",
         });
-        if (typeof stop === "function") stopRecording = stop;
-        timer = window.setInterval(() => { void flush(false); }, 4_000);
+        if (typeof stop === "function") stopRecording = stop as () => void;
+        takeSnapshotRef.current = () => {
+          try { record.takeFullSnapshot?.(); } catch {}
+        };
+        recorderReadyRef.current = true;
+        timer = window.setInterval(() => { void flush(false); }, 1_500);
+
+        // Initial server row creation/update is deliberately non-blocking.
+        void announceSession(false);
       } catch {
         // Replay is analytics-only and must never interrupt shopping.
       }
     };
 
-    // Start near-immediately so the landing page itself is part of the replay.
-    const startTimer = window.setTimeout(() => { void start(); }, 80);
-
+    const onManualFlush = () => { void flush(false); };
     const onPageHide = () => { void flush(true); };
     const onVisibility = () => {
       if (document.visibilityState === "hidden") void flush(true);
     };
+
+    // Start immediately after hydration instead of waiting for a network round-trip.
+    void startRecorder();
+    window.addEventListener("zelvo:replay-flush", onManualFlush);
     window.addEventListener("pagehide", onPageHide);
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
-      window.clearTimeout(startTimer);
+      window.removeEventListener("zelvo:replay-flush", onManualFlush);
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
+      takeSnapshotRef.current = null;
+      flushRef.current = null;
+      recorderReadyRef.current = false;
       stopPageRecorder();
     };
   }, []);
+
+  useEffect(() => {
+    if (!sessionReplayEnabled()) return;
+    if (!routeKey) return;
+
+    if (!lastRouteRef.current) {
+      lastRouteRef.current = routeKey;
+      return;
+    }
+    if (lastRouteRef.current === routeKey) return;
+    lastRouteRef.current = routeKey;
+
+    // Next.js client navigation keeps the root recorder mounted. Force a fresh
+    // FullSnapshot after each route settles so product -> cart -> checkout ->
+    // confirmation remains a clean, complete A-to-Z replay in one session.
+    const timer = window.setTimeout(() => {
+      if (recorderReadyRef.current) {
+        takeSnapshotRef.current?.();
+        void flushRef.current?.(false);
+      }
+      void announceSession(true);
+    }, 180);
+
+    return () => window.clearTimeout(timer);
+  }, [routeKey]);
 
   return null;
 }
