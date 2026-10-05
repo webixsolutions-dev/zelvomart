@@ -7674,3 +7674,171 @@ body{
     height:34px!important;
   }
 }
+
+/* CTA alignment + larger trust cards refinement */
+.mock-category-about{
+  margin-top: 42px !important;
+  padding: 38px 0 !important;
+  background: #f4fafc !important;
+}
+.mock-category-about .site-shell{
+  max-width: 1280px;
+}
+.mock-category-about-grid{
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.18fr) !important;
+  gap: 44px !important;
+  align-items: start !important;
+}
+.mock-category-about-copy{
+  max-width: 520px;
+}
+.mock-category-about h2{
+  margin: 10px 0 16px !important;
+  font-size: clamp(34px, 3vw, 48px) !important;
+  line-height: 1.08 !important;
+  letter-spacing: -1.4px !important;
+  font-weight: 800 !important;
+  color: #17324a !important;
+}
+.mock-category-about-copy p{
+  margin: 0 !important;
+  font-size: 19px !important;
+  line-height: 1.72 !important;
+  color: #547082 !important;
+}
+.mock-category-about-copy p strong{
+  display: block;
+  margin-bottom: 6px;
+  font-size: 20px;
+  line-height: 1.45;
+  color: #183144;
+  font-weight: 800;
+}
+.mock-category-about-faq{
+  width: 100%;
+}
+.mock-category-about-faq details{
+  padding: 14px 0 !important;
+  border-top: 1px solid #d8e4e9 !important;
+}
+.mock-category-about-faq details:last-child{
+  border-bottom: 1px solid #d8e4e9 !important;
+}
+.mock-category-about-faq summary{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+  cursor: pointer;
+  font-size: 17px !important;
+  line-height: 1.35 !important;
+  font-weight: 800 !important;
+  color: #17324a !important;
+}
+.mock-category-about-faq summary::-webkit-details-marker{
+  display:none;
+}
+.mock-category-about-faq summary::before{
+  content: "▸";
+  font-size: 12px;
+  color: #17324a;
+  transform: translateY(1px);
+}
+.mock-category-about-faq details[open] summary::before{
+  content: "▾";
+}
+.mock-category-about-faq details p{
+  margin: 8px 0 0 22px !important;
+  font-size: 15px !important;
+  line-height: 1.7 !important;
+  color: #597082 !important;
+}
+
+.mock-trust-strip{
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  border-radius: 18px !important;
+  border: 1px solid #dbe6ec !important;
+  overflow: hidden;
+  background: #fff !important;
+}
+.mock-trust-strip > div{
+  min-height: 92px !important;
+  padding: 18px 20px !important;
+  gap: 14px !important;
+  align-items: center !important;
+}
+.mock-trust-strip > div > span{
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+}
+.mock-trust-strip b{
+  font-size: 15px !important;
+  line-height: 1.25 !important;
+  font-weight: 800 !important;
+  color: #17324a !important;
+}
+.mock-trust-strip small{
+  margin-top: 4px !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  color: #647b89 !important;
+}
+
+@media (max-width: 960px){
+  .mock-category-about{
+    margin-top: 28px !important;
+    padding: 28px 0 !important;
+  }
+  .mock-category-about-grid{
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+  .mock-category-about h2{
+    font-size: 28px !important;
+    margin-bottom: 12px !important;
+  }
+  .mock-category-about-copy p{
+    font-size: 14px !important;
+  }
+  .mock-category-about-copy p strong{
+    font-size: 15px !important;
+    margin-bottom: 4px !important;
+  }
+  .mock-category-about-faq summary{
+    font-size: 14px !important;
+  }
+  .mock-category-about-faq details p{
+    font-size: 12.5px !important;
+    margin-left: 18px !important;
+  }
+  .mock-trust-strip{
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .mock-trust-strip > div{
+    min-height: 84px !important;
+    padding: 16px !important;
+    border-bottom: 1px solid #e4ebef !important;
+  }
+  .mock-trust-strip > div:nth-child(2n){
+    border-right: 0 !important;
+  }
+  .mock-trust-strip > div:nth-last-child(-n+2){
+    border-bottom: 0 !important;
+  }
+}
+
+@media (max-width: 560px){
+  .mock-trust-strip{
+    grid-template-columns: 1fr !important;
+  }
+  .mock-trust-strip > div{
+    min-height: 74px !important;
+    padding: 14px 16px !important;
+    border-right: 0 !important;
+  }
+  .mock-trust-strip > div:not(:last-child){
+    border-bottom: 1px solid #e4ebef !important;
+  }
+}
