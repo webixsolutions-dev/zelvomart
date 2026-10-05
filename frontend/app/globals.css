@@ -8604,3 +8604,128 @@ body{
 .admin-tracking-bottom-grid{display:grid;grid-template-columns:.72fr 1.28fr;gap:18px;margin-top:18px}.admin-last-event{display:block;margin-top:9px;font-size:15px}.admin-tracking-bottom-grid .admin-section-card>p{font-size:10px;line-height:1.55;color:#738792}
 @media(max-width:1050px){.admin-funnel-steps,.admin-tracking-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-cro-grid,.admin-tracking-bottom-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.admin-funnel-steps,.admin-tracking-kpis{grid-template-columns:1fr}.admin-funnel-bar-row{grid-template-columns:95px 1fr 38px}.admin-funnel-bar-row>small{display:none}.admin-event-row{grid-template-columns:100px 1fr 55px}.admin-chart-legend{display:none}}
+
+/* Progressive checkout + full journey replay UX */
+.mock-checkout-loading,
+.mock-checkout-redirect{
+  min-height:360px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:10px;
+  padding:44px 20px;
+  border:1px solid #dfe7ec;
+  border-radius:18px;
+  background:#fff;
+  text-align:center;
+}
+.mock-checkout-loading>span{
+  width:30px;height:30px;border:3px solid #dcecf3;border-top-color:#0b93c8;border-radius:50%;animation:zmCheckoutSpin .7s linear infinite
+}
+.mock-checkout-loading b{font-size:13px;color:#526a78}
+.mock-checkout-redirect>span{width:52px;height:52px;display:grid;place-items:center;border-radius:50%;background:#eaf8ef;color:#15924d;font-size:26px;font-weight:900}
+.mock-checkout-redirect h2{margin:2px 0 0;font-size:24px}
+.mock-checkout-redirect p{margin:0;color:#6f818d}
+@keyframes zmCheckoutSpin{to{transform:rotate(360deg)}}
+
+.mock-progressive-checkout{align-items:start}
+.mock-checkout-progress-wrap{
+  padding:16px 18px 14px;
+  border:1px solid #dfe7ec;
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+}
+.mock-checkout-progress-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.mock-checkout-progress-top span{font-size:10px;font-weight:900;letter-spacing:.9px;color:#0a8fc4}
+.mock-checkout-progress-top b{font-size:11px;color:#58707e}
+.mock-checkout-progress-track{height:6px;border-radius:99px;background:#edf3f6;overflow:hidden}
+.mock-checkout-progress-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0b94ca,#15b56a);transition:width .38s ease}
+.mock-checkout-step-dots{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px;margin-top:14px}
+.mock-checkout-step-dots button{min-width:0;padding:0;border:0;background:transparent;display:grid;justify-items:center;gap:5px;cursor:pointer;color:#91a0aa}
+.mock-checkout-step-dots button>span{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1px solid #d7e1e6;background:#f8fafb;font-size:9px;font-weight:900;transition:.25s ease}
+.mock-checkout-step-dots button>small{max-width:100%;font-size:8px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mock-checkout-step-dots button.active>span{border-color:#0b93c8;background:#0b93c8;color:#fff;box-shadow:0 0 0 4px rgba(11,147,200,.09)}
+.mock-checkout-step-dots button.active>small{color:#15394b;font-weight:850}
+.mock-checkout-step-dots button.done>span{border-color:#bfe7cf;background:#eaf8ef;color:#168f4d}
+
+.mock-progressive-step-card{
+  min-height:350px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:28px;
+  border:1px solid #dfe7ec;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 10px 30px rgba(16,44,63,.035);
+  animation:zmCheckoutStepIn .38s cubic-bezier(.2,.75,.25,1) both;
+}
+@keyframes zmCheckoutStepIn{from{opacity:0;transform:translateY(15px) scale(.992)}to{opacity:1;transform:none}}
+.mock-progressive-step-heading{max-width:620px;margin-bottom:22px}
+.mock-progressive-step-heading>span{display:block;margin-bottom:7px;color:#0b92c7;font-size:10px;font-weight:900;letter-spacing:1px}
+.mock-progressive-step-heading h2{margin:0;font-size:25px;line-height:1.15;color:#102c3f}
+.mock-progressive-step-heading p{margin:7px 0 0;color:#718692;font-size:12.5px!important}
+.mock-progressive-field{display:grid;gap:8px;max-width:680px}
+.mock-progressive-field>label{font-size:13px;font-weight:850;color:#203d4d}
+.mock-progressive-field>input,
+.mock-progressive-field>textarea{
+  width:100%;
+  min-height:54px;
+  padding:13px 15px;
+  border:1px solid #d3e0e6;
+  border-radius:11px;
+  outline:0;
+  background:#fbfdfe;
+  color:#173747;
+  font:inherit;
+  font-size:15px;
+  transition:border-color .2s ease,box-shadow .2s ease,background .2s ease;
+}
+.mock-progressive-field>textarea{min-height:112px;resize:vertical;line-height:1.5}
+.mock-progressive-field>input:focus,
+.mock-progressive-field>textarea:focus{border-color:#0c9bd1;background:#fff;box-shadow:0 0 0 4px rgba(12,155,209,.08)}
+.mock-progressive-field>small{font-size:10.5px;color:#758893}
+.mock-progressive-field .mock-step-success{color:#188b4d;font-weight:800}
+.mock-progressive-field .field-error{font-size:10.5px;color:#b73535;font-weight:750}
+.mock-progressive-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px;padding-top:18px;border-top:1px solid #edf1f3}
+.mock-progressive-actions>div{display:flex;align-items:center;gap:8px}
+.mock-progressive-actions button{min-height:40px;padding:0 15px;border-radius:9px;font-size:11px;font-weight:850;cursor:pointer}
+.mock-progressive-actions .back,.mock-progressive-actions .skip{border:1px solid #dbe4e8;background:#fff;color:#526b79}
+.mock-progressive-actions .next{border:0;background:#0b93c8;color:#fff;padding-inline:20px}
+
+.mock-checkout-review{display:grid;gap:9px}
+.mock-checkout-review-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:11px;padding:12px;border:1px solid #e1e8ec;border-radius:11px;background:#fbfcfd}
+.mock-checkout-review-row>span{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#edf7fb;color:#0a8ec2;font-size:14px;font-weight:900}
+.mock-checkout-review-row>div{min-width:0;display:grid;gap:3px}
+.mock-checkout-review-row small{font-size:9px;color:#7c8f9a;text-transform:uppercase;letter-spacing:.5px}
+.mock-checkout-review-row b{font-size:11.5px;color:#213e4e;line-height:1.4}
+.mock-checkout-review-row>button{border:0;background:transparent;color:#0a8fc4;font-size:10px;font-weight:850;cursor:pointer}
+.mock-checkout-review-row>strong{font-size:11px;color:#168c4c}
+.mock-progressive-terms{margin-top:5px;padding:12px;border:1px solid #e1e8ec;border-radius:10px;background:#fff}
+.mock-progressive-place-order{min-height:49px;border:0;border-radius:10px;background:#0b93c8;color:#fff;font-size:13px;font-weight:900;cursor:pointer}
+.mock-progressive-place-order:disabled{opacity:.52;cursor:not-allowed}
+
+@media (max-width:900px){
+  .mock-checkout-step-dots{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:11px}
+  .mock-progressive-step-card{min-height:330px;padding:22px}
+}
+@media (max-width:620px){
+  .mock-checkout-progress-wrap{padding:14px}
+  .mock-checkout-step-dots{display:flex;overflow-x:auto;justify-content:flex-start;padding-bottom:2px;scrollbar-width:none}
+  .mock-checkout-step-dots::-webkit-scrollbar{display:none}
+  .mock-checkout-step-dots button{flex:0 0 58px}
+  .mock-checkout-step-dots button>small{font-size:7.5px}
+  .mock-progressive-step-card{min-height:310px;padding:18px;border-radius:13px}
+  .mock-progressive-step-heading h2{font-size:22px}
+  .mock-progressive-step-heading p{font-size:11.5px!important}
+  .mock-progressive-field>input,.mock-progressive-field>textarea{font-size:16px}
+  .mock-progressive-actions{align-items:stretch}
+  .mock-progressive-actions>div{margin-left:auto}
+  .mock-progressive-actions button{padding-inline:12px}
+  .mock-checkout-review-row{grid-template-columns:32px minmax(0,1fr) auto}
+}
+@media (prefers-reduced-motion:reduce){
+  .mock-progressive-step-card,.mock-checkout-loading>span{animation:none!important}
+  .mock-checkout-progress-track i{transition:none!important}
+}
