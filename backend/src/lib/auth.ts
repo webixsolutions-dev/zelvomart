@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import type { Role } from "@prisma/client";
+import type { Role } from "../generated/prisma/client";
 import { can, type Permission } from "./permissions";
 
 export type AdminIdentity = { id: string; name: string; email: string; role: Role };

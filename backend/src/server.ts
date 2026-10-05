@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
-import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatus } from '@prisma/client';
+import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatus } from './generated/prisma/client';
 import { prisma } from './lib/db';
 import { signAdminToken, requireAuth, type AuthedRequest } from './lib/auth';
 import { createOrder, restoreOrderStock } from './lib/order';
