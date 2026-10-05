@@ -24,7 +24,7 @@ const CATEGORY_IMAGES: Record<string, string> = {
   "home-decor": "/images/categories/home-decor.webp",
   "beauty-personal-care": "/images/categories/beauty-personal-care.webp",
   "tech-gadgets": "/images/categories/tech-gadgets.webp",
-  "kids-toys": "/images/categories/kids-toys.svg",
+  "kids-toys": "/images/categories/kids-toys.webp",
   "fashion-accessories": "/images/categories/fashion-accessories.webp",
   "sports-fitness": "/images/categories/sports-fitness.webp",
 };

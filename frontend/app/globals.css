@@ -6808,3 +6808,432 @@ body{font-family:var(--zm-font);font-synthesis:none;text-rendering:optimizeLegib
   .admin-brand-logo-image { width: 88px; }
   .admin-brand-portal-label { display: none; }
 }
+
+/* 2026-10-05 — readability pass + premium product detail refinement */
+:root {
+  --zm-font: "Segoe UI Variable Text", "Segoe UI Variable", "Inter", "Aptos", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --zm-display-font: "Segoe UI Variable Display", "Segoe UI Variable", "Inter", "Aptos Display", "Segoe UI", system-ui, sans-serif;
+}
+html { font-size: 16px; }
+body {
+  font-family: var(--zm-font);
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+}
+h1,h2,h3,h4,h5,h6 { font-family: var(--zm-display-font); letter-spacing: -0.025em; }
+.public-site-main :where(input,textarea,select,button) { font-family: inherit; font-size: 13px; }
+.public-site-main :where(p,li) { text-wrap: pretty; }
+
+/* Header/footer were too small after the mockup pass. */
+.mock-topbar { font-size: 12px; }
+.mock-header-search input { font-size: 14px; }
+.mock-header-search button { font-size: 13px; }
+.mock-header-actions > a { font-size: 13px; }
+.mock-desktop-category-nav a,.mock-header-special-links a { font-size: 12.5px; }
+.mock-mobile-category-strip small { font-size: 10px; font-weight: 750; }
+.mock-drawer-label { font-size: 11px; }
+.mock-drawer-categories a,.mock-drawer-links a { font-size: 12.5px; }
+.mock-footer-brand p { font-size: 12px; line-height: 1.65; }
+.mock-footer-col h4 { font-size: 11px; }
+.mock-footer-col a,.mock-footer-col > span { font-size: 11.5px; line-height: 1.45; }
+.mock-footer-bottom { font-size: 10px; }
+
+/* Consistent readable storefront copy without changing the mockup hierarchy. */
+.mock-home-section p,.mock-standard-grid p,.mock-editorial p,.mock-order-steps p,.mock-unbox p,
+.mock-about-page p,.mock-contact-page p,.mock-cart-page p,.mock-checkout-page p,
+.mock-listing-page p,.mock-category-page p,.mock-newin-page p,.mock-bestseller-page p { font-size: 13px; line-height: 1.62; }
+.mock-product-title { font-size: 14px !important; }
+.mock-product-category { font-size: 10.5px !important; }
+.mock-product-rating { font-size: 11px !important; }
+.mock-product-price strong { font-size: 15px !important; }
+.mock-filter-panel,.mock-listing-toolbar,.mock-category-about,.mock-other-cats { font-size: 12.5px; }
+.mock-filter-panel summary,.mock-filter-title b { font-size: 13px !important; }
+.mock-filter-panel a,.mock-listing-toolbar select,.mock-listing-toolbar button { font-size: 12px !important; }
+
+/* Premium PDP — larger, clearer, and still faithful to the supplied visual language. */
+.product-page { font-size: 14px; }
+.pdp-reference-breadcrumb { padding: 18px 0 16px; font-size: 11px; }
+.mock-pdp-top { grid-template-columns: minmax(0,1.08fr) minmax(360px,.92fr); gap: 44px; }
+.mock-pdp-buy-card {
+  padding: 24px;
+  border: 1px solid #e2e9ed;
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(10,42,57,.08);
+  position: sticky;
+  top: 112px;
+}
+.mock-pdp-buy-topline > span { padding: 7px 10px; font-size: 10.5px; }
+.mock-pdp-buy-topline button { width: 34px; height: 34px; border-radius: 50%; background: #f4f8fa; font-size: 15px; }
+.mock-pdp-category { margin-top: 14px; font-size: 10.5px; font-weight: 800; letter-spacing: .1em; color: #6e8491; }
+.mock-pdp-buy-card h1 { margin: 7px 0 10px; font-size: 34px; line-height: 1.08; letter-spacing: -1.2px; font-weight: 880; color: #112b3a; }
+.mock-pdp-short-description { margin: 0 0 13px; font-size: 13.5px !important; line-height: 1.58 !important; color: #5c7280; }
+.mock-pdp-rating { font-size: 12px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.mock-pdp-rating em { margin-left: auto; float: none; padding: 5px 8px; font-size: 9.5px; font-weight: 800; }
+.mock-pdp-meta { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 7px 16px; color: #7a8d98; font-size: 11px; }
+.mock-pdp-meta b { color: #2b4655; font-weight: 750; }
+.mock-pdp-social-proof { margin-top: 11px; padding: 9px 11px; font-size: 11px; }
+.mock-pdp-price { margin-top: 17px; gap: 10px; flex-wrap: wrap; }
+.mock-pdp-price strong { font-size: 31px; letter-spacing: -1px; }
+.mock-pdp-price del { font-size: 13px; }
+.mock-pdp-sale-badge { padding: 5px 8px; border-radius: 999px; background: #eaf8ef; color: #188a4b; font-size: 10px; font-weight: 850; }
+.mock-pdp-payment-note { margin-top: 5px; font-size: 11px; font-weight: 750; }
+.mock-pdp-checks { margin: 15px 0; font-size: 12.5px; line-height: 1.8; color: #304b5a; }
+.mock-pdp-label { margin-bottom: 9px; }
+.mock-pdp-label b { font-size: 12.5px; }
+.mock-pdp-label span { font-size: 10.5px; font-weight: 750; }
+.mock-pdp-options,.mock-pdp-bundle { margin-top: 18px; }
+.mock-pdp-option-buttons { gap: 8px; }
+.mock-pdp-option-buttons button { min-height: 42px; padding: 0 14px; border-radius: 9px; font-size: 12px; }
+.mock-pdp-option-buttons small { font-size: 9.5px; }
+.mock-pdp-bundle label { min-height: 66px; padding: 10px 13px; margin-top: 8px; border-radius: 11px; }
+.mock-pdp-bundle span b { font-size: 12px; }
+.mock-pdp-bundle span small { margin-top: 2px; font-size: 10px; }
+.mock-pdp-bundle strong { font-size: 13px; }
+.mock-pdp-stock { margin: 16px 0 10px; font-size: 11px; font-weight: 750; }
+.mock-pdp-stock span { font-weight: 500; }
+.mock-pdp-delivery-line { padding: 11px 0; }
+.mock-pdp-delivery-line > div > span { width: 32px; height: 32px; }
+.mock-pdp-delivery-line b { margin-top: 5px; font-size: 10.5px; }
+.mock-pdp-delivery-line small { font-size: 9px; }
+.mock-pdp-purchase-row { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 13px 0 10px; padding-top: 13px; border-top: 1px solid #e8eef1; }
+.mock-pdp-quantity > span,.mock-pdp-order-total > span { display: block; margin-bottom: 5px; color: #738793; font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .06em; }
+.mock-pdp-quantity > div { display: grid; grid-template-columns: 38px 42px 38px; height: 38px; border: 1px solid #d9e4e9; border-radius: 9px; overflow: hidden; background: #fff; }
+.mock-pdp-quantity button { border: 0; background: #f5f9fb; color: #17313f; font-size: 17px; font-weight: 800; }
+.mock-pdp-quantity b { display: grid; place-items: center; font-size: 12px; }
+.mock-pdp-order-total { text-align: right; }
+.mock-pdp-order-total strong { font-size: 18px; letter-spacing: -.4px; }
+.mock-pdp-main-actions { margin-top: 10px; }
+.mock-pdp-main-actions > .order { height: 50px; border-radius: 9px; font-size: 13px; letter-spacing: .01em; transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+.mock-pdp-main-actions > .order:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 9px 20px rgba(14,31,40,.18); background: #090c0e; }
+.mock-pdp-main-actions > div { gap: 8px; margin-top: 8px; }
+.mock-pdp-main-actions > div > * { height: 42px; border-radius: 9px; font-size: 11.5px; }
+.mock-pdp-trust-grid { gap: 8px; margin-top: 12px; }
+.mock-pdp-trust-grid > span { padding: 11px; border-radius: 10px; grid-template-columns: 24px 1fr; font-size: 12px; }
+.mock-pdp-trust-grid b { font-size: 10.5px; }
+.mock-pdp-trust-grid small { font-size: 9px; }
+.mock-pdp-gift { margin-top: 11px; padding: 11px; border-radius: 10px; }
+.mock-pdp-gift b { font-size: 10.5px; }
+.mock-pdp-gift small { font-size: 9.5px; }
+
+.mock-pdp-gallery { grid-template-columns: 70px 1fr; gap: 13px; }
+.mock-pdp-thumbs { gap: 9px; }
+.mock-pdp-thumbs button { width: 66px; height: 66px; border-radius: 11px; }
+.mock-pdp-main-image { border-radius: 17px; box-shadow: inset 0 0 0 1px #edf1f3; }
+.mock-pdp-main-image img { padding: 22px; transition: transform .35s ease; }
+.mock-pdp-main-image:hover img { transform: scale(1.025); }
+.mock-pdp-badge { left: 16px; top: 16px; padding: 7px 10px; font-size: 10px; }
+.mock-pdp-zoom { right: 16px; top: 16px; width: 34px; height: 34px; }
+.mock-pdp-gallery-benefits { gap: 10px; margin-top: 6px; }
+.mock-pdp-gallery-benefits > span { min-height: 66px; padding: 11px; border-radius: 11px; grid-template-columns: 28px 1fr; font-size: 13px; }
+.mock-pdp-gallery-benefits > span > b { font-size: 11px; }
+.mock-pdp-gallery-benefits > span > small { font-size: 9.5px; }
+.mock-pdp-small-head { margin-bottom: 12px; font-size: 12px; }
+.mock-pdp-small-head a { font-size: 10px; }
+.mock-pdp-real-grid { gap: 10px; }
+.mock-pdp-real-grid button { border-radius: 12px; }
+.mock-pdp-accordions details { padding: 15px 0; }
+.mock-pdp-accordions summary { font-size: 13px; }
+.mock-pdp-accordions details > div,.mock-pdp-accordions details > p { font-size: 12px !important; line-height: 1.7; }
+.mock-pdp-specs p { grid-template-columns: 150px 1fr; padding: 8px 5px; font-size: 11.5px; }
+
+.mock-pdp-lifestyle { padding: 76px 0 54px; }
+.mock-pdp-lifestyle h2,.mock-pdp-comparison h2,.mock-pdp-reviews h2,.mock-pdp-faq h2 { margin-bottom: 24px; font-size: 34px; letter-spacing: -1.25px; }
+.mock-pdp-lifestyle > div { gap: 16px; }
+.mock-pdp-lifestyle article { padding: 16px; border-radius: 16px; transition: transform .25s ease, box-shadow .25s ease; }
+.mock-pdp-lifestyle article:hover { transform: translateY(-4px); box-shadow: 0 16px 30px rgba(7,43,60,.09); }
+.mock-pdp-lifestyle article > div { border-radius: 12px; }
+.mock-pdp-lifestyle h3 { margin: 14px 0 5px; font-size: 16px; }
+.mock-pdp-lifestyle p { font-size: 12.5px !important; line-height: 1.6 !important; }
+.mock-pdp-story { border-radius: 20px; margin: 36px 0 72px; }
+.mock-pdp-story > .dark { padding: 50px; }
+.mock-pdp-story blockquote { margin: 62px 0 32px; font-size: 31px; line-height: 1.13; }
+.mock-pdp-story > div:last-child { padding: 48px; }
+.mock-pdp-story h2 { font-size: 27px; }
+.mock-pdp-story > div:last-child > p { font-size: 13px !important; }
+.mock-pdp-story li { padding: 13px; border-radius: 10px; }
+.mock-pdp-story li b { font-size: 12px; }
+.mock-pdp-story li span { font-size: 10.5px; line-height: 1.5; }
+.mock-pdp-comparison { padding-bottom: 72px; }
+.mock-pdp-comparison > div { border-radius: 13px; }
+.mock-pdp-comparison p > * { padding: 13px; font-size: 11.5px; }
+.mock-pdp-reviews { padding: 64px 0; }
+.mock-pdp-review-layout { grid-template-columns: 210px 1fr; gap: 42px; }
+.mock-pdp-review-layout > aside { border-radius: 14px; padding: 24px; }
+.mock-pdp-review-layout > aside strong { font-size: 42px; }
+.mock-pdp-review-layout > aside small { font-size: 10.5px; }
+.mock-pdp-review-layout main article { padding: 16px 0; }
+.mock-pdp-review-layout main article > div { font-size: 11px; }
+.mock-pdp-review-layout main article b { font-size: 12.5px; }
+.mock-pdp-review-layout main article p { font-size: 12px !important; }
+.mock-pdp-faq { padding: 64px 0; gap: 76px; }
+.mock-pdp-faq > div:first-child > p { font-size: 12.5px; line-height: 1.6; }
+.mock-pdp-faq > div:first-child > a { padding: 11px 14px; border-radius: 9px; font-size: 11.5px; }
+.mock-pdp-faq details { padding: 16px 0; }
+.mock-pdp-faq summary { font-size: 13px; }
+.mock-pdp-faq details p { font-size: 12px !important; }
+.mock-sticky-atc { padding: 11px 12px; border-radius: 14px; }
+.mock-sticky-atc b { font-size: 11px; }
+.mock-sticky-atc span { font-size: 14px; }
+.mock-sticky-atc button { padding: 12px 22px; border-radius: 9px; font-size: 11.5px; }
+
+@media(max-width:900px){
+  body{font-size:14px}
+  .mock-pdp-top{grid-template-columns:1fr;gap:28px}
+  .mock-pdp-buy-card{position:static;padding:20px;border-radius:16px}
+  .mock-pdp-buy-card h1{font-size:29px;line-height:1.1}
+  .mock-pdp-short-description{font-size:13px!important}
+  .mock-pdp-gallery{grid-template-columns:1fr}
+  .mock-pdp-thumbs{display:flex;gap:9px;overflow:auto}
+  .mock-pdp-thumbs button{width:62px;height:62px;flex:0 0 62px}
+  .mock-pdp-gallery-benefits>span{min-height:62px}
+  .mock-pdp-lifestyle h2,.mock-pdp-comparison h2,.mock-pdp-reviews h2,.mock-pdp-faq h2{font-size:29px}
+  .mock-pdp-story>.dark,.mock-pdp-story>div:last-child{padding:32px}
+  .mock-pdp-story blockquote{font-size:27px}
+  .mock-pdp-faq{gap:30px}
+}
+@media(max-width:560px){
+  .mock-header-main{height:64px}
+  .mock-mobile-category-strip small{font-size:9.5px}
+  .mock-pdp-buy-card{padding:17px}
+  .mock-pdp-buy-card h1{font-size:26px}
+  .mock-pdp-rating{font-size:11px}
+  .mock-pdp-meta{display:grid;gap:4px}
+  .mock-pdp-price strong{font-size:27px}
+  .mock-pdp-checks{font-size:12px}
+  .mock-pdp-gallery-benefits{grid-template-columns:1fr;gap:7px}
+  .mock-pdp-gallery-benefits>span{min-height:52px}
+  .mock-pdp-purchase-row{align-items:center}
+  .mock-pdp-main-actions>div{grid-template-columns:1fr}
+  .mock-pdp-trust-grid{grid-template-columns:1fr 1fr}
+  .mock-pdp-lifestyle{padding-top:52px}
+  .mock-pdp-lifestyle h2,.mock-pdp-comparison h2,.mock-pdp-reviews h2,.mock-pdp-faq h2{font-size:26px}
+  .mock-pdp-story blockquote{margin-top:36px;font-size:24px}
+  .mock-pdp-comparison p>*{padding:11px 9px;font-size:10.5px}
+}
+
+
+/* ==========================================================================
+   2026-10-05 — final typography, page-gutter consistency and PDP refinement.
+   All public pages now inherit the exact same content width/gutters as Home.
+   ========================================================================== */
+:root{
+  --zm-content-max:1280px;
+  --zm-page-gutter:32px;
+  --zm-font:"Segoe UI Variable Text","Segoe UI Variable","Aptos","Inter","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  --zm-display-font:"Segoe UI Variable Display","Segoe UI Variable","Aptos Display","Aptos","Inter","Segoe UI",system-ui,sans-serif;
+}
+body{
+  font-family:var(--zm-font);
+  font-size:16px;
+  line-height:1.6;
+  letter-spacing:-.004em;
+}
+.public-site-main .site-shell,
+.public-site-main .zm-shell{
+  width:min(calc(100% - var(--zm-page-gutter)),var(--zm-content-max))!important;
+  max-width:var(--zm-content-max)!important;
+  margin-inline:auto!important;
+}
+.public-site-main :where(h1,h2,h3,h4,h5,h6){
+  font-family:var(--zm-display-font);
+  color:#102d3d;
+  text-wrap:balance;
+}
+.public-site-main :where(p,li,summary,label,input,textarea,select,button,a){
+  font-family:var(--zm-font);
+}
+
+/* Stronger and more readable text across every storefront page. */
+.mock-home :where(p,li),
+.mock-listing-page :where(p,li),
+.mock-category-page :where(p,li),
+.mock-newin-page :where(p,li),
+.mock-bestseller-page :where(p,li),
+.mock-about-page :where(p,li),
+.mock-contact-page :where(p,li),
+.mock-cart-page :where(p,li),
+.mock-checkout-page :where(p,li),
+.mock-track-page :where(p,li),
+.mock-success-page :where(p,li),
+.mock-policy-page :where(p,li),
+.product-page :where(p,li){
+  font-size:14px;
+  line-height:1.66;
+}
+.mock-home :where(small),
+.mock-listing-page :where(small),
+.mock-category-page :where(small),
+.mock-newin-page :where(small),
+.mock-bestseller-page :where(small),
+.mock-about-page :where(small),
+.mock-contact-page :where(small),
+.mock-cart-page :where(small),
+.mock-checkout-page :where(small),
+.mock-track-page :where(small),
+.mock-success-page :where(small),
+.mock-policy-page :where(small),
+.product-page :where(small){
+  font-size:11px;
+  line-height:1.5;
+}
+.mock-eyebrow{font-size:12px!important;font-weight:900;letter-spacing:.13em}
+.mock-btn-dark,.mock-btn-light{font-size:13.5px;min-height:46px}
+.mock-section-head h2{font-size:35px;font-weight:900;letter-spacing:-1.35px}
+.mock-section-head p{font-size:14px!important}
+.mock-section-head>a{font-size:13px}
+.mock-product-title{font-size:15px!important;line-height:1.38!important;font-weight:850!important}
+.mock-product-category{font-size:11px!important}
+.mock-product-rating{font-size:12px!important}
+.mock-product-price strong{font-size:17px!important}
+.mock-product-price del,.mock-product-price em{font-size:11px!important}
+.mock-product-tabs span,.mock-filter-chips>*{font-size:12px!important}
+.mock-category-minis b{font-size:12.5px}
+.mock-standard-cards article b{font-size:15px}
+.mock-standard-cards article p{font-size:12.5px!important}
+.mock-editorial h3{font-size:25px}
+.mock-editorial>span,.mock-editorial>b{font-size:11.5px}
+.mock-review-media b{font-size:12.5px}
+.mock-review-media small{font-size:11px}
+.mock-step-grid article h3{font-size:15px}
+.mock-step-grid article p{font-size:12.5px!important}
+.mock-unbox ul{font-size:13px}
+.mock-faq-section .faq-question{font-size:13.5px}
+.mock-faq-section .faq-answer{font-size:12.5px}
+
+/* Listing/category typography. */
+.mock-listing-intro h1,.mock-category-hero h1,.mock-bestseller-hero h1,.mock-newin-hero h1{font-size:clamp(38px,4.2vw,56px)}
+.mock-listing-intro p,.mock-category-hero p,.mock-bestseller-hero p,.mock-newin-hero p{font-size:14px!important}
+.mock-filter-panel,.mock-listing-toolbar,.mock-category-about,.mock-other-cats{font-size:13px}
+.mock-filter-panel summary,.mock-filter-title b{font-size:14px!important}
+.mock-filter-panel a,.mock-listing-toolbar select,.mock-listing-toolbar button{font-size:13px!important}
+.mock-listing-categories b,.mock-other-cats b{font-size:12px}
+
+/* About/contact/cart/checkout/track/policy pages. */
+.mock-about-hero p,.mock-about-story p,.mock-about-cms,.mock-about-promise-grid p,.mock-about-testimonials p{font-size:14px!important}
+.mock-about-stats span{font-size:11.5px}
+.mock-about-promise-grid h3{font-size:14px}
+.mock-about-cta p{font-size:13px!important}.mock-about-cta a{font-size:13px}
+.mock-contact-cards p,.mock-order-help p,.mock-contact-side p{font-size:13px!important}
+.mock-contact-cards h3,.mock-order-help h3,.mock-contact-side h3{font-size:15px}
+.mock-contact-cards strong,.mock-order-help b{font-size:12.5px}
+.mock-cart-page h1,.mock-checkout-title h1{font-size:40px}
+.mock-checkout-section-title h2{font-size:17px}
+.mock-checkout-section-title p{font-size:12px!important}
+.mock-checkout-fields label{font-size:12.5px}
+.mock-checkout-fields input,.mock-checkout-fields textarea,.mock-checkout-fields select{font-size:14px;min-height:43px}
+.mock-delivery-choice span b{font-size:13px}.mock-delivery-choice span small{font-size:11px}.mock-delivery-choice strong{font-size:13px}
+.mock-checkout-terms{font-size:12px}.mock-checkout-summary h2{font-size:18px}.mock-checkout-line>span{font-size:12.5px}.mock-checkout-summary>div:not(.mock-checkout-line):not(.mock-pay-arrival){font-size:13px}.mock-pay-arrival{font-size:12px!important}.mock-place-order{height:50px;font-size:14px}
+.mock-track-hero>.site-shell{max-width:var(--zm-content-max)!important;text-align:left}
+.mock-track-hero>.site-shell>p{font-size:14px}
+.mock-track-widget label{font-size:12px}.mock-track-widget input{font-size:14px;height:44px}.mock-track-widget form button{font-size:13px;height:44px}
+.mock-track-result p{font-size:13px!important}.mock-track-result h2{font-size:24px}.mock-status-pill{font-size:11px}
+.mock-timeline-labels{font-size:10.5px}.mock-track-result section>a,.mock-track-result aside>a{font-size:12px}.mock-track-help h3{font-size:15px}.mock-track-help p{font-size:12.5px!important}
+.mock-policy-hero>p,.mock-policy-layout>main p,.mock-policy-layout>main li{font-size:13.5px!important}.mock-policy-layout>main h2{font-size:20px}.mock-policy-layout>aside a{font-size:11.5px}.mock-policy-summary article b{font-size:11.5px}.mock-policy-summary article p{font-size:11px!important}
+
+/* Single product page v2: clearer hierarchy, dynamic facts and premium spacing. */
+.product-page{padding-bottom:86px}
+.product-page>.site-shell{padding-top:8px}
+.pdp-reference-breadcrumb{font-size:12px;padding:20px 0 18px}
+.mock-pdp-top{grid-template-columns:minmax(0,1.12fr) minmax(410px,.88fr);gap:52px}
+.mock-pdp-buy-card{
+  padding:28px;
+  border:1px solid #dce7ec;
+  border-radius:22px;
+  box-shadow:0 24px 55px rgba(9,44,61,.1);
+  background:linear-gradient(180deg,#fff 0%,#fff 78%,#fbfdfe 100%);
+}
+.mock-pdp-buy-card:before{
+  content:"";
+  display:block;
+  height:3px;
+  margin:-28px -28px 23px;
+  border-radius:22px 22px 0 0;
+  background:linear-gradient(90deg,#0ca4dd,#0b7186 55%,#16b85c);
+}
+.mock-pdp-buy-card h1{font-size:clamp(34px,3.2vw,43px);line-height:1.07;letter-spacing:-1.55px}
+.mock-pdp-short-description{font-size:14.5px!important;line-height:1.65!important}
+.mock-pdp-category{font-size:11.5px}
+.mock-pdp-rating{font-size:13px}
+.mock-pdp-meta{font-size:12px}
+.mock-pdp-social-proof{font-size:12px;padding:10px 12px}
+.mock-pdp-price strong{font-size:35px!important}
+.mock-pdp-price del{font-size:14px!important}
+.mock-pdp-payment-note{font-size:12.5px}
+.mock-pdp-quick-facts{
+  margin:15px 0 17px;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  border:1px solid #e1e9ed;
+  border-radius:13px;
+  overflow:hidden;
+  background:#f8fbfc;
+}
+.mock-pdp-quick-facts span{padding:11px 12px;min-width:0;border-right:1px solid #e5ecef;border-bottom:1px solid #e5ecef}
+.mock-pdp-quick-facts span:nth-child(2n){border-right:0}.mock-pdp-quick-facts span:nth-last-child(-n+2){border-bottom:0}
+.mock-pdp-quick-facts small,.mock-pdp-quick-facts b{display:block}
+.mock-pdp-quick-facts small{font-size:10px!important;color:#718691;text-transform:uppercase;letter-spacing:.06em;font-weight:750}
+.mock-pdp-quick-facts b{margin-top:3px;font-size:12.5px;color:#183545;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mock-pdp-checks{font-size:13.5px!important}
+.mock-pdp-label b{font-size:13.5px}.mock-pdp-label span{font-size:11.5px}
+.mock-pdp-option-buttons button{font-size:13px;min-height:44px}
+.mock-pdp-bundle span b{font-size:13px}.mock-pdp-bundle span small{font-size:11px}.mock-pdp-bundle strong{font-size:14px}
+.mock-pdp-stock{font-size:12px}
+.mock-pdp-delivery-line b{font-size:11.5px}.mock-pdp-delivery-line small{font-size:10px}
+.mock-pdp-quantity>span,.mock-pdp-order-total>span{font-size:11px}.mock-pdp-order-total strong{font-size:20px}
+.mock-pdp-main-actions>.order{height:54px;font-size:14px;border-radius:11px}
+.mock-pdp-main-actions>div>*{height:46px;font-size:12.5px}
+.mock-pdp-trust-grid b{font-size:11.5px}.mock-pdp-trust-grid small{font-size:10px}
+.mock-pdp-gift b{font-size:11.5px}.mock-pdp-gift small{font-size:10.5px}
+.mock-pdp-gallery{grid-template-columns:76px 1fr;gap:14px}
+.mock-pdp-thumbs button{width:72px;height:72px}
+.mock-pdp-main-image{border-radius:20px;background:linear-gradient(145deg,#f8fafb,#edf3f6)}
+.mock-pdp-main-image img{padding:26px}
+.mock-pdp-gallery-benefits>span{min-height:72px}.mock-pdp-gallery-benefits>span>b{font-size:12.5px}.mock-pdp-gallery-benefits>span>small{font-size:10.5px}
+.mock-pdp-small-head{font-size:13px}.mock-pdp-small-head a{font-size:11.5px}
+.mock-pdp-accordions summary{font-size:14px}.mock-pdp-accordions details>div,.mock-pdp-accordions details>p{font-size:13.5px!important}
+.mock-pdp-specs p{font-size:12.5px!important;grid-template-columns:170px 1fr;padding:9px 6px}
+.mock-pdp-lifestyle h2,.mock-pdp-comparison h2,.mock-pdp-reviews h2,.mock-pdp-faq h2{font-size:38px}
+.mock-pdp-lifestyle h3{font-size:18px}.mock-pdp-lifestyle p{font-size:14px!important}
+.mock-pdp-story h2{font-size:30px}.mock-pdp-story>div:last-child>p{font-size:14px!important}.mock-pdp-story li b{font-size:13px}.mock-pdp-story li span{font-size:12px}
+.mock-pdp-comparison p>*{font-size:13px}
+.mock-pdp-review-layout main article b{font-size:14px}.mock-pdp-review-layout main article p{font-size:13.5px!important}.mock-pdp-review-layout>aside small{font-size:11.5px}
+.mock-pdp-faq>div:first-child>p{font-size:14px}.mock-pdp-faq>div:first-child>a{font-size:12.5px}.mock-pdp-faq summary{font-size:14px}.mock-pdp-faq details p{font-size:13px!important}
+.pdp-related-title p{font-size:13px}.pdp-related-kicker{font-size:10.5px}.pdp-related-view{font-size:12px}
+
+/* Footer remains readable on every page too. */
+.mock-footer-brand p{font-size:13px}.mock-footer-col h4{font-size:12px}.mock-footer-col a,.mock-footer-col>span{font-size:12.5px}.mock-footer-bottom{font-size:11px}
+
+@media(max-width:1100px){
+  :root{--zm-page-gutter:26px}
+  .mock-pdp-top{grid-template-columns:minmax(0,1fr) minmax(360px,.9fr);gap:34px}
+}
+@media(max-width:900px){
+  :root{--zm-page-gutter:20px}
+  body{font-size:15px}
+  .public-site-main .site-shell,.public-site-main .zm-shell{width:calc(100% - var(--zm-page-gutter))!important}
+  .mock-section-head h2{font-size:30px}
+  .mock-pdp-top{grid-template-columns:1fr;gap:30px}
+  .mock-pdp-buy-card{position:static;padding:22px}
+  .mock-pdp-buy-card:before{margin:-22px -22px 20px}
+  .mock-pdp-buy-card h1{font-size:32px}
+  .mock-pdp-gallery{grid-template-columns:1fr}
+  .mock-pdp-thumbs{display:flex}
+  .mock-pdp-lifestyle h2,.mock-pdp-comparison h2,.mock-pdp-reviews h2,.mock-pdp-faq h2{font-size:31px}
+  .mock-track-widget>form{grid-template-columns:1fr}
+  .mock-track-widget form button{width:100%}
+}
+@media(max-width:560px){
+  :root{--zm-page-gutter:16px}
+  .mock-home :where(p,li),.mock-listing-page :where(p,li),.mock-category-page :where(p,li),.mock-about-page :where(p,li),.mock-contact-page :where(p,li),.mock-cart-page :where(p,li),.mock-checkout-page :where(p,li),.mock-track-page :where(p,li),.mock-policy-page :where(p,li),.product-page :where(p,li){font-size:13.5px}
+  .mock-section-head h2{font-size:27px}
+  .mock-product-title{font-size:14px!important}
+  .mock-pdp-buy-card{padding:18px}
+  .mock-pdp-buy-card:before{margin:-18px -18px 18px}
+  .mock-pdp-buy-card h1{font-size:29px}
+  .mock-pdp-quick-facts{grid-template-columns:1fr}
+  .mock-pdp-quick-facts span{border-right:0!important;border-bottom:1px solid #e5ecef!important}.mock-pdp-quick-facts span:last-child{border-bottom:0!important}
+  .mock-pdp-gallery-benefits{grid-template-columns:1fr}
+  .mock-pdp-lifestyle h2,.mock-pdp-comparison h2,.mock-pdp-reviews h2,.mock-pdp-faq h2{font-size:28px}
+  .mock-pdp-specs p{grid-template-columns:125px 1fr}
+}

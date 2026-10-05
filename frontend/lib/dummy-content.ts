@@ -21,13 +21,13 @@ export const CATEGORY_BLURBS: Record<string, string> = {
 };
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: "cat-home-living", name: "Home & Living", slug: "home-living", description: CATEGORY_BLURBS["home-living"], image: "/images/categories/home-living.svg" },
-  { id: "cat-home-decor", name: "Home Decor", slug: "home-decor", description: CATEGORY_BLURBS["home-decor"], image: "/images/categories/home-decor.svg" },
-  { id: "cat-beauty", name: "Beauty & Personal Care", slug: "beauty-personal-care", description: CATEGORY_BLURBS["beauty-personal-care"], image: "/images/categories/beauty-personal-care.svg" },
-  { id: "cat-tech", name: "Tech & Gadgets", slug: "tech-gadgets", description: CATEGORY_BLURBS["tech-gadgets"], image: "/images/categories/tech-gadgets.svg" },
-  { id: "cat-kids", name: "Kids & Toys", slug: "kids-toys", description: CATEGORY_BLURBS["kids-toys"], image: "/images/categories/kids-toys.svg" },
-  { id: "cat-fashion", name: "Fashion Accessories", slug: "fashion-accessories", description: CATEGORY_BLURBS["fashion-accessories"], image: "/images/categories/fashion-accessories.svg" },
-  { id: "cat-sports", name: "Sports & Fitness", slug: "sports-fitness", description: CATEGORY_BLURBS["sports-fitness"], image: "/images/categories/sports-fitness.svg" },
+  { id: "cat-home-living", name: "Home & Living", slug: "home-living", description: CATEGORY_BLURBS["home-living"], image: "/images/categories/home-living.webp" },
+  { id: "cat-home-decor", name: "Home Decor", slug: "home-decor", description: CATEGORY_BLURBS["home-decor"], image: "/images/categories/home-decor.webp" },
+  { id: "cat-beauty", name: "Beauty & Personal Care", slug: "beauty-personal-care", description: CATEGORY_BLURBS["beauty-personal-care"], image: "/images/categories/beauty-personal-care.webp" },
+  { id: "cat-tech", name: "Tech & Gadgets", slug: "tech-gadgets", description: CATEGORY_BLURBS["tech-gadgets"], image: "/images/categories/tech-gadgets.webp" },
+  { id: "cat-kids", name: "Kids & Toys", slug: "kids-toys", description: CATEGORY_BLURBS["kids-toys"], image: "/images/categories/kids-toys.webp" },
+  { id: "cat-fashion", name: "Fashion Accessories", slug: "fashion-accessories", description: CATEGORY_BLURBS["fashion-accessories"], image: "/images/categories/fashion-accessories.webp" },
+  { id: "cat-sports", name: "Sports & Fitness", slug: "sports-fitness", description: CATEGORY_BLURBS["sports-fitness"], image: "/images/categories/sports-fitness.webp" },
 ];
 
 export function getDisplayCategories(categories: Category[]): Category[] {
@@ -81,41 +81,41 @@ function makeProduct(id: string, slug: string, name: string, regularPrice: numbe
 }
 
 const homeLiving = [
-  makeProduct("hl1", "cordless-neck-shoulder-massager", "Cordless Neck & Shoulder Kneading Massager", 6499, "/images/categories/home-living.svg", "Home & Living", "home-living"),
-  makeProduct("hl2", "foldable-laundry-basket", "Foldable Laundry Basket", 2199, "/images/categories/home-living.svg", "Home & Living", "home-living", 1799),
-  makeProduct("hl3", "multi-purpose-storage-rack", "Multi-Purpose Storage Rack", 3499, "/images/categories/home-living.svg", "Home & Living", "home-living", 2899),
-  makeProduct("hl4", "kitchen-organizer-set", "Kitchen Organizer Set", 2499, "/images/categories/home-living.svg", "Home & Living", "home-living"),
+  makeProduct("hl1", "cordless-neck-shoulder-massager", "Cordless Neck & Shoulder Kneading Massager", 6499, "/images/categories/home-living.webp", "Home & Living", "home-living"),
+  makeProduct("hl2", "foldable-laundry-basket", "Foldable Laundry Basket", 2199, "/images/categories/home-living.webp", "Home & Living", "home-living", 1799),
+  makeProduct("hl3", "multi-purpose-storage-rack", "Multi-Purpose Storage Rack", 3499, "/images/categories/home-living.webp", "Home & Living", "home-living", 2899),
+  makeProduct("hl4", "kitchen-organizer-set", "Kitchen Organizer Set", 2499, "/images/categories/home-living.webp", "Home & Living", "home-living"),
 ];
 const homeDecor = [
-  makeProduct("hd1", "wireless-desk-lamp", "Wireless Desk Lamp", 3399, "/images/categories/home-decor.svg", "Home Decor", "home-decor", 2899),
-  makeProduct("hd2", "minimal-table-lamp", "Minimal Table Lamp", 3999, "/images/categories/home-decor.svg", "Home Decor", "home-decor", 3299),
-  makeProduct("hd3", "decorative-wall-frame-set", "Decorative Wall Frame Set", 2799, "/images/categories/home-decor.svg", "Home Decor", "home-decor"),
-  makeProduct("hd4", "ambient-night-light", "Ambient Night Light", 1999, "/images/categories/home-decor.svg", "Home Decor", "home-decor", 1599),
+  makeProduct("hd1", "wireless-desk-lamp", "Wireless Desk Lamp", 3399, "/images/categories/home-decor.webp", "Home Decor", "home-decor", 2899),
+  makeProduct("hd2", "minimal-table-lamp", "Minimal Table Lamp", 3999, "/images/categories/home-decor.webp", "Home Decor", "home-decor", 3299),
+  makeProduct("hd3", "decorative-wall-frame-set", "Decorative Wall Frame Set", 2799, "/images/categories/home-decor.webp", "Home Decor", "home-decor"),
+  makeProduct("hd4", "ambient-night-light", "Ambient Night Light", 1999, "/images/categories/home-decor.webp", "Home Decor", "home-decor", 1599),
 ];
 const beauty = [
-  makeProduct("bw1", "shoulder-massager", "Cordless Neck & Shoulder Massager", 6499, "/images/categories/beauty-personal-care.svg", "Beauty & Personal Care", "beauty-personal-care"),
-  makeProduct("bw2", "facial-cleaning-brush", "Facial Cleaning Brush", 1899, "/images/categories/beauty-personal-care.svg", "Beauty & Personal Care", "beauty-personal-care", 1499),
+  makeProduct("bw1", "shoulder-massager", "Cordless Neck & Shoulder Massager", 6499, "/images/categories/beauty-personal-care.webp", "Beauty & Personal Care", "beauty-personal-care"),
+  makeProduct("bw2", "facial-cleaning-brush", "Facial Cleaning Brush", 1899, "/images/categories/beauty-personal-care.webp", "Beauty & Personal Care", "beauty-personal-care", 1499),
   makeProduct("bw3", "matte-liquid-lipgloss", "Emelie Matte Liquid Lipgloss", 1299, "/images/products/matte-liquid-lipgloss.jpeg", "Beauty & Personal Care", "beauty-personal-care", 999),
-  makeProduct("bw4", "lip-eye-pencil", "Emelie Paris Matte Lip & Eye Pencil", 1299, "/images/categories/beauty-personal-care.svg", "Beauty & Personal Care", "beauty-personal-care", 999),
+  makeProduct("bw4", "lip-eye-pencil", "Emelie Paris Matte Lip & Eye Pencil", 1299, "/images/categories/beauty-personal-care.webp", "Beauty & Personal Care", "beauty-personal-care", 999),
 ];
 const tech = [
-  makeProduct("tg1", "portable-mini-blender", "Portable Mini Blender", 2699, "/images/categories/tech-gadgets.svg", "Tech & Gadgets", "tech-gadgets", 2199),
-  makeProduct("tg2", "smart-watch-series", "Everyday Smart Watch", 4999, "/images/categories/tech-gadgets.svg", "Tech & Gadgets", "tech-gadgets", 3999),
-  makeProduct("tg3", "fast-charging-power-bank", "Fast Charging Power Bank", 4499, "/images/categories/tech-gadgets.svg", "Tech & Gadgets", "tech-gadgets", 3699),
-  makeProduct("tg4", "wireless-earbuds", "Wireless Earbuds", 3599, "/images/categories/tech-gadgets.svg", "Tech & Gadgets", "tech-gadgets", 2899),
+  makeProduct("tg1", "portable-mini-blender", "Portable Mini Blender", 2699, "/images/categories/tech-gadgets.webp", "Tech & Gadgets", "tech-gadgets", 2199),
+  makeProduct("tg2", "smart-watch-series", "Everyday Smart Watch", 4999, "/images/categories/tech-gadgets.webp", "Tech & Gadgets", "tech-gadgets", 3999),
+  makeProduct("tg3", "fast-charging-power-bank", "Fast Charging Power Bank", 4499, "/images/categories/tech-gadgets.webp", "Tech & Gadgets", "tech-gadgets", 3699),
+  makeProduct("tg4", "wireless-earbuds", "Wireless Earbuds", 3599, "/images/categories/tech-gadgets.webp", "Tech & Gadgets", "tech-gadgets", 2899),
 ];
 const kids: Product[] = [];
 const fashion = [
-  makeProduct("f1", "classic-gold-watch-set", "Classic Gold Watch Set", 3199, "/images/categories/fashion-accessories.svg", "Fashion Accessories", "fashion-accessories", 2499),
-  makeProduct("f2", "crystal-jewelry-set", "Crystal Jewelry Set", 2799, "/images/categories/fashion-accessories.svg", "Fashion Accessories", "fashion-accessories", 2199),
-  makeProduct("f3", "elegant-bracelet-watch", "Elegant Bracelet Watch", 2999, "/images/categories/fashion-accessories.svg", "Fashion Accessories", "fashion-accessories", 2399),
-  makeProduct("f4", "gold-charm-set", "Gold Charm Set", 2499, "/images/categories/fashion-accessories.svg", "Fashion Accessories", "fashion-accessories", 1999),
+  makeProduct("f1", "classic-gold-watch-set", "Classic Gold Watch Set", 3199, "/images/categories/fashion-accessories.webp", "Fashion Accessories", "fashion-accessories", 2499),
+  makeProduct("f2", "crystal-jewelry-set", "Crystal Jewelry Set", 2799, "/images/categories/fashion-accessories.webp", "Fashion Accessories", "fashion-accessories", 2199),
+  makeProduct("f3", "elegant-bracelet-watch", "Elegant Bracelet Watch", 2999, "/images/categories/fashion-accessories.webp", "Fashion Accessories", "fashion-accessories", 2399),
+  makeProduct("f4", "gold-charm-set", "Gold Charm Set", 2499, "/images/categories/fashion-accessories.webp", "Fashion Accessories", "fashion-accessories", 1999),
 ];
 const sports = [
-  makeProduct("sf1", "adjustable-hand-gripper", "Adjustable Hand Gripper", 1899, "/images/categories/sports-fitness.svg", "Sports & Fitness", "sports-fitness", 1499),
-  makeProduct("sf2", "resistance-band-set", "Resistance Band Set", 2599, "/images/categories/sports-fitness.svg", "Sports & Fitness", "sports-fitness", 1999),
-  makeProduct("sf3", "home-workout-mat", "Home Workout Mat", 3499, "/images/categories/sports-fitness.svg", "Sports & Fitness", "sports-fitness", 2899),
-  makeProduct("sf4", "sports-water-bottle", "Sports Water Bottle", 1499, "/images/categories/sports-fitness.svg", "Sports & Fitness", "sports-fitness", 1199),
+  makeProduct("sf1", "adjustable-hand-gripper", "Adjustable Hand Gripper", 1899, "/images/categories/sports-fitness.webp", "Sports & Fitness", "sports-fitness", 1499),
+  makeProduct("sf2", "resistance-band-set", "Resistance Band Set", 2599, "/images/categories/sports-fitness.webp", "Sports & Fitness", "sports-fitness", 1999),
+  makeProduct("sf3", "home-workout-mat", "Home Workout Mat", 3499, "/images/categories/sports-fitness.webp", "Sports & Fitness", "sports-fitness", 2899),
+  makeProduct("sf4", "sports-water-bottle", "Sports Water Bottle", 1499, "/images/categories/sports-fitness.webp", "Sports & Fitness", "sports-fitness", 1199),
 ];
 
 export const DUMMY_PRODUCTS: Record<string, Product[]> = {

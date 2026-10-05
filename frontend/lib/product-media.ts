@@ -55,10 +55,11 @@ export function withProductMedia(product: Product): Product {
     ? localLegacy
     : currentImage || getProductFallbackImage(product);
 
+  const safeFallback = localLegacy || getProductFallbackImage(product);
   const images = rawImages.length
-    ? rawImages.map((row, index) => {
-        if (index === 0 && localLegacy && isLegacyRemoteImage(row.src)) {
-          return { ...row, src: localLegacy };
+    ? rawImages.map((row) => {
+        if (isLegacyRemoteImage(row.src)) {
+          return { ...row, src: safeFallback, alt: row.alt || product.name };
         }
         return row;
       })
