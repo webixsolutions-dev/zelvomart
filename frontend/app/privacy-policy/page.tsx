@@ -1,13 +1,16 @@
-import type { Metadata } from "next";
-import DbPage from "@/components/DbPage";
-import { metadataForPage } from "@/lib/page-metadata";
-
-export const revalidate = 600;
-
-export async function generateMetadata(): Promise<Metadata> {
-  return metadataForPage('privacy-policy', []);
-}
-
-export default function Page() {
-  return <DbPage slug='privacy-policy' fallbackSlugs={[]} />;
-}
+import type {Metadata} from "next";import {metadataForPage} from "@/lib/page-metadata";export const revalidate=600;export async function generateMetadata():Promise<Metadata>{return metadataForPage("privacy-policy",[])}
+const sections=[
+["01","Who we are",<p key="a">Zelvomart is an online store based in Lahore, Pakistan, selling everyday home, style, beauty and tech products with Cash on Delivery. This policy explains how we handle information when you visit, contact us or place an order.</p>],
+["02","Information we collect",<div key="b" className="mock-policy-table"><p><b>Contact details</b><span>Name, phone number, email address</span></p><p><b>Delivery details</b><span>Address, city, postcode and delivery notes</span></p><p><b>Order details</b><span>Products, order value, order and exchange history</span></p><p><b>Messages</b><span>What you send through WhatsApp, email or our contact form</span></p><p><b>Device & usage</b><span>Browser, device type, pages visited and approximate location from IP</span></p></div>],
+["03","How we use it",<ul key="c"><li>To process and deliver your order.</li><li>To support you before and after purchase.</li><li>To prevent fake orders and fraud.</li><li>To improve our website and understand what works.</li><li>To show relevant offers only where permitted.</li></ul>],
+["04","Who we share it with",<div key="d" className="mock-policy-table"><p><b>PostEx</b><span>Delivery information required to deliver your parcel</span></p><p><b>Website & email providers</b><span>To host the site, store orders and send messages</span></p><p><b>Meta & Microsoft Clarity</b><span>To measure ads and understand website use</span></p><p><b>Authorities</b><span>Only when required by law</span></p></div>],
+["05","Cookies & analytics",<p key="e">We use essential cookies to remember your cart and checkout progress. Analytics may be used to understand how visitors move through the site. Sensitive form fields are masked in recordings.</p>],
+["06","Payments",<p key="f">You pay in cash to the courier when your order arrives. We do not store card or bank details for Cash on Delivery orders.</p>],
+["07","How long we keep it",<p key="g">Order records are kept only as long as needed for deliveries, exchanges, accounting and legal requirements. Messages and analytics data may be kept for shorter periods.</p>],
+["08","Your rights",<ul key="h"><li>Ask what information we hold about you.</li><li>Correct information that is wrong.</li><li>Ask us to delete information we no longer need.</li><li>Stop receiving offers.</li></ul>],
+["09","Keeping it safe",<p key="i">Our website uses a secure connection and access to customer details is limited to the team members who need it to handle your order.</p>],
+["10","Children",<p key="j">Our store is intended for adults. If you are under 18, ask a parent or guardian to place the order for you.</p>],
+["11","Changes to this policy",<p key="k">If this policy changes, the updated version and date will be shown on this page.</p>],
+["12","Contact us",<div key="l" className="mock-policy-contact"><div><b>Talk to us</b><span>0300-2026711 · zelvomart@gmail.com</span><span>Lahore, Pakistan</span></div><a href="https://wa.me/923002026711">Chat on WhatsApp</a></div>]
+] as const;
+export default function PrivacyPage(){return <div className="mock-policy-page"><section className="site-shell mock-policy-hero"><span className="mock-eyebrow">LEGAL</span><h1>Privacy Policy</h1><p>How Zelvomart collects, uses and protects your information — written in plain language.</p><div><span>Last updated 5 October 2026</span><span>5-min read</span></div></section><section className="site-shell mock-policy-summary"><h2>⌁ The short version</h2><div><article>♢<b>We never sell your data</b><p>Your details are only used for your orders.</p></article><article>▱<b>Shared only to deliver</b><p>PostEx gets what it needs to reach you.</p></article><article>▣<b>No card data stored</b><p>Every order is Cash on Delivery.</p></article><article>⌁<b>Forms stay private</b><p>Phone and address are masked in analytics.</p></article><article>◷<b>You control cookies</b><p>Turn analytics off any time.</p></article><article>▧<b>Ask us to delete it</b><p>Just send us a message.</p></article></div></section><div className="site-shell mock-policy-layout"><aside><small>ON THIS PAGE</small>{sections.map(s=><a key={s[0]} href={`#policy-${s[0]}`}><b>{s[0]}</b>{s[1]}</a>)}</aside><main>{sections.map(s=><section id={`policy-${s[0]}`} key={s[0]}><h2><span>{s[0]}</span> {s[1]}</h2>{s[2]}</section>)}</main></div></div>}

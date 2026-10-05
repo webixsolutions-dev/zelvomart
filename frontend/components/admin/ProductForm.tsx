@@ -228,11 +228,20 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             </label>
           </SectionCard>
 
-          <SectionCard title="Main Description" description="Format the product description with paragraphs, headings, alignment, emphasis, lists and internal links. SEO updates live as you edit.">
-            <div className="field">
-              <AdminRichTextEditor name="descriptionHtml" defaultValue={initial?.descriptionHtml || initial?.description || ""} />
+          <section className="rounded-lg border border-border bg-white p-5 shadow-sm">
+            <h2 className="text-[13px] font-bold uppercase text-navy tracking-normal">
+              Main Description
+            </h2>
+            <p className="mt-1 text-[11px] text-slate tracking-normal">
+              Format the product description with paragraphs, headings, alignment, emphasis, lists and internal links. SEO updates live as you edit.
+            </p>
+            <div className="mt-4 space-y-4">
+              <AdminRichTextEditor
+                name="descriptionHtml"
+                defaultValue={initial?.descriptionHtml || initial?.description || ""}
+              />
             </div>
-          </SectionCard>
+          </section>
 
           <SectionCard title="Pricing & Stock" description="Set selling price, optional sale/cost price and available stock.">
             <div className="admin-reference-form admin-ls-pricing-grid">

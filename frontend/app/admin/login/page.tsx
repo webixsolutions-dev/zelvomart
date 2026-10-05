@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearAdminDataCache } from "@/components/admin/useAdminData";
@@ -54,9 +55,9 @@ export default function AdminLogin() {
   return (
     <div className="admin-login-page">
       <div className="admin-login-card">
-        <div className="admin-login-brand">
-          <span className="admin-login-mark">Z</span>
-          <div><b>ZELVOMART</b><small>ADMIN PORTAL</small></div>
+        <div className="admin-login-brand admin-login-brand-real">
+          <Image src="/images/zelvomart-logo.png" alt="Zelvomart" width={357} height={235} className="admin-login-logo-image" priority />
+          <small>ADMIN PORTAL</small>
         </div>
 
         <div className="admin-login-copy">

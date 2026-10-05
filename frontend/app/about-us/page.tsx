@@ -1,73 +1,111 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { cmsSections } from "@/lib/cms-sections";
 import { getCmsPage } from "@/lib/cms-page";
 import { metadataForPage } from "@/lib/page-metadata";
+import { getProductBySlug, getProducts, getStoreBootstrap } from "@/lib/store";
+import { getProductFallbackImage } from "@/lib/product-media";
 
-export const revalidate = 600;
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   return metadataForPage("about-us", []);
 }
 
 export default async function AboutPage() {
-  const page = await getCmsPage("about-us");
+  const [page, bootstrap, latest] = await Promise.all([
+    getCmsPage("about-us"),
+    getStoreBootstrap(),
+    getProducts({ sort: "newest", limit: 6 }),
+  ]);
   const sections = cmsSections(page?.bodyHtml);
+  const lead = latest.items[0];
+  const detailedProducts = await Promise.all(
+    latest.items.slice(0, 6).map(async (product) => (await getProductBySlug(product.slug)) || product),
+  );
+  const liveReviews = detailedProducts.flatMap((product) =>
+    (product.reviews || []).map((review) => ({ ...review, productName: product.name })),
+  ).slice(0, 3);
 
   return (
-    <div className="professional-page professional-about-page">
-      <section className="professional-page-hero professional-about-hero">
-        <div className="site-shell professional-page-hero-grid">
-          <div className="professional-page-hero-copy">
-            <span className="premium-overline">THIS IS ZELVOMART</span>
-            <h1>Everyday shopping, with a little more thought.</h1>
-          </div>
-          <div className="professional-page-hero-side">
-            <p>We collect practical products people actually use, present them clearly, and keep ordering simple with Cash on Delivery and real WhatsApp support.</p>
-            <Link href="/shop" className="professional-inline-link">Explore the collection <span>→</span></Link>
-          </div>
+    <div className="mock-about-page">
+      <section className="site-shell mock-about-hero">
+        <div>
+          <span className="mock-eyebrow">ABOUT ZELVOMART</span>
+          <h1>Small things.<br /><em>Better chosen.</em></h1>
+          <p>Zelvomart is built around a simple idea: everyday shopping should feel clearer, more useful and more human.</p>
+          <Link href="/shop" className="mock-btn-dark">Shop Zelvomart →</Link>
         </div>
-      </section>
-
-      <section className="site-shell professional-about-story">
-        <div className="professional-about-statement">
-          <span className="premium-overline">OUR APPROACH</span>
-          <h2>Useful products. Clear choices. Human support.</h2>
-          <p>A clearer look at what we stand for, how we shop and the experience we want every customer to have.</p>
-        </div>
-
-        <div className="professional-about-card-grid">
-          {sections.length ? sections.map((section, index) => (
-            <article className={`professional-about-content-card ${index === 0 ? "is-featured" : ""}`} key={section.id}>
-              <div className="professional-about-card-index">{String(index + 1).padStart(2, "0")}</div>
-              {section.title ? <h3>{section.title}</h3> : null}
-              <div className="professional-richtext professional-card-richtext" dangerouslySetInnerHTML={{ __html: section.bodyHtml }} />
-            </article>
-          )) : (
-            <article className="professional-about-content-card is-featured">
-              <div className="professional-about-card-index">01</div>
-              <h3>About Zelvomart</h3>
-              <p>About-page content can be managed from the admin panel.</p>
-            </article>
+        <div>
+          {lead ? (
+            <Image src={lead.image || getProductFallbackImage(lead)} alt={lead.name} fill priority />
+          ) : (
+            <Image src="/images/hero/zelvomart-hero.webp" alt="Zelvomart products" fill priority />
           )}
         </div>
       </section>
 
-      <section className="professional-values-section">
-        <div className="site-shell professional-values-grid">
-          <article><span>01</span><h3>Curated, not crowded</h3><p>We focus on practical categories and products instead of filling the store with unnecessary noise.</p></article>
-          <article><span>02</span><h3>Clear before checkout</h3><p>Product information, prices and ordering steps are presented so customers know what to expect.</p></article>
-          <article><span>03</span><h3>Support that feels real</h3><p>Questions before or after an order can be handled by a real person through WhatsApp or phone.</p></article>
-          <article><span>04</span><h3>Made for Pakistan</h3><p>Cash on Delivery and straightforward local support keep the experience familiar and convenient.</p></article>
+      <section className="site-shell mock-about-stats">
+        <article><b>{bootstrap.categories.length || 7}</b><span>live categories</span></article>
+        <article><b>{latest.total || latest.items.length}</b><span>products in catalog</span></article>
+        <article><b>COD</b><span>across Pakistan</span></article>
+        <article><b>100%</b><span>human support</span></article>
+      </section>
+
+      <section className="site-shell mock-about-story">
+        <div><span className="mock-eyebrow">OUR STORY</span><h2>We started with one question: why is online shopping so noisy?</h2></div>
+        <div>
+          {sections.length ? (
+            <div className="mock-about-cms">
+              {sections.slice(0, 3).map((section) => (
+                <article key={section.id}>{section.title ? <h3>{section.title}</h3> : null}<div dangerouslySetInnerHTML={{ __html: section.bodyHtml }} /></article>
+              ))}
+            </div>
+          ) : (
+            <><p>Too many stores make simple purchases harder than they need to be. We wanted a place where useful products are easy to understand, easy to order and backed by a real person when you need help.</p><p>That means clear product information, Cash on Delivery and a final check before dispatch.</p></>
+          )}
         </div>
       </section>
 
-      <section className="site-shell professional-page-endcap">
-        <div>
-          <span className="premium-overline">SHOP ZELVOMART</span>
-          <h2>Find something useful for the everyday.</h2>
+      <section className="mock-about-how">
+        <div className="site-shell">
+          <span className="mock-eyebrow">HOW WE WORK</span><h2>From useful find to your doorstep.</h2>
+          <div className="mock-step-grid">
+            <article><b>01</b><h3>We find</h3><p>Practical products people actually use.</p></article>
+            <article><b>02</b><h3>We check</h3><p>Details, condition and presentation before dispatch.</p></article>
+            <article><b>03</b><h3>You order</h3><p>A simple checkout with Cash on Delivery.</p></article>
+            <article className="dark"><b>04</b><h3>We stay around</h3><p>Real WhatsApp support before and after your order.</p></article>
+          </div>
         </div>
-        <Link href="/shop" className="premium-button premium-button-dark">Start shopping <span>→</span></Link>
+      </section>
+
+      <section className="mock-about-promise">
+        <div className="site-shell">
+          <div><span className="mock-eyebrow">THE ZELVO PROMISE</span><h2>What we refuse to compromise on.</h2></div>
+          <div className="mock-about-promise-grid">
+            <article><span>✓</span><h3>Clear descriptions</h3><p>No unnecessary confusion before you buy.</p></article>
+            <article><span>✓</span><h3>Checked orders</h3><p>Eligible products are checked before dispatch.</p></article>
+            <article><span>✓</span><h3>Real support</h3><p>Talk to a person, not just a bot.</p></article>
+            <article><span>✓</span><h3>Simple payment</h3><p>Pay cash when your parcel arrives.</p></article>
+          </div>
+        </div>
+      </section>
+
+      {liveReviews.length ? (
+        <section className="site-shell mock-about-testimonials">
+          <span className="mock-eyebrow">CUSTOMER WORDS</span><h2>Real reviews from the catalog.</h2>
+          <div>
+            {liveReviews.map((review) => (
+              <article key={review.id}><p>“{review.body}”</p><b>— {review.name} · {review.productName}</b></article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="site-shell mock-about-cta">
+        <div><span className="mock-eyebrow">READY TO BROWSE?</span><h2>Find something worth keeping.</h2><p>Useful everyday products, picked with more care.</p></div>
+        <Link href="/shop">Shop all products →</Link>
       </section>
     </div>
   );

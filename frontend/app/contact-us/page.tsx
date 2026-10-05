@@ -1,69 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ContactForm from "@/components/ContactForm";
+import Faq from "@/components/Faq";
 import { metadataForPage } from "@/lib/page-metadata";
 import { getStoreBootstrap } from "@/lib/store";
-
-export const revalidate = 300;
-
-export async function generateMetadata(): Promise<Metadata> {
-  return metadataForPage("contact-us", []);
-}
-
-export default async function ContactPage() {
-  const bootstrap = await getStoreBootstrap();
-  const info = (bootstrap.settings["store.info"] || {}) as { phone?: string; email?: string; whatsapp?: string };
-  const phone = String(info.phone || "0300-2026711");
-  const email = String(info.email || "zelvomart@gmail.com");
-  const whatsapp = String(info.whatsapp || "923002026711");
-  const cleanWhatsapp = whatsapp.replace(/\D/g, "") || "923002026711";
-
-  return (
-    <div className="professional-page professional-contact-page">
-      <section className="professional-page-hero professional-contact-hero">
-        <div className="site-shell professional-page-hero-grid">
-          <div className="professional-page-hero-copy">
-            <span className="premium-overline">CONTACT ZELVOMART</span>
-            <h1>Real help, when you need it.</h1>
-          </div>
-          <div className="professional-page-hero-side">
-            <p>Questions about a product, an order or delivery? Send us the details and our support team will point you in the right direction.</p>
-            <a href={`https://wa.me/${cleanWhatsapp}`} target="_blank" rel="noreferrer" className="professional-inline-link">Chat on WhatsApp <span>→</span></a>
-          </div>
-        </div>
-      </section>
-
-      <section className="site-shell professional-contact-layout">
-        <div className="professional-contact-details">
-          <span className="premium-overline">DIRECT SUPPORT</span>
-          <h2>Choose the easiest way to reach us.</h2>
-          <div className="professional-contact-cards">
-            <a href={`https://wa.me/${cleanWhatsapp}`} target="_blank" rel="noreferrer">
-              <span>01</span><div><b>WhatsApp</b><p>Fast help with products, stock checks and orders.</p><strong>{phone}</strong></div>
-            </a>
-            <a href={`tel:${phone.replace(/\s/g, "")}`}>
-              <span>02</span><div><b>Phone</b><p>Speak directly with the support team.</p><strong>{phone}</strong></div>
-            </a>
-            <a href={`mailto:${email}`}>
-              <span>03</span><div><b>Email</b><p>Best for detailed questions and written follow-up.</p><strong>{email}</strong></div>
-            </a>
-          </div>
-          <div className="professional-contact-note">
-            <span>SUPPORT NOTE</span>
-            <p>If your message is about an existing order, include your order number and the same phone number used at checkout.</p>
-          </div>
-        </div>
-
-        <ContactForm whatsapp={whatsapp} />
-      </section>
-
-      <section className="site-shell professional-page-endcap professional-contact-endcap">
-        <div>
-          <span className="premium-overline">ORDER ALREADY PLACED?</span>
-          <h2>Track it before you contact support.</h2>
-        </div>
-        <Link href="/track-order" className="premium-button premium-button-dark">Track order <span>→</span></Link>
-      </section>
-    </div>
-  );
-}
+export const revalidate=300;export async function generateMetadata():Promise<Metadata>{return metadataForPage("contact-us",[])}
+export default async function ContactPage(){const b=await getStoreBootstrap();const info=(b.settings["store.info"]||{}) as {phone?:string;email?:string;whatsapp?:string};const phone=String(info.phone||"0300-2026711");const email=String(info.email||"zelvomart@gmail.com");const wa=String(info.whatsapp||"923002026711").replace(/\D/g,"");return <div className="mock-contact-page">
+ <section className="site-shell mock-contact-hero"><div><span className="mock-eyebrow">CONTACT US</span><h1>Talk to a<br/><em>real person.</em></h1><p>Questions about a product, an order or delivery? Our own team replies — on WhatsApp, by phone or by email.</p><span className="mock-online">● We're online · Every day · 10 am – 10 pm</span></div><div className="mock-contact-benefits"><span>▣ Cash on Delivery</span><span>▱ Free delivery</span><span>↻ Easy exchange</span></div></section>
+ <section className="site-shell mock-contact-cards"><a className="green" href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer"><em>FASTEST REPLY</em><span>◉</span><h3>WhatsApp</h3><b>{phone}</b><p>Best for orders, stock checks and quick questions.</p><strong>Chat on WhatsApp</strong></a><a href={`tel:${phone.replace(/\D/g,"")}`}><span>☎</span><h3>Call us</h3><b>{phone}</b><p>Every day · 10 am – 10 pm</p><strong>Call now</strong></a><a href={`mailto:${email}`}><span>✉</span><h3>Email</h3><b>{email}</b><p>For detailed questions and business enquiries.</p><strong>Send an email</strong></a></section>
+ <section className="site-shell mock-order-help"><span className="mock-eyebrow">ALREADY ORDERED?</span><h2>Get help with an order</h2><p>Pick what you need — we'll get you to the right place.</p><div><Link href="/track-order"><span>▣</span><b>Track my order</b><small>See where your parcel is</small></Link><a href={`https://wa.me/${wa}?text=I%20need%20help%20with%20an%20exchange`}><span>↻</span><b>Exchange an item</b><small>If it doesn't match or fit</small></a><a href={`https://wa.me/${wa}?text=I%20need%20to%20change%20my%20address`}><span>⌖</span><b>Change my address</b><small>Before it's dispatched</small></a><a href={`https://wa.me/${wa}?text=I%20received%20a%20damaged%20item`}><span>▧</span><b>Damaged item</b><small>Send us a photo, we'll fix it</small></a></div></section>
+ <section className="site-shell mock-contact-form-layout"><ContactForm whatsapp={wa}/><aside className="mock-contact-side"><div className="mock-contact-map"><span>Z</span></div><h3>Where we are</h3><p><b>Zelvomart</b><br/>Lahore, Pakistan</p><p><b>Customer care</b><br/>Every day · 10 am – 10 pm</p><p><b>Delivery</b><br/>Nationwide with PostEx</p><div className="mock-contact-side-note"><h3>Shopping with us</h3><p>✓ Cash on Delivery</p><p>✓ Every order checked & sealed</p><p>✓ Easy exchange if needed</p><p>✓ Your details stay private</p></div></aside></section>
+ <section className="site-shell mock-faq-section"><div className="mock-faq-intro"><span className="mock-eyebrow">QUICK ANSWERS</span><h2>Before you message</h2><p>Most questions are answered here.</p><Link href="/faq" className="mock-btn-light">Visit help centre →</Link></div><Faq/></section>
+ <section className="site-shell mock-whatsapp-strip"><div><span>◉</span><p><b>Get new drops & offers first</b><small>Join the Zelvomart WhatsApp Channel — no spam, just new arrivals.</small></p></div><a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer">Join the Channel</a></section>
+ </div>}

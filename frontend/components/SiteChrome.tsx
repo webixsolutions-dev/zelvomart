@@ -33,6 +33,21 @@ export default function SiteChrome({
     return <>{children}</>;
   }
 
+  const checkoutRoute = pathname === "/checkout";
+  if (checkoutRoute) {
+    return (
+      <>
+        {metaPixel}
+        {clarity}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
+        <CartProvider>
+          <main className="public-site-main">{children}</main>
+          {tracking}
+        </CartProvider>
+      </>
+    );
+  }
+
   return (
     <>
       {metaPixel}

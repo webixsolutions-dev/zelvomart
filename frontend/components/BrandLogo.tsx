@@ -1,10 +1,21 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function BrandLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" className={`brand-logo ${compact ? "brand-logo--compact" : ""}`} aria-label="Zelvomart home">
-      <span className="brand-mark"><span className="brand-bag" /></span>
-      <span className="brand-word">ZELVO<span>MART</span></span>
+    <Link
+      href="/"
+      className={`brand-logo mock-brand-logo ${compact ? "brand-logo--compact" : ""}`}
+      aria-label="Zelvomart home"
+    >
+      <Image
+        src="/images/zelvomart-logo.png"
+        alt="Zelvomart"
+        width={357}
+        height={235}
+        className="brand-logo-image"
+        sizes={compact ? "84px" : "112px"}
+      />
     </Link>
   );
 }

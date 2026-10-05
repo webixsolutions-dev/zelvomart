@@ -5,6 +5,7 @@ export const DISPLAY_CATEGORY_SLUGS = [
   "home-decor",
   "beauty-personal-care",
   "tech-gadgets",
+  "kids-toys",
   "fashion-accessories",
   "sports-fitness",
 ] as const;
@@ -14,6 +15,7 @@ export const CATEGORY_BLURBS: Record<string, string> = {
   "home-decor": "Decorate your happy place",
   "beauty-personal-care": "Look good, feel confident",
   "tech-gadgets": "Everyday tech, made easy",
+  "kids-toys": "Playful finds for little ones",
   "fashion-accessories": "Bags, jewelry & more",
   "sports-fitness": "Gear up, stay active",
 };
@@ -23,13 +25,27 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat-home-decor", name: "Home Decor", slug: "home-decor", description: CATEGORY_BLURBS["home-decor"], image: "/images/categories/home-decor.svg" },
   { id: "cat-beauty", name: "Beauty & Personal Care", slug: "beauty-personal-care", description: CATEGORY_BLURBS["beauty-personal-care"], image: "/images/categories/beauty-personal-care.svg" },
   { id: "cat-tech", name: "Tech & Gadgets", slug: "tech-gadgets", description: CATEGORY_BLURBS["tech-gadgets"], image: "/images/categories/tech-gadgets.svg" },
+  { id: "cat-kids", name: "Kids & Toys", slug: "kids-toys", description: CATEGORY_BLURBS["kids-toys"], image: "/images/categories/kids-toys.svg" },
   { id: "cat-fashion", name: "Fashion Accessories", slug: "fashion-accessories", description: CATEGORY_BLURBS["fashion-accessories"], image: "/images/categories/fashion-accessories.svg" },
   { id: "cat-sports", name: "Sports & Fitness", slug: "sports-fitness", description: CATEGORY_BLURBS["sports-fitness"], image: "/images/categories/sports-fitness.svg" },
 ];
 
 export function getDisplayCategories(categories: Category[]): Category[] {
-  const bySlug = new Map(categories.map((category) => [category.slug, category]));
-  return DISPLAY_CATEGORY_SLUGS.map((slug) => bySlug.get(slug) || DEFAULT_CATEGORIES.find((category) => category.slug === slug)!).filter(Boolean);
+  // The database is authoritative whenever it returns categories. Keep the
+  // preferred storefront order for known slugs, then append any categories
+  // created later in admin instead of replacing them with mock/default data.
+  if (categories.length) {
+    const priority = new Map<string, number>(DISPLAY_CATEGORY_SLUGS.map((slug, index) => [slug, index]));
+    return [...categories].sort((a, b) => {
+      const aRank = priority.get(a.slug) ?? Number.MAX_SAFE_INTEGER;
+      const bRank = priority.get(b.slug) ?? Number.MAX_SAFE_INTEGER;
+      if (aRank !== bRank) return aRank - bRank;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  // Development/offline safety only: never mixed with a successful backend response.
+  return DEFAULT_CATEGORIES;
 }
 
 function makeProduct(id: string, slug: string, name: string, regularPrice: number, image: string, categoryName: string, categorySlug: string, salePrice?: number): Product {
@@ -88,6 +104,7 @@ const tech = [
   makeProduct("tg3", "fast-charging-power-bank", "Fast Charging Power Bank", 4499, "/images/categories/tech-gadgets.svg", "Tech & Gadgets", "tech-gadgets", 3699),
   makeProduct("tg4", "wireless-earbuds", "Wireless Earbuds", 3599, "/images/categories/tech-gadgets.svg", "Tech & Gadgets", "tech-gadgets", 2899),
 ];
+const kids: Product[] = [];
 const fashion = [
   makeProduct("f1", "classic-gold-watch-set", "Classic Gold Watch Set", 3199, "/images/categories/fashion-accessories.svg", "Fashion Accessories", "fashion-accessories", 2499),
   makeProduct("f2", "crystal-jewelry-set", "Crystal Jewelry Set", 2799, "/images/categories/fashion-accessories.svg", "Fashion Accessories", "fashion-accessories", 2199),
@@ -106,6 +123,7 @@ export const DUMMY_PRODUCTS: Record<string, Product[]> = {
   "home-decor": homeDecor,
   "beauty-personal-care": beauty,
   "tech-gadgets": tech,
+  "kids-toys": kids,
   "fashion-accessories": fashion,
   "sports-fitness": sports,
   fashion,

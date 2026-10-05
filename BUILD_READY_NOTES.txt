@@ -1,0 +1,14 @@
+ZELVOMART BUILD-READY RELEASE
+
+Important architecture:
+- frontend: Next.js storefront + admin UI
+- backend: Express + Prisma API
+- frontend admin auth: HttpOnly session cookie -> /api/admin-proxy -> backend
+- no NextAuth and no Prisma/database code inside frontend
+
+A prebuild cleanup is included in frontend/package.json. If this release is accidentally
+extracted over an older Zelvomart folder, `npm run build` first removes the known legacy
+frontend NextAuth/Prisma API files that caused the previous @/auth and @/lib/db errors.
+
+Recommended: extract this ZIP into a NEW empty folder.
+Then run BUILD_CLEAN.bat from the project root.

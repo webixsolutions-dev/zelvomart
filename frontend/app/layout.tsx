@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   title: { default: "Zelvomart | Online Shopping in Pakistan", template: "%s | Zelvomart" },
   description: "Shop quality-checked products with Cash on Delivery across Pakistan.",
   openGraph: { type: "website", siteName: "Zelvomart" },
+  icons: { icon: "/images/zelvomart-logo.png" },
 };
 
 export const revalidate = 300;

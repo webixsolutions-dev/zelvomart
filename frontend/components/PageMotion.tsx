@@ -29,6 +29,17 @@ const REVEAL_SELECTOR = [
   "main .professional-values-grid article",
   "main .premium-contact-form",
   "main .professional-page-endcap",
+  "main .mock-product-card",
+  "main .mock-category-minis > a",
+  "main .mock-category-feature",
+  "main .mock-editorial",
+  "main .mock-review-media > *",
+  "main .mock-standard-cards > article",
+  "main .mock-step-grid > article",
+  "main .mock-unbox-art",
+  "main .mock-unbox-copy",
+  "main .mock-listing-categories > a",
+  "main .mock-other-cats a",
 ].join(",");
 
 const CARD_SELECTOR = [
@@ -44,6 +55,15 @@ const CARD_SELECTOR = [
   ".professional-contact-cards > a",
   ".professional-values-grid article",
   ".premium-contact-form",
+  ".mock-product-card",
+  ".mock-category-minis > a",
+  ".mock-category-feature",
+  ".mock-editorial",
+  ".mock-review-media > *",
+  ".mock-standard-cards > article",
+  ".mock-step-grid > article",
+  ".mock-listing-categories > a",
+  ".mock-other-cats a",
 ].join(",");
 
 export default function PageMotion() {

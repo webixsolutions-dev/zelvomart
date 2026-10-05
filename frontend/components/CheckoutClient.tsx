@@ -170,35 +170,26 @@ export default function CheckoutClient({
   const selectedCity = cities.find((city) => city.name === fields.city);
 
   return (
-    <form className="checkout-layout" onSubmit={submit}>
-      <section className="checkout-card">
-        <h2>Delivery details</h2>
-        <div className="form-grid">
-          <div className="field"><label>Full name *</label><input data-clarity-mask="true" value={fields.fullName} onChange={(e) => update("fullName", e.target.value)} />{errors.fullName ? <span className="field-error">{errors.fullName}</span> : null}</div>
-          <div className="field"><label>Phone *</label><input data-clarity-mask="true" inputMode="tel" placeholder="03XX-XXXXXXX" value={fields.phone} onChange={(e) => update("phone", e.target.value)} />{errors.phone ? <span className="field-error">{errors.phone}</span> : null}</div>
-          <div className="field"><label>Email {required.email ? "*" : ""}</label><input data-clarity-mask="true" type="email" value={fields.email} onChange={(e) => update("email", e.target.value)} />{errors.email ? <span className="field-error">{errors.email}</span> : null}</div>
-          <div className="field"><label>City *</label><input list="pakistan-cities" value={fields.city} onChange={(e) => update("city", e.target.value)} /><datalist id="pakistan-cities">{cities.map((city) => <option key={city.name} value={city.name} />)}</datalist>{errors.city ? <span className="field-error">{errors.city}</span> : null}</div>
-          <div className="field full"><label>Address *</label><textarea data-clarity-mask="true" rows={3} value={fields.address} onChange={(e) => update("address", e.target.value)} />{errors.address ? <span className="field-error">{errors.address}</span> : null}</div>
-          <div className="field"><label>Postcode {required.postcode ? "*" : ""}</label><input data-clarity-mask="true" value={fields.postcode} onChange={(e) => update("postcode", e.target.value)} />{errors.postcode ? <span className="field-error">{errors.postcode}</span> : null}</div>
-          <div className="field"><label>Order notes {required.orderNotes ? "*" : ""}</label><input value={fields.orderNotes} onChange={(e) => update("orderNotes", e.target.value)} />{errors.orderNotes ? <span className="field-error">{errors.orderNotes}</span> : null}</div>
-          <div className="hidden" aria-hidden="true"><label>Website</label><input tabIndex={-1} autoComplete="off" value={fields.website} onChange={(e) => update("website", e.target.value)} /></div>
-          <label className="field full flex-row items-start gap-2"><input type="checkbox" checked={fields.terms} onChange={(e) => update("terms", e.target.checked)} className="mt-1 w-auto" /><span className="text-xs text-slate-600">I agree to the terms and confirm the delivery details are correct. {errors.terms ? <b className="field-error ml-1">{errors.terms}</b> : null}</span></label>
-        </div>
-        {serverError ? <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">{serverError}</div> : null}
+    <form className="mock-checkout-layout" onSubmit={submit}>
+      <section className="mock-checkout-form">
+        <div className="mock-checkout-section"><div className="mock-checkout-section-title"><b>1</b><div><h2>Your details</h2><p>We'll use these to confirm your order.</p></div></div><div className="mock-checkout-fields">
+          <div className="field"><label>Full name *</label><input data-clarity-mask="true" placeholder="Your full name" value={fields.fullName} onChange={(e)=>update("fullName",e.target.value)}/>{errors.fullName?<span className="field-error">{errors.fullName}</span>:null}</div>
+          <div className="field"><label>Phone number *</label><input data-clarity-mask="true" inputMode="tel" placeholder="03XX-XXXXXXX" value={fields.phone} onChange={(e)=>update("phone",e.target.value)}/>{errors.phone?<span className="field-error">{errors.phone}</span>:null}</div>
+          <div className="field full"><label>Email {required.email?"*":""}</label><input data-clarity-mask="true" type="email" placeholder="you@example.com" value={fields.email} onChange={(e)=>update("email",e.target.value)}/>{errors.email?<span className="field-error">{errors.email}</span>:null}</div>
+        </div></div>
+        <div className="mock-checkout-section"><div className="mock-checkout-section-title"><b>2</b><div><h2>Delivery address</h2><p>Where should we send your parcel?</p></div></div><div className="mock-checkout-fields">
+          <div className="field"><label>City *</label><input list="pakistan-cities" placeholder="Search city" value={fields.city} onChange={(e)=>update("city",e.target.value)}/><datalist id="pakistan-cities">{cities.map((city)=><option key={city.name} value={city.name}/>)}</datalist>{errors.city?<span className="field-error">{errors.city}</span>:null}</div>
+          <div className="field"><label>Postcode {required.postcode?"*":""}</label><input data-clarity-mask="true" placeholder="e.g. 54000" value={fields.postcode} onChange={(e)=>update("postcode",e.target.value)}/>{errors.postcode?<span className="field-error">{errors.postcode}</span>:null}</div>
+          <div className="field full"><label>Full address *</label><textarea data-clarity-mask="true" rows={3} placeholder="House, street, area..." value={fields.address} onChange={(e)=>update("address",e.target.value)}/>{errors.address?<span className="field-error">{errors.address}</span>:null}</div>
+          <div className="field full"><label>Order notes {required.orderNotes?"*":""}</label><textarea rows={2} placeholder="Any delivery note?" value={fields.orderNotes} onChange={(e)=>update("orderNotes",e.target.value)}/>{errors.orderNotes?<span className="field-error">{errors.orderNotes}</span>:null}</div>
+        </div></div>
+        <div className="mock-checkout-section"><div className="mock-checkout-section-title"><b>3</b><div><h2>Delivery</h2><p>Fast, tracked delivery across Pakistan.</p></div></div><label className="mock-delivery-choice"><input type="radio" checked readOnly/><span><b>Standard delivery</b><small>{selectedCity?`${selectedCity.deliveryMinDays}–${selectedCity.deliveryMaxDays} working days`:"Delivery time shown after city selection"}</small></span><strong>{deliveryFee?money(deliveryFee):"FREE"}</strong></label></div>
+        <div className="mock-checkout-section"><div className="mock-checkout-section-title"><b>4</b><div><h2>Payment</h2><p>No advance payment. Pay when it arrives.</p></div></div><label className="mock-delivery-choice cod"><input type="radio" checked readOnly/><span><b>Cash on Delivery</b><small>Pay cash to the courier when your parcel arrives.</small></span><strong>COD</strong></label></div>
+        <div className="hidden" aria-hidden="true"><input tabIndex={-1} autoComplete="off" value={fields.website} onChange={(e)=>update("website",e.target.value)}/></div>
+        <label className="mock-checkout-terms"><input type="checkbox" checked={fields.terms} onChange={(e)=>update("terms",e.target.checked)}/><span>I agree to the terms and confirm my delivery details are correct.{errors.terms?<b className="field-error"> {errors.terms}</b>:null}</span></label>
+        {serverError?<div className="mock-checkout-error">{serverError}</div>:null}
       </section>
-
-      <aside className="summary-card">
-        <h3>Order summary</h3>
-        {items.map((item) => <div className="summary-row" key={`${item.productId}-${item.variantId || "base"}-${item.bundleSize}`}><span>{item.name} × {item.quantity * item.bundleSize}</span><b>{money(item.price * item.quantity * item.bundleSize * (item.bundleSize === 2 ? 1 - (item.bundleDiscountPercent || 5) / 100 : 1))}</b></div>)}
-        <div className="summary-row"><span>Items</span><b>{money(subtotal)}</b></div>
-        {bundleSaving > 0 ? <div className="summary-row"><span>Bundle saving</span><b className="text-emerald-600">-{money(bundleSaving)}</b></div> : null}
-        <div className="summary-row"><span>Delivery</span><b>{deliveryFee ? money(deliveryFee) : "Free"}</b></div>
-        {codFee ? <div className="summary-row"><span>COD fee</span><b>{money(codFee)}</b></div> : null}
-        <div className="summary-row total"><span>Total</span><span>{money(total)}</span></div>
-        <div className="cod-note">Pay cash when your parcel arrives.</div>
-        {selectedCity ? <p className="mb-3 text-xs text-slate-500">Estimated delivery: {selectedCity.deliveryMinDays}–{selectedCity.deliveryMaxDays} working days.</p> : null}
-        <button className="btn-green w-full" disabled={submitting}>{submitting ? "Placing order..." : "Place Order"}</button>
-      </aside>
+      <aside className="mock-checkout-summary"><h2>Your order</h2>{items.map((item)=><div className="mock-checkout-line" key={`${item.productId}-${item.variantId||"base"}-${item.bundleSize}`}><span>{item.name}<small>Qty {item.quantity*item.bundleSize}</small></span><b>{money(item.price*item.quantity*item.bundleSize*(item.bundleSize===2?1-(item.bundleDiscountPercent||5)/100:1))}</b></div>)}<hr/><div><span>Items</span><b>{money(subtotal)}</b></div>{bundleSaving>0?<div className="saving"><span>Bundle saving</span><b>-{money(bundleSaving)}</b></div>:null}<div><span>Delivery</span><b>{deliveryFee?money(deliveryFee):"Free"}</b></div>{codFee?<div><span>COD fee</span><b>{money(codFee)}</b></div>:null}<div className="total"><span>Total</span><b>{money(total)}</b></div><div className="mock-pay-arrival">✓ Pay cash when your parcel arrives</div><button className="mock-place-order" disabled={submitting}>{submitting?"Placing order...":"Place order →"}</button><p className="mock-order-help">Need help? Call <b>0300-2026711</b> or message us on WhatsApp.</p></aside>
     </form>
   );
 }

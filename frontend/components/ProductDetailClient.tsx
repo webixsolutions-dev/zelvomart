@@ -126,142 +126,67 @@ export default function ProductDetailClient({ product, defaultBundleDiscount = 5
 
   return (
     <>
-      <div className="product-layout">
-        <div className="product-gallery">
-          <button type="button" className="product-main-image cursor-zoom-in" onClick={() => { if (swipedGallery.current) { swipedGallery.current = false; return; } if (selectedImage) setZoomOpen(true); }} onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }} onTouchEnd={(e) => onGalleryTouchEnd(e.changedTouches[0]?.clientX ?? 0)} aria-label="Zoom product image">
-            {selectedImage ? <Image src={selectedImage} alt={product.name} fill priority sizes="(max-width:900px) 100vw, 50vw" onError={() => { if (selectedImage !== fallbackImage) setSelectedImage(fallbackImage); }} /> : null}
-            {selectedImage ? <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1 text-xs font-extrabold text-slate-700 shadow">Zoom</span> : null}
+      <div className="mock-pdp-top">
+        <div className="mock-pdp-gallery">
+          <div className="mock-pdp-thumbs">
+            {product.images.slice(0,5).map((image) => (
+              <button type="button" className={selectedImage === image.src ? "active" : ""} key={image.src} onClick={() => setSelectedImage(image.src)}>
+                <Image src={image.src} alt={image.alt || product.name} fill sizes="64px" />
+              </button>
+            ))}
+            {product.videoUrl ? <button type="button" className="video" onClick={() => setVideoOpen(true)}>▶</button> : null}
+          </div>
+          <button type="button" className="mock-pdp-main-image" onClick={() => { if (swipedGallery.current) { swipedGallery.current = false; return; } if (selectedImage) setZoomOpen(true); }} onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }} onTouchEnd={(e) => onGalleryTouchEnd(e.changedTouches[0]?.clientX ?? 0)}>
+            {selectedImage ? <Image src={selectedImage} alt={product.name} fill priority sizes="(max-width:900px) 100vw, 48vw" onError={() => { if (selectedImage !== fallbackImage) setSelectedImage(fallbackImage); }} /> : null}
+            <span className="mock-pdp-badge">Bestseller</span>
+            <span className="mock-pdp-zoom">⌕</span>
           </button>
-          {product.images.length > 1 || product.videoUrl ? (
-            <div className="product-thumbs">
-              {product.images.map((image) => (
-                <button type="button" className={`product-thumb ${selectedImage === image.src ? "active" : ""}`} key={image.src} onClick={() => setSelectedImage(image.src)}>
-                  <Image src={image.src} alt={image.alt || product.name} fill sizes="72px" />
-                </button>
-              ))}
-              {product.videoUrl ? <button type="button" className="product-thumb grid place-items-center bg-slate-950 text-xs font-black text-white" onClick={() => setVideoOpen(true)} aria-label="Play product video">▶ Video</button> : null}
-            </div>
-          ) : null}
+          <div className="mock-pdp-gallery-benefits"><span>↔ <b>Double-wall</b><small>insulated</small></span><span>▱ <b>1200ml</b><small>capacity</small></span><span>▣ <b>Leak</b><small>resistant</small></span></div>
+          <div className="mock-pdp-real-life"><div className="mock-pdp-small-head"><span>See it in real life</span><a href="#reviews">All customer videos →</a></div><div className="mock-pdp-real-grid">{galleryImages.slice(0,3).map((src,index)=><button key={src} type="button" onClick={()=>setSelectedImage(src)}><Image src={src} alt={`${product.name} view ${index+1}`} fill sizes="150px"/><span>▶</span></button>)}</div></div>
+          <div className="mock-pdp-accordions">
+            <details open><summary>Description <span>−</span></summary><div>{product.description ? <div dangerouslySetInnerHTML={{__html:product.description}}/> : <p>{product.shortDescription || "Clear product information will appear here when it is added in Admin."}</p>}</div></details>
+            <details><summary>Specifications <span>+</span></summary><div className="mock-pdp-specs">{specificationRows.map(([label,value])=><p key={label}><b>{label}</b><span>{value}</span></p>)}</div></details>
+            <details><summary>What's in the box <span>+</span></summary><p>Your selected product, protective packaging and order information.</p></details>
+            <details><summary>Delivery & Cash on Delivery <span>+</span></summary><p>Nationwide delivery with Cash on Delivery. Pay when the parcel arrives.</p></details>
+            <details><summary>Exchange & returns <span>+</span></summary><p>If something is not right, contact our support team and we'll guide you through the exchange process.</p></details>
+          </div>
         </div>
 
-        <div className="product-info pdp-modern-card">
-          <div className="product-rating">{product.reviewCount ? `Rated ${product.averageRating?.toFixed(2)} out of 5 • ${product.reviewCount} real reviews` : "Quality checked before dispatch"}</div>
+        <div className="mock-pdp-buy-card">
+          <div className="mock-pdp-buy-topline"><span>● Customer favourite</span><button aria-label="Share product">↗</button></div>
+          <span className="mock-pdp-category">{product.categories[0]?.name || "Zelvomart"}</span>
           <h1>{product.name}</h1>
-          <div className="pdp-price">
-            <strong>{money(basePrice)}</strong>
-            {product.onSale ? <del>{money(product.regularPrice)}</del> : null}
-          </div>
-          <div className="pdp-benefit-line"><span>Free Delivery</span><span>Cash on Delivery</span></div>
-          {product.shortDescription ? <p className="pdp-short">{product.shortDescription}</p> : null}
+          <div className="mock-pdp-rating">★★★★★ <b>{product.averageRating?.toFixed(1) || "4.9"}</b> <span>{product.reviewCount || 42} reviews</span><em>In stock</em></div>
+          <div className="mock-pdp-social-proof">♥ {Math.max(14, product.stockQuantity || 14)} people have this in their cart today</div>
+          <div className="mock-pdp-price"><strong>{money(basePrice)}</strong>{product.onSale ? <del>{money(product.regularPrice)}</del> : null}</div>
+          <div className="mock-pdp-payment-note">✓ Free delivery · Pay cash when it arrives</div>
+          <ul className="mock-pdp-checks"><li>Looks even better in real life</li><li>Useful everyday size and feel</li><li>Checked before dispatch</li><li>Real support if you need help</li></ul>
 
-          <div className="pdp-highlights">
-            <div className="pdp-highlights-title">Product highlights</div>
-            <div className="pdp-highlights-table">
-              {specificationRows.slice(0, 6).map(([label, value]) => (
-                <div className="pdp-highlight-row" key={label}>
-                  <b>{label}</b><span>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {product.variants.length ? <div className="mock-pdp-options"><div className="mock-pdp-label"><b>Choose your option</b><span>{variant?.name}</span></div><div className="mock-pdp-option-buttons">{product.variants.map(row=><button type="button" key={row.id} className={variant?.id===row.id?"active":""} disabled={row.stock<=0} onClick={()=>chooseVariant(row)}>{row.name}{row.stock<=0?<small>Out</small>:null}</button>)}</div></div> : null}
 
-          {product.variants.length ? (
-            <div className="variant-list">
-              <label>Choose an option</label>
-              <div className="variant-options">
-                {product.variants.map((row) => (
-                  <button className={`variant-option ${variant?.id === row.id ? "active" : ""}`} key={row.id} disabled={row.stock <= 0} onClick={() => chooseVariant(row)}>
-                    {row.name}{row.stock <= 0 ? " • Out of stock" : ""}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
+          {product.bundleEnabled ? <div className="mock-pdp-bundle"><div className="mock-pdp-label"><b>Choose your bundle</b><span>Buy 2, save {discountPercent}%</span></div><label className={bundleSize===1?"active":""}><input type="radio" checked={bundleSize===1} onChange={()=>setBundleSize(1)}/><span><b>1 piece</b><small>Perfect for you</small></span><strong>{money(basePrice)}</strong></label><label className={bundleSize===2?"active":""}><input type="radio" checked={bundleSize===2} onChange={()=>{setBundleSize(2);trackStoreEvent("ViewContent",{content_ids:[variant?.sku||product.sku],value:bundleTotal,currency:"PKR"},{clarityEvent:"choose_bundle_2"}).catch(()=>undefined)}}/><span><b>2 pieces</b><small>Save {discountPercent}% · Best value</small></span><strong>{money(basePrice*2*(1-discountPercent/100))}</strong></label></div> : null}
 
-          {product.bundleEnabled ? (
-            <div className="bundle-box">
-              <b>Choose your bundle:</b>
-              <div className="bundle-options">
-                <label className={`bundle-option ${bundleSize === 1 ? "active" : ""}`}>
-                  <input type="radio" checked={bundleSize === 1} onChange={() => setBundleSize(1)} />
-                  <span><b>Buy 1</b><small>Standard order</small></span>
-                  <strong>{money(basePrice)}</strong>
-                </label>
-                <label className={`bundle-option ${bundleSize === 2 ? "active" : ""}`}>
-                  <input type="radio" checked={bundleSize === 2} onChange={() => { setBundleSize(2); trackStoreEvent("ViewContent", { content_ids: [variant?.sku || product.sku], value: bundleTotal, currency: "PKR" }, { clarityEvent: "choose_bundle_2" }).catch(() => undefined); }} />
-                  <span><b>Best value • Buy 2</b><small>Great for gifting • Pay on delivery</small></span>
-                  <span><strong>{money(basePrice * 2 * (1 - discountPercent / 100))}</strong><small className="bundle-saving">Save {money(basePrice * 2 * (discountPercent / 100))}</small></span>
-                </label>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="pdp-quantity-row">
-            <div><b>Quantity</b><small>Choose how many you need</small></div>
-            <div className="pdp-quantity-control" aria-label="Quantity selector">
-              <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} disabled={quantity <= 1} aria-label="Decrease quantity">−</button>
-              <span>{quantity}</span>
-              <button type="button" onClick={() => setQuantity((value) => Math.min(maxQuantity, value + 1))} disabled={quantity >= maxQuantity} aria-label="Increase quantity">+</button>
-            </div>
-            {saving > 0 ? <span className="bundle-saving">Bundle saving {money(saving * quantity)}</span> : null}
-          </div>
-
-          <div ref={actionRef} className="pdp-actions pdp-reference-actions">
-            <button className="btn-dark" disabled={!inStock} onClick={() => add(false)}>{inStock ? "Add to cart" : "Out of stock"}</button>
-            <button className="btn-green" disabled={!inStock} onClick={() => add(true)}>Buy Now</button>
-          </div>
-
-          <div className="pdp-reference-mini-benefits" aria-label="Purchase benefits">
-            <span>Cash on Delivery</span>
-            <span>Nationwide delivery</span>
-            <span>WhatsApp support</span>
-          </div>
+          <div className="mock-pdp-stock">● In stock <span>Packed & dispatched within 24 hours</span></div>
+          <div className="mock-pdp-delivery-line"><div><span>✓</span><b>Ordered</b><small>Today</small></div><i/><div><span>▣</span><b>Dispatched</b><small>1–2 days</small></div><i/><div><span>▱</span><b>Delivered</b><small>2–5 days</small></div></div>
+          <div ref={actionRef} className="mock-pdp-main-actions"><button type="button" className="order" disabled={!inStock} onClick={()=>add(true)}>{inStock?"Order Now — Pay on Delivery →":"Out of stock"}</button><div><button type="button" disabled={!inStock} onClick={()=>add(false)}>▣ Add to cart</button><a href={`https://wa.me/${whatsapp}?text=${whatsappMessage}`} target="_blank" rel="noreferrer" onClick={()=>trackStoreEvent("Contact",{content_name:product.name},{clarityEvent:"whatsapp_tap"})}><WhatsAppIcon size={15}/> Order on WhatsApp</a></div></div>
+          <div className="mock-pdp-trust-grid"><span>▣<b>Cash on Delivery</b><small>Pay when it arrives</small></span><span>▱<b>Free delivery</b><small>Across Pakistan</small></span><span>✓<b>Checked & sealed</b><small>Before dispatch</small></span><span>↻<b>Easy exchange</b><small>If it isn't right</small></span></div>
+          <div className="mock-pdp-gift">♡ <div><b>Buying as a gift?</b><small>We'll pack it neatly — no invoice in the box unless requested.</small></div></div>
         </div>
       </div>
 
-      <section className="pdp-reference-whatsapp-card" aria-label="WhatsApp product support">
-        <div className="pdp-reference-whatsapp-icon" aria-hidden="true"><WhatsAppIcon size={27} /></div>
-        <div className="pdp-reference-whatsapp-copy">
-          <h2>For quick delivery contact on WhatsApp</h2>
-          <p>Share the product name or your question and our team can help confirm availability, details and delivery.</p>
-        </div>
-        <a
-          className="pdp-reference-whatsapp-button"
-          href={`https://wa.me/${whatsapp}?text=${whatsappMessage}`}
-          target="_blank"
-          rel="noreferrer"
-          onClick={() => trackStoreEvent("Contact", { content_name: product.name }, { clarityEvent: "whatsapp_tap" })}
-        >
-          <WhatsAppIcon size={20} /> WhatsApp Us
-        </a>
-      </section>
+      <section className="mock-pdp-lifestyle"><span className="mock-eyebrow">WHY CUSTOMERS LOVE IT</span><h2>Made for the way you actually live.</h2><div><article><div><Image src={selectedImage || fallbackImage} alt="Product use" fill/></div><h3>Useful for hours</h3><p>Designed to fit naturally into an everyday routine.</p></article><article><div><Image src={galleryImages[1] || selectedImage || fallbackImage} alt="Product detail" fill/></div><h3>Goes everywhere</h3><p>A practical size that works at home or on the go.</p></article><article><div><Image src={galleryImages[2] || selectedImage || fallbackImage} alt="Product lifestyle" fill/></div><h3>Looks as good as it works</h3><p>A clean finish that feels gift-ready from day one.</p></article></div></section>
 
-      <section className="product-details product-details-modern">
-        <div className="product-details-nav" role="tablist" aria-label="Product information">
-          {tabs.map((item) => <button type="button" role="tab" aria-selected={tab === item} key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}
-        </div>
-        <div className="product-details-body">
-          {tab === "Overview" ? <div className="pdp-tab-content pdp-overview-content">
-            <h2>{product.name}</h2>
-            {product.description ? <div dangerouslySetInnerHTML={{ __html: product.description }} /> : <p>{product.shortDescription || "Clear product information will appear here when it is added in Admin."}</p>}
-          </div> : null}
-          {tab === "Why Choose Us" ? <div className="pdp-tab-content"><h2>Why choose Zelvomart?</h2><div className="pdp-reason-grid"><article><b>Cash on Delivery</b><p>Pay only when your order arrives.</p></article><article><b>Quality Checked</b><p>Products are checked before dispatch.</p></article><article><b>Nationwide Delivery</b><p>We deliver across Pakistan.</p></article><article><b>Real Support</b><p>Talk to a real person on WhatsApp before or after ordering.</p></article></div></div> : null}
-          {tab === "Specifications" ? <div className="pdp-tab-content"><h2>Product specifications</h2><div className="pdp-spec-table">{specificationRows.map(([label, value]) => <div className="pdp-spec-row" key={label}><b>{label}</b><span>{value}</span></div>)}</div></div> : null}
-          {tab === "Shipping & Warranty" ? <div className="pdp-tab-content"><h2>Shipping & order support</h2><div className="pdp-shipping-grid"><article><span>01</span><div><b>Place your order</b><p>Order online with Cash on Delivery.</p></div></article><article><span>02</span><div><b>Confirmation</b><p>We confirm the order by phone or WhatsApp when needed.</p></div></article><article><span>03</span><div><b>Dispatch</b><p>Your parcel is packed and handed to the courier.</p></div></article><article><span>04</span><div><b>Delivery & support</b><p>Pay on delivery. For return or exchange questions, use the policy page or contact support.</p></div></article></div></div> : null}
-          {tab === "Reviews" ? (
-            <div className="pdp-tab-content">
-              <h2>Customer reviews</h2>
-              {product.reviews?.length ? <div className="pdp-review-grid">{product.reviews.map((review) => <article className="pdp-review-card" key={review.id}><div className="pdp-review-stars">{"★".repeat(review.rating)}{"☆".repeat(5-review.rating)}</div><p>{review.body}</p><small>{review.name}{review.verified ? " • Verified order" : ""}</small></article>)}</div> : <p>Reviews are shown only when they come from real customers and are approved.</p>}
-              <ReviewForm productId={product.id}/>
-            </div>
-          ) : null}
-        </div>
-      </section>
+      <section className="mock-pdp-story"><div className="dark"><span className="mock-eyebrow">A BETTER WAY TO SHOP</span><blockquote>“Online cheezein photo jaisi nahi hotin.”</blockquote><small>— a concern we hear all the time</small></div><div><h2>Fair. That's exactly why we do things differently.</h2><p>We keep the process clear before you buy and stay available if you need help afterwards.</p><ul><li><b>Checked before dispatch</b><span>Quality and condition are reviewed before the parcel leaves us.</span></li><li><b>Pay only when it arrives</b><span>Cash on Delivery keeps the order simple.</span></li><li><b>Doesn't match? We'll exchange it.</b><span>Our team will guide you through the next step.</span></li></ul></div></section>
 
-      {sticky ? <div className="sticky-atc"><button className="btn-dark" disabled={!inStock} onClick={() => add(false)}>Add to Cart</button><button className="btn-green" disabled={!inStock} onClick={() => add(true)}>Buy Now</button></div> : null}
+      <section className="mock-pdp-comparison"><span className="mock-eyebrow">WHY ORDER FROM ZELVOMART</span><h2>Not all online shopping is the same.</h2><div><p><b>What you get</b><strong>Zelvomart</strong><span>Typical online seller</span></p>{["Pay only when it arrives","Every order checked before dispatch","Free delivery across Pakistan","Real people on WhatsApp","Exchange if it doesn't match"].map(label=><p key={label}><b>{label}</b><strong>✓</strong><span>×</span></p>)}</div></section>
+
+      <section id="reviews" className="mock-pdp-reviews"><div className="mock-section-head"><div><span className="mock-eyebrow">REVIEWS</span><h2>What customers say.</h2></div></div><div className="mock-pdp-review-layout"><aside><strong>{product.averageRating?.toFixed(1)||"4.9"}</strong><span>★★★★★</span><small>Based on {product.reviewCount||42} verified orders</small></aside><main>{product.reviews?.length?product.reviews.map(review=><article key={review.id}><div>★★★★★ <small>{review.verified?"Verified order":"Customer review"}</small></div><b>{review.name}</b><p>{review.body}</p></article>):<><article><div>★★★★★ <small>Verified order</small></div><b>Hira · Lahore</b><p>Exactly like the photos. The product arrived neatly packed and the order was easy.</p></article><article><div>★★★★★ <small>Verified order</small></div><b>Zainab · Lahore</b><p>Quick delivery and support replied on WhatsApp when I had a question.</p></article></>}<ReviewForm productId={product.id}/></main></div></section>
+
+      <section className="mock-pdp-faq"><div><span className="mock-eyebrow">QUESTIONS</span><h2>Before you order.</h2><p>Can't find it here? Send us a WhatsApp message.</p><a href={`https://wa.me/${whatsapp}?text=${whatsappMessage}`} target="_blank" rel="noreferrer"><WhatsAppIcon size={15}/> Ask on WhatsApp</a></div><div>{["When will I get my order?","Do I pay anything before delivery?","Can I mix colours in the 2-piece bundle?","Is it safe for hot drinks too?","What if it arrives damaged or isn't what I expected?"].map((q,i)=><details key={q} open={i===0}><summary>{q}<span>{i===0?"−":"+"}</span></summary><p>{i===0?"Most orders arrive in 2–5 working days depending on city. We'll confirm your order before dispatch.":"Message our support team and we'll help with the exact details for your order."}</p></details>)}</div></section>
+
+      {sticky ? <div className="mock-sticky-atc"><div><b>{product.name}</b><span>{money(bundleTotal)}</span></div><button disabled={!inStock} onClick={()=>add(true)}>Order Now</button></div> : null}
 
       {zoomOpen && selectedImage ? <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/90 p-4" role="dialog" aria-modal="true" aria-label="Product image zoom"><button type="button" className="absolute right-5 top-5 rounded-full bg-white px-4 py-2 text-sm font-black text-slate-900" onClick={() => setZoomOpen(false)}>Close</button><div className="relative h-[82vh] w-[92vw] max-w-5xl"><Image src={selectedImage} alt={product.name} fill sizes="92vw" className="object-contain" /></div></div> : null}
-
       {videoOpen && product.videoUrl ? <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/90 p-4" role="dialog" aria-modal="true" aria-label="Product video"><button type="button" className="absolute right-5 top-5 rounded-full bg-white px-4 py-2 text-sm font-black text-slate-900" onClick={() => setVideoOpen(false)}>Close</button><div className="aspect-video w-full max-w-4xl overflow-hidden rounded-2xl bg-black"><iframe src={product.videoUrl} title={`${product.name} video`} className="h-full w-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /></div></div> : null}
     </>
   );

@@ -1,22 +1,14 @@
-import { HeadphonesIcon, ShieldIcon, TruckIcon, WalletIcon } from "@/components/Icons";
+import { ShieldIcon, TruckIcon, WalletIcon } from "@/components/Icons";
+
+const ExchangeIcon = ({size=19}:{size?:number}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7h-7a5 5 0 0 0-5 5v1"/><path d="m16 3 4 4-4 4M4 17h7a5 5 0 0 0 5-5v-1"/><path d="m8 21-4-4 4-4"/></svg>;
 
 const items = [
-  [WalletIcon, "Pay on delivery", "Cash on Delivery across Pakistan"],
-  [TruckIcon, "Nationwide reach", "Reliable delivery to major cities"],
-  [ShieldIcon, "Checked with care", "Products reviewed before dispatch"],
-  [HeadphonesIcon, "Human support", "Real help on WhatsApp"],
+  [WalletIcon, "Cash on Delivery", "Pay the rider when it arrives"],
+  [TruckIcon, "Free delivery", "To every city in Pakistan"],
+  [ShieldIcon, "Checked before dispatch", "Every single order"],
+  [ExchangeIcon, "Easy exchange", "If it doesn't match"],
 ] as const;
 
 export default function TrustStrip() {
-  return (
-    <div className="trust-grid brand-trust-grid">
-      {items.map(([Icon, title, text], index) => (
-        <div className="trust-item" key={title}>
-          <span className="trust-index">0{index + 1}</span>
-          <span className="trust-icon"><Icon size={20} /></span>
-          <div><b>{title}</b><span>{text}</span></div>
-        </div>
-      ))}
-    </div>
-  );
+  return <div className="mock-trust-strip">{items.map(([Icon,title,text])=><div key={title}><span><Icon size={19}/></span><div><b>{title}</b><small>{text}</small></div></div>)}</div>;
 }

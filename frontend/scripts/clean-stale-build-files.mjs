@@ -25,7 +25,6 @@ const stalePaths = [
   'app/api/orders',
   'app/api/reviews',
   'app/feeds/meta.xml',
-  '.next',
 ];
 
 let removed = 0;
@@ -38,3 +37,4 @@ for (const relative of stalePaths) {
 }
 
 console.log(`[prebuild] clean frontend ready (${removed} stale path${removed === 1 ? '' : 's'} removed).`);
+console.log('[prebuild] .next is intentionally left to Next.js; this avoids Windows ENOTEMPTY/EPERM failures.');

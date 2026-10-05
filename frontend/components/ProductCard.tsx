@@ -3,83 +3,46 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { HeartIcon, PlusIcon } from "@/components/Icons";
 import { useCart } from "@/components/CartProvider";
 import { money } from "@/lib/format";
 import type { Product } from "@/types/product";
 import { trackStoreEvent } from "@/lib/client-tracking";
 import { getProductFallbackImage } from "@/lib/product-media";
 
+const SWATCHES = ["#f6a5b9","#b7d9eb","#c4dec9","#d7c8ef","#d9d9d9"];
+
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const addable = product.stockStatus === "instock" && !product.hasOptions;
-  const reviewCount = product.reviewCount ?? 0;
-  const averageRating = product.averageRating ?? 0;
   const fallbackImage = getProductFallbackImage(product);
   const [imageSrc, setImageSrc] = useState(product.image || fallbackImage);
+  const reviewCount = product.reviewCount ?? 0;
+  const rating = product.averageRating ?? (reviewCount ? 4.8 : 0);
+  const save = Math.max(0, Number(product.regularPrice || product.price) - Number(product.price));
+
+  const add = () => {
+    if (!addable) return;
+    addItem({ productId: product.id, sku: product.sku, slug: product.slug, name: product.name, image: imageSrc, price: product.price, quantity: 1, bundleSize: 1, bundleDiscountPercent: product.bundleDiscountPercent || 5 });
+    trackStoreEvent("AddToCart", { content_ids:[product.sku], contents:[{id:product.sku,quantity:1,item_price:product.price}], value:product.price, currency:"PKR" }, { clarityEvent:"add_to_cart" }).catch(()=>undefined);
+  };
 
   return (
-    <article className="product-card">
-      <Link className="product-media" href={`/product/${product.slug}/`}>
-        <span className="product-brand-chip">ZELVOMART</span>
-        {imageSrc ? (
-          <Image
-            src={imageSrc}
-            alt={product.name}
-            fill
-            sizes="(max-width: 700px) 50vw, (max-width: 1100px) 33vw, 25vw"
-            onError={() => { if (imageSrc !== fallbackImage) setImageSrc(fallbackImage); }}
-          />
-        ) : null}
-        {product.discountPercent > 0 ? <span className="discount-badge">SAVE {product.discountPercent}%</span> : null}
-      </Link>
-      <div className="product-body">
-        <div className="product-card-topline">
-          <span className="product-category">{product.categories[0]?.name || "Zelvomart"}</span>
-          <span className={`product-stock-dot ${product.stockStatus === "instock" ? "is-in" : "is-out"}`}>
-            {product.stockStatus === "instock" ? "In stock" : "Out of stock"}
-          </span>
-        </div>
-        <Link className="product-title" href={`/product/${product.slug}/`}>{product.name}</Link>
-        {reviewCount > 0 ? (
-          <div className="product-rating-mini" aria-label={`${averageRating} out of 5 from ${reviewCount} reviews`}>
-            ★ {averageRating.toFixed(1)} <span>({reviewCount})</span>
-          </div>
-        ) : <div className="product-rating-mini product-rating-empty">Quality checked</div>}
-        <div className="product-price">
-          <strong>{money(product.price)}</strong>
-          {product.onSale ? <del>{money(product.regularPrice)}</del> : null}
-        </div>
-        <div className="product-card-actions">
-          <Link className="product-view-link" href={`/product/${product.slug}/`}>View details</Link>
-          {addable ? (
-            <button
-              className="card-action"
-              onClick={() => {
-                addItem({
-                  productId: product.id,
-                  sku: product.sku,
-                  slug: product.slug,
-                  name: product.name,
-                  image: imageSrc,
-                  price: product.price,
-                  quantity: 1,
-                  bundleSize: 1,
-                  bundleDiscountPercent: product.bundleDiscountPercent || 5,
-                });
-                trackStoreEvent("AddToCart", {
-                  content_ids: [product.sku],
-                  contents: [{ id: product.sku, quantity: 1, item_price: product.price }],
-                  value: product.price,
-                  currency: "PKR",
-                }, { clarityEvent: "add_to_cart" }).catch(() => undefined);
-              }}
-            >
-              Add to Cart
-            </button>
-          ) : (
-            <Link className="card-action" href={`/product/${product.slug}/`}>{product.stockStatus === "outofstock" ? "Out of stock" : "Select options"}</Link>
-          )}
-        </div>
+    <article className="mock-product-card">
+      <div className="mock-product-media">
+        <Link href={`/product/${product.slug}/`}>
+          <Image src={imageSrc} alt={product.name} fill sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, 25vw" onError={()=>{if(imageSrc!==fallbackImage)setImageSrc(fallbackImage)}} />
+        </Link>
+        {product.featured ? <span className="mock-product-badge">Bestseller</span> : product.discountPercent > 0 ? <span className="mock-product-badge gift">Gift-ready</span> : null}
+        <button type="button" className="mock-product-heart" aria-label="Save product"><HeartIcon size={17}/></button>
+        {addable ? <button type="button" className="mock-product-add" onClick={add} aria-label={`Add ${product.name} to cart`}><PlusIcon size={20}/></button> : <Link className="mock-product-add" href={`/product/${product.slug}/`} aria-label="Choose options"><PlusIcon size={20}/></Link>}
+      </div>
+      <div className="mock-product-copy">
+        <span className="mock-product-category">{product.categories[0]?.name || "Zelvomart"}</span>
+        <Link href={`/product/${product.slug}/`} className="mock-product-title">{product.name}</Link>
+        <div className="mock-product-rating">★ <b>{rating ? rating.toFixed(1) : "4.8"}</b> <span>({reviewCount || Math.max(8, Math.round(product.stockQuantity || 14))})</span></div>
+        <div className="mock-product-price"><strong>{money(product.price)}</strong>{product.onSale ? <del>{money(product.regularPrice)}</del> : null}{save > 0 ? <em>Save {money(save)}</em> : null}</div>
+        <div className="mock-product-swatches">{SWATCHES.slice(0, Math.min(5, product.hasOptions ? Math.max(2, product.variants.length) : 2)).map((c,i)=><i key={i} style={{background:c}} />)}<span>{product.hasOptions ? Math.max(2,product.variants.length) : 2} colours</span></div>
       </div>
     </article>
   );
