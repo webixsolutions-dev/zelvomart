@@ -790,7 +790,22 @@ app.get('/api/admin/reports', requireAuth('reports.read'), async (_req,res)=>{
   const products=new Map<string,{title:string,qty:number,revenue:number,views:number,carts:number,orders:number}>();
   const ensure=(sku:string,title=sku)=>{const row=products.get(sku)||{title,qty:0,revenue:0,views:0,carts:0,orders:0};products.set(sku,row);return row;};
   for(const o of orders){const ordered=new Set<string>();for(const i of o.items){const row=ensure(i.sku,i.title);row.qty+=i.quantity;row.revenue+=Number(i.lineTotal);ordered.add(i.sku);}for(const sku of ordered)ensure(sku).orders+=1;}
-  for(const e of eventRows){const payload=(e.payload&&typeof e.payload==='object'&&!Array.isArray(e.payload)?e.payload:{}) as any;const params=(payload.params&&typeof payload.params==='object'?payload.params:{});const ids=Array.isArray(params.content_ids)?params.content_ids.map(String):[];for(const sku of new Set(ids)){const row=ensure(sku);if(e.eventName==='ViewContent')row.views+=1;if(e.eventName==='AddToCart')row.carts+=1;}}
+  for(const e of eventRows){
+    const payload=(e.payload&&typeof e.payload==='object'&&!Array.isArray(e.payload)
+      ? e.payload
+      : {}) as Record<string,unknown>;
+    const params=(payload.params&&typeof payload.params==='object'&&!Array.isArray(payload.params)
+      ? payload.params
+      : {}) as Record<string,unknown>;
+    const ids:string[]=Array.isArray(params.content_ids)
+      ? params.content_ids.map((id:unknown)=>String(id))
+      : [];
+    for(const sku of new Set<string>(ids)){
+      const row=ensure(sku);
+      if(e.eventName==='ViewContent') row.views+=1;
+      if(e.eventName==='AddToCart') row.carts+=1;
+    }
+  }
   const productRows=[...products.entries()].map(([sku,v])=>({sku,...v,viewToCart:v.views?Math.round(v.carts/v.views*1000)/10:0,orderRate:v.views?Math.round(v.orders/v.views*1000)/10:0})).sort((a,b)=>b.revenue-a.revenue);
   res.json({orders:orders.length,revenue:orders.reduce((s,o)=>s+Number(o.total),0),events:Object.fromEntries(eventGroups.map(e=>[e.eventName,e._count._all])),products:productRows});
 });
