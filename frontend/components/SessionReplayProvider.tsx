@@ -24,14 +24,21 @@ function trafficMeta() {
   };
 }
 
-function send(path: string, body: unknown) {
+function send(path: string, body: unknown, keepalive = false) {
+  const payload = JSON.stringify(body);
+  // Browsers cap fetch keepalive request bodies at roughly 64 KiB. An rrweb
+  // FullSnapshot is commonly larger, so normal replay chunks MUST use a
+  // regular fetch. keepalive is reserved for genuinely small unload requests.
+  const safeKeepalive = keepalive && new Blob([payload]).size <= 60_000;
   return fetch(`/api/store-proxy${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    keepalive: true,
-    body: JSON.stringify(body),
-  }).catch(() => undefined);
+    keepalive: safeKeepalive,
+    cache: "no-store",
+    body: payload,
+  }).then((response) => response.ok).catch(() => false);
 }
+
 
 export default function SessionReplayProvider() {
   useEffect(() => {
@@ -44,40 +51,72 @@ export default function SessionReplayProvider() {
     let stopped = false;
     let stopRecording: undefined | (() => void);
     let timer: number | undefined;
+    let retryTimer: number | undefined;
     let sequence = 0;
     let queue: unknown[] = [];
+    let flushing = false;
     const startedAt = Date.now();
     const landingUrl = window.location.href;
 
-    const flush = () => {
-      if (!queue.length) return;
-      const events = queue;
-      queue = [];
-      void send("/api/session-replays/chunk", {
+    const scheduleRetry = () => {
+      if (stopped || retryTimer) return;
+      retryTimer = window.setTimeout(() => {
+        retryTimer = undefined;
+        void flush(false);
+      }, 2_000);
+    };
+
+    const flush = async (keepalive = false) => {
+      if (flushing || !queue.length) return true;
+      flushing = true;
+      // Keep incremental batches modest. The initial Meta + FullSnapshot can be
+      // larger than this but is normally just the first 2-4 events.
+      const count = Math.min(queue.length, 30);
+      const events = queue.splice(0, count);
+      const currentSequence = sequence;
+      const ok = await send("/api/session-replays/chunk", {
         sessionId,
-        sequence: sequence++,
+        sequence: currentSequence,
         events,
         currentUrl: window.location.href,
-      });
+      }, keepalive);
+
+      if (ok) {
+        sequence += 1;
+      } else {
+        // Do not silently lose the FullSnapshot (or any other batch). Retry the
+        // same sequence so the backend's composite key remains idempotent.
+        queue = events.concat(queue);
+        scheduleRetry();
+      }
+      flushing = false;
+
+      if (ok && queue.length >= 30) void flush(false);
+      return ok;
     };
 
     const end = () => {
       if (stopped) return;
       stopped = true;
-      flush();
       if (timer) window.clearInterval(timer);
+      if (retryTimer) window.clearTimeout(retryTimer);
       try { stopRecording?.(); } catch {}
+
+      // Try to send remaining small events on unload. Larger payloads
+      // automatically fall back to a regular fetch instead of failing the
+      // browser's keepalive quota.
+      void flush(true);
       void send("/api/session-replays/end", {
         sessionId,
         endedAt: new Date().toISOString(),
         currentUrl: window.location.href,
         durationMs: Math.max(0, Date.now() - startedAt),
-      });
+      }, true);
     };
 
     const start = async () => {
       const source = trafficMeta();
-      await send("/api/session-replays/start", {
+      const started = await send("/api/session-replays/start", {
         sessionId,
         visitorId,
         startedAt: new Date(startedAt).toISOString(),
@@ -89,15 +128,21 @@ export default function SessionReplayProvider() {
         viewport: `${window.innerWidth}x${window.innerHeight}`,
       });
 
-      if (stopped) return;
+      if (!started || stopped) return;
       try {
         const { record } = await import("@rrweb/record");
         const stop = record({
           emit(event) {
             queue.push(event);
-            // rrweb type 2 is the FullSnapshot. Persist it immediately so a
-            // short visit still produces a replayable session.
-            if ((event as { type?: number }).type === 2 || queue.length >= 45) flush();
+            const eventType = Number((event as { type?: number }).type);
+            // rrweb type 2 is FullSnapshot. Flush Meta + FullSnapshot
+            // immediately with a NORMAL fetch (not keepalive). This is the
+            // critical event required for a playable recording.
+            if (eventType === 2) {
+              void flush(false);
+            } else if (queue.length >= 30) {
+              void flush(false);
+            }
           },
           maskAllInputs: true,
           maskTextSelector: "[data-replay-mask], [data-clarity-mask]",
@@ -115,17 +160,19 @@ export default function SessionReplayProvider() {
           slimDOMOptions: "all",
         });
         if (typeof stop === "function") stopRecording = stop;
-        timer = window.setInterval(flush, 8_000);
+        timer = window.setInterval(() => { void flush(false); }, 5_000);
       } catch {
         // Recording is analytics-only. A recorder failure must never affect shopping.
       }
     };
 
     // Start after the first paint so recording never delays the shopping UI.
-    const startTimer = window.setTimeout(() => { void start(); }, 700);
+    const startTimer = window.setTimeout(() => { void start(); }, 350);
 
     const onPageHide = () => end();
-    const onVisibility = () => { if (document.visibilityState === "hidden") flush(); };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") void flush(false);
+    };
     window.addEventListener("pagehide", onPageHide);
     document.addEventListener("visibilitychange", onVisibility);
 

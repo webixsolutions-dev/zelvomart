@@ -23,7 +23,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 *
 const port = Number(process.env.PORT || 4000);
 const frontendOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',').map(v => v.trim()).filter(Boolean);
 app.use(cors({ origin(origin, cb) { if (!origin || frontendOrigins.includes(origin)) return cb(null, true); cb(new Error('CORS_NOT_ALLOWED')); }, credentials: false }));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 function routeParam(req: express.Request, key: string): string {
@@ -439,7 +439,7 @@ app.post('/api/session-replays/chunk', async (req,res) => {
   const currentUrl=String(req.body.currentUrl||'').slice(0,4000);
   const now=new Date();
   await prisma.$transaction(async(tx)=>{
-    await tx.sessionReplay.upsert({where:{id:sessionId},update:{lastSeenAt:now,lastUrl:currentUrl||undefined,status:'ACTIVE'},create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}});
+    await tx.sessionReplay.upsert({where:{id:sessionId},update:{lastSeenAt:now,lastUrl:currentUrl||undefined},create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}});
     const existing=await tx.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId,sequence}},select:{id:true,eventCount:true}});
     if(existing){
       await tx.sessionReplayChunk.update({where:{id:existing.id},data:{events:events as Prisma.InputJsonValue,eventCount:events.length}});
@@ -662,7 +662,14 @@ app.get('/api/admin/session-replays/:id', requireAuth('reports.read'), async (re
   ]);
   if(!session) return res.status(404).json({error:'NOT_FOUND'});
   const events=chunks.flatMap(chunk=>Array.isArray(chunk.events)?chunk.events:[]);
-  res.json({session:{...session,durationMs:Math.max(0,Number((session.endedAt||session.lastSeenAt).getTime()-session.startedAt.getTime()))},events,order:order?{...order,total:Number(order.total)}:null,markers});
+  const replayDiagnostics={
+    hasFullSnapshot:events.some((event:any)=>Number(event?.type)===2),
+    fullSnapshotCount:events.filter((event:any)=>Number(event?.type)===2).length,
+    hasMeta:events.some((event:any)=>Number(event?.type)===4),
+    chunkCount:chunks.length,
+    eventCount:events.length,
+  };
+  res.json({session:{...session,durationMs:Math.max(0,Number((session.endedAt||session.lastSeenAt).getTime()-session.startedAt.getTime()))},events,replayDiagnostics,order:order?{...order,total:Number(order.total)}:null,markers});
 });
 
 app.delete('/api/admin/session-replays/:id', requireAuth('reports.read'), async (req:AuthedRequest,res)=>{

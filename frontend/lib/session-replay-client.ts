@@ -4,6 +4,8 @@ const SESSION_KEY = "zm_replay_session_id";
 const VISITOR_KEY = "zm_replay_visitor_id";
 const OPT_OUT_KEY = "zm_session_replay_opt_out";
 
+let pageReplaySessionId: string | undefined;
+
 function getOrCreate(storage: Storage, key: string) {
   const existing = storage.getItem(key);
   if (existing) return existing;
@@ -14,7 +16,18 @@ function getOrCreate(storage: Storage, key: string) {
 
 export function getReplaySessionId() {
   if (typeof window === "undefined") return undefined;
-  try { return getOrCreate(window.sessionStorage, SESSION_KEY); } catch { return undefined; }
+  if (pageReplaySessionId) return pageReplaySessionId;
+  try {
+    // A hard page load starts a new rrweb recording. Reusing the previous
+    // sessionStorage id would reset chunk sequence numbers to zero and can
+    // overwrite the earlier recording. Keep one id for this page lifecycle
+    // (it survives Next.js client navigation because the module stays loaded).
+    pageReplaySessionId = crypto.randomUUID();
+    window.sessionStorage.setItem(SESSION_KEY, pageReplaySessionId);
+    return pageReplaySessionId;
+  } catch {
+    return undefined;
+  }
 }
 
 export function getReplayVisitorId() {
