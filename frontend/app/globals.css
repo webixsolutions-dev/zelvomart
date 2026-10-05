@@ -7842,3 +7842,647 @@ body{
     border-bottom: 1px solid #e4ebef !important;
   }
 }
+
+
+/* 2026-10-06 — Review form collapsed behind an animated Give a Review modal */
+.pdp-review-submit{
+  margin-top:18px;
+}
+.pdp-review-trigger{
+  width:100%;
+  min-height:72px;
+  display:grid;
+  grid-template-columns:44px 1fr 34px;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid #dce7ec;
+  border-radius:16px;
+  background:linear-gradient(135deg,#f7fbfd 0%,#eef8fb 100%);
+  color:#15364a;
+  text-align:left;
+  cursor:pointer;
+  transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.pdp-review-trigger:hover{
+  transform:translateY(-2px);
+  border-color:#b9dbe8;
+  box-shadow:0 14px 34px rgba(10,65,91,.10);
+}
+.pdp-review-trigger-icon{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#0b9fd7;
+  color:#fff;
+  font-size:18px;
+  box-shadow:0 8px 20px rgba(11,159,215,.22);
+}
+.pdp-review-trigger>span:nth-child(2){
+  min-width:0;
+}
+.pdp-review-trigger b,
+.pdp-review-trigger small{
+  display:block;
+}
+.pdp-review-trigger b{
+  font-size:14px;
+  font-weight:850;
+  line-height:1.25;
+}
+.pdp-review-trigger small{
+  margin-top:3px;
+  color:#657d8b;
+  font-size:11.5px;
+  line-height:1.35;
+}
+.pdp-review-trigger i{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:#fff;
+  border:1px solid #d7e6ec;
+  font-style:normal;
+  font-size:15px;
+  transition:transform .22s ease;
+}
+.pdp-review-trigger:hover i{
+  transform:translateX(2px);
+}
+
+.pdp-review-modal-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:rgba(7,24,35,.58);
+  backdrop-filter:blur(7px);
+  animation:pdpReviewFade .18s ease both;
+}
+.pdp-review-modal{
+  width:min(760px,100%);
+  max-height:min(88vh,760px);
+  overflow:auto;
+  border:1px solid rgba(255,255,255,.65);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 30px 90px rgba(5,31,46,.26);
+  animation:pdpReviewPop .3s cubic-bezier(.2,.8,.2,1) both;
+}
+.pdp-review-modal-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+  padding:24px 26px 18px;
+  border-bottom:1px solid #e7eef2;
+  background:linear-gradient(180deg,#f9fcfd,#fff);
+}
+.pdp-review-modal-head h3{
+  margin:5px 0 0;
+  font-size:27px;
+  line-height:1.05;
+  letter-spacing:-.7px;
+  color:#15364a;
+}
+.pdp-review-modal-head p{
+  max-width:590px;
+  margin:8px 0 0;
+  color:#647c89;
+  font-size:12.5px;
+  line-height:1.55;
+}
+.pdp-review-modal-close{
+  width:40px;
+  height:40px;
+  flex:0 0 40px;
+  border:1px solid #dce7ec;
+  border-radius:50%;
+  background:#fff;
+  color:#17384c;
+  font-size:24px;
+  line-height:1;
+  cursor:pointer;
+  transition:transform .18s ease, background .18s ease;
+}
+.pdp-review-modal-close:hover{
+  transform:rotate(5deg) scale(1.04);
+  background:#f3f8fa;
+}
+.pdp-review-modal-form{
+  display:grid;
+  gap:16px;
+  padding:22px 26px 25px;
+}
+.pdp-review-form-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.pdp-review-modal-form .field{
+  display:grid;
+  gap:6px;
+}
+.pdp-review-modal-form .field>span{
+  color:#17384c;
+  font-size:12px;
+  font-weight:800;
+}
+.pdp-review-modal-form input,
+.pdp-review-modal-form select,
+.pdp-review-modal-form textarea{
+  width:100%;
+  border:1px solid #d6e1e7;
+  border-radius:10px;
+  background:#fff;
+  color:#17384c;
+  font:inherit;
+  font-size:13px;
+  outline:none;
+  transition:border-color .18s ease, box-shadow .18s ease;
+}
+.pdp-review-modal-form input,
+.pdp-review-modal-form select{
+  min-height:44px;
+  padding:0 12px;
+}
+.pdp-review-modal-form textarea{
+  min-height:125px;
+  padding:12px;
+  resize:vertical;
+}
+.pdp-review-modal-form input:focus,
+.pdp-review-modal-form select:focus,
+.pdp-review-modal-form textarea:focus{
+  border-color:#58b7d7;
+  box-shadow:0 0 0 3px rgba(11,159,215,.10);
+}
+.pdp-review-modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding-top:2px;
+}
+.pdp-review-cancel,
+.pdp-review-submit-button{
+  min-height:42px;
+  padding:0 18px;
+  border-radius:999px;
+  font-size:12.5px;
+  font-weight:850;
+  cursor:pointer;
+}
+.pdp-review-cancel{
+  border:1px solid #d8e2e8;
+  background:#fff;
+  color:#294858;
+}
+.pdp-review-submit-button{
+  border:1px solid #12384c;
+  background:#12384c;
+  color:#fff;
+  box-shadow:0 8px 20px rgba(18,56,76,.16);
+}
+.pdp-review-cancel:disabled,
+.pdp-review-submit-button:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+.pdp-review-message{
+  margin:0;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#eef8f2;
+  color:#23633e;
+  font-size:12px!important;
+  font-weight:700;
+}
+@keyframes pdpReviewFade{
+  from{opacity:0}
+  to{opacity:1}
+}
+@keyframes pdpReviewPop{
+  from{opacity:0;transform:translateY(18px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(max-width:700px){
+  .pdp-review-modal-backdrop{
+    padding:12px;
+    align-items:end;
+  }
+  .pdp-review-modal{
+    width:100%;
+    max-height:92vh;
+    border-radius:20px 20px 0 0;
+  }
+  .pdp-review-modal-head{
+    padding:20px 18px 15px;
+  }
+  .pdp-review-modal-head h3{
+    font-size:24px;
+  }
+  .pdp-review-modal-form{
+    padding:17px 18px 20px;
+  }
+  .pdp-review-form-grid{
+    grid-template-columns:1fr;
+    gap:12px;
+  }
+  .pdp-review-modal-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .pdp-review-cancel,
+  .pdp-review-submit-button{
+    width:100%;
+  }
+  .pdp-review-trigger{
+    min-height:68px;
+    grid-template-columns:40px 1fr 30px;
+  }
+  .pdp-review-trigger-icon{
+    width:40px;
+    height:40px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .pdp-review-modal-backdrop,
+  .pdp-review-modal,
+  .pdp-review-trigger,
+  .pdp-review-trigger i{
+    animation:none!important;
+    transition:none!important;
+  }
+}
+
+
+/* 2026-10-06 — animated story + comparison refinement */
+.mock-pdp-story-enhanced,
+.mock-pdp-comparison-enhanced{
+  position:relative;
+}
+.mock-pdp-story-enhanced{
+  background:linear-gradient(90deg,#13181d 0 44%, #eef7fb 44% 100%);
+  border:1px solid #dde8ee;
+  box-shadow:0 20px 60px rgba(13,40,54,.08);
+}
+.mock-pdp-story-enhanced > .dark{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  overflow:hidden;
+}
+.mock-pdp-story-enhanced > .dark::before{
+  content:"";
+  position:absolute;
+  inset:auto -120px -110px auto;
+  width:260px;
+  height:260px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(11,159,215,.18), rgba(11,159,215,0));
+  animation:mockGlowFloat 8s ease-in-out infinite;
+}
+.mock-pdp-story-enhanced blockquote,
+.mock-pdp-story-enhanced .mock-pdp-story-content h2,
+.mock-pdp-story-enhanced .mock-pdp-story-content p,
+.mock-pdp-story-enhanced li,
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p{
+  animation:mockFadeLift .7s ease both;
+}
+.mock-pdp-story-enhanced .mock-pdp-story-content h2{animation-delay:.08s}
+.mock-pdp-story-enhanced .mock-pdp-story-content p{animation-delay:.16s}
+.mock-pdp-story-enhanced li:nth-child(1){animation-delay:.22s}
+.mock-pdp-story-enhanced li:nth-child(2){animation-delay:.3s}
+.mock-pdp-story-enhanced li:nth-child(3){animation-delay:.38s}
+.mock-pdp-story-points{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-top:28px;
+}
+.mock-pdp-story-points span{
+  min-height:78px;
+  padding:14px 14px 12px;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;
+  background:rgba(255,255,255,.04);
+  backdrop-filter:blur(8px);
+  animation:mockFadeLift .7s ease both;
+}
+.mock-pdp-story-points span:nth-child(1){animation-delay:.18s}
+.mock-pdp-story-points span:nth-child(2){animation-delay:.28s}
+.mock-pdp-story-points b,
+.mock-pdp-story-points small{display:block}
+.mock-pdp-story-points b{font-size:13px;color:#fff}
+.mock-pdp-story-points small{margin-top:6px;font-size:11px;line-height:1.5;color:#b8cad3}
+.mock-pdp-story-content ul{margin-top:18px}
+.mock-pdp-story-content li{
+  border:1px solid #dbe8ed;
+  box-shadow:0 14px 30px rgba(14,53,73,.06);
+  transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.mock-pdp-story-content li:hover{
+  transform:translateY(-3px);
+  border-color:#c6dfea;
+  box-shadow:0 20px 36px rgba(14,53,73,.12);
+}
+
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid{
+  border:1px solid #d9e6ec;
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 14px 36px rgba(14,53,73,.05);
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p{
+  position:relative;
+  margin:0;
+  display:grid;
+  grid-template-columns:1.6fr .7fr .9fr;
+  border-bottom:1px solid #e2ebef;
+  transition:background .2s ease, transform .2s ease;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p:last-child{border-bottom:0}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p:hover{
+  background:#f8fbfd;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p > *{
+  padding:16px 18px;
+  font-size:13px;
+  display:flex;
+  align-items:center;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid .head > *{
+  font-size:13px;
+  font-weight:800;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid .head strong{
+  justify-content:center;
+  background:linear-gradient(180deg,#eff9fd 0%,#e7f5fb 100%);
+  color:#0a97ce;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid .head span{
+  justify-content:center;
+  color:#9baab2;
+  font-weight:700;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid b{
+  font-weight:800;
+  color:#15364a;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid strong,
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid span{
+  justify-content:center;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid strong{
+  background:rgba(11,159,215,.07);
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid strong i,
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid span i{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  font-style:normal;
+  font-size:16px;
+  line-height:1;
+  font-weight:900;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid strong i{
+  background:#e9f8ff;
+  color:#0b9fd7;
+  box-shadow:0 8px 18px rgba(11,159,215,.16);
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid span{
+  color:#9baab2;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid span i{
+  background:#f4f7f8;
+  color:#a7b2b8;
+}
+.mock-pdp-comparison-enhanced .row-1{animation-delay:.08s}
+.mock-pdp-comparison-enhanced .row-2{animation-delay:.16s}
+.mock-pdp-comparison-enhanced .row-3{animation-delay:.24s}
+.mock-pdp-comparison-enhanced .row-4{animation-delay:.32s}
+.mock-pdp-comparison-enhanced .row-5{animation-delay:.4s}
+
+@keyframes mockFadeLift{
+  from{opacity:0; transform:translateY(14px)}
+  to{opacity:1; transform:translateY(0)}
+}
+@keyframes mockGlowFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-18px)}
+}
+@media(max-width:900px){
+  .mock-pdp-story-enhanced{background:#eef7fb}
+  .mock-pdp-story-enhanced > .dark{background:#13181d}
+}
+@media(max-width:700px){
+  .mock-pdp-story-points{grid-template-columns:1fr}
+  .mock-pdp-comparison-enhanced .mock-pdp-comparison-grid{min-width:640px}
+  .mock-pdp-comparison-enhanced{overflow-x:auto}
+  .mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p > *{padding:13px 12px;font-size:11.5px}
+  .mock-pdp-comparison-enhanced .mock-pdp-comparison-grid strong i,
+  .mock-pdp-comparison-enhanced .mock-pdp-comparison-grid span i{width:30px;height:30px;font-size:14px}
+}
+@media (prefers-reduced-motion: reduce){
+  .mock-pdp-story-enhanced > .dark::before,
+  .mock-pdp-story-enhanced blockquote,
+  .mock-pdp-story-enhanced .mock-pdp-story-content h2,
+  .mock-pdp-story-enhanced .mock-pdp-story-content p,
+  .mock-pdp-story-enhanced li,
+  .mock-pdp-story-points span,
+  .mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p{
+    animation:none!important;
+  }
+  .mock-pdp-story-content li,
+  .mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p{
+    transition:none!important;
+  }
+}
+
+
+/* 2026-10-06 — proper scroll-triggered PDP animations
+   Elements stay calm until the section enters the viewport, then reveal once. */
+.mock-pdp-story-enhanced,
+.mock-pdp-comparison-enhanced{
+  opacity:0;
+  transform:translateY(22px);
+  transition:
+    opacity .65s cubic-bezier(.22,.8,.22,1),
+    transform .65s cubic-bezier(.22,.8,.22,1);
+}
+.mock-pdp-story-enhanced.is-visible,
+.mock-pdp-comparison-enhanced.is-visible{
+  opacity:1;
+  transform:translateY(0);
+}
+
+/* Disable the previous eager animations until the section is actually visible. */
+.mock-pdp-story-enhanced blockquote,
+.mock-pdp-story-enhanced .mock-pdp-story-content h2,
+.mock-pdp-story-enhanced .mock-pdp-story-content p,
+.mock-pdp-story-enhanced li,
+.mock-pdp-story-points span,
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p{
+  animation:none!important;
+  opacity:0;
+  will-change:transform,opacity;
+}
+
+/* Story panel: left content sweeps in from the left, right content from the right. */
+.mock-pdp-story-enhanced blockquote{
+  transform:translateX(-28px);
+}
+.mock-pdp-story-enhanced .mock-pdp-story-content h2,
+.mock-pdp-story-enhanced .mock-pdp-story-content p,
+.mock-pdp-story-enhanced li{
+  transform:translateX(28px);
+}
+.mock-pdp-story-points span{
+  transform:translateY(18px) scale(.98);
+}
+
+.mock-pdp-story-enhanced.is-visible blockquote{
+  animation:zmStoryFromLeft .7s .08s cubic-bezier(.2,.8,.2,1) forwards!important;
+}
+.mock-pdp-story-enhanced.is-visible .mock-pdp-story-content h2{
+  animation:zmStoryFromRight .7s .12s cubic-bezier(.2,.8,.2,1) forwards!important;
+}
+.mock-pdp-story-enhanced.is-visible .mock-pdp-story-content p{
+  animation:zmStoryFromRight .7s .2s cubic-bezier(.2,.8,.2,1) forwards!important;
+}
+.mock-pdp-story-enhanced.is-visible .mock-pdp-story-points span:nth-child(1){
+  animation:zmCardRise .62s .24s cubic-bezier(.2,.8,.2,1) forwards!important;
+}
+.mock-pdp-story-enhanced.is-visible .mock-pdp-story-points span:nth-child(2){
+  animation:zmCardRise .62s .34s cubic-bezier(.2,.8,.2,1) forwards!important;
+}
+.mock-pdp-story-enhanced.is-visible li:nth-child(1){
+  animation:zmStoryFromRight .6s .31s cubic-bezier(.2,.8,.2,1) forwards!important;
+}
+.mock-pdp-story-enhanced.is-visible li:nth-child(2){
+  animation:zmStoryFromRight .6s .41s cubic-bezier(.2,.8,.2,1) forwards!important;
+}
+.mock-pdp-story-enhanced.is-visible li:nth-child(3){
+  animation:zmStoryFromRight .6s .51s cubic-bezier(.2,.8,.2,1) forwards!important;
+}
+
+/* Background glow starts only when visible. */
+.mock-pdp-story-enhanced > .dark::before{
+  animation:none!important;
+  opacity:.55;
+}
+.mock-pdp-story-enhanced.is-visible > .dark::before{
+  animation:mockGlowFloat 7s .45s ease-in-out infinite!important;
+}
+
+/* Comparison rows cascade upward and the icons pop softly. */
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p{
+  transform:translateY(14px);
+}
+.mock-pdp-comparison-enhanced.is-visible .mock-pdp-comparison-grid .head{
+  animation:zmCompareRow .55s .08s ease forwards!important;
+}
+.mock-pdp-comparison-enhanced.is-visible .mock-pdp-comparison-grid .row-1{
+  animation:zmCompareRow .55s .16s ease forwards!important;
+}
+.mock-pdp-comparison-enhanced.is-visible .mock-pdp-comparison-grid .row-2{
+  animation:zmCompareRow .55s .24s ease forwards!important;
+}
+.mock-pdp-comparison-enhanced.is-visible .mock-pdp-comparison-grid .row-3{
+  animation:zmCompareRow .55s .32s ease forwards!important;
+}
+.mock-pdp-comparison-enhanced.is-visible .mock-pdp-comparison-grid .row-4{
+  animation:zmCompareRow .55s .40s ease forwards!important;
+}
+.mock-pdp-comparison-enhanced.is-visible .mock-pdp-comparison-grid .row-5{
+  animation:zmCompareRow .55s .48s ease forwards!important;
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid strong i,
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid span i{
+  transform:scale(.72);
+  transition:
+    transform .35s cubic-bezier(.2,.9,.2,1.25),
+    box-shadow .35s ease;
+}
+.mock-pdp-comparison-enhanced.is-visible .mock-pdp-comparison-grid strong i,
+.mock-pdp-comparison-enhanced.is-visible .mock-pdp-comparison-grid span i{
+  transform:scale(1);
+}
+.mock-pdp-comparison-enhanced.is-visible .row-1 i{transition-delay:.28s}
+.mock-pdp-comparison-enhanced.is-visible .row-2 i{transition-delay:.36s}
+.mock-pdp-comparison-enhanced.is-visible .row-3 i{transition-delay:.44s}
+.mock-pdp-comparison-enhanced.is-visible .row-4 i{transition-delay:.52s}
+.mock-pdp-comparison-enhanced.is-visible .row-5 i{transition-delay:.60s}
+
+/* Small polish when the user interacts after the reveal. */
+.mock-pdp-story-content li:hover{
+  transform:translateY(-3px) scale(1.008);
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p:not(.head):hover{
+  transform:translateX(3px);
+}
+.mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p:not(.head):hover strong i{
+  transform:scale(1.08);
+  box-shadow:0 10px 24px rgba(11,159,215,.22);
+}
+
+@keyframes zmStoryFromLeft{
+  from{opacity:0;transform:translateX(-28px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes zmStoryFromRight{
+  from{opacity:0;transform:translateX(28px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes zmCardRise{
+  from{opacity:0;transform:translateY(18px) scale(.98)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes zmCompareRow{
+  from{opacity:0;transform:translateY(14px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+@media(max-width:700px){
+  .mock-pdp-story-enhanced blockquote,
+  .mock-pdp-story-enhanced .mock-pdp-story-content h2,
+  .mock-pdp-story-enhanced .mock-pdp-story-content p,
+  .mock-pdp-story-enhanced li{
+    transform:translateY(18px);
+  }
+  .mock-pdp-story-enhanced.is-visible blockquote,
+  .mock-pdp-story-enhanced.is-visible .mock-pdp-story-content h2,
+  .mock-pdp-story-enhanced.is-visible .mock-pdp-story-content p,
+  .mock-pdp-story-enhanced.is-visible li{
+    animation-name:zmCardRise!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .mock-pdp-story-enhanced,
+  .mock-pdp-comparison-enhanced,
+  .mock-pdp-story-enhanced blockquote,
+  .mock-pdp-story-enhanced .mock-pdp-story-content h2,
+  .mock-pdp-story-enhanced .mock-pdp-story-content p,
+  .mock-pdp-story-enhanced li,
+  .mock-pdp-story-points span,
+  .mock-pdp-comparison-enhanced .mock-pdp-comparison-grid p{
+    opacity:1!important;
+    transform:none!important;
+    animation:none!important;
+    transition:none!important;
+  }
+  .mock-pdp-story-enhanced > .dark::before{
+    animation:none!important;
+  }
+}

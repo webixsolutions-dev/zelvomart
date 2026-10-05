@@ -28,6 +28,10 @@ export default function ProductDetailClient({ product, defaultBundleDiscount = 5
   const [zoomOpen, setZoomOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
   const actionRef = useRef<HTMLDivElement | null>(null);
+  const storyRef = useRef<HTMLElement | null>(null);
+  const comparisonRef = useRef<HTMLElement | null>(null);
+  const [storyVisible, setStoryVisible] = useState(false);
+  const [comparisonVisible, setComparisonVisible] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const swipedGallery = useRef(false);
 
@@ -91,6 +95,38 @@ export default function ProductDetailClient({ product, defaultBundleDiscount = 5
     const observer = new IntersectionObserver(([entry]) => setSticky(!entry.isIntersecting), { threshold: 0.05 });
     observer.observe(node);
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") {
+      setStoryVisible(true);
+      setComparisonVisible(true);
+      return;
+    }
+
+    const observers: IntersectionObserver[] = [];
+    const reveal = (
+      node: HTMLElement | null,
+      setVisible: (visible: boolean) => void,
+    ) => {
+      if (!node) return;
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setVisible(true);
+            observer.disconnect();
+          }
+        },
+        { threshold: 0.16, rootMargin: "0px 0px -8% 0px" },
+      );
+      observer.observe(node);
+      observers.push(observer);
+    };
+
+    reveal(storyRef.current, setStoryVisible);
+    reveal(comparisonRef.current, setComparisonVisible);
+
+    return () => observers.forEach((observer) => observer.disconnect());
   }, []);
 
   const chooseVariant = (next: Variant) => {
@@ -193,9 +229,44 @@ export default function ProductDetailClient({ product, defaultBundleDiscount = 5
 
       <section className="mock-pdp-lifestyle"><span className="mock-eyebrow">WHY CUSTOMERS LOVE IT</span><h2>Designed to make everyday shopping feel easier.</h2><div><article><div><Image src={selectedImage || fallbackImage} alt="Product use" fill onError={onProductImageError}/></div><h3>Useful for hours</h3><p>Designed to fit naturally into an everyday routine.</p></article><article><div><Image src={galleryImages[1] || selectedImage || fallbackImage} alt="Product detail" fill onError={onProductImageError}/></div><h3>Goes everywhere</h3><p>A practical size that works at home or on the go.</p></article><article><div><Image src={galleryImages[2] || selectedImage || fallbackImage} alt="Product lifestyle" fill onError={onProductImageError}/></div><h3>Looks as good as it works</h3><p>A clean finish that feels gift-ready from day one.</p></article></div></section>
 
-      <section className="mock-pdp-story"><div className="dark"><span className="mock-eyebrow">A BETTER WAY TO SHOP</span><blockquote>“Online cheezein photo jaisi nahi hotin.”</blockquote><small>— a concern we hear all the time</small></div><div><h2>Fair. That's exactly why we do things differently.</h2><p>We keep the process clear before you buy and stay available if you need help afterwards.</p><ul><li><b>Checked before dispatch</b><span>Quality and condition are reviewed before the parcel leaves us.</span></li><li><b>Pay only when it arrives</b><span>Cash on Delivery keeps the order simple.</span></li><li><b>Doesn't match? We'll exchange it.</b><span>Our team will guide you through the next step.</span></li></ul></div></section>
+      <section ref={storyRef} className={`mock-pdp-story mock-pdp-story-enhanced ${storyVisible ? "is-visible" : ""}`}>
+        <div className="dark">
+          <span className="mock-eyebrow">A BETTER WAY TO SHOP</span>
+          <blockquote>“Online cheezein photo jaisi nahi hotin.”</blockquote>
+          <small>— a concern we hear all the time</small>
+          <div className="mock-pdp-story-points">
+            <span><b>Real products</b><small>clear details and practical picks</small></span>
+            <span><b>Real support</b><small>WhatsApp help from actual people</small></span>
+          </div>
+        </div>
+        <div className="mock-pdp-story-content">
+          <h2>Fair. That's exactly why we do things differently.</h2>
+          <p>
+            We keep the process clear before you buy and stay available if you need help afterwards.
+            Better photos, better support and a simpler shopping experience.
+          </p>
+          <ul>
+            <li><b>Checked before dispatch</b><span>Quality and condition are reviewed before the parcel leaves us.</span></li>
+            <li><b>Pay only when it arrives</b><span>Cash on Delivery keeps the order simple and familiar.</span></li>
+            <li><b>Doesn't match? We'll exchange it.</b><span>Our team will guide you through the next step without the usual hassle.</span></li>
+          </ul>
+        </div>
+      </section>
 
-      <section className="mock-pdp-comparison"><span className="mock-eyebrow">WHY ORDER FROM ZELVOMART</span><h2>Not all online shopping is the same.</h2><div><p><b>What you get</b><strong>Zelvomart</strong><span>Typical online seller</span></p>{["Pay only when it arrives","Every order checked before dispatch","Free delivery across Pakistan","Real people on WhatsApp","Exchange if it doesn't match"].map(label=><p key={label}><b>{label}</b><strong>✓</strong><span>×</span></p>)}</div></section>
+      <section ref={comparisonRef} className={`mock-pdp-comparison mock-pdp-comparison-enhanced ${comparisonVisible ? "is-visible" : ""}`}>
+        <span className="mock-eyebrow">WHY ORDER FROM ZELVOMART</span>
+        <h2>Not all online shopping is the same.</h2>
+        <div className="mock-pdp-comparison-grid">
+          <p className="head"><b>What you get</b><strong>Zelvomart</strong><span>Typical online seller</span></p>
+          {[
+            "Pay only when it arrives",
+            "Every order checked before dispatch",
+            "Free delivery across Pakistan",
+            "Real people on WhatsApp",
+            "Exchange if it doesn't match",
+          ].map((label,index)=><p key={label} className={`row row-${index+1}`}><b>{label}</b><strong><i>✓</i></strong><span><i>×</i></span></p>)}
+        </div>
+      </section>
 
       <section id="reviews" className="mock-pdp-reviews"><div className="mock-section-head"><div><span className="mock-eyebrow">REVIEWS</span><h2>What customers say.</h2></div></div><div className="mock-pdp-review-layout"><aside><strong>{product.averageRating?.toFixed(1)||"4.9"}</strong><span>★★★★★</span><small>Based on {product.reviewCount||42} verified orders</small></aside><main>{product.reviews?.length?product.reviews.map(review=><article key={review.id}><div>★★★★★ <small>{review.verified?"Verified order":"Customer review"}</small></div><b>{review.name}</b><p>{review.body}</p></article>):<><article><div>★★★★★ <small>Verified order</small></div><b>Hira · Lahore</b><p>Exactly like the photos. The product arrived neatly packed and the order was easy.</p></article><article><div>★★★★★ <small>Verified order</small></div><b>Zainab · Lahore</b><p>Quick delivery and support replied on WhatsApp when I had a question.</p></article></>}<ReviewForm productId={product.id}/></main></div></section>
 
