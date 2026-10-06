@@ -1,4 +1,4 @@
-import type { Role } from "../generated/prisma/client";
+import type { Role } from "../generated/prisma";
 
 export type Permission =
   | "orders.read" | "orders.write" | "orders.export"

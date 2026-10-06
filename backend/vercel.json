@@ -1,23 +1,22 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "regions": ["iad1"],
-  "builds": [
-    {
-      "src": "src/server.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "prisma/**",
-          "src/generated/prisma/**"
-        ]
-      }
-    }
+  "regions": [
+    "iad1"
   ],
-  "routes": [
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30,
+      "includeFiles": [
+        "src/generated/prisma/**",
+        "prisma/schema.prisma"
+      ]
+    }
+  },
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "src/server.ts"
+      "source": "/api/:path*",
+      "destination": "/api/index"
     }
   ]
 }

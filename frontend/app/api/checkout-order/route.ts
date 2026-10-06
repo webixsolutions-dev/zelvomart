@@ -26,7 +26,19 @@ export async function POST(request: NextRequest) {
 
   const data = await upstream.json().catch(() => ({}));
   if (!upstream.ok || !data?.orderNumber || !data?.id) {
-    return NextResponse.json(data || { error: "ORDER_FAILED" }, { status: upstream.status || 400 });
+    console.error("Checkout backend rejected order", {
+      status: upstream.status,
+      error: data?.error,
+      code: data?.code,
+    });
+    return NextResponse.json(
+      {
+        error: data?.error || "ORDER_FAILED",
+        code: data?.code || `BACKEND_${upstream.status || 500}`,
+        ...(process.env.NODE_ENV !== "production" && data?.message ? { message: data.message } : {}),
+      },
+      { status: upstream.status || 500 },
+    );
   }
 
   const response = NextResponse.json({ orderNumber: data.orderNumber, total: data.total }, { status: 201 });

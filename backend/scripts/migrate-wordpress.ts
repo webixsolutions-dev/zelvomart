@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Prisma, PrismaClient } from "../src/generated/prisma/client";
+import { Prisma, PrismaClient } from "../src/generated/prisma";
 import { uploadObject } from "../src/lib/storage";
 
 const prisma = new PrismaClient();

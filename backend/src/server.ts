@@ -4,7 +4,7 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import sanitizeHtml from 'sanitize-html';
-import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatus } from './generated/prisma/client';
+import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatus } from './generated/prisma';
 import { prisma } from './lib/db';
 import { signAdminToken, requireAuth, type AuthedRequest } from './lib/auth';
 import { createOrder, restoreOrderStock } from './lib/order';
@@ -241,7 +241,28 @@ async function maybeCleanupOldSessionReplays() {
   await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } }).catch(() => undefined);
 }
 
-app.get('/api/health', async (_req, res) => { setNoStore(res); try { await prisma.$queryRaw`SELECT 1`; res.json({ ok: true, version: '2.0.0', features: { cro: true, marketing: true, sessionReplays: true, tracking: true, capi: true } }); } catch (e: any) { res.status(503).json({ ok: false, version: '2.0.0', error: e?.message || 'DB_UNAVAILABLE' }); } });
+app.get('/api/health', async (_req, res) => {
+  setNoStore(res);
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    await Promise.all([
+      prisma.order.count(),
+      prisma.eventLog.count(),
+      prisma.sessionReplay.count(),
+      prisma.experiment.count(),
+      prisma.rateLimitBucket.count(),
+    ]);
+    res.json({ ok: true, version: '2.0.1', database: 'ready', schema: 'ready', features: { cro: true, marketing: true, sessionReplays: true, tracking: true, capi: true } });
+  } catch (e: any) {
+    console.error('Health/database check failed', e);
+    res.status(503).json({
+      ok: false,
+      version: '2.0.1',
+      database: 'unavailable',
+      code: String(e?.code || 'DB_UNAVAILABLE'),
+    });
+  }
+});
 
 app.post('/api/contact', async (req, res) => {
   setNoStore(res);
@@ -972,7 +993,14 @@ app.get('/api/admin/products/export.csv', requireAuth('orders.export'), async (_
 app.get('/api/admin/orders/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.order.findMany({orderBy:{createdAt:'desc'},take:5000});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['orderNumber,date,customer,phone,city,status,total,source',...rows.map(o=>[o.orderNumber,o.createdAt.toISOString(),o.fullName,o.phone,o.city,o.status,o.total,o.source||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
 app.post('/api/admin/upload', requireAuth('products.write'), upload.single('file'), async (req,res)=>{if(!req.file)return res.status(400).json({error:'FILE_REQUIRED'});const safe=req.file.originalname.replace(/[^a-zA-Z0-9._-]/g,'-');const url=await uploadObject(`products/${Date.now()}-${safe}`,req.file.buffer,req.file.mimetype);res.json({url});});
 
-app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err);res.status(500).json({error:'SERVER_ERROR',message:process.env.NODE_ENV==='development'?err?.message:undefined});});
+app.use((err:any,req:any,res:any,_next:any)=>{
+  console.error('Unhandled backend error', { path:req?.path, method:req?.method, code:err?.code, message:err?.message, stack:err?.stack });
+  res.status(500).json({
+    error:'SERVER_ERROR',
+    code:String(err?.code || 'UNHANDLED_ERROR'),
+    message:process.env.NODE_ENV==='development'?err?.message:undefined,
+  });
+});
 export { app };
 export default app;
 if (!process.env.VERCEL) app.listen(port,()=>console.log(`Zelvomart backend listening on http://localhost:${port}`));
