@@ -9280,3 +9280,350 @@ a:hover,button:hover{transform:translateY(-1px)}
     object-fit: cover !important;
   }
 }
+
+/* 2026-10-07 — compact mobile Shorts + balanced category collage */
+@media (max-width: 620px) {
+  /* Two compact vertical videos per row on phones. */
+  .zm-shorts-section {
+    padding: 18px 0 22px !important;
+  }
+  .zm-shorts-section .site-shell {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  .zm-shorts-heading {
+    margin-bottom: 10px !important;
+    padding: 0 4px !important;
+  }
+  .zm-shorts-heading h2 {
+    font-size: 20px !important;
+    line-height: 1.08 !important;
+  }
+  .zm-shorts-heading p {
+    font-size: 11.5px !important;
+    line-height: 1.4 !important;
+  }
+  .zm-shorts-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+    scroll-snap-type: none !important;
+  }
+  .zm-short-card {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    flex: none !important;
+    aspect-ratio: 9 / 16 !important;
+    border-radius: 9px !important;
+    box-shadow: 0 5px 16px rgba(10,36,57,.07) !important;
+  }
+  .zm-short-play {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 16px !important;
+  }
+  .zm-short-placeholder small {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 9px !important;
+    font-size: 10px !important;
+  }
+
+  /* Keep the category feature card on the left and a tidy 2-column grid on the right. */
+  .mock-home-section:has(.mock-category-showcase) {
+    padding: 28px 0 34px !important;
+  }
+  .mock-category-showcase {
+    display: grid !important;
+    grid-template-columns: minmax(120px, .78fr) minmax(0, 1.22fr) !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+  .mock-category-feature {
+    min-height: 430px !important;
+    height: 100% !important;
+    padding: 15px 11px !important;
+    border-radius: 13px !important;
+  }
+  .mock-category-feature:after {
+    inset: 34% 0 0 !important;
+  }
+  .mock-category-feature > span {
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+  }
+  .mock-category-feature h3 {
+    margin: 5px 0 10px !important;
+    font-size: 27px !important;
+    line-height: .98 !important;
+    letter-spacing: -1px !important;
+  }
+  .mock-category-feature b {
+    padding: 7px 9px !important;
+    font-size: 8px !important;
+  }
+  .mock-category-minis {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+  .mock-category-minis > a {
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 8px !important;
+    border-radius: 12px !important;
+  }
+  .mock-category-minis b {
+    max-width: calc(100% - 18px) !important;
+    padding: 4px 5px !important;
+    border-radius: 5px !important;
+    font-size: 9px !important;
+    line-height: 1.02 !important;
+    word-break: normal !important;
+  }
+  .mock-category-minis > a > span {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 9px !important;
+    flex: 0 0 18px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .mock-category-showcase {
+    grid-template-columns: 37% minmax(0, 63%) !important;
+    gap: 6px !important;
+  }
+  .mock-category-feature {
+    min-height: 405px !important;
+    padding: 13px 9px !important;
+  }
+  .mock-category-feature h3 {
+    font-size: 24px !important;
+  }
+  .mock-category-minis {
+    gap: 6px !important;
+  }
+  .mock-category-minis > a {
+    padding: 6px !important;
+  }
+  .mock-category-minis b {
+    font-size: 8px !important;
+  }
+}
+
+/* Full-width WhatsApp help strip */
+.mock-whatsapp-strip.site-shell{
+  width:calc(100% - 32px);
+  max-width:none;
+  margin-left:16px;
+  margin-right:16px;
+  box-sizing:border-box;
+}
+@media (max-width: 768px){
+  .mock-whatsapp-strip.site-shell{
+    width:calc(100% - 20px);
+    margin-left:10px;
+    margin-right:10px;
+  }
+}
+
+/* 2026-10-07 — mobile category 2+2+2+1 grid + single auto video slider */
+.mock-category-mobile-grid{display:none}
+
+.zm-video-slider-section .site-shell{max-width:1180px}
+.zm-video-slider{position:relative;display:flex;align-items:center;justify-content:center;min-height:470px;padding:0 54px}
+.zm-video-slide{position:relative;width:min(330px,80vw);aspect-ratio:9/16;border-radius:18px;overflow:hidden;background:#0c1720;box-shadow:0 12px 35px rgba(4,30,45,.12);animation:zmVideoSlideIn .35s ease}
+.zm-video-slide iframe,.zm-video-slide video,.zm-video-slide .zm-short-placeholder{width:100%;height:100%;border:0;display:block;object-fit:cover}
+.zm-video-arrow{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:42px;height:42px;border-radius:50%;border:1px solid #d9e4ea;background:#fff;color:#0c2939;display:grid;place-items:center;font-size:26px;line-height:1;cursor:pointer;box-shadow:0 7px 22px rgba(8,37,54,.1)}
+.zm-video-arrow.prev{left:6px}.zm-video-arrow.next{right:6px}
+.zm-video-dots{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:14px}
+.zm-video-dots button{width:7px;height:7px;padding:0;border:0;border-radius:999px;background:#c8d4db;cursor:pointer;transition:width .2s ease,background .2s ease}
+.zm-video-dots button.active{width:22px;background:#0798d0}
+@keyframes zmVideoSlideIn{from{opacity:.25;transform:translateX(12px) scale(.985)}to{opacity:1;transform:none}}
+
+.mock-faq-contact-item{color:inherit;text-decoration:none;cursor:pointer;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.mock-faq-contact-item:hover{transform:translateY(-1px);border-color:#b9dbe9!important;box-shadow:0 4px 14px rgba(7,73,103,.07)}
+
+@media(max-width:620px){
+  /* Hide the asymmetric desktop collage and use seven categories as 2+2+2+1. */
+  .mock-category-showcase{display:none!important}
+  .mock-category-mobile-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .mock-category-mobile-grid>a{position:relative;display:block;min-width:0;border-radius:12px;overflow:hidden;background:#edf3f6;border:1px solid #e4ebef;text-decoration:none}
+  .mock-category-mobile-grid>a.is-last{grid-column:1/-1}
+  .mock-category-mobile-grid>a>div{position:relative;aspect-ratio:1.08/1;overflow:hidden}
+  .mock-category-mobile-grid>a.is-last>div{aspect-ratio:2.25/1}
+  .mock-category-mobile-grid img{object-fit:cover}
+  .mock-category-mobile-grid>a:after{content:"";position:absolute;inset:38% 0 0;background:linear-gradient(transparent,rgba(4,26,38,.58));pointer-events:none}
+  .mock-category-mobile-grid>a>span{position:absolute;z-index:2;left:7px;right:7px;bottom:7px;display:flex;align-items:flex-end;justify-content:space-between;gap:5px;color:#fff}
+  .mock-category-mobile-grid b{font-size:10px;line-height:1.05;text-shadow:0 1px 5px rgba(0,0,0,.35)}
+  .mock-category-mobile-grid i{font-style:normal;width:20px;height:20px;flex:0 0 20px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.94);color:#0d2b3a;font-size:10px}
+
+  /* One compact vertical video at a time; auto advances in the client component. */
+  .zm-shorts-section{padding:18px 0 24px!important}
+  .zm-video-slider{min-height:0;padding:0 36px}
+  .zm-video-slide{width:min(205px,66vw);border-radius:12px}
+  .zm-video-arrow{width:31px;height:31px;font-size:20px}
+  .zm-video-arrow.prev{left:0}.zm-video-arrow.next{right:0}
+  .zm-video-dots{margin-top:10px;gap:5px}
+  .zm-video-dots button{width:6px;height:6px}.zm-video-dots button.active{width:18px}
+
+  .mock-faq-contact-card{width:100%;box-sizing:border-box}
+  .mock-faq-contact-item{width:100%;box-sizing:border-box}
+}
+
+/* 2026-10-07 — unified category grid: desktop feature layout, mobile 2+2+2+1 */
+.mock-category-responsive-grid{
+  display:grid;
+  grid-template-columns:minmax(250px,1.05fr) repeat(3,minmax(0,1fr));
+  grid-auto-rows:178px;
+  gap:12px;
+}
+.mock-category-responsive-card{
+  position:relative;
+  min-width:0;
+  overflow:hidden;
+  border-radius:14px;
+  background:#edf3f6;
+  border:1px solid #e4ebef;
+  text-decoration:none;
+  isolation:isolate;
+}
+.mock-category-responsive-card.is-featured{grid-row:span 2}
+.mock-category-responsive-card img{object-fit:cover;z-index:0}
+.mock-category-responsive-overlay{
+  position:absolute;
+  z-index:1;
+  inset:42% 0 0;
+  background:linear-gradient(transparent,rgba(5,28,40,.62));
+  pointer-events:none;
+}
+.mock-category-responsive-card.is-featured .mock-category-responsive-overlay{
+  inset:34% 0 0;
+  background:linear-gradient(transparent,rgba(249,222,229,.93));
+}
+.mock-category-responsive-copy{
+  position:absolute;
+  z-index:2;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:end;
+  gap:5px 8px;
+  color:#fff;
+}
+.mock-category-responsive-copy small{
+  grid-column:1/-1;
+  color:#c4516b;
+  font-size:9px;
+  line-height:1.15;
+  font-weight:900;
+  letter-spacing:.1em;
+}
+.mock-category-responsive-copy b{
+  min-width:0;
+  font-size:11px;
+  line-height:1.05;
+  text-shadow:0 1px 5px rgba(0,0,0,.32);
+}
+.mock-category-responsive-copy i{
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.95);
+  color:#102d3c;
+  font-size:11px;
+  font-style:normal;
+}
+.mock-category-responsive-card.is-featured .mock-category-responsive-copy{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+  color:#102d3c;
+}
+.mock-category-responsive-card.is-featured .mock-category-responsive-copy b{
+  max-width:180px;
+  font-size:27px;
+  line-height:.98;
+  letter-spacing:-1px;
+  text-shadow:none;
+}
+.mock-category-responsive-card.is-featured .mock-category-responsive-copy i{
+  border-radius:7px;
+  width:auto;
+  height:auto;
+  padding:7px 10px;
+  background:#101d25;
+  color:#fff;
+  font-size:0;
+}
+.mock-category-responsive-card.is-featured .mock-category-responsive-copy i::before{
+  content:"Explore →";
+  font-size:9px;
+  font-weight:850;
+}
+
+@media(max-width:620px){
+  .mock-home-section:has(.mock-category-responsive-grid){padding:26px 0 32px!important}
+  .mock-category-responsive-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-auto-rows:auto;
+    gap:8px;
+  }
+  .mock-category-responsive-card,
+  .mock-category-responsive-card.is-featured{
+    grid-row:auto;
+    aspect-ratio:1.08/1;
+    border-radius:12px;
+  }
+  .mock-category-responsive-card.is-last{
+    grid-column:1/-1;
+    aspect-ratio:2.24/1;
+  }
+  .mock-category-responsive-card.is-featured .mock-category-responsive-overlay,
+  .mock-category-responsive-overlay{
+    inset:38% 0 0;
+    background:linear-gradient(transparent,rgba(5,28,40,.58));
+  }
+  .mock-category-responsive-copy,
+  .mock-category-responsive-card.is-featured .mock-category-responsive-copy{
+    left:7px;
+    right:7px;
+    bottom:7px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:end;
+    gap:5px;
+    color:#fff;
+  }
+  .mock-category-responsive-copy small{display:none}
+  .mock-category-responsive-copy b,
+  .mock-category-responsive-card.is-featured .mock-category-responsive-copy b{
+    max-width:none;
+    font-size:10px;
+    line-height:1.05;
+    letter-spacing:0;
+    text-shadow:0 1px 5px rgba(0,0,0,.35);
+  }
+  .mock-category-responsive-copy i,
+  .mock-category-responsive-card.is-featured .mock-category-responsive-copy i{
+    width:20px;
+    height:20px;
+    padding:0;
+    border-radius:50%;
+    background:rgba(255,255,255,.95);
+    color:#102d3c;
+    font-size:10px;
+  }
+  .mock-category-responsive-card.is-featured .mock-category-responsive-copy i::before{content:none}
+}

@@ -58,7 +58,6 @@ export default async function HomePage() {
   const categories = bootstrap.categories;
   const products = uniqueProducts([featured.items, latest.items], 12);
   const cards = categories.slice(0, 7);
-  const first = cards[0];
   const editorialCategories = chooseEditorialCategories(categories);
   const reviewCandidates = products.slice(0, 5);
   const detailedReviewProducts = await Promise.all(
@@ -87,21 +86,31 @@ export default async function HomePage() {
           <div><span className="mock-eyebrow">SHOP BY CATEGORY</span><h2>Find what you came for.</h2></div>
           <Link href="/shop">All categories →</Link>
         </div>
-        <div className="mock-category-showcase">
-          {first ? (
-            <Link href={`/product-category/${first.slug}/`} className="mock-category-feature">
-              <Image src={categoryFallbacks[first.slug] || first.image || "/images/hero/zelvomart-hero.webp"} alt={first.name} fill sizes="(max-width:700px) 100vw, 40vw" />
-              <span>FEATURED COLLECTION</span><h3>{first.name}</h3><b>Explore →</b>
+        <div className="mock-category-responsive-grid" aria-label="Shop by category">
+          {cards.map((category, index) => (
+            <Link
+              key={category.id}
+              href={`/product-category/${category.slug}/`}
+              className={[
+                "mock-category-responsive-card",
+                index === 0 ? "is-featured" : "",
+                index === cards.length - 1 ? "is-last" : "",
+              ].filter(Boolean).join(" ")}
+            >
+              <Image
+                src={categoryFallbacks[category.slug] || category.image || "/images/hero/zelvomart-hero.webp"}
+                alt={category.name}
+                fill
+                sizes={index === 0 ? "(max-width: 620px) 50vw, 32vw" : "(max-width: 620px) 50vw, 22vw"}
+              />
+              <span className="mock-category-responsive-overlay" aria-hidden="true" />
+              <span className="mock-category-responsive-copy">
+                {index === 0 ? <small>FEATURED COLLECTION</small> : null}
+                <b>{category.name}</b>
+                <i aria-hidden="true">→</i>
+              </span>
             </Link>
-          ) : null}
-          <div className="mock-category-minis">
-            {cards.slice(1).map((category) => (
-              <Link key={category.id} href={`/product-category/${category.slug}/`}>
-                <div><Image src={categoryFallbacks[category.slug] || category.image || "/images/hero/zelvomart-hero.webp"} alt={category.name} fill sizes="220px" /></div>
-                <b>{category.name}</b><span>→</span>
-              </Link>
-            ))}
-          </div>
+          ))}
         </div>
       </section>
 
@@ -176,9 +185,9 @@ export default async function HomePage() {
           <h2>Questions,<br />answered.</h2>
           <p>Everything people ask before they place an order.</p>
           <div className="mock-faq-contact-card">
-            <span className="mock-faq-contact-item"><i>☎</i><b>0300-2026711</b></span>
-            <span className="mock-faq-contact-item whatsapp"><i>◉</i><b>Chat on WhatsApp</b></span>
-            <span className="mock-faq-contact-item"><i>✉</i><b>zelvomart@gmail.com</b></span>
+            <a className="mock-faq-contact-item" href="tel:+923002026711"><i>☎</i><b>0300-2026711</b></a>
+            <a className="mock-faq-contact-item whatsapp" href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer"><i>◉</i><b>Chat on WhatsApp</b></a>
+            <a className="mock-faq-contact-item" href="mailto:zelvomart@gmail.com"><i>✉</i><b>zelvomart@gmail.com</b></a>
           </div>
         </div>
         <Faq />
