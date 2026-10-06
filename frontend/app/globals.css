@@ -9240,3 +9240,43 @@ a:hover,button:hover{transform:translateY(-1px)}
   color: #102b3a !important;
   background: rgba(255,255,255,.94) !important;
 }
+
+/* 2026-10-07 — tighter desktop category nav spacing */
+@media (min-width: 769px) {
+  .mock-desktop-category-nav {
+    justify-content: flex-start !important;
+    gap: 14px !important;
+  }
+  .mock-desktop-category-nav a {
+    padding: 6px 4px !important;
+    gap: 5px !important;
+    flex: 0 0 auto !important;
+  }
+}
+
+
+/* 2026-10-07 — compact category thumbnails from supplied category artwork */
+@media (min-width: 769px) {
+  .mock-desktop-category-nav {
+    justify-content: flex-start !important;
+    gap: 9px !important;
+  }
+  .mock-desktop-category-nav a {
+    padding: 4px 3px !important;
+    gap: 4px !important;
+  }
+  .mock-header-cat-thumb {
+    position: relative !important;
+    display: block !important;
+    width: 23px !important;
+    height: 23px !important;
+    flex: 0 0 23px !important;
+    overflow: hidden !important;
+    border-radius: 7px !important;
+    background: #f2f6f8 !important;
+    border: 1px solid #e2e9ed !important;
+  }
+  .mock-header-cat-thumb img {
+    object-fit: cover !important;
+  }
+}

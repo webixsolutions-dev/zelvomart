@@ -2,23 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { ComponentType, FormEvent } from "react";
+import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
 import {
-  BeautyCategoryIcon,
   CartIcon,
-  DecorCategoryIcon,
-  FashionCategoryIcon,
-  HomeCategoryIcon,
-  KidsCategoryIcon,
   MenuIcon,
   SearchIcon,
-  TechCategoryIcon,
   WhatsAppIcon,
   XIcon,
-  SportsCategoryIcon,
 } from "@/components/Icons";
 import { useCart } from "@/components/CartProvider";
 import type { Category } from "@/types/product";
@@ -57,16 +50,6 @@ function PackageIcon() {
 function HelpIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.8 1.9c-.9.6-1.6 1-1.6 2.1M12 17h.01"/></svg>;
 }
-
-const categoryIcons: Record<string, ComponentType<{ size?: number; className?: string }>> = {
-  "home-living": HomeCategoryIcon,
-  "home-decor": DecorCategoryIcon,
-  "beauty-personal-care": BeautyCategoryIcon,
-  "tech-gadgets": TechCategoryIcon,
-  "fashion-accessories": FashionCategoryIcon,
-  "sports-fitness": SportsCategoryIcon,
-  "kids-toys": KidsCategoryIcon,
-};
 
 export default function Header({ categories, phone = "0300-2026711" }: { categories: Category[]; announcementItems?: string[]; phone?: string }) {
   const router = useRouter();
@@ -141,15 +124,20 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
         <div className="mock-header-nav-wrap">
           <div className="site-shell mock-header-nav">
             <nav className="mock-desktop-category-nav" aria-label="Product categories">
-              {orderedCategories.map((category) => {
-                const CategoryIcon = categoryIcons[category.slug] || HomeCategoryIcon;
-                return (
-                  <Link key={category.id} href={`/product-category/${category.slug}/`}>
-                    <CategoryIcon size={14} />
-                    <span>{category.displayName}</span>
-                  </Link>
-                );
-              })}
+              {orderedCategories.map((category) => (
+                <Link key={category.id} href={`/product-category/${category.slug}/`}>
+                  <span className="mock-header-cat-thumb" aria-hidden="true">
+                    <Image
+                      src={category.image}
+                      alt=""
+                      fill
+                      sizes="24px"
+                      unoptimized={category.image.startsWith("/images/")}
+                    />
+                  </span>
+                  <span>{category.displayName}</span>
+                </Link>
+              ))}
             </nav>
           </div>
         </div>

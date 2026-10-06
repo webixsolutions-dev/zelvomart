@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { usePathname, useSearchParams } from "next/navigation";
 
 function canInterceptAnchor(anchor: HTMLAnchorElement) {
@@ -22,25 +23,34 @@ export default function RouteTransitionOverlay() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const routeKey = `${pathname}?${searchParams.toString()}`;
-  const [active, setActive] = useState(true);
-  const firstMount = useRef(true);
+  const [active, setActive] = useState(false);
+  const mounted = useRef(false);
   const safetyTimer = useRef<number | undefined>(undefined);
 
   const start = () => {
-    setActive(true);
+    // Force the overlay to paint before Next.js handles the navigation.
+    flushSync(() => setActive(true));
     if (safetyTimer.current) window.clearTimeout(safetyTimer.current);
     // Never leave the screen blocked if a navigation is cancelled or errors.
     safetyTimer.current = window.setTimeout(() => setActive(false), 8000);
   };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setActive(false), firstMount.current ? 700 : 420);
-    firstMount.current = false;
+    // Do not show a loader after the initial page has already rendered.
+    if (!mounted.current) {
+      mounted.current = true;
+      setActive(false);
+      return;
+    }
+
+    // A changed route key means the destination is ready; remove the overlay
+    // on the very next paint rather than keeping it over the new page.
+    const frame = window.requestAnimationFrame(() => setActive(false));
     if (safetyTimer.current) {
       window.clearTimeout(safetyTimer.current);
       safetyTimer.current = undefined;
     }
-    return () => window.clearTimeout(timer);
+    return () => window.cancelAnimationFrame(frame);
   }, [routeKey]);
 
   useEffect(() => {
@@ -58,11 +68,11 @@ export default function RouteTransitionOverlay() {
     const onProgrammaticStart = () => start();
     const onPopState = () => start();
 
-    document.addEventListener("click", onClick);
+    document.addEventListener("click", onClick, true);
     window.addEventListener("zelvo:route-start", onProgrammaticStart);
     window.addEventListener("popstate", onPopState);
     return () => {
-      document.removeEventListener("click", onClick);
+      document.removeEventListener("click", onClick, true);
       window.removeEventListener("zelvo:route-start", onProgrammaticStart);
       window.removeEventListener("popstate", onPopState);
       if (safetyTimer.current) window.clearTimeout(safetyTimer.current);
