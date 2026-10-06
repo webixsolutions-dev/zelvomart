@@ -89,6 +89,7 @@ export function sessionReplayEnabled() {
   try {
     if (window.localStorage.getItem(OPT_OUT_KEY) === "1") return false;
   } catch {}
+  if (navigator.doNotTrack === "1") return false;
   return !navigator.webdriver;
 }
 

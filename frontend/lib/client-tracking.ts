@@ -32,7 +32,7 @@ export async function trackStoreEvent(
         eventName,
         eventId,
         replaySessionId: getReplaySessionId(),
-        sourceUrl: `${window.location.origin}${window.location.pathname}`,
+        sourceUrl: window.location.href,
         params,
         fbp: readCookie("_fbp"),
         fbc: readCookie("_fbc"),

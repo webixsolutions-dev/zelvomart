@@ -3,8 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
-import sanitizeHtml from 'sanitize-html';
-import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatus } from './generated/prisma';
+import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatus } from './generated/prisma/client';
 import { prisma } from './lib/db';
 import { signAdminToken, requireAuth, type AuthedRequest } from './lib/auth';
 import { createOrder, restoreOrderStock } from './lib/order';
@@ -23,67 +22,8 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 const port = Number(process.env.PORT || 4000);
 const frontendOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',').map(v => v.trim()).filter(Boolean);
-
-const PUBLIC_SETTING_KEYS = new Set([
-  'store.announcement',
-  'store.info',
-  'store.delivery',
-  'store.bundleDefaultDiscountPercent',
-  'checkout.requiredFields',
-  'tracking.metaPixelId',
-  'tracking.clarityId',
-  'homepage.config',
-]);
-
-function sanitizeRichHtml(value: unknown) {
-  return sanitizeHtml(String(value || ''), {
-    allowedTags: [
-      'p','br','strong','b','em','i','u','s','ul','ol','li','h1','h2','h3','h4','h5','h6',
-      'blockquote','pre','code','a','img','figure','figcaption','hr','table','thead','tbody','tr','th','td',
-      'div','span'
-    ],
-    allowedAttributes: {
-      a: ['href','target','rel','title'],
-      img: ['src','alt','title','width','height','loading'],
-      '*': ['class'],
-    },
-    allowedSchemes: ['http','https','mailto','tel'],
-    allowedSchemesByTag: { img: ['http','https','data'] },
-    allowProtocolRelative: false,
-    transformTags: {
-      a: (_tagName, attribs) => ({
-        tagName: 'a',
-        attribs: {
-          ...attribs,
-          ...(attribs.target === '_blank' ? { rel: 'noopener noreferrer' } : {}),
-        },
-      }),
-    },
-  });
-}
-
-function normalizePakMobile(value: unknown) {
-  let digits = String(value || '').replace(/\D/g, '');
-  if (digits.startsWith('0092')) digits = digits.slice(4);
-  else if (digits.startsWith('92') && digits.length === 12) digits = digits.slice(2);
-  if (digits.startsWith('0') && digits.length === 11) digits = digits.slice(1);
-  return /^3\d{9}$/.test(digits) ? digits : '';
-}
-
-function stripUrlSecrets(value: unknown) {
-  const raw = String(value || '').slice(0, 4000);
-  if (!raw) return '';
-  try {
-    const url = new URL(raw);
-    url.search = '';
-    url.hash = '';
-    return url.toString().slice(0, 4000);
-  } catch {
-    return raw.split('?')[0].split('#')[0].slice(0, 4000);
-  }
-}
 app.use(cors({ origin(origin, cb) { if (!origin || frontendOrigins.includes(origin)) return cb(null, true); cb(new Error('CORS_NOT_ALLOWED')); }, credentials: false }));
-app.use(express.json({ limit: '6mb' }));
+app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 function routeParam(req: express.Request, key: string): string {
@@ -110,7 +50,7 @@ app.use((req, res, next) => {
   next();
 });
 
-function jsonProduct(row: any, includePrivate = false) {
+function jsonProduct(row: any) {
   const regular = Number(row.price ?? 0);
   const sale = row.salePrice == null ? null : Number(row.salePrice);
   const current = sale && sale < regular ? sale : regular;
@@ -127,12 +67,12 @@ function jsonProduct(row: any, includePrivate = false) {
     stockStatus: row.stock > 0 || (row.variants || []).some((v: any) => v.stock > 0) ? 'instock' : 'outofstock',
     stockQuantity: row.stock, stock: row.stock, featured: row.featured, averageRating, reviewCount: reviews.length,
     image: images[0], images: images.map((src: string) => ({ src, alt: row.title })), rawImages: images,
-    shortDescription: row.shortDescription, description: sanitizeRichHtml(row.descriptionHtml), descriptionHtml: sanitizeRichHtml(row.descriptionHtml),
+    shortDescription: row.shortDescription, description: row.descriptionHtml, descriptionHtml: row.descriptionHtml,
     videoUrl: row.videoUrl, permalink: `/product/${row.slug}/`, hasOptions: (row.variants || []).length > 0,
     variants: (row.variants || []).map((v: any) => ({ ...v, priceOverride: v.priceOverride == null ? null : Number(v.priceOverride) })),
     bundleEnabled: row.bundleEnabled, bundleDiscountPercent: row.bundleDiscountPercent == null ? null : Number(row.bundleDiscountPercent), reviews,
     seoTitle: row.seoTitle, seoDescription: row.seoDescription, canonicalUrl: row.canonicalUrl,
-    ...(includePrivate ? { costPrice: row.costPrice == null ? null : Number(row.costPrice) } : {}), status: row.status, categoryId: row.categoryId,
+    costPrice: row.costPrice == null ? null : Number(row.costPrice), status: row.status, categoryId: row.categoryId,
     createdAt: row.createdAt, updatedAt: row.updatedAt,
   };
 }
@@ -241,28 +181,7 @@ async function maybeCleanupOldSessionReplays() {
   await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } }).catch(() => undefined);
 }
 
-app.get('/api/health', async (_req, res) => {
-  setNoStore(res);
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    await Promise.all([
-      prisma.order.count(),
-      prisma.eventLog.count(),
-      prisma.sessionReplay.count(),
-      prisma.experiment.count(),
-      prisma.rateLimitBucket.count(),
-    ]);
-    res.json({ ok: true, version: '2.0.1', database: 'ready', schema: 'ready', features: { cro: true, marketing: true, sessionReplays: true, tracking: true, capi: true } });
-  } catch (e: any) {
-    console.error('Health/database check failed', e);
-    res.status(503).json({
-      ok: false,
-      version: '2.0.1',
-      database: 'unavailable',
-      code: String(e?.code || 'DB_UNAVAILABLE'),
-    });
-  }
-});
+app.get('/api/health', async (_req, res) => { setNoStore(res); try { await prisma.$queryRaw`SELECT 1`; res.json({ ok: true, version: '2.0.0', features: { cro: true, marketing: true, sessionReplays: true, tracking: true, capi: true } }); } catch (e: any) { res.status(503).json({ ok: false, version: '2.0.0', error: e?.message || 'DB_UNAVAILABLE' }); } });
 
 app.post('/api/contact', async (req, res) => {
   setNoStore(res);
@@ -319,14 +238,8 @@ app.get('/api/products', async (req, res) => {
   res.json({ items: rows.map(jsonProductSummary), page, limit, total, totalPages: Math.max(1, Math.ceil(total/limit)) });
 });
 app.get('/api/products/slug/:slug', async (req,res) => { const slug=routeParam(req, 'slug'); setPublicCache(res, 120, 600, ['products', `product:${slug}`]); const row = await prisma.product.findFirst({ where:{ slug, status:'PUBLISHED' }, include: productInclude }); if(!row) return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row)); });
-app.get('/api/pages/:slug', async (req,res) => { setPublicCache(res, 900, 3600, ['pages']); const slugs = [routeParam(req, 'slug'), ...String(req.query.fallback || '').split(',').filter(Boolean)]; const page = await prisma.page.findFirst({ where:{ slug:{in:slugs}, published:true } }); if(!page) return res.status(404).json({error:'NOT_FOUND'}); res.json({...page, bodyHtml:sanitizeRichHtml(page.bodyHtml)}); });
-app.get('/api/settings/public', async (req,res) => {
-  setPublicCache(res, 300, 1800, ['settings']);
-  const requested = String(req.query.keys || '').split(',').map(key=>key.trim()).filter(Boolean);
-  const invalid = requested.filter(key=>!PUBLIC_SETTING_KEYS.has(key));
-  if (invalid.length) return res.status(400).json({error:'SETTING_NOT_PUBLIC'});
-  res.json(await getSettings(requested));
-});
+app.get('/api/pages/:slug', async (req,res) => { setPublicCache(res, 900, 3600, ['pages']); const slugs = [routeParam(req, 'slug'), ...String(req.query.fallback || '').split(',').filter(Boolean)]; const page = await prisma.page.findFirst({ where:{ slug:{in:slugs}, published:true } }); if(!page) return res.status(404).json({error:'NOT_FOUND'}); res.json(page); });
+app.get('/api/settings/public', async (req,res) => { setPublicCache(res, 300, 1800, ['settings']); const keys = String(req.query.keys || '').split(',').filter(Boolean); res.json(await getSettings(keys)); });
 app.get('/api/cities', async (_req,res) => { setPublicCache(res, 3600, 86400, ['cities']); res.json(await prisma.city.findMany({ where:{active:true}, orderBy:{name:'asc'} })); });
 app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 86400, ['seo']); const [products,categories,pages] = await Promise.all([prisma.product.findMany({where:{status:'PUBLISHED'},select:{slug:true,updatedAt:true}}),prisma.category.findMany({select:{slug:true,updatedAt:true}}),prisma.page.findMany({where:{published:true},select:{slug:true,updatedAt:true}})]); res.json({products,categories,pages}); });
 app.get('/api/redirects/resolve', async (req,res)=>{setPublicCache(res,3600,86400,['redirects']);const sourcePath=String(req.query.path||'');const row=await prisma.redirect.findUnique({where:{sourcePath}});if(!row)return res.status(404).json({error:'NOT_FOUND'});res.json(row);});
@@ -388,35 +301,17 @@ app.post('/api/orders', async (req,res) => {
   try { const order = await createOrder({ ...parsed.data, email: parsed.data.email || undefined, postcode: parsed.data.postcode || undefined, orderNotes: parsed.data.orderNotes || undefined, clientIp:req.ip, clientUserAgent:req.get('user-agent') || undefined }); await invalidateFrontendCache(['products']); res.status(201).json({ orderNumber: order.orderNumber, id: order.id, total: Number(order.total) }); }
   catch(e:any){ res.status(400).json({error:e?.message || 'ORDER_FAILED'}); }
 });
-app.post('/api/orders/track', async (req,res) => {
-  if (!(await allowRequest(req, res, 'order-track', 20, 15 * 60 * 1000))) return;
-  const orderNumber=String(req.body.orderNumber||'').trim().toUpperCase();
-  const phone=normalizePakMobile(req.body.phone);
-  if(!/^ZM-\d+$/i.test(orderNumber) || !phone) return res.status(404).json({error:'NOT_FOUND'});
-  const order=await prisma.order.findUnique({where:{orderNumber},select:{orderNumber:true,status:true,postexTracking:true,createdAt:true,total:true,city:true,phone:true}});
-  if(!order || normalizePakMobile(order.phone)!==phone) return res.status(404).json({error:'NOT_FOUND'});
-  const {phone:_privatePhone,...safeOrder}=order;
-  res.json({...safeOrder,total:Number(order.total),trackingUrl:order.postexTracking?postexTrackingUrl(order.postexTracking):null});
-});
+app.post('/api/orders/track', async (req,res) => { if (!(await allowRequest(req, res, 'order-track', 30, 15 * 60 * 1000))) return; const orderNumber=String(req.body.orderNumber||'').toUpperCase(); const phone=String(req.body.phone||'').replace(/\D/g,''); const order=await prisma.order.findFirst({where:{orderNumber, OR:[{phone:{endsWith:phone.slice(-10)}},{phone:{endsWith:phone.slice(-11)}}]},select:{orderNumber:true,status:true,postexTracking:true,createdAt:true,total:true,city:true}}); if(!order)return res.status(404).json({error:'NOT_FOUND'}); res.json({...order,total:Number(order.total),trackingUrl:order.postexTracking?postexTrackingUrl(order.postexTracking):null}); });
 app.get('/api/orders/confirmation/:orderNumber', async (req,res) => {
   const order=await prisma.order.findUnique({where:{orderNumber:routeParam(req, 'orderNumber').toUpperCase()},include:{items:true}});
   if(!order)return res.status(404).json({error:'NOT_FOUND'});
   // The confirmation page contains private delivery details, so the public order number alone is not enough.
-  // The opaque database ID is kept in an HttpOnly confirmation cookie by the frontend proxy and sent only in this server-to-server header.
-  const confirmationKey=String(req.get('x-order-confirmation-key')||'');
-  if(confirmationKey!==order.id)return res.status(404).json({error:'NOT_FOUND'});
+  // The opaque database ID is returned only to the browser that placed the order and is kept in the success URL.
+  if(String(req.query.key||'')!==order.id)return res.status(404).json({error:'NOT_FOUND'});
   const city=await prisma.city.findUnique({where:{name:order.city}});
   res.json({...order,subtotal:Number(order.subtotal),bundleSaving:Number(order.bundleSaving),deliveryFee:Number(order.deliveryFee),codFee:Number(order.codFee),total:Number(order.total),items:order.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),deliveryEstimate:city?`${city.deliveryMinDays}-${city.deliveryMaxDays} days`:null});
 });
-app.post('/api/checkout/abandoned', async (req,res) => {
-  const phone=normalizePakMobile(req.body.phone);
-  if(!phone) return res.json({ok:true});
-  if (!(await allowRequest(req, res, 'checkout-abandoned', 20, 15 * 60 * 1000, phone))) return;
-  const existing=await prisma.abandonedCheckout.findFirst({where:{phone,convertedAt:null},orderBy:{createdAt:'desc'}});
-  const data={phone,fullName:req.body.fullName||null,email:req.body.email||null,city:req.body.city||null,address:req.body.address||null,cart:req.body.cart||[],source:req.body.source||null};
-  if(existing) await prisma.abandonedCheckout.update({where:{id:existing.id},data}); else await prisma.abandonedCheckout.create({data});
-  res.json({ok:true});
-});
+app.post('/api/checkout/abandoned', async (req,res) => { const phone=String(req.body.phone||'').trim(); if(phone.length<10)return res.json({ok:true}); const existing=await prisma.abandonedCheckout.findFirst({where:{phone,convertedAt:null},orderBy:{createdAt:'desc'}}); const data={phone,fullName:req.body.fullName||null,email:req.body.email||null,city:req.body.city||null,address:req.body.address||null,cart:req.body.cart||[],source:req.body.source||null}; if(existing) await prisma.abandonedCheckout.update({where:{id:existing.id},data}); else await prisma.abandonedCheckout.create({data}); res.json({ok:true}); });
 app.post('/api/reviews', async (req,res) => {
   if (!(await allowRequest(req, res, 'review', 10, 24 * 60 * 60 * 1000))) return;
   if(String(req.body.honeypot||''))return res.status(201).json({ok:true});
@@ -440,10 +335,10 @@ app.post('/api/events', async (req,res) => {
   const sessionReplayId = String(req.body.replaySessionId || '').trim() || null;
   if (!META_EVENT_NAMES.has(eventName) || !eventId || eventId.length > 160) return res.status(400).json({ error: 'INVALID_EVENT' });
 
-  const sourceUrl = stripUrlSecrets(req.body.sourceUrl) || null;
+  const sourceUrl = String(req.body.sourceUrl || '').slice(0, 4000) || null;
   const params = req.body.params && typeof req.body.params === 'object' && !Array.isArray(req.body.params) ? req.body.params as Record<string, unknown> : {};
   const row = await prisma.eventLog.create({
-    data: { eventName, eventId, sessionReplayId, channel: 'browser', sourceUrl, payload: { ...(req.body || {}), sourceUrl } as Prisma.InputJsonValue },
+    data: { eventName, eventId, sessionReplayId, channel: 'browser', sourceUrl, payload: req.body || {} },
   });
 
   if (sessionReplayId) {
@@ -521,13 +416,12 @@ app.post('/api/session-replays/start', async (req,res) => {
   void maybeCleanupOldSessionReplays();
   const sessionId=String(req.body.sessionId||'').trim();
   const visitorId=String(req.body.visitorId||'').trim();
-  if (!(await allowRequest(req, res, 'replay-start', 30, 15 * 60 * 1000, sessionId.slice(0,36)))) return;
   if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!/^[0-9a-f-]{36}$/i.test(visitorId)) return res.status(400).json({error:'INVALID_SESSION'});
   const source=req.body.source&&typeof req.body.source==='object'?req.body.source:{};
   const sourceName=normalizeTrafficSource((source as any).source||(source as any).utm_source||(source as any).lastTouch?.utm_source||(source as any).firstTouch?.utm_source||'direct');
   const startedAt=new Date(req.body.startedAt||Date.now());
-  const landingUrl=stripUrlSecrets(req.body.landingUrl||req.body.currentUrl||'');
-  const lastUrl=stripUrlSecrets(req.body.currentUrl||landingUrl);
+  const landingUrl=String(req.body.landingUrl||req.body.currentUrl||'').slice(0,4000);
+  const lastUrl=String(req.body.currentUrl||landingUrl).slice(0,4000);
   const now=new Date();
   const medium=String((source as any).medium||(source as any).utm_medium||'').slice(0,120)||null;
   const campaign=String((source as any).campaign||(source as any).utm_campaign||'').slice(0,240)||null;
@@ -540,7 +434,7 @@ app.post('/api/session-replays/start', async (req,res) => {
     campaign,
     lastSeenAt:now,
     lastUrl,
-    referrer:req.body.referrer?stripUrlSecrets(req.body.referrer):undefined,
+    referrer:req.body.referrer?String(req.body.referrer).slice(0,4000):undefined,
     device:req.body.device?String(req.body.device).slice(0,40):undefined,
     viewport:req.body.viewport?String(req.body.viewport).slice(0,40):undefined,
     status:'ACTIVE',
@@ -550,18 +444,17 @@ app.post('/api/session-replays/start', async (req,res) => {
   await prisma.sessionReplay.upsert({
     where:{id:sessionId},
     update:updateData,
-    create:{id:sessionId,visitorId,source:sourceName,medium,campaign,landingUrl,lastUrl,referrer:req.body.referrer?stripUrlSecrets(req.body.referrer):null,device:req.body.device?String(req.body.device).slice(0,40):null,viewport:req.body.viewport?String(req.body.viewport).slice(0,40):null,status:'ACTIVE',startedAt:Number.isNaN(startedAt.getTime())?now:startedAt,lastSeenAt:now,metadata}
+    create:{id:sessionId,visitorId,source:sourceName,medium,campaign,landingUrl,lastUrl,referrer:req.body.referrer?String(req.body.referrer).slice(0,4000):null,device:req.body.device?String(req.body.device).slice(0,40):null,viewport:req.body.viewport?String(req.body.viewport).slice(0,40):null,status:'ACTIVE',startedAt:Number.isNaN(startedAt.getTime())?now:startedAt,lastSeenAt:now,metadata}
   });
   res.json({ok:true});
 });
 
 app.post('/api/session-replays/chunk', async (req,res) => {
   const sessionId=String(req.body.sessionId||'').trim();
-  if (!(await allowRequest(req, res, 'replay-chunk', 900, 15 * 60 * 1000, sessionId.slice(0,36)))) return;
   const sequence=Number(req.body.sequence);
   const events=Array.isArray(req.body.events)?req.body.events:[];
   if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!Number.isInteger(sequence)||sequence<0||events.length<1||events.length>100) return res.status(400).json({error:'INVALID_REPLAY_CHUNK'});
-  const currentUrl=stripUrlSecrets(req.body.currentUrl||'');
+  const currentUrl=String(req.body.currentUrl||'').slice(0,4000);
   const now=new Date();
   await prisma.$transaction(async(tx)=>{
     await tx.sessionReplay.upsert({where:{id:sessionId},update:{lastSeenAt:now,lastUrl:currentUrl||undefined},create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}});
@@ -579,10 +472,9 @@ app.post('/api/session-replays/chunk', async (req,res) => {
 
 app.post('/api/session-replays/end', async (req,res) => {
   const sessionId=String(req.body.sessionId||'').trim();
-  if (!(await allowRequest(req, res, 'replay-end', 60, 15 * 60 * 1000, sessionId.slice(0,36)))) return;
   if(!/^[0-9a-f-]{36}$/i.test(sessionId)) return res.status(400).json({error:'INVALID_SESSION'});
   const endedAt=new Date(req.body.endedAt||Date.now());
-  await prisma.sessionReplay.updateMany({where:{id:sessionId},data:{status:'ENDED',endedAt:Number.isNaN(endedAt.getTime())?new Date():endedAt,lastSeenAt:new Date(),lastUrl:stripUrlSecrets(req.body.currentUrl||'')}});
+  await prisma.sessionReplay.updateMany({where:{id:sessionId},data:{status:'ENDED',endedAt:Number.isNaN(endedAt.getTime())?new Date():endedAt,lastSeenAt:new Date(),lastUrl:String(req.body.currentUrl||'').slice(0,4000)}});
   res.json({ok:true});
 });
 
@@ -617,8 +509,8 @@ app.get('/api/admin/dashboard', requireAuth('orders.read'), async (_req,res) => 
   res.json({ordersToday:todayOrders.length,revenueToday:todayOrders.reduce((s,o)=>s+Number(o.total),0),ordersYesterday:yesterdayOrders.length,revenueYesterday:yesterdayOrders.reduce((s,o)=>s+Number(o.total),0),delivered:todayOrders.filter(o=>o.status==='DELIVERED').length,failedJobs,products,customers,acceptedPurchases,trackingCoverage:realOrders?Math.round(acceptedPurchases/realOrders*1000)/10:100,teamEmails,emailCoverage:todayOrders.length?Math.round(teamEmails/todayOrders.length*1000)/10:100,events:Object.fromEntries(events.map(e=>[e.eventName,e._count._all])),recent:recent.map(o=>({...o,total:Number(o.total)}))});
 });
 
-app.get('/api/admin/products', requireAuth('products.write'), async (req,res) => { const q=String(req.query.q||''); const status=String(req.query.status||''); const categoryId=String(req.query.categoryId||''); const where:Prisma.ProductWhereInput={...(q?{OR:[{title:{contains:q,mode:'insensitive'}},{sku:{contains:q,mode:'insensitive'}}]}:{}),...(status?{status:status as ProductStatus}:{}),...(categoryId?{categoryId}:{})}; const rows=await prisma.product.findMany({where,include:{category:true,variants:true,reviews:true},orderBy:{updatedAt:'desc'},take:1000}); res.json(rows.map(row=>jsonProduct(row,true))); });
-app.get('/api/admin/products/:id', requireAuth('products.write'), async (req,res) => { const row=await prisma.product.findUnique({where:{id:routeParam(req, 'id')},include:{category:true,variants:true,reviews:true}}); if(!row)return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row,true)); });
+app.get('/api/admin/products', requireAuth('products.write'), async (req,res) => { const q=String(req.query.q||''); const status=String(req.query.status||''); const categoryId=String(req.query.categoryId||''); const where:Prisma.ProductWhereInput={...(q?{OR:[{title:{contains:q,mode:'insensitive'}},{sku:{contains:q,mode:'insensitive'}}]}:{}),...(status?{status:status as ProductStatus}:{}),...(categoryId?{categoryId}:{})}; const rows=await prisma.product.findMany({where,include:{category:true,variants:true,reviews:true},orderBy:{updatedAt:'desc'},take:1000}); res.json(rows.map(jsonProduct)); });
+app.get('/api/admin/products/:id', requireAuth('products.write'), async (req,res) => { const row=await prisma.product.findUnique({where:{id:routeParam(req, 'id')},include:{category:true,variants:true,reviews:true}}); if(!row)return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row)); });
 app.post('/api/admin/products', requireAuth('products.write'), async (req:AuthedRequest,res) => {
   try {
     const b=req.body||{};
@@ -627,7 +519,7 @@ app.post('/api/admin/products', requireAuth('products.write'), async (req:Authed
     const bundleEnabled=b.bundleEnabled!==false;
     const bundleDiscountPercent=b.bundleDiscountPercent==null||b.bundleDiscountPercent===''?null:Number(b.bundleDiscountPercent);
     await assertProductPriceFloor({price,salePrice,bundleEnabled,bundleDiscountPercent});
-    const row=await prisma.product.create({data:{title:String(b.title),slug:String(b.slug),sku:String(b.sku),categoryId:b.categoryId||null,price:new Prisma.Decimal(price),salePrice:salePrice==null?null:new Prisma.Decimal(salePrice),costPrice:b.costPrice?new Prisma.Decimal(Number(b.costPrice)):null,stock:Number(b.stock||0),status:(b.status||'DRAFT') as ProductStatus,featured:Boolean(b.featured),bundleEnabled,bundleDiscountPercent:bundleDiscountPercent==null?null:new Prisma.Decimal(bundleDiscountPercent),shortDescription:b.shortDescription||null,descriptionHtml:b.descriptionHtml?sanitizeRichHtml(b.descriptionHtml):null,images:Array.isArray(b.images)?b.images:[],videoUrl:b.videoUrl||null,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,canonicalUrl:b.canonicalUrl||null}});
+    const row=await prisma.product.create({data:{title:String(b.title),slug:String(b.slug),sku:String(b.sku),categoryId:b.categoryId||null,price:new Prisma.Decimal(price),salePrice:salePrice==null?null:new Prisma.Decimal(salePrice),costPrice:b.costPrice?new Prisma.Decimal(Number(b.costPrice)):null,stock:Number(b.stock||0),status:(b.status||'DRAFT') as ProductStatus,featured:Boolean(b.featured),bundleEnabled,bundleDiscountPercent:bundleDiscountPercent==null?null:new Prisma.Decimal(bundleDiscountPercent),shortDescription:b.shortDescription||null,descriptionHtml:b.descriptionHtml||null,images:Array.isArray(b.images)?b.images:[],videoUrl:b.videoUrl||null,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,canonicalUrl:b.canonicalUrl||null}});
     await audit(req,'create','Product',row.id);
     await invalidateFrontendCache(['products','featured-products','categories','store',`product:${row.slug}`]);
     res.status(201).json(row);
@@ -647,8 +539,7 @@ app.patch('/api/admin/products/:id', requireAuth('products.write'), async (req:A
     const nextDiscount='bundleDiscountPercent' in b?(b.bundleDiscountPercent===''||b.bundleDiscountPercent==null?null:Number(b.bundleDiscountPercent)):(current.bundleDiscountPercent==null?null:Number(current.bundleDiscountPercent));
     await assertProductPriceFloor({price:nextPrice,salePrice:nextSale,bundleEnabled:nextBundle,bundleDiscountPercent:nextDiscount});
     const data:any={};
-    for(const k of ['title','slug','sku','categoryId','stock','status','featured','bundleEnabled','shortDescription','images','videoUrl','seoTitle','seoDescription','canonicalUrl']) if(k in b) data[k]=b[k] === '' ? null : b[k];
-    if('descriptionHtml' in b) data.descriptionHtml=b.descriptionHtml?sanitizeRichHtml(b.descriptionHtml):null;
+    for(const k of ['title','slug','sku','categoryId','stock','status','featured','bundleEnabled','shortDescription','descriptionHtml','images','videoUrl','seoTitle','seoDescription','canonicalUrl']) if(k in b) data[k]=b[k] === '' ? null : b[k];
     for(const k of ['price','salePrice','costPrice','bundleDiscountPercent']) if(k in b) data[k]=b[k]===''||b[k]==null?null:new Prisma.Decimal(Number(b[k]));
     if('stock'in data)data.stock=Number(data.stock||0);
     const row=await prisma.product.update({where:{id},data});
@@ -742,8 +633,8 @@ app.get('/api/admin/customers', requireAuth('customers.read'), async (_req,res)=
 app.patch('/api/admin/customers/:id/blocklist', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{const current=await prisma.customer.findUnique({where:{id:routeParam(req, 'id')}});if(!current)return res.status(404).json({error:'NOT_FOUND'});const row=await prisma.customer.update({where:{id:routeParam(req, 'id')},data:{blocklisted:!current.blocklisted}});await audit(req,'toggle_blocklist','Customer',row.id,{blocklisted:row.blocklisted});res.json(row);});
 
 app.get('/api/admin/pages', requireAuth('content.write'), async (_req,res)=>res.json(await prisma.page.findMany({orderBy:{slug:'asc'}})));
-app.post('/api/admin/pages', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const b=req.body||{};const slug=String(b.slug||'').trim().toLowerCase();const title=String(b.title||'').trim();if(!slug||!title)return res.status(400).json({error:'TITLE_AND_SLUG_REQUIRED'});const row=await prisma.page.upsert({where:{slug},update:{title,bodyHtml:sanitizeRichHtml(b.bodyHtml),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false},create:{slug,title,bodyHtml:sanitizeRichHtml(b.bodyHtml),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false}});await audit(req,'upsert','Page',row.id);await invalidateFrontendCache(['pages']);res.status(201).json(row);});
-app.patch('/api/admin/pages/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const b=req.body;const row=await prisma.page.update({where:{id:routeParam(req, 'id')},data:{title:b.title,slug:b.slug,bodyHtml:sanitizeRichHtml(b.bodyHtml),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false}});await audit(req,'update','Page',row.id);await invalidateFrontendCache(['pages']);res.json(row);});
+app.post('/api/admin/pages', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const b=req.body||{};const slug=String(b.slug||'').trim().toLowerCase();const title=String(b.title||'').trim();if(!slug||!title)return res.status(400).json({error:'TITLE_AND_SLUG_REQUIRED'});const row=await prisma.page.upsert({where:{slug},update:{title,bodyHtml:String(b.bodyHtml||''),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false},create:{slug,title,bodyHtml:String(b.bodyHtml||''),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false}});await audit(req,'upsert','Page',row.id);await invalidateFrontendCache(['pages']);res.status(201).json(row);});
+app.patch('/api/admin/pages/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const b=req.body;const row=await prisma.page.update({where:{id:routeParam(req, 'id')},data:{title:b.title,slug:b.slug,bodyHtml:b.bodyHtml,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false}});await audit(req,'update','Page',row.id);await invalidateFrontendCache(['pages']);res.json(row);});
 
 app.get('/api/admin/settings', requireAuth('settings.write'), async (_req,res)=>{const [settings,cities]=await Promise.all([prisma.setting.findMany(),prisma.city.findMany({orderBy:{name:'asc'}})]);res.json({settings:Object.fromEntries(settings.filter(s=>!isSensitiveSettingKey(s.key)).map(s=>[s.key,s.value])),cities});});
 app.put('/api/admin/settings', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{for(const [key,value] of Object.entries(req.body||{}))await setSetting(key,value);await audit(req,'update','Settings',undefined,{keys:Object.keys(req.body||{})});await invalidateFrontendCache(['settings','store']);res.json({ok:true});});
@@ -985,7 +876,7 @@ app.get('/api/admin/abandoned', requireAuth('customers.read'), async (_req,res)=
 app.post('/api/admin/products/import', requireAuth('products.write'), async (req:AuthedRequest,res)=>{
   const rows=Array.isArray(req.body?.rows)?req.body.rows:[]; let created=0,updated=0,skipped=0; const errors:string[]=[];
   const categories=await prisma.category.findMany(); const byName=new Map(categories.map(c=>[c.name.toLowerCase(),c])); const bySlug=new Map(categories.map(c=>[c.slug.toLowerCase(),c]));
-  for(let i=0;i<rows.length;i++){const r=rows[i]||{};try{const sku=String(r.sku||'').trim();const title=String(r.title||r.name||'').trim();if(!sku||!title){skipped++;continue;} const slug=String(r.slug||title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')).trim(); const catRaw=String(r.category||r.categoryName||'').trim().toLowerCase(); const cat=byName.get(catRaw)||bySlug.get(catRaw); const images=String(r.imageUrls||r.images||'').split(/[|;]/).map((x:string)=>x.trim()).filter(Boolean); const importPrice=Number(r.price||0); const importSale=r.salePrice?Number(r.salePrice):null; await assertProductPriceFloor({price:importPrice,salePrice:importSale,bundleEnabled:true,bundleDiscountPercent:null}); const data:any={title,slug,categoryId:cat?.id||null,price:new Prisma.Decimal(importPrice),salePrice:importSale==null?null:new Prisma.Decimal(importSale),costPrice:r.costPrice?new Prisma.Decimal(Number(r.costPrice)):null,stock:Number(r.stock||0),status:(String(r.status||'DRAFT').toUpperCase() as ProductStatus),featured:['1','true','yes'].includes(String(r.featured||'').toLowerCase()),shortDescription:r.shortDescription||null,descriptionHtml:r.descriptionHtml?sanitizeRichHtml(r.descriptionHtml):null,images,videoUrl:r.videoUrl||null,seoTitle:r.seoTitle||null,seoDescription:r.seoDescription||null}; const existing=await prisma.product.findUnique({where:{sku}}); if(existing){await prisma.product.update({where:{id:existing.id},data});updated++;}else{await prisma.product.create({data:{...data,sku}});created++;}}catch(e:any){errors.push(`Row ${i+2}: ${e?.message||'failed'}`);skipped++;}}
+  for(let i=0;i<rows.length;i++){const r=rows[i]||{};try{const sku=String(r.sku||'').trim();const title=String(r.title||r.name||'').trim();if(!sku||!title){skipped++;continue;} const slug=String(r.slug||title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')).trim(); const catRaw=String(r.category||r.categoryName||'').trim().toLowerCase(); const cat=byName.get(catRaw)||bySlug.get(catRaw); const images=String(r.imageUrls||r.images||'').split(/[|;]/).map((x:string)=>x.trim()).filter(Boolean); const importPrice=Number(r.price||0); const importSale=r.salePrice?Number(r.salePrice):null; await assertProductPriceFloor({price:importPrice,salePrice:importSale,bundleEnabled:true,bundleDiscountPercent:null}); const data:any={title,slug,categoryId:cat?.id||null,price:new Prisma.Decimal(importPrice),salePrice:importSale==null?null:new Prisma.Decimal(importSale),costPrice:r.costPrice?new Prisma.Decimal(Number(r.costPrice)):null,stock:Number(r.stock||0),status:(String(r.status||'DRAFT').toUpperCase() as ProductStatus),featured:['1','true','yes'].includes(String(r.featured||'').toLowerCase()),shortDescription:r.shortDescription||null,descriptionHtml:r.descriptionHtml||null,images,videoUrl:r.videoUrl||null,seoTitle:r.seoTitle||null,seoDescription:r.seoDescription||null}; const existing=await prisma.product.findUnique({where:{sku}}); if(existing){await prisma.product.update({where:{id:existing.id},data});updated++;}else{await prisma.product.create({data:{...data,sku}});created++;}}catch(e:any){errors.push(`Row ${i+2}: ${e?.message||'failed'}`);skipped++;}}
   await audit(req,'csv_import','Product',undefined,{created,updated,skipped,errors:errors.slice(0,25)}); await invalidateFrontendCache(['products','featured-products','categories','store']); res.json({created,updated,skipped,errors});
 });
 app.get('/api/admin/products/template.csv', requireAuth('products.write'), (_req,res)=>{res.type('text/csv').send('title,slug,sku,category,price,salePrice,costPrice,stock,status,featured,shortDescription,descriptionHtml,imageUrls,videoUrl,seoTitle,seoDescription\n');});
@@ -993,14 +884,7 @@ app.get('/api/admin/products/export.csv', requireAuth('orders.export'), async (_
 app.get('/api/admin/orders/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.order.findMany({orderBy:{createdAt:'desc'},take:5000});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['orderNumber,date,customer,phone,city,status,total,source',...rows.map(o=>[o.orderNumber,o.createdAt.toISOString(),o.fullName,o.phone,o.city,o.status,o.total,o.source||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
 app.post('/api/admin/upload', requireAuth('products.write'), upload.single('file'), async (req,res)=>{if(!req.file)return res.status(400).json({error:'FILE_REQUIRED'});const safe=req.file.originalname.replace(/[^a-zA-Z0-9._-]/g,'-');const url=await uploadObject(`products/${Date.now()}-${safe}`,req.file.buffer,req.file.mimetype);res.json({url});});
 
-app.use((err:any,req:any,res:any,_next:any)=>{
-  console.error('Unhandled backend error', { path:req?.path, method:req?.method, code:err?.code, message:err?.message, stack:err?.stack });
-  res.status(500).json({
-    error:'SERVER_ERROR',
-    code:String(err?.code || 'UNHANDLED_ERROR'),
-    message:process.env.NODE_ENV==='development'?err?.message:undefined,
-  });
-});
+app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err);res.status(500).json({error:'SERVER_ERROR',message:process.env.NODE_ENV==='development'?err?.message:undefined});});
 export { app };
 export default app;
 if (!process.env.VERCEL) app.listen(port,()=>console.log(`Zelvomart backend listening on http://localhost:${port}`));

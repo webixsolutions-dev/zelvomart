@@ -1,4 +1,4 @@
-import { Prisma, type OrderStatus } from "../generated/prisma";
+import { Prisma, type OrderStatus } from "../generated/prisma/client";
 import { prisma } from "./db";
 import { getSetting } from "./settings";
 import { dispatchJobRow } from "./jobs";

@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate --schema=prisma/schema.prisma && tsx watch src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "prisma generate --schema=prisma/schema.prisma && tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
@@ -14,9 +14,7 @@
     "migrate:wordpress": "tsx scripts/migrate-wordpress.ts",
     "qa:urls": "tsx scripts/check-urls.ts",
     "migrate:urls": "tsx scripts/migration/export-wordpress-urls.ts",
-    "postinstall": "prisma generate --schema=prisma/schema.prisma",
-    "db:health": "tsx scripts/db-health.ts",
-    "vercel-build": "prisma generate --schema=prisma/schema.prisma && tsc -p tsconfig.json"
+    "postinstall": "prisma generate --schema=prisma/schema.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.890.0",
@@ -31,7 +29,8 @@
     "pg-boss": "^10.3.2",
     "resend": "^6.1.0",
     "sanitize-html": "^2.17.0",
-    "zod": "^4.1.11"
+    "zod": "^4.1.11",
+    "@prisma/adapter-pg": "^6.19.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
