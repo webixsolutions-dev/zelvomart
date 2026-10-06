@@ -99,7 +99,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
   }, []);
 
-  const clear = useCallback(() => setItems([]), []);
+  const clear = useCallback(() => {
+    setItems([]);
+    setOpen(false);
+  }, []);
 
   const bundleSaving = useMemo(
     () =>

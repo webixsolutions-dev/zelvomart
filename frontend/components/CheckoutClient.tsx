@@ -54,7 +54,7 @@ export default function CheckoutClient({
   delivery: { mode?: string; flatRate?: number; freeAbove?: number; codFee?: number };
 }) {
   const router = useRouter();
-  const { items, subtotal, bundleSaving, ready, clear } = useCart();
+  const { items, subtotal, bundleSaving, ready, clear, setOpen } = useCart();
   const [fields, setFields] = useState<Fields>(empty);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -74,6 +74,7 @@ export default function CheckoutClient({
   const total = subtotal + deliveryFee + codFee;
 
   useEffect(() => {
+    setOpen(false);
     let nextFields = empty;
     try {
       const saved = sessionStorage.getItem(SESSION_KEY);
@@ -191,6 +192,7 @@ export default function CheckoutClient({
       setConfirmedOrder(String(data.orderNumber || ""));
       setRedirecting(true);
       requestReplayFlush();
+      setOpen(false);
       clearPersistedCart();
       clear();
       sessionStorage.removeItem(SESSION_KEY);

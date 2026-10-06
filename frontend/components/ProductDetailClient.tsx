@@ -17,7 +17,7 @@ const tabs = ["Overview", "Why Choose Us", "Specifications", "Shipping & Warrant
 
 export default function ProductDetailClient({ product, defaultBundleDiscount = 5, whatsapp = "923002026711" }: { product: Product; defaultBundleDiscount?: number; whatsapp?: string }) {
   const router = useRouter();
-  const { addItem } = useCart();
+  const { addItem, setOpen } = useCart();
   const fallbackImage = getProductFallbackImage(product);
   const [selectedImage, setSelectedImage] = useState(product.image || product.images[0]?.src || fallbackImage);
   const [variant, setVariant] = useState<Variant | null>(product.variants[0] || null);
@@ -156,6 +156,7 @@ export default function ProductDetailClient({ product, defaultBundleDiscount = 5
       currency: "PKR",
     }, { clarityEvent: goCheckout ? "buy_now" : "add_to_cart" });
     if (goCheckout) {
+      setOpen(false);
       window.dispatchEvent(new Event("zelvo:route-start"));
       router.push("/checkout?buyNow=1");
     }

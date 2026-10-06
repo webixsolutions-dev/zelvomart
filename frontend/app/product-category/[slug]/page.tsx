@@ -13,7 +13,9 @@ export const revalidate = 120;
 
 const v = (x: string | string[] | undefined) => Array.isArray(x) ? x[0] : x || "";
 const n = (x: string | string[] | undefined) => {
-  const value = Number(v(x));
+  const raw = v(x).trim();
+  if (!raw) return undefined;
+  const value = Number(raw);
   return Number.isFinite(value) && value >= 0 ? value : undefined;
 };
 
