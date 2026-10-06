@@ -28,6 +28,40 @@ function isDirectVideo(url?: string) {
   return Boolean(url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url));
 }
 
+function VideoFrame({ video, compact = false }: { video: VideoCard; compact?: boolean }) {
+  const embed = youtubeEmbed(video.url);
+
+  if (embed) {
+    return (
+      <iframe
+        src={`${embed}?rel=0&modestbranding=1`}
+        title={video.title}
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+    );
+  }
+
+  if (isDirectVideo(video.url)) {
+    return (
+      <video controls playsInline preload="metadata" poster={video.poster || undefined}>
+        <source src={video.url} />
+      </video>
+    );
+  }
+
+  return (
+    <div
+      className={`zm-short-placeholder${compact ? " is-compact" : ""}`}
+      style={video.poster ? { backgroundImage: `url(${video.poster})` } : undefined}
+    >
+      <span className="zm-short-play">▶</span>
+      <small>{video.title}</small>
+    </div>
+  );
+}
+
 export default function HomeVideoShowcase({ videos }: { videos: VideoCard[] }) {
   const slides = useMemo(() => videos.filter(Boolean).slice(0, 8), [videos]);
   const [active, setActive] = useState(0);
@@ -43,7 +77,6 @@ export default function HomeVideoShowcase({ videos }: { videos: VideoCard[] }) {
 
   if (!slides.length) return null;
   const video = slides[active];
-  const embed = youtubeEmbed(video.url);
 
   const previous = () => setActive((current) => (current - 1 + slides.length) % slides.length);
   const next = () => setActive((current) => (current + 1) % slides.length);
@@ -56,8 +89,18 @@ export default function HomeVideoShowcase({ videos }: { videos: VideoCard[] }) {
           <p>Discover handpicked essentials across our most popular categories.</p>
         </div>
 
+        {/* Desktop/tablet: keep the original multi-video row. */}
+        <div className="zm-video-desktop-grid" aria-label="Product videos">
+          {slides.slice(0, 5).map((item, index) => (
+            <article className="zm-video-desktop-card" key={`${item.title}-${index}`} aria-label={item.title}>
+              <VideoFrame video={item} compact />
+            </article>
+          ))}
+        </div>
+
+        {/* Mobile only: one video at a time, auto advancing. */}
         <div
-          className="zm-video-slider"
+          className="zm-video-mobile-slider"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onFocus={() => setPaused(true)}
@@ -66,24 +109,7 @@ export default function HomeVideoShowcase({ videos }: { videos: VideoCard[] }) {
           <button className="zm-video-arrow prev" type="button" onClick={previous} aria-label="Previous video">‹</button>
 
           <article className="zm-video-slide" key={`${video.title}-${active}`} aria-label={video.title}>
-            {embed ? (
-              <iframe
-                src={`${embed}?rel=0&modestbranding=1`}
-                title={video.title}
-                loading="lazy"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            ) : isDirectVideo(video.url) ? (
-              <video controls playsInline preload="metadata" poster={video.poster || undefined}>
-                <source src={video.url} />
-              </video>
-            ) : (
-              <div className="zm-short-placeholder" style={video.poster ? { backgroundImage: `url(${video.poster})` } : undefined}>
-                <span className="zm-short-play">▶</span>
-                <small>{video.title}</small>
-              </div>
-            )}
+            <VideoFrame video={video} />
           </article>
 
           <button className="zm-video-arrow next" type="button" onClick={next} aria-label="Next video">›</button>
