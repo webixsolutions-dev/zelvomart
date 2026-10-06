@@ -31,8 +31,8 @@ export default function RouteTransitionOverlay() {
     // Force the overlay to paint before Next.js handles the navigation.
     flushSync(() => setActive(true));
     if (safetyTimer.current) window.clearTimeout(safetyTimer.current);
-    // Never leave the screen blocked if a navigation is cancelled or errors.
-    safetyTimer.current = window.setTimeout(() => setActive(false), 8000);
+    // Keep route feedback brief: never block the screen for more than 650ms.
+    safetyTimer.current = window.setTimeout(() => setActive(false), 650);
   };
 
   useEffect(() => {

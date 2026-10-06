@@ -9943,3 +9943,7 @@ a:hover,button:hover{transform:translateY(-1px)}
     color:#050505!important;
   }
 }
+
+/* Quick route feedback: keep navigation loader under one second. */
+.zm-route-loader{transition:opacity .14s ease,visibility .14s ease !important;}
+.zm-route-loader-ring:before{animation-duration:.55s !important;}
