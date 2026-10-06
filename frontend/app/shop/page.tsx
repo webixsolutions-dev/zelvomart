@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import ProductGrid from "@/components/ProductGrid";
@@ -64,6 +65,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       </section>
 
       <section id="products" className="site-shell">
+        <Suspense fallback={<div className="mock-catalog-browser-loading" aria-hidden="true" />}>
         <CatalogBrowser
           categories={categories}
           currentCategory={category}
@@ -91,6 +93,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             }}
           />
         </CatalogBrowser>
+        </Suspense>
       </section>
       
     </div>

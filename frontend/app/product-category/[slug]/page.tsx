@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -58,6 +59,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
       </section>
 
       <section className="site-shell">
+        <Suspense fallback={<div className="mock-catalog-browser-loading" aria-hidden="true" />}>
         <CatalogBrowser
           categories={categories}
           currentCategory={slug}
@@ -82,6 +84,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
             }}
           />
         </CatalogBrowser>
+        </Suspense>
       </section>
 
       <section className="mock-category-about">

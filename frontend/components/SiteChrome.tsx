@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { CartProvider } from "@/components/CartProvider";
 import PageMotion from "@/components/PageMotion";
@@ -42,7 +42,7 @@ export default function SiteChrome({
         {clarity}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
         <CartProvider>
-          <RouteTransitionOverlay />
+          <Suspense fallback={null}><RouteTransitionOverlay /></Suspense>
           <main className="public-site-main">{children}</main>
           {tracking}
         </CartProvider>
@@ -59,7 +59,7 @@ export default function SiteChrome({
         dangerouslySetInnerHTML={{ __html: organizationJson }}
       />
       <CartProvider>
-        <RouteTransitionOverlay />
+        <Suspense fallback={null}><RouteTransitionOverlay /></Suspense>
         {header}
         <main className="public-site-main">{children}</main>
         <PageMotion />
