@@ -8825,3 +8825,35 @@ body{
 @media(prefers-reduced-motion:reduce){
   .mock-order-processing-overlay,.mock-order-orbit:before,.mock-order-orbit:after,.mock-order-orbit>i,.mock-order-processing-progress>i,.mock-order-button-spinner,.mock-confirm-success,.mock-confirm-route-loader i{animation:none!important}
 }
+
+/* Grouped checkout: contact -> delivery -> confirm. No one-field-at-a-time cards. */
+.mock-checkout-grouped .mock-checkout-progress-wrap{background:#fff;border:1px solid #dfe7ec;border-radius:14px;padding:17px 18px}
+.mock-checkout-group-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.mock-checkout-group-steps button{border:1px solid #e0e8ec;background:#f8fbfc;border-radius:10px;min-height:48px;padding:8px 10px;display:flex;align-items:center;gap:9px;text-align:left;color:#617684}
+.mock-checkout-group-steps button span{width:25px;height:25px;border-radius:50%;background:#e8eff2;display:grid;place-items:center;font-size:10px;font-weight:900;flex:0 0 auto}
+.mock-checkout-group-steps button b{font-size:10.5px}
+.mock-checkout-group-steps button.active{border-color:#0b93c8;background:#f2fbff;color:#12394d}
+.mock-checkout-group-steps button.active span{background:#0b93c8;color:#fff}
+.mock-checkout-group-steps button.done{border-color:#cfe9d8;background:#f2fbf5;color:#247448;cursor:pointer}
+.mock-checkout-group-steps button.done span{background:#22a15c;color:#fff}
+.mock-checkout-group-card{background:#fff;border:1px solid #dfe7ec;border-radius:15px;padding:24px;min-height:300px;animation:zmCheckoutGroupIn .34s cubic-bezier(.2,.75,.25,1) both;box-shadow:0 8px 26px rgba(19,58,79,.035)}
+@keyframes zmCheckoutGroupIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.mock-checkout-group-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:760px}
+.mock-checkout-group-grid .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.mock-checkout-group-grid .field.full{grid-column:1/-1}
+.mock-checkout-group-grid .field>span{font-size:11.5px;font-weight:850;color:#203d4d}
+.mock-checkout-group-grid input,.mock-checkout-group-grid textarea{width:100%;border:1px solid #d7e2e8;border-radius:10px;background:#fbfdfe;padding:11px 12px;outline:0;font:inherit;font-size:13px;color:#173647;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}
+.mock-checkout-group-grid input{min-height:44px}
+.mock-checkout-group-grid textarea{resize:vertical;line-height:1.5}
+.mock-checkout-group-grid input:focus,.mock-checkout-group-grid textarea:focus{border-color:#0b95ca;background:#fff;box-shadow:0 0 0 4px rgba(11,149,202,.08)}
+.mock-checkout-group-grid .field-error{color:#b73535;font-size:10.5px;font-weight:750}
+.mock-checkout-group-grid .mock-step-success{color:#178b4c;font-size:10px;font-weight:800}
+.mock-checkout-complete-summary{width:100%;border:1px solid #d9e8df;background:#f5fbf7;border-radius:12px;padding:11px 13px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;text-align:left;color:#1f4e38;cursor:pointer}
+.mock-checkout-complete-summary>span{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;background:#24a45e;color:#fff;font-weight:900}
+.mock-checkout-complete-summary div{min-width:0}
+.mock-checkout-complete-summary small,.mock-checkout-complete-summary b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mock-checkout-complete-summary small{font-size:9px;color:#698579;margin-bottom:2px}
+.mock-checkout-complete-summary b{font-size:10.5px}
+.mock-checkout-complete-summary em{font-size:10px;font-style:normal;font-weight:850;color:#0b8cbd}
+@media(max-width:760px){.mock-checkout-group-grid{grid-template-columns:1fr}.mock-checkout-group-grid .field.full{grid-column:auto}.mock-checkout-group-card{padding:18px}.mock-checkout-group-steps button{justify-content:center;text-align:center;flex-direction:column;gap:4px;min-height:62px}.mock-checkout-group-steps button b{font-size:9px}.mock-checkout-complete-summary b{font-size:9.5px}}
+@media(prefers-reduced-motion:reduce){.mock-checkout-group-card{animation:none!important}}

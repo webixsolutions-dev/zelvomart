@@ -7,6 +7,7 @@ const SAFE_PREFIXES = [
   "/api/reviews",
   "/api/orders/",
   "/api/checkout/",
+  "/api/experiments/",
 ];
 
 function backendCandidates(request: NextRequest) {
@@ -48,6 +49,12 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
       if (contentType) headers.set("content-type", contentType);
       const accept = request.headers.get("accept");
       if (accept) headers.set("accept", accept);
+      const userAgent = request.headers.get("user-agent");
+      if (userAgent) headers.set("user-agent", userAgent);
+      const forwardedFor = request.headers.get("x-forwarded-for");
+      if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+      const realIp = request.headers.get("x-real-ip");
+      if (realIp) headers.set("x-real-ip", realIp);
 
       const upstream = await fetch(`${base}${backendPath}${request.nextUrl.search}`, {
         method,

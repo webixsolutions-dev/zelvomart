@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { API_BASE } from "@/lib/client-api";
 
 export default function ReviewForm({ productId }: { productId: string }) {
   const [message, setMessage] = useState("");
@@ -36,7 +35,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
     const payload = Object.fromEntries(form.entries());
 
     try {
-      const response = await fetch(`${API_BASE}/api/reviews`, {
+      const response = await fetch(`/api/store-proxy/api/reviews`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...payload, productId }),

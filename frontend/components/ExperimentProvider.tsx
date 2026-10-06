@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { API_BASE } from "@/lib/client-api";
 
 function readAssignments(): Record<string, string> {
   const row = document.cookie.split("; ").find((part) => part.startsWith("zm_experiments="));
@@ -40,7 +39,7 @@ export default function ExperimentProvider() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${API_BASE}/api/experiments/active?path=${encodeURIComponent(pathname)}`, { cache: "no-store" })
+    fetch(`/api/store-proxy/api/experiments/active?path=${encodeURIComponent(pathname)}`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
         if (cancelled || !data?.experiment) return;
@@ -57,7 +56,7 @@ export default function ExperimentProvider() {
           newlyAssigned = true;
         }
         if (newlyAssigned) {
-          fetch(`${API_BASE}/api/experiments/exposure`, {
+          fetch(`/api/store-proxy/api/experiments/exposure`, {
             method: "POST",
             headers: { "content-type": "application/json" },
             keepalive: true,
