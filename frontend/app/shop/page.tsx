@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import ProductGrid from "@/components/ProductGrid";
 import StorePagination from "@/components/StorePagination";
-import TrustStrip from "@/components/TrustStrip";
 import CatalogBrowser from "@/components/CatalogBrowser";
 import { getCategories, getProducts } from "@/lib/store";
 import SearchTracker from "@/components/SearchTracker";
@@ -93,7 +92,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           />
         </CatalogBrowser>
       </section>
-      <section className="site-shell mock-listing-trust"><TrustStrip /></section>
+      
     </div>
   );
 }

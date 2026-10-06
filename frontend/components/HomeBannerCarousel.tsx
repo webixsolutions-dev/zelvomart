@@ -15,7 +15,6 @@ const slides = [
     alt: "Zelvomart online store essentials for home, fitness and kids styled in a bright living room",
     primary: { label: "Shop Now", href: "/shop" },
     secondary: { label: "Explore Categories", href: "/shop#products" },
-    h1: true,
   },
   {
     eyebrow: "HOME · LIVING · LIFESTYLE",
@@ -63,7 +62,7 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
               <div className="site-shell zm-home-banner-inner">
                 <div className="zm-home-banner-copy">
                   <span className="mock-eyebrow">{slide.eyebrow}</span>
-                  {slide.h1 ? <h1>{slide.heading}</h1> : <h2>{slide.heading}</h2>}
+                  {index === 0 ? <h1>{slide.heading}</h1> : <h2>{slide.heading}</h2>}
                   <p>{slide.description}</p>
                   <div className="zm-home-banner-actions">
                     <Link href={slide.primary.href} className="mock-btn-dark">{slide.primary.label}</Link>

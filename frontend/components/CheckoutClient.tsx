@@ -294,6 +294,7 @@ export default function CheckoutClient({
       sessionStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       const successUrl = `/checkout/success/${encodeURIComponent(data.orderNumber)}?key=${encodeURIComponent(data.id)}`;
+      window.dispatchEvent(new Event("zelvo:route-start"));
       router.replace(successUrl, { scroll: true });
     } catch (error) {
       setServerError(error instanceof Error ? error.message.replace(/_/g, " ") : "Could not place order");

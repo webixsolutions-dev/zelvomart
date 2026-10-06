@@ -4,7 +4,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProductGrid from "@/components/ProductGrid";
 import StorePagination from "@/components/StorePagination";
-import TrustStrip from "@/components/TrustStrip";
 import CatalogBrowser from "@/components/CatalogBrowser";
 import { getCategories, getProducts } from "@/lib/store";
 
@@ -113,7 +112,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
           ))}
         </div>
       </section>
-      <section className="site-shell mock-listing-trust"><TrustStrip /></section>
+      
     </div>
   );
 }

@@ -92,13 +92,14 @@ export default function SessionReplayProvider() {
     let queue: unknown[] = [];
     let pending: PendingChunk | undefined;
     let flushing = false;
+    let sessionReadyPromise: Promise<boolean> | null = null;
 
     const scheduleRetry = () => {
       if (stopped || retryTimer) return;
       retryTimer = window.setTimeout(() => {
         retryTimer = undefined;
         void flush(false);
-      }, 1_200);
+      }, 2_500);
     };
 
     const flush = async (keepalive = false) => {
@@ -106,8 +107,19 @@ export default function SessionReplayProvider() {
       if (!pending && !queue.length) return true;
       flushing = true;
 
+      if (sessionReadyPromise) {
+        const ready = await sessionReadyPromise;
+        sessionReadyPromise = null;
+        if (!ready) {
+          // Recording must stay non-blocking even if the start request briefly fails.
+          // The backend chunk endpoint can create the parent row defensively, while
+          // this retry restores visitor/source metadata as soon as the API recovers.
+          void announceSession(false);
+        }
+      }
+
       if (!pending) {
-        const count = Math.min(queue.length, 24);
+        const count = Math.min(queue.length, 60);
         pending = {
           sequence: claimReplaySequence(),
           events: queue.splice(0, count),
@@ -130,7 +142,9 @@ export default function SessionReplayProvider() {
       }
       flushing = false;
 
-      if (ok && queue.length) void flush(false);
+      if (ok && queue.length >= 60) {
+        window.setTimeout(() => { void flush(false); }, 250);
+      }
       return ok;
     };
 
@@ -154,13 +168,15 @@ export default function SessionReplayProvider() {
         const rrwebModule = await import("@rrweb/record");
         if (stopped) return;
         const record = rrwebModule.record as unknown as RecordWithSnapshot;
+        sessionReadyPromise = announceSession(false);
+
         const stop = record({
           emit(event: unknown) {
             queue.push(event);
             const eventType = Number((event as { type?: number }).type);
             // Full snapshots are valuable and can be large: upload them immediately
             // while the document is still active rather than waiting for unload.
-            if (eventType === 2 || queue.length >= 24) {
+            if (eventType === 2 || queue.length >= 60) {
               void flush(false);
             }
           },
@@ -184,10 +200,7 @@ export default function SessionReplayProvider() {
           try { record.takeFullSnapshot?.(); } catch {}
         };
         recorderReadyRef.current = true;
-        timer = window.setInterval(() => { void flush(false); }, 1_500);
-
-        // Initial server row creation/update is deliberately non-blocking.
-        void announceSession(false);
+        timer = window.setInterval(() => { void flush(false); }, 4_500);
       } catch {
         // Replay is analytics-only and must never interrupt shopping.
       }

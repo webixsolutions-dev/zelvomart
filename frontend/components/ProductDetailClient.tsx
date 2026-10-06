@@ -155,7 +155,10 @@ export default function ProductDetailClient({ product, defaultBundleDiscount = 5
       value: bundleTotal * quantity,
       currency: "PKR",
     }, { clarityEvent: goCheckout ? "buy_now" : "add_to_cart" });
-    if (goCheckout) router.push("/checkout?buyNow=1");
+    if (goCheckout) {
+      window.dispatchEvent(new Event("zelvo:route-start"));
+      router.push("/checkout?buyNow=1");
+    }
   };
 
   const productPath = `/product/${product.slug}/`;

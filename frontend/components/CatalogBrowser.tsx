@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { FormEvent, useMemo, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FilterIcon } from "@/components/Icons";
 import type { Category } from "@/types/product";
@@ -19,11 +19,8 @@ type Props = {
   children: ReactNode;
 };
 
-function safeNumber(value: string) {
-  if (!value.trim()) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
-}
+const PRICE_CEILING = 10000;
+const PRICE_STEP = 100;
 
 export default function CatalogBrowser({
   categories,
@@ -40,8 +37,8 @@ export default function CatalogBrowser({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
-  const [min, setMin] = useState(minPrice == null ? "" : String(minPrice));
-  const [max, setMax] = useState(maxPrice == null ? "" : String(maxPrice));
+  const [min, setMin] = useState(Math.min(PRICE_CEILING, minPrice ?? 0));
+  const [max, setMax] = useState(Math.min(PRICE_CEILING, maxPrice ?? PRICE_CEILING));
 
   const preserved = useMemo(() => new URLSearchParams(searchParams.toString()), [searchParams]);
 
@@ -53,18 +50,19 @@ export default function CatalogBrowser({
       else params.set(key, value);
     }
     const query = params.toString();
+    window.dispatchEvent(new Event("zelvo:route-start"));
     router.push(query ? `${pathname}?${query}` : pathname);
   }
 
-  function applyPrice(event: FormEvent) {
-    event.preventDefault();
-    const minValue = safeNumber(min);
-    const maxValue = safeNumber(max);
+  function applyPrice(nextMin: number, nextMax: number) {
+    const safeMin = Math.max(0, Math.min(nextMin, nextMax));
+    const safeMax = Math.min(PRICE_CEILING, Math.max(nextMin, nextMax));
+    setMin(safeMin);
+    setMax(safeMax);
     navigateWith({
-      minPrice: minValue == null ? undefined : String(minValue),
-      maxPrice: maxValue == null ? undefined : String(maxValue),
+      minPrice: safeMin > 0 ? String(safeMin) : undefined,
+      maxPrice: safeMax < PRICE_CEILING ? String(safeMax) : undefined,
     });
-    setOpen(false);
   }
 
   function categoryHref(slug: string) {
@@ -82,12 +80,51 @@ export default function CatalogBrowser({
     return `/shop?${query}`;
   }
 
+  const rangeStart = Math.min(min, max);
+  const rangeEnd = Math.max(min, max);
+  const left = (rangeStart / PRICE_CEILING) * 100;
+  const right = 100 - (rangeEnd / PRICE_CEILING) * 100;
+
   const filterPanel = (
     <div className="zm-filter-card">
       <div className="zm-filter-head">
         <strong>Filters</strong>
         <Link href={clearHref} onClick={() => setOpen(false)}>Clear all</Link>
       </div>
+      <details open className="zm-price-details">
+        <summary>Price</summary>
+        <div className="zm-price-range">
+          <div className="zm-price-range-values">
+            <span>Rs {rangeStart.toLocaleString()}</span>
+            <span>{rangeEnd >= PRICE_CEILING ? `Rs ${PRICE_CEILING.toLocaleString()}+` : `Rs ${rangeEnd.toLocaleString()}`}</span>
+          </div>
+          <div className="zm-price-range-track" style={{ "--range-left": `${left}%`, "--range-right": `${right}%` } as CSSProperties}>
+            <span />
+            <input
+              aria-label="Minimum price"
+              type="range"
+              min="0"
+              max={PRICE_CEILING}
+              step={PRICE_STEP}
+              value={rangeStart}
+              onChange={(event) => setMin(Math.min(Number(event.target.value), rangeEnd - PRICE_STEP))}
+              onPointerUp={(event) => applyPrice(Number(event.currentTarget.value), max)}
+              onKeyUp={(event) => applyPrice(Number(event.currentTarget.value), max)}
+            />
+            <input
+              aria-label="Maximum price"
+              type="range"
+              min="0"
+              max={PRICE_CEILING}
+              step={PRICE_STEP}
+              value={rangeEnd}
+              onChange={(event) => setMax(Math.max(Number(event.target.value), rangeStart + PRICE_STEP))}
+              onPointerUp={(event) => applyPrice(min, Number(event.currentTarget.value))}
+              onKeyUp={(event) => applyPrice(min, Number(event.currentTarget.value))}
+            />
+          </div>
+        </div>
+      </details>
       <details open>
         <summary>Category</summary>
         <div className="zm-filter-category-list">
@@ -98,16 +135,6 @@ export default function CatalogBrowser({
             </Link>
           ))}
         </div>
-      </details>
-      <details open>
-        <summary>Price</summary>
-        <form className="zm-price-filter" onSubmit={applyPrice}>
-          <div>
-            <label><span>Min</span><input inputMode="numeric" type="number" min="0" placeholder="Rs 0" value={min} onChange={(event) => setMin(event.target.value)} /></label>
-            <label><span>Max</span><input inputMode="numeric" type="number" min="0" placeholder="Rs 10,000+" value={max} onChange={(event) => setMax(event.target.value)} /></label>
-          </div>
-          <button type="submit">Apply price</button>
-        </form>
       </details>
       <details open>
         <summary>Availability</summary>

@@ -101,6 +101,7 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const q = String(data.get("q") || "").trim();
+    window.dispatchEvent(new Event("zelvo:route-start"));
     router.push(q ? `/shop?q=${encodeURIComponent(q)}` : "/shop");
     setMobileSearch(false);
     setMobileOpen(false);
@@ -138,30 +139,6 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
 
         {mobileSearch ? <div className="site-shell mock-mobile-search"><form onSubmit={submitSearch}><SearchIcon size={18}/><input autoFocus name="q" placeholder="Search products..."/><button type="submit">→</button></form></div> : null}
 
-        <div className="mock-header-nav-wrap">
-          <div className="site-shell mock-header-nav">
-            <nav className="mock-desktop-category-nav" aria-label="Product categories">
-              {orderedCategories.map((category) => {
-                const Icon = categoryIcons[category.slug] || HomeCategoryIcon;
-                return (
-                  <Link key={category.id} href={`/product-category/${category.slug}/`}>
-                    <Icon size={17} />
-                    <span>{category.displayName}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        </div>
-
-        <div className="mock-mobile-category-strip" aria-label="Browse categories">
-          {orderedCategories.slice(0, 6).map((category) => (
-            <Link key={category.id} href={`/product-category/${category.slug}/`}>
-              <span className="mock-mobile-cat-image"><Image src={category.image} alt="" fill sizes="58px" unoptimized={category.image.startsWith("/images/")} /></span>
-              <small>{category.displayName}</small>
-            </Link>
-          ))}
-        </div>
       </header>
 
       <div className={`mock-mobile-drawer ${mobileOpen ? "is-open" : ""}`}>

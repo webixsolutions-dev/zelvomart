@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import ProductGrid from "@/components/ProductGrid";
-import TrustStrip from "@/components/TrustStrip";
 import Faq from "@/components/Faq";
 import HomeVideoShowcase from "@/components/HomeVideoShowcase";
 import HomeBannerCarousel from "@/components/HomeBannerCarousel";
@@ -81,7 +80,7 @@ export default async function HomePage() {
     <div className="mock-home">
       <HomeBannerCarousel whatsapp={whatsapp} />
 
-      <section className="site-shell mock-home-trust"><TrustStrip /></section>
+      
 
       <section className="site-shell mock-home-section">
         <div className="mock-section-head">

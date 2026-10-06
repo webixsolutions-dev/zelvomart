@@ -226,14 +226,27 @@ app.get('/api/categories', async (_req, res) => {
 app.get('/api/products', async (req, res) => {
   if (String(req.query.search || '').trim() && !(await allowRequest(req, res, 'search', 60, 60 * 1000))) return;
   const page = Math.max(1, Number(req.query.page || 1)); const limit = Math.min(100, Math.max(1, Number(req.query.limit || 12)));
-  const search = String(req.query.search || '').trim(); const category = String(req.query.category || '').trim(); const sort = String(req.query.sort || 'newest');
+  const search = String(req.query.search || '').trim(); const category = String(req.query.category || '').trim(); const sort = String(req.query.sort || 'popular');
   const featured = String(req.query.featured || '') === 'true';
+  const minPriceRaw = Number(req.query.minPrice); const maxPriceRaw = Number(req.query.maxPrice);
+  const minPrice = Number.isFinite(minPriceRaw) && minPriceRaw >= 0 ? minPriceRaw : undefined;
+  const maxPrice = Number.isFinite(maxPriceRaw) && maxPriceRaw >= 0 ? maxPriceRaw : undefined;
+  const availability = String(req.query.availability || '').trim();
   setPublicCache(res, 60, 300, ['products', ...(category ? [`category:${category}`] : []), ...(featured ? ['featured-products'] : [])]);
+  const andFilters: Prisma.ProductWhereInput[] = [];
+  if (minPrice != null || maxPrice != null) {
+    const bounds: any = { ...(minPrice != null ? { gte: minPrice } : {}), ...(maxPrice != null ? { lte: maxPrice } : {}) };
+    andFilters.push({ OR: [{ salePrice: { not: null, ...bounds } }, { salePrice: null, price: bounds }] });
+  }
+  if (availability === 'instock') {
+    andFilters.push({ OR: [{ stock: { gt: 0 } }, { variants: { some: { active: true, stock: { gt: 0 } } } }] });
+  }
   const where: Prisma.ProductWhereInput = {
     status: 'PUBLISHED', ...(featured ? { featured: true } : {}), ...(category ? { category: { slug: category } } : {}),
-    ...(search ? { OR: [{ title: { contains: search, mode: 'insensitive' } }, { sku: { contains: search, mode: 'insensitive' } }, { category: { name: { contains: search, mode: 'insensitive' } } }] } : {})
+    ...(search ? { OR: [{ title: { contains: search, mode: 'insensitive' } }, { sku: { contains: search, mode: 'insensitive' } }, { category: { name: { contains: search, mode: 'insensitive' } } }] } : {}),
+    ...(andFilters.length ? { AND: andFilters } : {})
   };
-  const orderBy: Prisma.ProductOrderByWithRelationInput[] = sort === 'price-asc' ? [{ salePrice:'asc' },{ price:'asc' }] : sort === 'price-desc' ? [{ salePrice:'desc' },{ price:'desc' }] : [{ createdAt:'desc' }];
+  const orderBy: Prisma.ProductOrderByWithRelationInput[] = sort === 'price-asc' ? [{ salePrice:'asc' },{ price:'asc' }] : sort === 'price-desc' ? [{ salePrice:'desc' },{ price:'desc' }] : sort === 'newest' ? [{ createdAt:'desc' }] : [{ orderItems: { _count: 'desc' } }, { createdAt:'desc' }];
   const [rows,total] = await Promise.all([prisma.product.findMany({ where, select: productListSelect, orderBy, skip:(page-1)*limit, take:limit }), prisma.product.count({ where })]);
   res.json({ items: rows.map(jsonProductSummary), page, limit, total, totalPages: Math.max(1, Math.ceil(total/limit)) });
 });
@@ -456,17 +469,64 @@ app.post('/api/session-replays/chunk', async (req,res) => {
   if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!Number.isInteger(sequence)||sequence<0||events.length<1||events.length>100) return res.status(400).json({error:'INVALID_REPLAY_CHUNK'});
   const currentUrl=String(req.body.currentUrl||'').slice(0,4000);
   const now=new Date();
-  await prisma.$transaction(async(tx)=>{
-    await tx.sessionReplay.upsert({where:{id:sessionId},update:{lastSeenAt:now,lastUrl:currentUrl||undefined},create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}});
-    const existing=await tx.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId,sequence}},select:{id:true,eventCount:true}});
-    if(existing){
-      await tx.sessionReplayChunk.update({where:{id:existing.id},data:{events:events as Prisma.InputJsonValue,eventCount:events.length}});
-      await tx.sessionReplay.update({where:{id:sessionId},data:{lastSeenAt:now,lastUrl:currentUrl||undefined,eventCount:{increment:events.length-existing.eventCount}}});
+  const replayTouch={lastSeenAt:now,...(currentUrl?{lastUrl:currentUrl}:{})};
+
+  const createFreshChunk=()=>prisma.$transaction([
+    prisma.sessionReplayChunk.create({
+      data:{sessionId,sequence,events:events as Prisma.InputJsonValue,eventCount:events.length}
+    }),
+    prisma.sessionReplay.update({
+      where:{id:sessionId},
+      data:{...replayTouch,eventCount:{increment:events.length},chunkCount:{increment:1}}
+    })
+  ]);
+
+  try{
+    // Array/batch transactions do not use Prisma's 5s interactive transaction callback,
+    // which removes the P2028 timeout seen on slower remote PostgreSQL connections.
+    await createFreshChunk();
+  }catch(error:any){
+    const code=String(error?.code||'');
+
+    if(code==='P2002'){
+      // Same sequence was retried. Replace the chunk without double-counting events.
+      const existing=await prisma.sessionReplayChunk.findUnique({
+        where:{sessionId_sequence:{sessionId,sequence}},
+        select:{eventCount:true}
+      });
+      const eventDelta=events.length-(existing?.eventCount||0);
+      await prisma.$transaction([
+        prisma.sessionReplayChunk.update({
+          where:{sessionId_sequence:{sessionId,sequence}},
+          data:{events:events as Prisma.InputJsonValue,eventCount:events.length}
+        }),
+        prisma.sessionReplay.update({
+          where:{id:sessionId},
+          data:{...replayTouch,...(eventDelta!==0?{eventCount:{increment:eventDelta}}:{})}
+        })
+      ]);
+    }else if(code==='P2025'||code==='P2003'){
+      // Defensive fallback if a chunk wins the race against the /start request.
+      await prisma.sessionReplay.upsert({
+        where:{id:sessionId},
+        update:replayTouch,
+        create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}
+      });
+      try{
+        await createFreshChunk();
+      }catch(retryError:any){
+        if(String(retryError?.code||'')!=='P2002') throw retryError;
+        const existing=await prisma.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId,sequence}},select:{eventCount:true}});
+        const eventDelta=events.length-(existing?.eventCount||0);
+        await prisma.$transaction([
+          prisma.sessionReplayChunk.update({where:{sessionId_sequence:{sessionId,sequence}},data:{events:events as Prisma.InputJsonValue,eventCount:events.length}}),
+          prisma.sessionReplay.update({where:{id:sessionId},data:{...replayTouch,...(eventDelta!==0?{eventCount:{increment:eventDelta}}:{})}})
+        ]);
+      }
     }else{
-      await tx.sessionReplayChunk.create({data:{sessionId,sequence,events:events as Prisma.InputJsonValue,eventCount:events.length}});
-      await tx.sessionReplay.update({where:{id:sessionId},data:{lastSeenAt:now,lastUrl:currentUrl||undefined,eventCount:{increment:events.length},chunkCount:{increment:1}}});
+      throw error;
     }
-  });
+  }
   res.json({ok:true});
 });
 
