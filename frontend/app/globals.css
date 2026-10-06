@@ -9117,3 +9117,126 @@ a:hover,button:hover{transform:translateY(-1px)}
   .zm-filter-drawer-top{min-height:40px !important;}
   .zm-filter-card details{padding:8px 0 !important;}
 }
+
+/* Compact restored desktop category navigation */
+@media (min-width: 769px) {
+  .mock-header-nav-wrap { border-top: 1px solid #edf1f4; }
+  .mock-header-nav { height: 38px !important; min-height: 38px; }
+  .mock-desktop-category-nav {
+    width: 100%;
+    gap: 8px !important;
+    justify-content: space-between !important;
+    overflow: visible;
+  }
+  .mock-desktop-category-nav a {
+    padding: 7px 5px !important;
+    gap: 6px !important;
+    font-size: 11px !important;
+    line-height: 1.1;
+  }
+  .mock-desktop-category-nav a svg { width: 14px; height: 14px; }
+}
+
+/* 2026-10-07 — RAR-matched How It Works step artwork */
+.mock-step-grid article > .mock-step-icon{
+  width:46px!important;
+  height:46px!important;
+  border-radius:12px!important;
+  background:#eaf7fc!important;
+  display:grid!important;
+  place-items:center!important;
+  overflow:hidden;
+}
+.mock-step-grid article > .mock-step-icon img{
+  width:38px!important;
+  height:38px!important;
+  object-fit:contain!important;
+}
+.mock-step-grid article.dark > .mock-step-icon{
+  background:#f3fbfe!important;
+}
+.mock-step-grid article h3{
+  margin-top:18px!important;
+}
+@media (max-width:760px){
+  .mock-step-grid article > .mock-step-icon{
+    width:42px!important;
+    height:42px!important;
+  }
+  .mock-step-grid article > .mock-step-icon img{
+    width:34px!important;
+    height:34px!important;
+  }
+}
+
+
+/* 2026-10-07 — restore category navigation + show category editorial artwork */
+@media (min-width: 769px) {
+  .mock-header-nav-wrap {
+    display: block !important;
+    border-top: 1px solid #edf1f4 !important;
+    border-bottom: 1px solid #edf1f4 !important;
+  }
+  .mock-header-nav {
+    height: 38px !important;
+    min-height: 38px !important;
+  }
+  .mock-desktop-category-nav {
+    display: flex !important;
+    width: 100% !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    overflow: visible !important;
+  }
+  .mock-desktop-category-nav a {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 6px 4px !important;
+    font-size: 10.5px !important;
+    line-height: 1.05 !important;
+  }
+  .mock-desktop-category-nav a svg {
+    width: 13px !important;
+    height: 13px !important;
+    flex: none !important;
+  }
+}
+
+/* The later generic child rule was overriding position:absolute on this image layer. */
+.mock-editorial .mock-editorial-img {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+.mock-editorial .mock-editorial-img img {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+}
+.mock-editorial:after {
+  z-index: 1 !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.03) 20%, rgba(255,255,255,.16) 50%, rgba(7,25,38,.38) 100%) !important;
+}
+.mock-editorial > span,
+.mock-editorial > h3,
+.mock-editorial > b {
+  position: relative !important;
+  z-index: 2 !important;
+}
+.mock-editorial > span,
+.mock-editorial > h3 {
+  color: #fff !important;
+  text-shadow: 0 2px 12px rgba(0,0,0,.4) !important;
+}
+.mock-editorial > b {
+  color: #102b3a !important;
+  background: rgba(255,255,255,.94) !important;
+}

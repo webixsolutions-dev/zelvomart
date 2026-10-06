@@ -113,7 +113,6 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
         <div className="site-shell mock-topbar-inner">
           <span>▱&nbsp; Free delivery across Pakistan</span>
           <span>▣&nbsp; Cash on Delivery — pay when it arrives</span>
-          <span>↻&nbsp; Easy exchange</span>
           <a href={`tel:${phone.replace(/\D/g, "")}`}><WhatsAppIcon size={14} /> {phone}</a>
         </div>
       </div>
@@ -139,6 +138,21 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
 
         {mobileSearch ? <div className="site-shell mock-mobile-search"><form onSubmit={submitSearch}><SearchIcon size={18}/><input autoFocus name="q" placeholder="Search products..."/><button type="submit">→</button></form></div> : null}
 
+        <div className="mock-header-nav-wrap">
+          <div className="site-shell mock-header-nav">
+            <nav className="mock-desktop-category-nav" aria-label="Product categories">
+              {orderedCategories.map((category) => {
+                const CategoryIcon = categoryIcons[category.slug] || HomeCategoryIcon;
+                return (
+                  <Link key={category.id} href={`/product-category/${category.slug}/`}>
+                    <CategoryIcon size={14} />
+                    <span>{category.displayName}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
       </header>
 
       <div className={`mock-mobile-drawer ${mobileOpen ? "is-open" : ""}`}>

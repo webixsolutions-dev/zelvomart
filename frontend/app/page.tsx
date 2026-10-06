@@ -90,14 +90,14 @@ export default async function HomePage() {
         <div className="mock-category-showcase">
           {first ? (
             <Link href={`/product-category/${first.slug}/`} className="mock-category-feature">
-              <Image src={first.image || categoryFallbacks[first.slug] || "/images/hero/zelvomart-hero.webp"} alt={first.name} fill sizes="(max-width:700px) 100vw, 40vw" />
+              <Image src={categoryFallbacks[first.slug] || first.image || "/images/hero/zelvomart-hero.webp"} alt={first.name} fill sizes="(max-width:700px) 100vw, 40vw" />
               <span>FEATURED COLLECTION</span><h3>{first.name}</h3><b>Explore →</b>
             </Link>
           ) : null}
           <div className="mock-category-minis">
             {cards.slice(1).map((category) => (
               <Link key={category.id} href={`/product-category/${category.slug}/`}>
-                <div><Image src={category.image || categoryFallbacks[category.slug] || "/images/hero/zelvomart-hero.webp"} alt={category.name} fill sizes="220px" /></div>
+                <div><Image src={categoryFallbacks[category.slug] || category.image || "/images/hero/zelvomart-hero.webp"} alt={category.name} fill sizes="220px" /></div>
                 <b>{category.name}</b><span>→</span>
               </Link>
             ))}
@@ -139,7 +139,7 @@ export default async function HomePage() {
               className={`mock-editorial ${index === 0 ? "pink" : index === 1 ? "blue" : "cream"}`}
             >
               <div className="mock-editorial-img">
-                <Image src={category.image || categoryFallbacks[category.slug] || "/images/hero/zelvomart-hero.webp"} alt={category.name} fill sizes="(max-width:900px) 100vw, 33vw" />
+                <Image src={categoryFallbacks[category.slug] || category.image || "/images/hero/zelvomart-hero.webp"} alt={category.name} fill sizes="(max-width:900px) 100vw, 33vw" />
               </div>
               <span>{index === 0 ? "THE STYLE EDIT" : index === 1 ? "THE TECH EDIT" : "EVERYDAY PICKS"}</span>
               <h3>{category.description || category.name}</h3>
@@ -156,10 +156,10 @@ export default async function HomePage() {
         <div className="site-shell">
           <span className="mock-eyebrow">HOW IT WORKS</span><h2>Order in a minute. Pay when it arrives.</h2>
           <div className="mock-step-grid">
-            <article><b>01</b><span>▣</span><h3>Choose</h3><p>Pick the product that works for you.</p></article>
-            <article><b>02</b><span>✓</span><h3>Confirm</h3><p>Enter delivery details and place your order.</p></article>
-            <article><b>03</b><span>▱</span><h3>Delivered</h3><p>We pack carefully and send it your way.</p></article>
-            <article className="dark"><b>04</b><span>₨</span><h3>Pay cash</h3><p>Pay when your parcel arrives.</p></article>
+            <article><b>01</b><span className="mock-step-icon"><Image src="/images/order-steps/01-choose.svg" alt="Choose a product" width={38} height={38} /></span><h3>Choose</h3><p>Pick the product that works for you.</p></article>
+            <article><b>02</b><span className="mock-step-icon"><Image src="/images/order-steps/02-confirm.svg" alt="Confirm your order" width={38} height={38} /></span><h3>Confirm</h3><p>Enter delivery details and place your order.</p></article>
+            <article><b>03</b><span className="mock-step-icon"><Image src="/images/order-steps/03-checked-packed.svg" alt="Order checked and packed" width={38} height={38} /></span><h3>Checked &amp; packed</h3><p>We check and pack your order carefully before dispatch.</p></article>
+            <article className="dark"><b>04</b><span className="mock-step-icon"><Image src="/images/order-steps/04-delivered-pay-cash.svg" alt="Delivered and paid with cash" width={38} height={38} /></span><h3>Delivered &amp; pay cash</h3><p>Receive your parcel and pay Cash on Delivery.</p></article>
           </div>
         </div>
       </section>
