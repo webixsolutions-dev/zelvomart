@@ -1,58 +1,63 @@
-import Link from "next/link";
-
 type VideoCard = {
   title: string;
   url?: string;
   poster?: string;
-  subtitle?: string;
 };
 
-export default function HomeVideoShowcase({
-  title = "Watch it before you buy it",
-  copy = "Short product videos make it easier to see the size, finish and real-life feel before you order.",
-  videos,
-}: {
-  title?: string;
-  copy?: string;
-  videos: VideoCard[];
-}) {
+function youtubeEmbed(url?: string) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("youtu.be")) return `https://www.youtube.com/embed/${parsed.pathname.replace(/^\//, "")}`;
+    if (parsed.hostname.includes("youtube.com")) {
+      const shorts = parsed.pathname.match(/\/shorts\/([^/?]+)/)?.[1];
+      const watch = parsed.searchParams.get("v");
+      const embed = parsed.pathname.match(/\/embed\/([^/?]+)/)?.[1];
+      const id = shorts || watch || embed;
+      return id ? `https://www.youtube.com/embed/${id}` : "";
+    }
+  } catch {}
+  return "";
+}
+
+function isDirectVideo(url?: string) {
+  return Boolean(url && /\.(mp4|webm|ogg)(\?.*)?$/i.test(url));
+}
+
+export default function HomeVideoShowcase({ videos }: { videos: VideoCard[] }) {
   if (!videos.length) return null;
 
   return (
-    <section className="section section-soft mock-video-section">
+    <section className="zm-shorts-section">
       <div className="site-shell">
-        <div className="section-title mock-video-section-title">
-          <div>
-            <h2>{title}</h2>
-            <p>{copy}</p>
-          </div>
-          <span>Video links can be updated anytime.</span>
+        <div className="zm-shorts-heading">
+          <h2>See Zelvomart products in action</h2>
+          <p>Discover handpicked essentials across our most popular categories.</p>
         </div>
-
-        <div className="mock-video-grid" data-no-motion="true">
-          {videos.map((video) => {
-            const href = video.url || "#";
-            const card = (
-              <>
-                <div className="mock-video-poster" style={video.poster ? { backgroundImage: `url(${video.poster})` } : undefined}>
-                  <span className="mock-video-play">▶</span>
-                  <small>{video.url ? "Short video" : "Video link coming soon"}</small>
-                </div>
-                <div className="mock-video-copy">
-                  <strong>{video.title}</strong>
-                  {video.subtitle ? <p>{video.subtitle}</p> : null}
-                </div>
-              </>
-            );
-
-            return video.url ? (
-              <Link key={video.title} href={href} className="mock-video-card" target="_blank" rel="noreferrer">
-                {card}
-              </Link>
-            ) : (
-              <div key={video.title} className="mock-video-card is-placeholder">
-                {card}
-              </div>
+        <div className="zm-shorts-row" data-no-motion="true">
+          {videos.slice(0, 5).map((video, index) => {
+            const embed = youtubeEmbed(video.url);
+            return (
+              <article className="zm-short-card" key={`${video.title}-${index}`} aria-label={video.title}>
+                {embed ? (
+                  <iframe
+                    src={`${embed}?rel=0&modestbranding=1`}
+                    title={video.title}
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                ) : isDirectVideo(video.url) ? (
+                  <video controls playsInline preload="metadata" poster={video.poster || undefined}>
+                    <source src={video.url} />
+                  </video>
+                ) : (
+                  <div className="zm-short-placeholder" style={video.poster ? { backgroundImage: `url(${video.poster})` } : undefined}>
+                    <span className="zm-short-play">▶</span>
+                    <small>{video.title}</small>
+                  </div>
+                )}
+              </article>
             );
           })}
         </div>

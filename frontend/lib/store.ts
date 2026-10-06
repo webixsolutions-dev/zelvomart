@@ -44,7 +44,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   }
 }
 
-export async function getProducts(options: { category?: string; search?: string; page?: number; limit?: number; sort?: 'newest'|'price-asc'|'price-desc'; featured?: boolean } = {}): Promise<ProductListResponse> {
+export async function getProducts(options: { category?: string; search?: string; page?: number; limit?: number; sort?: 'popular'|'newest'|'price-asc'|'price-desc'; featured?: boolean; minPrice?: number; maxPrice?: number; availability?: 'instock' } = {}): Promise<ProductListResponse> {
   const p = new URLSearchParams();
   if (options.category) p.set('category', options.category);
   if (options.search) p.set('search', options.search);
@@ -52,6 +52,9 @@ export async function getProducts(options: { category?: string; search?: string;
   if (options.limit) p.set('limit', String(options.limit));
   if (options.sort) p.set('sort', options.sort);
   if (options.featured) p.set('featured', 'true');
+  if (options.minPrice != null) p.set('minPrice', String(options.minPrice));
+  if (options.maxPrice != null) p.set('maxPrice', String(options.maxPrice));
+  if (options.availability) p.set('availability', options.availability);
 
   const tags = ['products'];
   if (options.category) tags.push(`category:${options.category}`);

@@ -42,6 +42,7 @@ export default function SiteChrome({
         {clarity}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
         <CartProvider>
+          <RouteTransitionOverlay />
           <main className="public-site-main">{children}</main>
           {tracking}
         </CartProvider>
