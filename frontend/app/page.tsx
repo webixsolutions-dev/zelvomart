@@ -3,6 +3,8 @@ import Link from "next/link";
 import ProductGrid from "@/components/ProductGrid";
 import TrustStrip from "@/components/TrustStrip";
 import Faq from "@/components/Faq";
+import HomeVideoShowcase from "@/components/HomeVideoShowcase";
+import FeatureVideoSection from "@/components/FeatureVideoSection";
 import { getProductBySlug, getProducts, getStoreBootstrap } from "@/lib/store";
 import { getProductFallbackImage } from "@/lib/product-media";
 import type { Category, Product } from "@/types/product";
@@ -67,6 +69,15 @@ export default async function HomePage() {
 
   const storeInfo = (bootstrap.settings["store.info"] || {}) as { whatsapp?: string };
   const whatsapp = String(storeInfo.whatsapp || "923002026711").replace(/[^0-9]/g, "");
+
+  const shortVideos = detailedReviewProducts.slice(0, 5).map((product) => ({
+    title: product.name,
+    subtitle: product.shortDescription || product.categories?.[0]?.name || "Zelvomart video preview",
+    poster: product.image || getProductFallbackImage(product),
+    url: "",
+  }));
+
+  const featureVideoPoster = products[1]?.image || products[0]?.image || "/images/hero/zelvomart-hero.webp";
 
   return (
     <div className="mock-home">
@@ -144,10 +155,6 @@ export default async function HomePage() {
           <div><span className="mock-eyebrow">BESTSELLERS</span><h2>Our most-ordered right now.</h2></div>
           <Link href="/bestsellers">Shop all bestsellers →</Link>
         </div>
-        <div className="mock-product-tabs">
-          <span className="active">All</span>
-          {categories.slice(0, 4).map((category) => <span key={category.id}>{category.name}</span>)}
-        </div>
         <ProductGrid products={products.slice(0, 8)} />
       </section>
 
@@ -186,6 +193,19 @@ export default async function HomePage() {
           ))}
         </section>
       ) : null}
+
+      <HomeVideoShowcase
+        title="Shop through quick videos"
+        copy="A simple short-video strip is ready here. As soon as you share the final links, we can plug them in without changing the layout."
+        videos={shortVideos}
+      />
+
+      <FeatureVideoSection
+        title="One featured product story can live here."
+        copy="This block is ready for a featured reel, unboxing clip or product demo. Add your video link later and this section will instantly become clickable."
+        poster={featureVideoPoster}
+        points={["Perfect for a featured reel or unboxing video", "Balanced text + video layout for trust", "Easy to update with your final video URL"]}
+      />
 
       {detailedReviewProducts.length ? (
         <section className="site-shell mock-review-section">

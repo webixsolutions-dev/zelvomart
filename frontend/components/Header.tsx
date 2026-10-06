@@ -2,10 +2,24 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import type { ComponentType, FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandLogo from "@/components/BrandLogo";
-import { CartIcon, HeartIcon, MenuIcon, SearchIcon, WhatsAppIcon, XIcon } from "@/components/Icons";
+import {
+  BeautyCategoryIcon,
+  CartIcon,
+  DecorCategoryIcon,
+  FashionCategoryIcon,
+  HomeCategoryIcon,
+  KidsCategoryIcon,
+  MenuIcon,
+  SearchIcon,
+  TechCategoryIcon,
+  WhatsAppIcon,
+  XIcon,
+  SportsCategoryIcon,
+} from "@/components/Icons";
 import { useCart } from "@/components/CartProvider";
 import type { Category } from "@/types/product";
 
@@ -14,9 +28,9 @@ const CATEGORY_ORDER = [
   "Home Decor",
   "Beauty & Personal Care",
   "Tech & Gadgets",
-  "Kids & Toys",
   "Fashion Accessories",
   "Sports & Fitness",
+  "Kids & Toys",
 ];
 
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -30,8 +44,8 @@ const CATEGORY_IMAGES: Record<string, string> = {
 };
 
 const SHORT_LABELS: Record<string, string> = {
-  "Beauty & Personal Care": "Beauty & Care",
-  "Fashion Accessories": "Fashion",
+  "Beauty & Personal Care": "Beauty & Personal Care",
+  "Fashion Accessories": "Fashion Accessories",
 };
 
 const normalize = (value: string) => value.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").trim();
@@ -43,9 +57,16 @@ function PackageIcon() {
 function HelpIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.8 1.9c-.9.6-1.6 1-1.6 2.1M12 17h.01"/></svg>;
 }
-function GiftIcon() {
-  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M7.5 8C5 8 4.5 4 7 4c2.2 0 5 4 5 4s2.8-4 5-4c2.5 0 2 4-.5 4"/></svg>;
-}
+
+const categoryIcons: Record<string, ComponentType<{ size?: number; className?: string }>> = {
+  "home-living": HomeCategoryIcon,
+  "home-decor": DecorCategoryIcon,
+  "beauty-personal-care": BeautyCategoryIcon,
+  "tech-gadgets": TechCategoryIcon,
+  "fashion-accessories": FashionCategoryIcon,
+  "sports-fitness": SportsCategoryIcon,
+  "kids-toys": KidsCategoryIcon,
+};
 
 export default function Header({ categories, phone = "0300-2026711" }: { categories: Category[]; announcementItems?: string[]; phone?: string }) {
   const router = useRouter();
@@ -110,7 +131,6 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
           <div className="mock-header-actions">
             <Link href="/track-order"><PackageIcon/><span>Track order</span></Link>
             <Link href="/contact-us"><HelpIcon/><span>Help</span></Link>
-            <Link href="/shop" aria-label="Wishlist"><HeartIcon size={19}/></Link>
             <button type="button" onClick={() => setOpen(true)} className="mock-cart-button" aria-label="Open cart"><CartIcon size={20}/><b>{totalItems}</b></button>
             <button type="button" className="mock-mobile-icon mock-search-toggle" onClick={() => setMobileSearch((v) => !v)} aria-label="Search"><SearchIcon size={20}/></button>
           </div>
@@ -121,12 +141,15 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
         <div className="mock-header-nav-wrap">
           <div className="site-shell mock-header-nav">
             <nav className="mock-desktop-category-nav" aria-label="Product categories">
-              {orderedCategories.map((category) => <Link key={category.id} href={`/product-category/${category.slug}/`}>{category.displayName}</Link>)}
-            </nav>
-            <nav className="mock-header-special-links">
-              <Link href="/new-in">New in</Link>
-              <Link href="/bestsellers">Bestsellers</Link>
-              <Link className="mock-gift-link" href="/shop?gift=1"><GiftIcon/>Gift sets</Link>
+              {orderedCategories.map((category) => {
+                const Icon = categoryIcons[category.slug] || HomeCategoryIcon;
+                return (
+                  <Link key={category.id} href={`/product-category/${category.slug}/`}>
+                    <Icon size={17} />
+                    <span>{category.displayName}</span>
+                  </Link>
+                );
+              })}
             </nav>
           </div>
         </div>
@@ -150,7 +173,7 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
           <nav className="mock-drawer-categories">
             {orderedCategories.map((category) => <Link key={category.id} href={`/product-category/${category.slug}/`} onClick={() => setMobileOpen(false)}><span className="mock-mobile-cat-image"><Image src={category.image} alt="" fill sizes="46px" unoptimized={category.image.startsWith("/images/")} /></span><span>{category.displayName}</span><i>→</i></Link>)}
           </nav>
-          <nav className="mock-drawer-links"><Link href="/new-in" onClick={() => setMobileOpen(false)}>New in</Link><Link href="/bestsellers" onClick={() => setMobileOpen(false)}>Bestsellers</Link><Link href="/shop?gift=1" onClick={() => setMobileOpen(false)}>Gift sets</Link><Link href="/track-order" onClick={() => setMobileOpen(false)}>Track order</Link><Link href="/contact-us" onClick={() => setMobileOpen(false)}>Help & contact</Link></nav>
+          <nav className="mock-drawer-links"><Link href="/new-in" onClick={() => setMobileOpen(false)}>New in</Link><Link href="/bestsellers" onClick={() => setMobileOpen(false)}>Bestsellers</Link><Link href="/track-order" onClick={() => setMobileOpen(false)}>Track order</Link><Link href="/contact-us" onClick={() => setMobileOpen(false)}>Help & contact</Link></nav>
         </aside>
       </div>
     </>

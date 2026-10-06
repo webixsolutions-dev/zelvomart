@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { HeartIcon, PlusIcon } from "@/components/Icons";
+import { PlusIcon } from "@/components/Icons";
 import { useCart } from "@/components/CartProvider";
 import { money } from "@/lib/format";
 import type { Product } from "@/types/product";
@@ -34,11 +34,9 @@ export default function ProductCard({ product }: { product: Product }) {
           <Image src={imageSrc} alt={product.name} fill sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, 25vw" onError={()=>{if(imageSrc!==fallbackImage)setImageSrc(fallbackImage)}} />
         </Link>
         {product.featured ? <span className="mock-product-badge">Bestseller</span> : product.discountPercent > 0 ? <span className="mock-product-badge gift">Gift-ready</span> : null}
-        <button type="button" className="mock-product-heart" aria-label="Save product"><HeartIcon size={17}/></button>
         {addable ? <button type="button" className="mock-product-add" onClick={add} aria-label={`Add ${product.name} to cart`}><PlusIcon size={20}/></button> : <Link className="mock-product-add" href={`/product/${product.slug}/`} aria-label="Choose options"><PlusIcon size={20}/></Link>}
       </div>
       <div className="mock-product-copy">
-        <span className="mock-product-category">{product.categories[0]?.name || "Zelvomart"}</span>
         <Link href={`/product/${product.slug}/`} className="mock-product-title">{product.name}</Link>
         <div className="mock-product-rating">★ <b>{rating ? rating.toFixed(1) : "4.8"}</b> <span>({reviewCount || Math.max(8, Math.round(product.stockQuantity || 14))})</span></div>
         <div className="mock-product-price"><strong>{money(product.price)}</strong>{product.onSale ? <del>{money(product.regularPrice)}</del> : null}{save > 0 ? <em>Save {money(save)}</em> : null}</div>

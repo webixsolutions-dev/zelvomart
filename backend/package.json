@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "npm run prisma:generate && tsx watch src/server.ts",
     "build": "prisma generate --schema=prisma/schema.prisma && tsc -p tsconfig.json",
     "start": "node dist/src/server.js",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
