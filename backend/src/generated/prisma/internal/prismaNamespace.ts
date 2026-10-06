@@ -404,6 +404,8 @@ export const ModelName = {
   Page: 'Page',
   Setting: 'Setting',
   User: 'User',
+  StoreUser: 'StoreUser',
+  StoreSession: 'StoreSession',
   AuditLog: 'AuditLog',
   Experiment: 'Experiment',
   Review: 'Review',
@@ -427,7 +429,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "category" | "product" | "variant" | "customer" | "order" | "orderItem" | "orderStatusHistory" | "eventLog" | "sessionReplay" | "sessionReplayChunk" | "job" | "page" | "setting" | "user" | "auditLog" | "experiment" | "review" | "abandonedCheckout" | "city" | "rateLimitBucket" | "sequence" | "redirect"
+    modelProps: "category" | "product" | "variant" | "customer" | "order" | "orderItem" | "orderStatusHistory" | "eventLog" | "sessionReplay" | "sessionReplayChunk" | "job" | "page" | "setting" | "user" | "storeUser" | "storeSession" | "auditLog" | "experiment" | "review" | "abandonedCheckout" | "city" | "rateLimitBucket" | "sequence" | "redirect"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1467,6 +1469,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    StoreUser: {
+      payload: Prisma.$StoreUserPayload<ExtArgs>
+      fields: Prisma.StoreUserFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StoreUserFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StoreUserFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>
+        }
+        findFirst: {
+          args: Prisma.StoreUserFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StoreUserFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>
+        }
+        findMany: {
+          args: Prisma.StoreUserFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>[]
+        }
+        create: {
+          args: Prisma.StoreUserCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>
+        }
+        createMany: {
+          args: Prisma.StoreUserCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StoreUserCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>[]
+        }
+        delete: {
+          args: Prisma.StoreUserDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>
+        }
+        update: {
+          args: Prisma.StoreUserUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>
+        }
+        deleteMany: {
+          args: Prisma.StoreUserDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StoreUserUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StoreUserUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>[]
+        }
+        upsert: {
+          args: Prisma.StoreUserUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreUserPayload>
+        }
+        aggregate: {
+          args: Prisma.StoreUserAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStoreUser>
+        }
+        groupBy: {
+          args: Prisma.StoreUserGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StoreUserGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StoreUserCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StoreUserCountAggregateOutputType> | number
+        }
+      }
+    }
+    StoreSession: {
+      payload: Prisma.$StoreSessionPayload<ExtArgs>
+      fields: Prisma.StoreSessionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StoreSessionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StoreSessionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>
+        }
+        findFirst: {
+          args: Prisma.StoreSessionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StoreSessionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>
+        }
+        findMany: {
+          args: Prisma.StoreSessionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>[]
+        }
+        create: {
+          args: Prisma.StoreSessionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>
+        }
+        createMany: {
+          args: Prisma.StoreSessionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StoreSessionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>[]
+        }
+        delete: {
+          args: Prisma.StoreSessionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>
+        }
+        update: {
+          args: Prisma.StoreSessionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>
+        }
+        deleteMany: {
+          args: Prisma.StoreSessionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StoreSessionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StoreSessionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>[]
+        }
+        upsert: {
+          args: Prisma.StoreSessionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StoreSessionPayload>
+        }
+        aggregate: {
+          args: Prisma.StoreSessionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStoreSession>
+        }
+        groupBy: {
+          args: Prisma.StoreSessionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StoreSessionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StoreSessionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StoreSessionCountAggregateOutputType> | number
+        }
+      }
+    }
     AuditLog: {
       payload: Prisma.$AuditLogPayload<ExtArgs>
       fields: Prisma.AuditLogFieldRefs
@@ -2367,6 +2517,32 @@ export const UserScalarFieldEnum = {
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+export const StoreUserScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  passwordHash: 'passwordHash',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type StoreUserScalarFieldEnum = (typeof StoreUserScalarFieldEnum)[keyof typeof StoreUserScalarFieldEnum]
+
+
+export const StoreSessionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  tokenHash: 'tokenHash',
+  userAgent: 'userAgent',
+  expiresAt: 'expiresAt',
+  lastSeenAt: 'lastSeenAt',
+  createdAt: 'createdAt'
+} as const
+
+export type StoreSessionScalarFieldEnum = (typeof StoreSessionScalarFieldEnum)[keyof typeof StoreSessionScalarFieldEnum]
+
+
 export const AuditLogScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -2820,6 +2996,8 @@ export type GlobalOmitConfig = {
   page?: Prisma.PageOmit
   setting?: Prisma.SettingOmit
   user?: Prisma.UserOmit
+  storeUser?: Prisma.StoreUserOmit
+  storeSession?: Prisma.StoreSessionOmit
   auditLog?: Prisma.AuditLogOmit
   experiment?: Prisma.ExperimentOmit
   review?: Prisma.ReviewOmit

@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { createHash, randomBytes } from 'node:crypto';
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
@@ -46,7 +47,7 @@ function setNoStore(res: express.Response) {
 }
 
 app.use((req, res, next) => {
-  if (/^\/api\/(auth|admin|orders|checkout|reviews|events|session-replays|contact)(?:\/|$)/.test(req.path)) setNoStore(res);
+  if (/^\/api\/(auth|customer-auth|admin|orders|checkout|reviews|events|session-replays|contact)(?:\/|$)/.test(req.path)) setNoStore(res);
   next();
 });
 
@@ -129,6 +130,53 @@ function normalizeTrafficSource(value: unknown) {
   if (raw.includes('tiktok')) return 'tiktok';
   if (raw.includes('youtube')) return 'youtube';
   return raw;
+}
+
+
+const storeDb = prisma as any;
+const STORE_SESSION_DAYS = Math.max(1, Math.min(90, Number(process.env.STORE_SESSION_DAYS || 30)));
+
+function storeTokenHash(token: string) {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function bearerToken(req: express.Request) {
+  const header = String(req.headers.authorization || '');
+  return header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+}
+
+async function createStoreSession(req: express.Request, userId: string) {
+  const token = randomBytes(32).toString('base64url');
+  const expiresAt = new Date(Date.now() + STORE_SESSION_DAYS * 24 * 60 * 60 * 1000);
+  await storeDb.storeSession.create({
+    data: {
+      userId,
+      tokenHash: storeTokenHash(token),
+      expiresAt,
+      userAgent: String(req.headers['user-agent'] || '').slice(0, 500) || null,
+    },
+  });
+  return { token, expiresAt };
+}
+
+async function findStoreSession(req: express.Request) {
+  const token = bearerToken(req);
+  if (!token) return null;
+  const tokenHash = storeTokenHash(token);
+  const session = await storeDb.storeSession.findUnique({
+    where: { tokenHash },
+    include: { user: true },
+  });
+  if (!session || !session.user.active || session.expiresAt.getTime() <= Date.now()) {
+    if (session) await storeDb.storeSession.deleteMany({ where: { id: session.id } }).catch(() => undefined);
+    return null;
+  }
+  void storeDb.storeSession.update({ where: { id: session.id }, data: { lastSeenAt: new Date() } }).catch(() => undefined);
+  return session;
+}
+
+function publicStoreUser(user: { id: string; name: string; email: string; createdAt: Date }) {
+  return { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt };
 }
 
 async function allowRequest(req: express.Request, res: express.Response, namespace: string, limit: number, windowMs: number, discriminator = '') {
@@ -471,63 +519,93 @@ app.post('/api/session-replays/chunk', async (req,res) => {
   const now=new Date();
   const replayTouch={lastSeenAt:now,...(currentUrl?{lastUrl:currentUrl}:{})};
 
-  const createFreshChunk=()=>prisma.$transaction([
-    prisma.sessionReplayChunk.create({
-      data:{sessionId,sequence,events:events as Prisma.InputJsonValue,eventCount:events.length}
-    }),
-    prisma.sessionReplay.update({
+  // Session replay is analytics, so do not hold a Prisma transaction open across
+  // a slow/remote PostgreSQL connection. Each write is independent and retries
+  // are handled by the unique (sessionId, sequence) key. This avoids P2028
+  // transaction-expired/rollback errors while keeping replay chunks idempotent.
+  const ensureReplaySession=async()=>{
+    const touched=await prisma.sessionReplay.updateMany({where:{id:sessionId},data:replayTouch});
+    if(touched.count) return;
+    await prisma.sessionReplay.upsert({
       where:{id:sessionId},
-      data:{...replayTouch,eventCount:{increment:events.length},chunkCount:{increment:1}}
-    })
-  ]);
+      update:replayTouch,
+      create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}
+    });
+  };
 
-  try{
-    // Array/batch transactions do not use Prisma's 5s interactive transaction callback,
-    // which removes the P2028 timeout seen on slower remote PostgreSQL connections.
-    await createFreshChunk();
-  }catch(error:any){
-    const code=String(error?.code||'');
-
-    if(code==='P2002'){
-      // Same sequence was retried. Replace the chunk without double-counting events.
-      const existing=await prisma.sessionReplayChunk.findUnique({
-        where:{sessionId_sequence:{sessionId,sequence}},
-        select:{eventCount:true}
+  const saveChunk=async()=>{
+    try{
+      await prisma.sessionReplayChunk.create({
+        data:{sessionId,sequence,events:events as Prisma.InputJsonValue,eventCount:events.length}
       });
-      const eventDelta=events.length-(existing?.eventCount||0);
-      await prisma.$transaction([
-        prisma.sessionReplayChunk.update({
+      await prisma.sessionReplay.updateMany({
+        where:{id:sessionId},
+        data:{...replayTouch,eventCount:{increment:events.length},chunkCount:{increment:1}}
+      });
+      return;
+    }catch(error:any){
+      const code=String(error?.code||'');
+      if(code==='P2002'){
+        const existing=await prisma.sessionReplayChunk.findUnique({
+          where:{sessionId_sequence:{sessionId,sequence}},
+          select:{eventCount:true}
+        });
+        const previousCount=existing?.eventCount||0;
+        await prisma.sessionReplayChunk.update({
           where:{sessionId_sequence:{sessionId,sequence}},
           data:{events:events as Prisma.InputJsonValue,eventCount:events.length}
-        }),
-        prisma.sessionReplay.update({
+        });
+        const delta=events.length-previousCount;
+        await prisma.sessionReplay.updateMany({
           where:{id:sessionId},
-          data:{...replayTouch,...(eventDelta!==0?{eventCount:{increment:eventDelta}}:{})}
-        })
-      ]);
-    }else if(code==='P2025'||code==='P2003'){
-      // Defensive fallback if a chunk wins the race against the /start request.
-      await prisma.sessionReplay.upsert({
-        where:{id:sessionId},
-        update:replayTouch,
-        create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}
-      });
-      try{
-        await createFreshChunk();
-      }catch(retryError:any){
-        if(String(retryError?.code||'')!=='P2002') throw retryError;
-        const existing=await prisma.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId,sequence}},select:{eventCount:true}});
-        const eventDelta=events.length-(existing?.eventCount||0);
-        await prisma.$transaction([
-          prisma.sessionReplayChunk.update({where:{sessionId_sequence:{sessionId,sequence}},data:{events:events as Prisma.InputJsonValue,eventCount:events.length}}),
-          prisma.sessionReplay.update({where:{id:sessionId},data:{...replayTouch,...(eventDelta!==0?{eventCount:{increment:eventDelta}}:{})}})
-        ]);
+          data:{...replayTouch,...(delta!==0?{eventCount:{increment:delta}}:{})}
+        });
+        return;
       }
-    }else{
+      if(code==='P2003'||code==='P2025'){
+        await ensureReplaySession();
+        try{
+          await prisma.sessionReplayChunk.create({
+            data:{sessionId,sequence,events:events as Prisma.InputJsonValue,eventCount:events.length}
+          });
+          await prisma.sessionReplay.updateMany({
+            where:{id:sessionId},
+            data:{...replayTouch,eventCount:{increment:events.length},chunkCount:{increment:1}}
+          });
+          return;
+        }catch(retryError:any){
+          if(String(retryError?.code||'')!=='P2002') throw retryError;
+          const existing=await prisma.sessionReplayChunk.findUnique({
+            where:{sessionId_sequence:{sessionId,sequence}},
+            select:{eventCount:true}
+          });
+          const previousCount=existing?.eventCount||0;
+          await prisma.sessionReplayChunk.update({
+            where:{sessionId_sequence:{sessionId,sequence}},
+            data:{events:events as Prisma.InputJsonValue,eventCount:events.length}
+          });
+          const delta=events.length-previousCount;
+          await prisma.sessionReplay.updateMany({
+            where:{id:sessionId},
+            data:{...replayTouch,...(delta!==0?{eventCount:{increment:delta}}:{})}
+          });
+          return;
+        }
+      }
       throw error;
     }
+  };
+
+  try{
+    await saveChunk();
+    return res.json({ok:true});
+  }catch(error){
+    // Replay must never break the storefront. Log it for diagnostics but return
+    // an accepted response so a temporary analytics/database issue does not
+    // trigger retry storms from the browser.
+    console.error('session replay chunk write failed', error);
+    return res.status(202).json({ok:false,accepted:true});
   }
-  res.json({ok:true});
 });
 
 app.post('/api/session-replays/end', async (req,res) => {
@@ -536,6 +614,46 @@ app.post('/api/session-replays/end', async (req,res) => {
   const endedAt=new Date(req.body.endedAt||Date.now());
   await prisma.sessionReplay.updateMany({where:{id:sessionId},data:{status:'ENDED',endedAt:Number.isNaN(endedAt.getTime())?new Date():endedAt,lastSeenAt:new Date(),lastUrl:String(req.body.currentUrl||'').slice(0,4000)}});
   res.json({ok:true});
+});
+
+
+app.post('/api/customer-auth/signup', async (req,res) => {
+  const name = String(req.body.name || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+  if (!(await allowRequest(req, res, 'store-signup', 5, 15 * 60 * 1000, email))) return;
+  if (name.length < 2 || name.length > 80) return res.status(400).json({ error: 'INVALID_NAME' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 190) return res.status(400).json({ error: 'INVALID_EMAIL' });
+  if (password.length < 8 || password.length > 128) return res.status(400).json({ error: 'PASSWORD_REQUIREMENTS' });
+  const existing = await storeDb.storeUser.findUnique({ where: { email }, select: { id: true } });
+  if (existing) return res.status(409).json({ error: 'EMAIL_IN_USE' });
+  const user = await storeDb.storeUser.create({
+    data: { name, email, passwordHash: await bcrypt.hash(password, 12) },
+  });
+  const session = await createStoreSession(req, user.id);
+  return res.status(201).json({ token: session.token, expiresAt: session.expiresAt, user: publicStoreUser(user) });
+});
+
+app.post('/api/customer-auth/login', async (req,res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+  if (!(await allowRequest(req, res, 'store-login', 10, 15 * 60 * 1000, email))) return;
+  const user = email ? await storeDb.storeUser.findUnique({ where: { email } }) : null;
+  if (!user?.active || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
+  const session = await createStoreSession(req, user.id);
+  return res.json({ token: session.token, expiresAt: session.expiresAt, user: publicStoreUser(user) });
+});
+
+app.get('/api/customer-auth/me', async (req,res) => {
+  const session = await findStoreSession(req);
+  if (!session) return res.status(401).json({ error: 'UNAUTHORIZED' });
+  return res.json({ user: publicStoreUser(session.user), expiresAt: session.expiresAt });
+});
+
+app.post('/api/customer-auth/logout', async (req,res) => {
+  const token = bearerToken(req);
+  if (token) await storeDb.storeSession.deleteMany({ where: { tokenHash: storeTokenHash(token) } });
+  return res.json({ ok: true });
 });
 
 app.post('/api/auth/login', async (req,res) => {

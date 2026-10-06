@@ -4,6 +4,7 @@ type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 const base = (size = 22) => ({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const });
 
 export function SearchIcon({ size, ...props }: IconProps) { return <svg {...base(size)} {...props}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.7-3.7"/></svg>; }
+export function UserIcon({ size, ...props }: IconProps) { return <svg {...base(size)} {...props}><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>; }
 export function CartIcon({ size, ...props }: IconProps) { return <svg {...base(size)} {...props}><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L20.5 8H6.2"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>; }
 export function MenuIcon({ size, ...props }: IconProps) { return <svg {...base(size)} {...props}><path d="M4 7h16M4 12h16M4 17h16"/></svg>; }
 export function XIcon({ size, ...props }: IconProps) { return <svg {...base(size)} {...props}><path d="m6 6 12 12M18 6 6 18"/></svg>; }

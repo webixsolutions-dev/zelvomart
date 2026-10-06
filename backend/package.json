@@ -14,7 +14,8 @@
     "migrate:wordpress": "tsx scripts/migrate-wordpress.ts",
     "qa:urls": "tsx scripts/check-urls.ts",
     "migrate:urls": "tsx scripts/migration/export-wordpress-urls.ts",
-    "postinstall": "prisma generate --schema=prisma/schema.prisma"
+    "postinstall": "prisma generate --schema=prisma/schema.prisma",
+    "setup": "prisma generate --schema=prisma/schema.prisma && prisma db push --schema=prisma/schema.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.890.0",

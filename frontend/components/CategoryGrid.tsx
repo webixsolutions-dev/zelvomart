@@ -28,7 +28,7 @@ export default function CategoryGrid({ categories }: { categories: Category[] })
             href={`/product-category/${category.slug}/`}
             key={category.id}
           >
-            <div className="premium-category-media">
+            <div className="premium-category-media" style={{ position: "relative" }}>
               {image ? (
                 <Image
                   src={image}

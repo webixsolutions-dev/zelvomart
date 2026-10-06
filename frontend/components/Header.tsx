@@ -10,6 +10,7 @@ import {
   CartIcon,
   MenuIcon,
   SearchIcon,
+  UserIcon,
   WhatsAppIcon,
   XIcon,
 } from "@/components/Icons";
@@ -112,6 +113,7 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
           </form>
 
           <div className="mock-header-actions">
+            <Link href="/account" className="mock-account-link" aria-label="Account"><UserIcon size={19}/><span>Account</span></Link>
             <Link href="/track-order"><PackageIcon/><span>Track order</span></Link>
             <Link href="/contact-us"><HelpIcon/><span>Help</span></Link>
             <button type="button" onClick={() => setOpen(true)} className="mock-cart-button" aria-label="Open cart"><CartIcon size={20}/><b>{totalItems}</b></button>
@@ -126,7 +128,7 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
             <nav className="mock-desktop-category-nav" aria-label="Product categories">
               {orderedCategories.map((category) => (
                 <Link key={category.id} href={`/product-category/${category.slug}/`}>
-                  <span className="mock-header-cat-thumb" aria-hidden="true">
+                  <span className="mock-header-cat-thumb" aria-hidden="true" style={{ position: "relative" }}>
                     <Image
                       src={category.image}
                       alt=""
@@ -150,9 +152,9 @@ export default function Header({ categories, phone = "0300-2026711" }: { categor
           <form className="mock-drawer-search" onSubmit={submitSearch}><SearchIcon size={18}/><input name="q" placeholder="Search products..."/><button>→</button></form>
           <b className="mock-drawer-label">Shop by category</b>
           <nav className="mock-drawer-categories">
-            {orderedCategories.map((category) => <Link key={category.id} href={`/product-category/${category.slug}/`} onClick={() => setMobileOpen(false)}><span className="mock-mobile-cat-image"><Image src={category.image} alt="" fill sizes="46px" unoptimized={category.image.startsWith("/images/")} /></span><span>{category.displayName}</span><i>→</i></Link>)}
+            {orderedCategories.map((category) => <Link key={category.id} href={`/product-category/${category.slug}/`} onClick={() => setMobileOpen(false)}><span className="mock-mobile-cat-image" style={{ position: "relative" }}><Image src={category.image} alt="" fill sizes="46px" unoptimized={category.image.startsWith("/images/")} /></span><span>{category.displayName}</span><i>→</i></Link>)}
           </nav>
-          <nav className="mock-drawer-links"><Link href="/new-in" onClick={() => setMobileOpen(false)}>New in</Link><Link href="/bestsellers" onClick={() => setMobileOpen(false)}>Bestsellers</Link><Link href="/track-order" onClick={() => setMobileOpen(false)}>Track order</Link><Link href="/contact-us" onClick={() => setMobileOpen(false)}>Help & contact</Link></nav>
+          <nav className="mock-drawer-links"><Link href="/account" onClick={() => setMobileOpen(false)}>My Account</Link><Link href="/new-in" onClick={() => setMobileOpen(false)}>New in</Link><Link href="/bestsellers" onClick={() => setMobileOpen(false)}>Bestsellers</Link><Link href="/track-order" onClick={() => setMobileOpen(false)}>Track order</Link><Link href="/contact-us" onClick={() => setMobileOpen(false)}>Help & contact</Link></nav>
         </aside>
       </div>
     </>

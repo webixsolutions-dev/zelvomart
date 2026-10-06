@@ -119,7 +119,7 @@ export default function SessionReplayProvider() {
       }
 
       if (!pending) {
-        const count = Math.min(queue.length, 60);
+        const count = Math.min(queue.length, 100);
         pending = {
           sequence: claimReplaySequence(),
           events: queue.splice(0, count),
@@ -142,7 +142,7 @@ export default function SessionReplayProvider() {
       }
       flushing = false;
 
-      if (ok && queue.length >= 60) {
+      if (ok && queue.length >= 100) {
         window.setTimeout(() => { void flush(false); }, 250);
       }
       return ok;
@@ -176,7 +176,7 @@ export default function SessionReplayProvider() {
             const eventType = Number((event as { type?: number }).type);
             // Full snapshots are valuable and can be large: upload them immediately
             // while the document is still active rather than waiting for unload.
-            if (eventType === 2 || queue.length >= 60) {
+            if (eventType === 2 || queue.length >= 100) {
               void flush(false);
             }
           },
@@ -188,9 +188,9 @@ export default function SessionReplayProvider() {
           inlineImages: false,
           checkoutEveryNms: 30_000,
           sampling: {
-            mousemove: 75,
-            scroll: 180,
-            media: 800,
+            mousemove: 120,
+            scroll: 260,
+            media: 1200,
             input: "last",
           },
           slimDOMOptions: "all",
@@ -200,7 +200,7 @@ export default function SessionReplayProvider() {
           try { record.takeFullSnapshot?.(); } catch {}
         };
         recorderReadyRef.current = true;
-        timer = window.setInterval(() => { void flush(false); }, 4_500);
+        timer = window.setInterval(() => { void flush(false); }, 12_000);
       } catch {
         // Replay is analytics-only and must never interrupt shopping.
       }

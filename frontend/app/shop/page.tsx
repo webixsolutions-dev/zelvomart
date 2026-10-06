@@ -1,11 +1,10 @@
 import { Suspense } from "react";
-import Image from "next/image";
-import Link from "next/link";
 import ProductGrid from "@/components/ProductGrid";
 import StorePagination from "@/components/StorePagination";
 import CatalogBrowser from "@/components/CatalogBrowser";
 import { getCategories, getProducts } from "@/lib/store";
 import SearchTracker from "@/components/SearchTracker";
+import StorefrontHero from "@/components/StorefrontHero";
 
 export const revalidate = 120;
 const v = (x: string | string[] | undefined) => Array.isArray(x) ? x[0] : x || "";
@@ -49,20 +48,19 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   return (
     <div className="mock-listing-page">
       {q ? <SearchTracker query={q} /> : null}
-      <section className="site-shell mock-listing-intro">
-        <nav>Home <span>›</span> {gift ? "Gift sets" : "Shop"}</nav>
-        <h1>{heading}</h1>
-        <p>{description}</p>
-      </section>
+      <StorefrontHero
+        eyebrow={gift ? "GIFTABLE FINDS" : q ? "SEARCH ZELVOMART" : "SHOP ZELVOMART"}
+        title={heading}
+        description={description}
+        image="/images/home-banners/banner-online-shopping.png"
+        alt="Zelvomart online shopping collection"
+        primaryLabel="Browse products"
+        primaryHref="#products"
+        secondaryLabel="Track order"
+        secondaryHref="/track-order"
+        priority
+      />
 
-      <section className="site-shell mock-listing-categories" id="categories">
-        {categories.slice(0, 7).map((c) => (
-          <Link key={c.id} href={`/product-category/${c.slug}/`}>
-            <span><Image src={c.image || `/images/categories/${c.slug}.webp`} alt={c.name} fill /></span>
-            <b>{c.name}</b>
-          </Link>
-        ))}
-      </section>
 
       <section id="products" className="site-shell">
         <Suspense fallback={<div className="mock-catalog-browser-loading" aria-hidden="true" />}>

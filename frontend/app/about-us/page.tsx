@@ -39,9 +39,9 @@ export default async function AboutPage() {
         </div>
         <div>
           {lead ? (
-            <Image src={lead.image || getProductFallbackImage(lead)} alt={lead.name} fill priority />
+            <Image src={lead.image || getProductFallbackImage(lead)} alt={lead.name} fill priority sizes="(max-width: 900px) 100vw, 50vw" />
           ) : (
-            <Image src="/images/hero/zelvomart-hero.webp" alt="Zelvomart products" fill priority />
+            <Image src="/images/hero/zelvomart-hero.webp" alt="Zelvomart products" fill priority sizes="(max-width: 900px) 100vw, 50vw" />
           )}
         </div>
       </section>

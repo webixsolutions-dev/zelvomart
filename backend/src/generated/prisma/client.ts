@@ -110,6 +110,16 @@ export type Setting = Prisma.SettingModel
  */
 export type User = Prisma.UserModel
 /**
+ * Model StoreUser
+ * 
+ */
+export type StoreUser = Prisma.StoreUserModel
+/**
+ * Model StoreSession
+ * 
+ */
+export type StoreSession = Prisma.StoreSessionModel
+/**
  * Model AuditLog
  * 
  */

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "prebuild": "node scripts/clean-stale-build-files.mjs"
+    "prebuild": "node scripts/clean-stale-build-files.mjs",
+    "dev:webpack": "next dev --webpack",
+    "build:webpack": "next build --webpack"
   },
   "dependencies": {
     "next": "^16.0.0",

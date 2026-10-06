@@ -23,7 +23,6 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 300;
-export const preferredRegion = "hnd1";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const bootstrap = await getStoreBootstrap();
@@ -51,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <head>
         <link rel="preload" as="image" type="image/webp" href="/images/hero/zelvomart-slider-01.webp" />
       </head>

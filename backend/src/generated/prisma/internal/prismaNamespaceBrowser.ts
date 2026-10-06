@@ -63,6 +63,8 @@ export const ModelName = {
   Page: 'Page',
   Setting: 'Setting',
   User: 'User',
+  StoreUser: 'StoreUser',
+  StoreSession: 'StoreSession',
   AuditLog: 'AuditLog',
   Experiment: 'Experiment',
   Review: 'Review',
@@ -356,6 +358,32 @@ export const UserScalarFieldEnum = {
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+
+
+export const StoreUserScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  passwordHash: 'passwordHash',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type StoreUserScalarFieldEnum = (typeof StoreUserScalarFieldEnum)[keyof typeof StoreUserScalarFieldEnum]
+
+
+export const StoreSessionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  tokenHash: 'tokenHash',
+  userAgent: 'userAgent',
+  expiresAt: 'expiresAt',
+  lastSeenAt: 'lastSeenAt',
+  createdAt: 'createdAt'
+} as const
+
+export type StoreSessionScalarFieldEnum = (typeof StoreSessionScalarFieldEnum)[keyof typeof StoreSessionScalarFieldEnum]
 
 
 export const AuditLogScalarFieldEnum = {

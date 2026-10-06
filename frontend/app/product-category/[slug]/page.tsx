@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import ProductGrid from "@/components/ProductGrid";
 import StorePagination from "@/components/StorePagination";
 import CatalogBrowser from "@/components/CatalogBrowser";
+import StorefrontHero from "@/components/StorefrontHero";
 import { getCategories, getProducts } from "@/lib/store";
 
 export const revalidate = 120;
@@ -48,17 +49,20 @@ export default async function CategoryPage({ params, searchParams }: { params: P
 
   return (
     <div className="mock-category-page">
-      <section className="site-shell mock-category-hero">
-        <div>
-          <nav>Home <span>›</span> {category.name}</nav>
-          <span className="mock-eyebrow">SHOP THE COLLECTION</span>
-          <h1>{category.name}</h1>
-          <p>{category.description || `Useful ${category.name.toLowerCase()} picks, checked and ready for Cash on Delivery.`}</p>
-        </div>
-        <div className="mock-category-hero-art"><Image src={category.image || `/images/categories/${category.slug}.webp`} alt={category.name} fill /></div>
-      </section>
+      <StorefrontHero
+        eyebrow="SHOP THE COLLECTION"
+        title={category.name}
+        description={category.description || `Useful ${category.name.toLowerCase()} picks, checked and ready for Cash on Delivery across Pakistan.`}
+        image={category.image || `/images/categories/${category.slug}.webp`}
+        alt={`${category.name} products at Zelvomart`}
+        primaryLabel={`Shop ${category.name}`}
+        primaryHref="#products"
+        secondaryLabel="Explore all categories"
+        secondaryHref="/shop#categories"
+        priority
+      />
 
-      <section className="site-shell">
+      <section id="products" className="site-shell">
         <Suspense fallback={<div className="mock-catalog-browser-loading" aria-hidden="true" />}>
         <CatalogBrowser
           categories={categories}
@@ -70,7 +74,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
           categoryMode="path"
           clearHref={`/product-category/${slug}/`}
         >
-          <ProductGrid products={result.items} />
+          <ProductGrid products={result.items} emptyText={`No published products found in ${category.name} yet.`} />
           <div className="mock-listing-count">Showing {result.items.length} of {result.total || result.items.length} products</div>
           <StorePagination
             currentPage={result.page || page}
@@ -109,7 +113,7 @@ export default async function CategoryPage({ params, searchParams }: { params: P
         <div>
           {categories.filter((c) => c.slug !== slug).slice(0, 6).map((c) => (
             <Link key={c.id} href={`/product-category/${c.slug}/`}>
-              <span><Image src={c.image || `/images/categories/${c.slug}.webp`} alt={c.name} fill /></span>
+              <span style={{ position: "relative" }}><Image src={c.image || `/images/categories/${c.slug}.webp`} alt={c.name} fill sizes="(max-width: 620px) 31vw, (max-width: 1000px) 16vw, 150px" /></span>
               <b>{c.name}</b>
             </Link>
           ))}
