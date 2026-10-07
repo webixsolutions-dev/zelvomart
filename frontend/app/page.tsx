@@ -265,21 +265,132 @@ export default async function HomePage() {
         <ProductGrid products={products.slice(0, 8)} />
       </section>
 
-      <section className="mock-standard-section">
-        <div className="site-shell mock-standard-grid">
-          <div>
+      <section className="mock-standard-section zm-standard-section">
+        <div className="site-shell zm-standard-content-wrap">
+          <div className="zm-standard-content">
             <span className="mock-eyebrow">THE ZELVO STANDARD</span>
             <h2>We don&apos;t sell everything.<br /><em>Only what&apos;s worth it.</em></h2>
             <p>Useful, clear and easy to order. That&apos;s the standard behind every Zelvomart pick.</p>
-            <Link href="/about-us" className="mock-btn-light">Our story →</Link>
-          </div>
-          <div className="mock-standard-cards">
-            <article><span>01</span><b>Chosen, not dumped</b><p>Products are selected for practical everyday use.</p></article>
-            <article><span>02</span><b>Checked before dispatch</b><p>Clear information and a final check before it leaves us.</p></article>
-            <article><span>03</span><b>Pay when it arrives</b><p>Cash on Delivery keeps ordering simple and familiar.</p></article>
-            <article><span>04</span><b>Real people, real help</b><p>WhatsApp support when you want a human answer.</p></article>
+
+            <div className="zm-standard-actions">
+              <Link href="/about-us" className="zm-standard-btn light">Our story →</Link>
+              <Link href="/shop" className="zm-standard-btn blue">Shop now →</Link>
+            </div>
           </div>
         </div>
+
+        <style>{`
+          .zm-standard-section {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            margin-left: calc(50% - 50vw) !important;
+            margin-right: calc(50% - 50vw) !important;
+            padding: 0 !important;
+            overflow: hidden;
+            background-image: url("/images/home/best-selling-zelvomart.png") !important;
+            background-position: center center !important;
+            background-size: cover !important;
+            background-repeat: no-repeat !important;
+            background-color: transparent !important;
+          }
+
+          .zm-standard-content-wrap {
+            min-height: 430px;
+            display: flex;
+            align-items: center;
+            padding-top: 48px;
+            padding-bottom: 48px;
+          }
+
+          .zm-standard-content {
+            width: 100%;
+            max-width: 760px;
+          }
+
+          .zm-standard-content .mock-eyebrow {
+            color: #008fc7 !important;
+          }
+
+          .zm-standard-content h2 {
+            color: #102833 !important;
+            text-shadow: 0 1px 2px rgba(255,255,255,.75);
+            font-size: clamp(40px, 4.3vw, 62px) !important;
+            line-height: .98 !important;
+            margin: 12px 0 18px !important;
+            letter-spacing: -1.5px;
+          }
+
+          .zm-standard-content h2 em {
+            color: #08a8e5 !important;
+          }
+
+          .zm-standard-content > p {
+            max-width: 620px;
+            color: #253d47 !important;
+            text-shadow: 0 1px 2px rgba(255,255,255,.75);
+            font-size: 16px !important;
+            line-height: 1.65 !important;
+          }
+
+          .zm-standard-actions {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            max-width: 430px;
+          }
+
+          .zm-standard-btn {
+            min-height: 50px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 18px;
+            font-size: 14px;
+            font-weight: 900;
+            text-decoration: none;
+          }
+
+          .zm-standard-btn.light {
+            background: #fff;
+            color: #0d202a;
+            border: 1px solid rgba(13,32,42,.12);
+          }
+
+          .zm-standard-btn.blue {
+            background: #0aaae8;
+            color: #fff;
+          }
+
+          @media (max-width: 760px) {
+            .zm-standard-section {
+              background-image: url("/images/home/best-selling-zelvomart.png") !important;
+              background-position: center center !important;
+              background-size: cover !important;
+              background-repeat: no-repeat !important;
+              background-color: transparent !important;
+            }
+            .zm-standard-content-wrap {
+              min-height: 360px;
+              padding: 34px 16px;
+            }
+
+            .zm-standard-content h2 {
+              font-size: 36px !important;
+            }
+
+            .zm-standard-content > p {
+              font-size: 14px !important;
+            }
+
+            .zm-standard-actions {
+              max-width: none;
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+            }
+          }
+        `}</style>
       </section>
 
       {editorialCategories.length ? (
@@ -316,11 +427,79 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="site-shell mock-whatsapp-strip">
+      <section className="mock-whatsapp-strip zm-whatsapp-wide">
         <div><span>◉</span><p><b>Questions before you order? Ask a real person.</b><small>We&apos;re here for product, stock and delivery questions.</small></p></div>
-        <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer">Chat on WhatsApp</a>
-        <Link href="/contact-us">Browse help &amp; contact</Link>
+        <a className="zm-whatsapp-main-btn" href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer">Chat on WhatsApp</a>
+        <Link className="zm-whatsapp-help-btn" href="/contact-us">Browse help &amp; contact</Link>
       </section>
+
+      <style>{`
+        .zm-whatsapp-wide {
+          width: 100% !important;
+          max-width: none !important;
+          margin: 18px 0 60px !important;
+          padding: 20px clamp(20px, 3.2vw, 54px) !important;
+          border-radius: 0 !important;
+          background: linear-gradient(90deg, #dcf8e7 0%, #e9fbf0 48%, #dcf8e7 100%) !important;
+          border-top: 1px solid #c5efd4;
+          border-bottom: 1px solid #c5efd4;
+          box-shadow: none !important;
+          box-sizing: border-box;
+        }
+        .zm-whatsapp-wide > div > span {
+          width: 46px !important;
+          height: 46px !important;
+          border-radius: 13px !important;
+          background: #25d366 !important;
+          font-size: 18px !important;
+        }
+        .zm-whatsapp-wide p b {
+          font-size: 14px !important;
+        }
+        .zm-whatsapp-wide p small {
+          font-size: 10.5px !important;
+          margin-top: 4px !important;
+        }
+        .zm-whatsapp-wide .zm-whatsapp-main-btn {
+          padding: 15px 24px !important;
+          border-radius: 10px !important;
+          background: #25d366 !important;
+          color: #fff !important;
+          font-size: 13px !important;
+          font-weight: 900 !important;
+          min-height: 48px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .zm-whatsapp-wide .zm-whatsapp-help-btn {
+          padding: 14px 20px !important;
+          border-radius: 10px !important;
+          font-size: 11px !important;
+          min-height: 48px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #fff !important;
+          border: 1px solid #bfe6cc !important;
+        }
+        @media (max-width: 620px) {
+          .zm-whatsapp-wide {
+            margin-bottom: 42px !important;
+            padding: 16px 12px !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 10px !important;
+          }
+          .zm-whatsapp-wide > div {
+            grid-column: 1 / -1;
+          }
+          .zm-whatsapp-wide .zm-whatsapp-main-btn,
+          .zm-whatsapp-wide .zm-whatsapp-help-btn {
+            width: 100%;
+            padding-inline: 10px !important;
+          }
+        }
+      `}</style>
 
       <section className="site-shell mock-faq-section">
         <div className="mock-faq-intro">
