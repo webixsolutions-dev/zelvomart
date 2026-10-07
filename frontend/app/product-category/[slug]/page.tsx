@@ -12,7 +12,7 @@ import { getCategories, getProducts } from "@/lib/store";
 export const revalidate = 120;
 
 const categoryHeroImages: Record<string, string> = {
-  "home-living": "/images/home/home and Living Zelvomart.png",
+  "home-living": "/images/home/home and living zelvomart.png",
   "home-decor": "/images/home/Home Decor Zelvomart.png",
   "beauty-personal-care": "/images/home/Beauty & Personal Care Zelvomart.png",
   "tech-gadgets": "/images/home/Tech & Gadgets Zelvomart.png",
