@@ -257,12 +257,57 @@ export default async function HomePage() {
         }
       `}</style>
 
-      <section className="site-shell mock-home-section mock-products-section">
+      <section className="site-shell mock-home-section mock-products-section zm-home-products-four">
         <div className="mock-section-head">
           <div><span className="mock-eyebrow">BESTSELLERS</span><h2>Our most-ordered right now.</h2></div>
-          <Link href="/bestsellers">Shop all bestsellers →</Link>
         </div>
-        <ProductGrid products={products.slice(0, 8)} />
+
+        <ProductGrid products={products.slice(0, 4)} />
+
+        <div className="zm-view-all-products">
+          <Link href="/shop">View All Products →</Link>
+        </div>
+
+        <style>{`
+          .zm-view-all-products {
+            display: flex;
+            justify-content: center;
+            margin-top: 24px;
+          }
+
+          .zm-view-all-products a {
+            min-width: 210px;
+            min-height: 46px;
+            padding: 0 22px;
+            border-radius: 10px;
+            background: #0aaae8;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 900;
+            transition: background .18s ease, transform .18s ease;
+          }
+
+          .zm-view-all-products a:hover {
+            background: #088fc4;
+            transform: translateY(-1px);
+          }
+
+          @media (max-width: 620px) {
+            .zm-view-all-products {
+              margin-top: 18px;
+            }
+
+            .zm-view-all-products a {
+              min-width: 190px;
+              min-height: 42px;
+              font-size: 13px;
+            }
+          }
+        `}</style>
       </section>
 
       <section className="mock-standard-section zm-standard-section">
@@ -415,16 +460,283 @@ export default async function HomePage() {
       <HomeVideoShowcase videos={shortVideos} />
 
 
-      <section className="mock-order-steps">
+      <section className="mock-order-steps zm-order-steps">
         <div className="site-shell">
-          <span className="mock-eyebrow">HOW IT WORKS</span><h2>Order in a minute. Pay when it arrives.</h2>
-          <div className="mock-step-grid">
-            <article><b>01</b><span className="mock-step-icon"><Image src="/images/order-steps/01-choose.svg" alt="Choose a product" width={38} height={38} /></span><h3>Choose</h3><p>Pick the product that works for you.</p></article>
-            <article><b>02</b><span className="mock-step-icon"><Image src="/images/order-steps/02-confirm.svg" alt="Confirm your order" width={38} height={38} /></span><h3>Confirm</h3><p>Enter delivery details and place your order.</p></article>
-            <article><b>03</b><span className="mock-step-icon"><Image src="/images/order-steps/03-checked-packed.svg" alt="Order checked and packed" width={38} height={38} /></span><h3>Checked &amp; packed</h3><p>We check and pack your order carefully before dispatch.</p></article>
-            <article className="dark"><b>04</b><span className="mock-step-icon"><Image src="/images/order-steps/04-delivered-pay-cash.svg" alt="Delivered and paid with cash" width={38} height={38} /></span><h3>Delivered &amp; pay cash</h3><p>Receive your parcel and pay Cash on Delivery.</p></article>
+          <span className="mock-eyebrow">HOW IT WORKS</span>
+          <h2>Order in a minute. Pay when it arrives.</h2>
+
+          <div className="mock-step-grid zm-step-grid">
+            <article className="zm-step-card">
+              <b>01</b>
+              <div className="zm-step-row">
+                <span className="mock-step-icon">
+                  <Image src="/images/order-steps/01-choose.svg" alt="Choose a product" width={46} height={46} />
+                </span>
+                <div>
+                  <h3>Choose</h3>
+                  <p>Pick the product that works for you.</p>
+                </div>
+              </div>
+            </article>
+
+            <article className="zm-step-card">
+              <b>02</b>
+              <div className="zm-step-row">
+                <span className="mock-step-icon">
+                  <Image src="/images/order-steps/02-confirm.svg" alt="Confirm your order" width={46} height={46} />
+                </span>
+                <div>
+                  <h3>Confirm</h3>
+                  <p>Enter delivery details and place your order.</p>
+                </div>
+              </div>
+            </article>
+
+            <article className="zm-step-card">
+              <b>03</b>
+              <div className="zm-step-row">
+                <span className="mock-step-icon">
+                  <Image src="/images/order-steps/03-checked-packed.svg" alt="Order checked and packed" width={46} height={46} />
+                </span>
+                <div>
+                  <h3>Checked &amp; packed</h3>
+                  <p>We check and pack your order carefully before dispatch.</p>
+                </div>
+              </div>
+            </article>
+
+            <article className="zm-step-card">
+              <b>04</b>
+              <div className="zm-step-row">
+                <span className="mock-step-icon">
+                  <Image src="/images/order-steps/04-delivered-pay-cash.svg" alt="Delivered and paid with cash" width={46} height={46} />
+                </span>
+                <div>
+                  <h3>Delivered &amp; pay cash</h3>
+                  <p>Receive your parcel and pay Cash on Delivery.</p>
+                </div>
+              </div>
+            </article>
           </div>
         </div>
+
+        <style>{`
+          .zm-order-steps {
+            background: #eef5f8 !important;
+          }
+
+          .zm-step-grid .zm-step-card {
+            background: #fff !important;
+            color: #102733 !important;
+            border: 1px solid #dbe5ea !important;
+            border-radius: 14px !important;
+            box-shadow: none !important;
+            padding: 16px !important;
+          }
+
+          .zm-step-grid .zm-step-card > b {
+            color: #c7d2d8 !important;
+            font-size: 22px !important;
+            line-height: 1;
+            display: block;
+            text-align: right;
+            margin-bottom: 4px;
+          }
+
+          .zm-step-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 8px;
+          }
+
+          .zm-step-row .mock-step-icon {
+            flex: 0 0 auto;
+            width: 54px !important;
+            margin-top: 4px;
+            height: 54px !important;
+            border-radius: 12px !important;
+            background: #e8f7fd !important;
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .zm-step-row h3 {
+            margin: 0 0 4px !important;
+            color: #102733 !important;
+            font-size: 16px !important;
+            line-height: 1.15 !important;
+          }
+
+          .zm-step-row p {
+            margin: 0 !important;
+            color: #637480 !important;
+            font-size: 12px !important;
+            line-height: 1.45 !important;
+          }
+
+          @media (max-width: 760px) {
+            .zm-step-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              gap: 10px !important;
+            }
+
+            .zm-step-grid .zm-step-card {
+              min-width: 0;
+              padding: 11px !important;
+            }
+
+            .zm-step-grid .zm-step-card > b {
+              font-size: 18px !important;
+              margin-bottom: 2px;
+            }
+
+            .zm-step-row {
+              align-items: flex-start;
+              gap: 8px;
+              margin-top: 5px;
+            }
+
+            .zm-step-row .mock-step-icon {
+              width: 40px !important;
+              height: 40px !important;
+              margin-top: 2px;
+            }
+
+            .zm-step-row .mock-step-icon img {
+              width: 34px !important;
+              height: 34px !important;
+            }
+
+            .zm-step-row h3 {
+              font-size: 12.5px !important;
+              line-height: 1.18 !important;
+            }
+
+            .zm-step-row p {
+              font-size: 9.5px !important;
+              line-height: 1.35 !important;
+            }
+          }
+        `}</style>
+      </section>
+
+      <section className="site-shell zm-unboxing-section">
+        <div className="zm-unboxing-video-wrap">
+          <video
+            className="zm-unboxing-video"
+            controls
+            playsInline
+            preload="metadata"
+          >
+            <source src="/videos/zelvomart-unboxing.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+
+        <div className="zm-unboxing-copy">
+          <span className="mock-eyebrow">THE UNBOXING</span>
+          <h2>Arrives like a gift.<br />Every single time.</h2>
+          <p>
+            Each order is checked, sealed in Zelvomart packaging and sent with care
+            so it feels as good to open as it does to use.
+          </p>
+          <ul>
+            <li>Checked by hand before it&apos;s sealed</li>
+            <li>Zelvomart seal on every parcel</li>
+            <li>A thank-you card in every order</li>
+          </ul>
+        </div>
+
+        <style>{`
+          .zm-unboxing-section {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+            gap: clamp(28px, 5vw, 72px);
+            align-items: center;
+            padding-top: 56px;
+            padding-bottom: 56px;
+          }
+
+          .zm-unboxing-video-wrap {
+            border-radius: 20px;
+            overflow: hidden;
+            background: #eaf7fd;
+            min-height: 340px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .zm-unboxing-video {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-height: 340px;
+            object-fit: cover;
+            background: #dff3fb;
+          }
+
+          .zm-unboxing-copy h2 {
+            margin: 8px 0 14px;
+            font-size: clamp(32px, 3.3vw, 50px);
+            line-height: 1.02;
+            color: #102733;
+          }
+
+          .zm-unboxing-copy > p {
+            color: #5f707b;
+            font-size: 15px;
+            line-height: 1.65;
+            max-width: 560px;
+          }
+
+          .zm-unboxing-copy ul {
+            list-style: none;
+            padding: 0;
+            margin: 22px 0 0;
+            display: grid;
+            gap: 10px;
+          }
+
+          .zm-unboxing-copy li {
+            position: relative;
+            padding-left: 22px;
+            color: #102733;
+            font-size: 14px;
+            font-weight: 750;
+          }
+
+          .zm-unboxing-copy li::before {
+            content: "●";
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: #0aaae8;
+          }
+
+          @media (max-width: 760px) {
+            .zm-unboxing-section {
+              grid-template-columns: 1fr;
+              gap: 22px;
+              padding: 34px 12px;
+            }
+
+            .zm-unboxing-video-wrap,
+            .zm-unboxing-video {
+              min-height: 230px;
+            }
+
+            .zm-unboxing-copy h2 {
+              font-size: 32px;
+            }
+
+            .zm-unboxing-copy > p {
+              font-size: 14px;
+            }
+          }
+        `}</style>
       </section>
 
       <section className="mock-whatsapp-strip zm-whatsapp-wide">

@@ -9947,3 +9947,198 @@ a:hover,button:hover{transform:translateY(-1px)}
 /* Quick route feedback: keep navigation loader under one second. */
 .zm-route-loader{transition:opacity .14s ease,visibility .14s ease !important;}
 .zm-route-loader-ring:before{animation-duration:.55s !important;}
+
+
+/* ==========================================================================
+   2026-10-07 — Responsive video grid + unified storefront typography
+   ========================================================================== */
+
+/* Use one consistent storefront font family everywhere. */
+:root {
+  --zm-font: "Segoe UI", Arial, Helvetica, sans-serif;
+  --zm-display-font: "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+body,
+.public-site-main,
+.mock-header,
+.mock-footer,
+.public-site-main :where(a,button,input,textarea,select,label,span,p,li,strong,b,small),
+.mock-footer :where(a,span,p,h1,h2,h3,h4,h5,h6) {
+  font-family: var(--zm-font) !important;
+}
+
+.public-site-main :where(h1,h2,h3,h4,h5,h6) {
+  font-family: var(--zm-display-font) !important;
+  font-weight: 800;
+}
+
+/* Footer typography: larger and easier to read like the supplied reference. */
+.mock-footer-brand p {
+  font-size: 15px !important;
+  line-height: 1.48 !important;
+  font-weight: 500;
+  color: #ffffff !important;
+  max-width: 285px !important;
+}
+
+.mock-footer-col h4 {
+  font-size: 16px !important;
+  line-height: 1.25 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  color: #ffffff !important;
+  text-transform: none !important;
+}
+
+.mock-footer-col a,
+.mock-footer-col > span {
+  font-size: 15px !important;
+  line-height: 1.45 !important;
+  font-weight: 500 !important;
+}
+
+.mock-footer-bottom {
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  font-weight: 500 !important;
+}
+
+.mock-footer .mock-socials a {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+/* Keep public pages inside the viewport on phones. */
+@media (max-width: 620px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden !important;
+  }
+
+  .public-site-main {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip !important;
+  }
+
+  .public-site-main :where(img,video,iframe) {
+    max-width: 100%;
+  }
+
+  .public-site-main .site-shell {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* Mobile videos: 2 x 2 grid like the supplied Shorts reference. */
+  .zm-video-slider-section .site-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    overflow: hidden !important;
+  }
+
+  .zm-video-desktop-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    align-items: stretch !important;
+  }
+
+  .zm-video-desktop-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    aspect-ratio: 9 / 16 !important;
+    border-radius: 9px !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+  }
+
+  .zm-video-desktop-card:nth-child(n+5) {
+    display: none !important;
+  }
+
+  .zm-video-desktop-card iframe,
+  .zm-video-desktop-card video,
+  .zm-video-desktop-card .zm-short-placeholder {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    border: 0 !important;
+    object-fit: cover !important;
+  }
+
+  /* Disable the old one-at-a-time mobile slider. */
+  .zm-video-mobile-slider,
+  .zm-video-mobile-slider + .zm-video-dots,
+  .zm-video-desktop-grid + .zm-video-mobile-slider + .zm-video-dots {
+    display: none !important;
+  }
+
+  .zm-shorts-heading {
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .zm-shorts-heading h2 {
+    font-size: 25px !important;
+    line-height: 1.08 !important;
+  }
+
+  .zm-shorts-heading p {
+    font-size: 13px !important;
+    line-height: 1.45 !important;
+  }
+
+  /* Footer remains readable and compact on phones. */
+  .mock-footer {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .mock-footer-grid {
+    width: 100%;
+    max-width: 100%;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 26px 18px !important;
+  }
+
+  .mock-footer-brand {
+    grid-column: 1 / -1 !important;
+  }
+
+  .mock-footer-brand p {
+    font-size: 14px !important;
+    max-width: 100% !important;
+  }
+
+  .mock-footer-col h4 {
+    font-size: 15px !important;
+  }
+
+  .mock-footer-col a,
+  .mock-footer-col > span {
+    font-size: 14px !important;
+  }
+
+  .mock-footer-contact {
+    grid-column: 1 / -1 !important;
+  }
+
+  .mock-footer-bottom {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    font-size: 12.5px !important;
+  }
+}

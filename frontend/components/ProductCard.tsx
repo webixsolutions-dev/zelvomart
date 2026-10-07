@@ -10,8 +10,6 @@ import type { Product } from "@/types/product";
 import { trackStoreEvent } from "@/lib/client-tracking";
 import { getProductFallbackImage } from "@/lib/product-media";
 
-const SWATCHES = ["#f6a5b9","#b7d9eb","#c4dec9","#d7c8ef","#d9d9d9"];
-
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const addable = product.stockStatus === "instock" && !product.hasOptions;
@@ -28,7 +26,7 @@ export default function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <article className="mock-product-card">
+    <article className="mock-product-card zm-shop-product-card">
       <div className="mock-product-media">
         <Link href={`/product/${product.slug}/`}>
           <Image src={imageSrc} alt={product.name} fill sizes="(max-width:700px) 50vw, (max-width:1100px) 33vw, 25vw" onError={()=>{if(imageSrc!==fallbackImage)setImageSrc(fallbackImage)}} />
@@ -42,10 +40,10 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
 
         <div className="mock-product-rating zm-product-rating">
-          <span className="zm-product-star">★</span>
+          <span className="zm-product-stars" aria-label={`${rating ? rating.toFixed(1) : "4.8"} out of 5 stars`}>★★★★★</span>
           <b>{rating ? rating.toFixed(1) : "4.8"}</b>
           <span className="zm-product-review-count">
-            {reviewCount || Math.max(8, Math.round(product.stockQuantity || 14))} reviews
+            ({reviewCount || Math.max(8, Math.round(product.stockQuantity || 14))})
           </span>
         </div>
 
@@ -53,11 +51,6 @@ export default function ProductCard({ product }: { product: Product }) {
           <strong>{money(product.price)}</strong>
           {product.onSale ? <del>{money(product.regularPrice)}</del> : null}
           {save > 0 ? <em>Save {money(save)}</em> : null}
-        </div>
-
-        <div className="mock-product-swatches zm-product-swatches">
-          {SWATCHES.slice(0, Math.min(5, product.hasOptions ? Math.max(2, product.variants.length) : 2)).map((c,i)=><i key={i} style={{background:c}} />)}
-          <span>{product.hasOptions ? Math.max(2,product.variants.length) : 2} colours</span>
         </div>
 
         <div className="zm-product-cart-block">
@@ -76,124 +69,179 @@ export default function ProductCard({ product }: { product: Product }) {
       </div>
 
       <style jsx>{`
+        .zm-shop-product-card {
+          overflow: hidden;
+          border: 1px solid #d9e2e7 !important;
+          border-radius: 14px !important;
+          background: #fff !important;
+          box-shadow: none !important;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .zm-shop-product-card :global(.mock-product-media) {
+          min-height: 250px;
+          aspect-ratio: 1 / 1;
+          background: #fff;
+          border-bottom: 0 !important;
+        }
+
+        .zm-shop-product-card :global(.mock-product-media img) {
+          object-fit: contain !important;
+          object-position: center center !important;
+          padding: 10px;
+        }
+
         .zm-product-copy {
           display: flex;
           flex-direction: column;
-          padding: 14px 10px 12px;
+          flex: 1;
+          padding: 14px 14px 15px;
         }
+
         .zm-product-title-block {
           min-height: 48px;
           display: flex;
           align-items: flex-start;
         }
+
         .zm-product-title {
+          color: #0d2430 !important;
           font-size: 17px !important;
-          line-height: 1.25 !important;
+          line-height: 1.24 !important;
           font-weight: 900 !important;
-          letter-spacing: -0.2px;
+          letter-spacing: -.15px;
         }
+
         .zm-product-rating,
         .zm-product-price,
-        .zm-product-swatches,
         .zm-product-cart-block {
-          border-top: 1px solid #e7edf1;
-          margin-top: 9px;
-          padding-top: 9px;
+          margin-top: 10px;
         }
+
         .zm-product-rating {
           display: flex;
           align-items: center;
           gap: 5px;
+          min-height: 22px;
           font-size: 14px !important;
           line-height: 1.2;
         }
-        .zm-product-star {
-          color: #f5a400;
-          font-size: 16px;
-        }
-        .zm-product-rating b {
+
+        .zm-product-stars {
+          color: #f6a400;
           font-size: 14px;
+          letter-spacing: .4px;
+          line-height: 1;
         }
+
+        .zm-product-rating b {
+          color: #40525d;
+          font-size: 14px;
+          font-weight: 800;
+        }
+
         .zm-product-review-count {
-          color: #71808b;
+          color: #84939b;
           font-size: 13px;
           font-weight: 650;
         }
+
         .zm-product-price {
           display: flex;
           align-items: baseline;
           flex-wrap: wrap;
           gap: 7px;
+          padding-top: 2px;
         }
+
         .zm-product-price strong {
-          font-size: 19px !important;
+          color: #127185 !important;
+          font-size: 22px !important;
           line-height: 1.1;
           font-weight: 900 !important;
         }
+
         .zm-product-price del {
+          color: #99a5ac;
           font-size: 12px !important;
         }
+
         .zm-product-price em {
+          color: #e25645;
           font-size: 11px !important;
           font-style: normal;
           font-weight: 800;
         }
-        .zm-product-swatches {
-          min-height: 30px;
-          display: flex;
-          align-items: center;
-          gap: 4px;
+
+        .zm-product-cart-block {
+          margin-top: auto;
+          padding-top: 14px;
         }
-        .zm-product-swatches span {
-          margin-left: 3px;
-          font-size: 12px !important;
-          font-weight: 650;
-        }
+
         .zm-product-cart-button {
           width: 100%;
-          min-height: 44px;
+          min-height: 46px;
           border: 0;
-          border-radius: 10px;
-          background: #09a9e8;
+          border-radius: 9px;
+          background: #1f7888;
           color: #fff;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: 9px;
           text-decoration: none;
-          font-size: 14px;
+          font-size: 16px;
           line-height: 1;
           font-weight: 900;
           cursor: pointer;
-          box-shadow: 0 7px 18px rgba(9,169,232,.18);
+          box-shadow: none;
           transition: transform .18s ease, background .18s ease;
         }
+
         .zm-product-cart-button:hover {
-          background: #078fc5;
+          background: #176674;
           transform: translateY(-1px);
         }
+
         @media (max-width: 620px) {
-          .zm-product-copy {
-            padding: 11px 8px 10px;
+          .zm-shop-product-card :global(.mock-product-media) {
+            min-height: 190px;
           }
+
+          .zm-shop-product-card :global(.mock-product-media img) {
+            padding: 7px;
+          }
+
+          .zm-product-copy {
+            padding: 11px 10px 12px;
+          }
+
           .zm-product-title-block {
             min-height: 42px;
           }
+
           .zm-product-title {
-            font-size: 15px !important;
+            font-size: 14px !important;
           }
-          .zm-product-rating {
-            font-size: 13px !important;
+
+          .zm-product-stars {
+            font-size: 12px;
           }
+
+          .zm-product-rating b,
           .zm-product-review-count {
             font-size: 12px;
           }
+
           .zm-product-price strong {
-            font-size: 17px !important;
+            font-size: 18px !important;
           }
+
           .zm-product-cart-button {
-            min-height: 40px;
-            font-size: 13px;
+            min-height: 41px;
+            font-size: 14px;
           }
         }
       `}</style>
