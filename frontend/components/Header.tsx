@@ -17,7 +17,6 @@ import {
   SportsCategoryIcon,
   TechCategoryIcon,
   UserIcon,
-  WhatsAppIcon,
   XIcon,
 } from "@/components/Icons";
 import { useCart } from "@/components/CartProvider";
@@ -102,16 +101,8 @@ const ANNOUNCEMENTS = [
   "Free Delivery on Orders Above Rs 8,000",
 ];
 
-const toWhatsAppNumber = (value: string) => {
-  const digits = value.replace(/\D/g, "");
-  if (digits.startsWith("92")) return digits;
-  if (digits.startsWith("0")) return `92${digits.slice(1)}`;
-  return digits;
-};
-
 export default function Header({
   categories,
-  phone = "0300-2026711",
 }: {
   categories: Category[];
   announcementItems?: string[];
@@ -121,11 +112,6 @@ export default function Header({
   const { totalItems, setOpen } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const whatsappHref = `https://wa.me/${toWhatsAppNumber(phone)}`;
-  const whatsappDisplay = phone.startsWith("0")
-    ? `+92 ${phone.slice(1).replace(/-/g, " ")}`
-    : phone;
-
   const orderedCategories = useMemo(() => {
     const used = new Set<string>();
 
@@ -259,16 +245,6 @@ export default function Header({
               <Link href="/new-in"><NewInIcon /><span>New in</span></Link>
               <Link href="/bestsellers"><BestsellerIcon /><span>Bestsellers</span></Link>
             </nav>
-            <a
-              className="zm-quick-whatsapp"
-              href={whatsappHref}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`Chat on WhatsApp ${phone}`}
-            >
-              <WhatsAppIcon size={21} />
-              <span>{whatsappDisplay}</span>
-            </a>
           </div>
         </div>
 
@@ -965,3 +941,5 @@ export default function Header({
     </>
   );
 }
+
+/* Header quick-row final cleanup is scoped by existing class names in component styles. */

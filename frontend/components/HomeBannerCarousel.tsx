@@ -167,13 +167,15 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
     <style jsx global>{`
       .zm-hero-benefits {
         width: 100%;
-        background: #f2f5f7;
-        border-top: 1px solid #e0e6ea;
-        border-bottom: 1px solid #e0e6ea;
+        background: #f4f8fa;
+        border-top: 1px solid #e0e9ee;
+        border-bottom: 1px solid #dbe5ea;
+        box-shadow: 0 8px 24px rgba(16, 39, 51, .035);
       }
 
       .zm-hero-benefits-track {
-        width: 100%;
+        width: min(100%, 1440px);
+        margin: 0 auto;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         align-items: stretch;
@@ -181,11 +183,18 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
 
       .zm-hero-benefit {
         min-width: 0;
+        min-height: 92px;
         display: flex;
         align-items: center;
         gap: 14px;
-        padding: 14px 28px;
-        border-right: 1px solid #9aa6ad;
+        padding: 18px 24px;
+        border-right: 1px solid #cbd7dd;
+        background: transparent;
+        transition: background .18s ease;
+      }
+
+      .zm-hero-benefit:hover {
+        background: rgba(255,255,255,.72);
       }
 
       .zm-hero-benefit:last-child {
@@ -193,18 +202,21 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
       }
 
       .zm-hero-benefit-icon {
-        width: 34px;
-        height: 34px;
-        flex: 0 0 34px;
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+        border-radius: 13px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: #07131a;
+        color: #079fd8;
+        background: #e4f5fb;
+        border: 1px solid #d4edf6;
       }
 
       .zm-hero-benefit-icon svg {
-        width: 30px;
-        height: 30px;
+        width: 27px;
+        height: 27px;
         fill: none;
         stroke: currentColor;
         stroke-width: 1.9;
@@ -216,31 +228,53 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
         display: flex;
         min-width: 0;
         flex-direction: column;
-        gap: 2px;
+        gap: 4px;
       }
 
       .zm-hero-benefit-copy strong {
-        color: #050a0d;
-        font-size: clamp(15px, 1.35vw, 22px);
+        color: #0a202b;
+        font-size: clamp(16px, 1.25vw, 19px);
         line-height: 1.08;
-        font-weight: 800;
-        white-space: nowrap;
+        font-weight: 850;
+        letter-spacing: -.2px;
       }
 
       .zm-hero-benefit-copy small {
-        color: #27333a;
-        font-size: clamp(12px, 1vw, 17px);
-        line-height: 1.25;
-        white-space: nowrap;
+        color: #536873;
+        font-size: clamp(12px, .92vw, 14px);
+        line-height: 1.32;
+        font-weight: 500;
+      }
+
+      @media (max-width: 900px) {
+        .zm-hero-benefit {
+          padding: 16px 15px;
+          gap: 10px;
+        }
+
+        .zm-hero-benefit-icon {
+          width: 42px;
+          height: 42px;
+          flex-basis: 42px;
+        }
+
+        .zm-hero-benefit-copy strong {
+          font-size: 15px;
+        }
+
+        .zm-hero-benefit-copy small {
+          font-size: 11px;
+        }
       }
 
       @media (max-width: 760px) {
         .zm-hero-benefits {
-          padding: 10px 0;
+          padding: 10px 0 11px;
           overflow: hidden;
         }
 
         .zm-hero-benefits-track {
+          width: 100%;
           display: flex;
           overflow-x: auto;
           scroll-snap-type: x mandatory;
@@ -248,7 +282,7 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
           scrollbar-width: none;
           -ms-overflow-style: none;
           gap: 10px;
-          padding: 0 12px 4px;
+          padding: 0 12px 3px;
           -webkit-overflow-scrolling: touch;
         }
 
@@ -257,36 +291,37 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
         }
 
         .zm-hero-benefit {
-          flex: 0 0 min(82vw, 320px);
+          flex: 0 0 min(78vw, 300px);
+          min-height: 78px;
           scroll-snap-align: start;
-          border: 1px solid #d6dee3;
-          border-radius: 12px;
-          background: #f7f9fa;
-          padding: 12px 14px;
+          border: 1px solid #d8e3e8 !important;
+          border-radius: 13px;
+          background: #fff;
+          padding: 12px 13px;
           gap: 11px;
-        }
-
-        .zm-hero-benefit:last-child {
-          border-right: 1px solid #d6dee3;
+          box-shadow: 0 4px 14px rgba(16,39,51,.045);
         }
 
         .zm-hero-benefit-icon {
-          width: 31px;
-          height: 31px;
-          flex-basis: 31px;
+          width: 42px;
+          height: 42px;
+          flex-basis: 42px;
+          border-radius: 11px;
         }
 
         .zm-hero-benefit-icon svg {
-          width: 27px;
-          height: 27px;
+          width: 24px;
+          height: 24px;
         }
 
         .zm-hero-benefit-copy strong {
-          font-size: 15px;
+          font-size: 14px;
+          white-space: normal;
         }
 
         .zm-hero-benefit-copy small {
-          font-size: 12px;
+          font-size: 11px;
+          white-space: normal;
         }
       }
     `}</style>
