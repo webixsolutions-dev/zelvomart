@@ -17,7 +17,17 @@ const categoryFallbacks: Record<string, string> = {
   "beauty-personal-care": "/images/categories/beauty-personal-care.webp",
   "tech-gadgets": "/images/categories/tech-gadgets.webp",
   "sports-fitness": "/images/categories/sports-fitness.webp",
-  "kids-toys": "/images/categories/kids-toys.svg",
+  "kids-toys": "/images/categories/kids-toys.png",
+};
+
+const categoryCardBlurbs: Record<string, string> = {
+  "home-living": "Smart tools for everyday",
+  "beauty-personal-care": "Look good, feel confident",
+  "tech-gadgets": "Everyday tech, made easy",
+  "kids-toys": "Fun that keeps them busy",
+  "home-decor": "Decorate your happy place",
+  "fashion-accessories": "Bags, jewellery & more",
+  "sports-fitness": "Gear up, stay active",
 };
 
 function uniqueProducts(groups: Product[][], limit = 12) {
@@ -86,7 +96,7 @@ export default async function HomePage() {
           <div><span className="mock-eyebrow">SHOP BY CATEGORY</span><h2>Find what you came for.</h2></div>
           <Link href="/shop">All categories →</Link>
         </div>
-        <div className="mock-category-responsive-grid" aria-label="Shop by category">
+        <div className="mock-category-responsive-grid zm-category-prominent" aria-label="Shop by category">
           {cards.map((category, index) => (
             <Link
               key={category.id}
@@ -101,18 +111,151 @@ export default async function HomePage() {
                 src={categoryFallbacks[category.slug] || category.image || "/images/hero/zelvomart-hero.webp"}
                 alt={category.name}
                 fill
+                className={`zm-category-image ${category.slug === "kids-toys" ? "is-kids" : ""}`}
                 sizes={index === 0 ? "(max-width: 620px) 50vw, 32vw" : "(max-width: 620px) 50vw, 22vw"}
               />
               <span className="mock-category-responsive-overlay" aria-hidden="true" />
               <span className="mock-category-responsive-copy">
                 {index === 0 ? <small>FEATURED COLLECTION</small> : null}
                 <b>{category.name}</b>
-                <i aria-hidden="true">→</i>
+                <span className="zm-category-card-description">
+                  {categoryCardBlurbs[category.slug] || category.description || "Explore everyday favourites"}
+                </span>
+                <span className="zm-category-card-shop">Shop Now</span>
               </span>
             </Link>
           ))}
         </div>
       </section>
+
+
+      <style>{`
+        .zm-category-prominent {
+          grid-auto-rows: 220px !important;
+          gap: 14px !important;
+        }
+        .zm-category-prominent .mock-category-responsive-card {
+          border-radius: 16px !important;
+        }
+        .zm-category-prominent .mock-category-responsive-card img.zm-category-image {
+          object-fit: cover !important;
+          object-position: center center !important;
+        }
+        .zm-category-prominent .mock-category-responsive-card img.zm-category-image.is-kids {
+          object-fit: contain !important;
+          object-position: center center !important;
+          background: #f6ead2 !important;
+        }
+        .zm-category-prominent .mock-category-responsive-overlay {
+          inset: 30% 0 0 !important;
+          background: linear-gradient(transparent, rgba(4, 19, 28, .76)) !important;
+        }
+        .zm-category-prominent .mock-category-responsive-copy,
+        .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy {
+          left: 16px !important;
+          right: 16px !important;
+          bottom: 16px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: flex-start !important;
+          gap: 5px !important;
+          color: #fff !important;
+        }
+        .zm-category-prominent .mock-category-responsive-copy small {
+          padding: 0 !important;
+          background: transparent !important;
+          color: #ff6e8b !important;
+          font-size: 10px !important;
+          font-weight: 900 !important;
+          letter-spacing: .12em !important;
+        }
+        .zm-category-prominent .mock-category-responsive-copy b,
+        .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy b {
+          width: auto !important;
+          max-width: 100% !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          background: transparent !important;
+          color: #fff !important;
+          font-size: 20px !important;
+          line-height: 1.05 !important;
+          font-weight: 900 !important;
+          letter-spacing: -.45px !important;
+          text-shadow: 0 2px 8px rgba(0,0,0,.45) !important;
+        }
+        .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy b {
+          font-size: 25px !important;
+        }
+        .zm-category-card-description {
+          display: block;
+          color: rgba(255,255,255,.9);
+          font-size: 12px;
+          line-height: 1.3;
+          font-weight: 650;
+          text-shadow: 0 2px 6px rgba(0,0,0,.42);
+        }
+        .zm-category-card-shop {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 36px;
+          margin-top: 9px;
+          padding: 0 18px;
+          border-radius: 999px;
+          background: #08a8e8;
+          color: #fff;
+          font-size: 12px;
+          line-height: 1;
+          font-weight: 900;
+          box-shadow: 0 6px 16px rgba(0,141,202,.2);
+        }
+        @media (max-width: 620px) {
+          .zm-category-prominent {
+            grid-auto-rows: auto !important;
+            gap: 10px !important;
+          }
+          .zm-category-prominent .mock-category-responsive-card,
+          .zm-category-prominent .mock-category-responsive-card.is-featured {
+            min-height: 175px !important;
+          }
+          .zm-category-prominent .mock-category-responsive-card.is-last {
+            min-height: 205px !important;
+          }
+          .zm-category-prominent .mock-category-responsive-card img.zm-category-image {
+            object-position: center center !important;
+          }
+          .zm-category-prominent .mock-category-responsive-card img.zm-category-image.is-kids {
+            object-fit: contain !important;
+          }
+          .zm-category-prominent .mock-category-responsive-copy,
+          .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy {
+            left: 9px !important;
+            right: 9px !important;
+            bottom: 9px !important;
+            gap: 3px !important;
+          }
+          .zm-category-prominent .mock-category-responsive-copy small { display: none !important; }
+          .zm-category-prominent .mock-category-responsive-copy b,
+          .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy b {
+            font-size: 14px !important;
+            line-height: 1.08 !important;
+          }
+          .zm-category-card-description {
+            font-size: 9px;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+          }
+          .zm-category-card-shop {
+            min-height: 29px;
+            margin-top: 5px;
+            padding: 0 12px;
+            font-size: 10px;
+          }
+        }
+      `}</style>
 
       <section className="site-shell mock-home-section mock-products-section">
         <div className="mock-section-head">
