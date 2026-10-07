@@ -743,56 +743,218 @@ export default function Header({
         }
 
         @media (max-width: 520px) {
-          .zm-header-main {
-            padding-left: 10px;
-            padding-right: 10px;
-            padding-bottom: 7px;
+          .zm-header,
+          .zm-header * {
+            box-sizing: border-box;
           }
 
-          .zm-brand-wrap { max-width: 72px; }
-          .zm-brand-wrap img { max-width: 72px !important; max-height: 44px !important; }
+          .zm-header {
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: clip;
+          }
 
-          .zm-header-actions { gap: 0; }
+          .zm-header-main {
+            width: 100%;
+            max-width: 100%;
+            min-height: 62px;
+            padding: 4px 8px 6px;
+            gap: 0;
+            overflow: hidden;
+          }
+
+          .zm-brand-wrap {
+            left: 50%;
+            max-width: 62px;
+            pointer-events: auto;
+          }
+
+          .zm-brand-wrap img {
+            width: auto !important;
+            max-width: 62px !important;
+            max-height: 40px !important;
+          }
+
+          .zm-menu-button {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            padding: 4px;
+            z-index: 3;
+          }
+
+          .zm-header-spacer {
+            display: block;
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+
+          .zm-header-actions {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0;
+            max-width: calc(50% - 38px);
+            overflow: hidden;
+            z-index: 3;
+          }
+
           .zm-action-link,
           .zm-cart-button,
           .zm-search-button {
-            min-width: 27px;
-            width: 27px;
-            min-height: 30px;
-            height: 30px;
+            flex: 0 0 24px;
+            min-width: 24px;
+            width: 24px;
+            min-height: 28px;
+            height: 28px;
             padding: 0;
           }
 
           .zm-header-actions svg {
-            width: 17px !important;
-            height: 17px !important;
+            width: 15px !important;
+            height: 15px !important;
           }
 
-          .zm-menu-button {
-            width: 30px;
-            height: 30px;
-            padding: 4px;
+          .zm-cart-button b {
+            top: -2px;
+            right: -2px;
+            min-width: 14px;
+            height: 14px;
+            padding: 0 3px;
+            font-size: 8px;
           }
-
-          .zm-header-spacer { min-width: 58px; }
 
           .zm-quick-row {
-            padding-left: 12px;
-            padding-right: 12px;
-            padding-bottom: 9px;
+            width: 100%;
+            max-width: 100%;
+            min-height: auto;
+            padding: 5px 8px 9px;
+            justify-content: center;
+            overflow: hidden;
           }
 
           .zm-quick-stack {
-            column-gap: 8px;
-            row-gap: 4px;
+            width: max-content;
+            max-width: 100%;
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0;
+            transform: translateX(-10px);
+            overflow: visible;
+            white-space: nowrap;
           }
 
-          .zm-quick-row nav { gap: 8px; }
-          .zm-quick-row a { font-size: 11.5px; }
-          .zm-quick-row .zm-quick-whatsapp { font-size: 12px; }
+          .zm-quick-row nav {
+            width: auto;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+            gap: 8px;
+            padding: 0;
+            overflow: visible;
+          }
 
-          .zm-search-panel { padding-left: 12px; padding-right: 12px; }
-          .zm-search-panel button { padding: 0 15px; }
+          .zm-quick-row nav a {
+            min-width: 0;
+            flex: 0 0 auto;
+            gap: 3px;
+            font-size: 10.5px;
+            line-height: 1.15;
+            white-space: nowrap;
+          }
+
+          .zm-quick-row nav a svg {
+            width: 12px !important;
+            height: 12px !important;
+          }
+
+          .zm-quick-row .zm-quick-whatsapp {
+            max-width: none;
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 4px;
+            font-size: 10.5px;
+            line-height: 1.15;
+            white-space: nowrap;
+            overflow: visible;
+          }
+
+          .zm-quick-row .zm-quick-whatsapp svg {
+            width: 13px !important;
+            height: 13px !important;
+          }
+
+          .zm-search-panel {
+            width: 100%;
+            max-width: 100%;
+            padding-left: 10px;
+            padding-right: 10px;
+            overflow: hidden;
+          }
+
+          .zm-search-panel form {
+            max-width: 100%;
+          }
+
+          .zm-search-panel button {
+            padding: 0 12px;
+          }
+        }
+
+        @media (max-width: 340px) {
+          .zm-brand-wrap { max-width: 54px; }
+          .zm-brand-wrap img { max-width: 54px !important; max-height: 36px !important; }
+
+          .zm-header-actions {
+            right: 4px;
+            max-width: calc(50% - 31px);
+          }
+
+          .zm-action-link,
+          .zm-cart-button,
+          .zm-search-button {
+            flex-basis: 21px;
+            min-width: 21px;
+            width: 21px;
+          }
+
+          .zm-header-actions svg {
+            width: 14px !important;
+            height: 14px !important;
+          }
+
+          .zm-quick-stack {
+            gap: 6px;
+            transform: translateX(-4px);
+          }
+
+          .zm-quick-row nav {
+            gap: 6px;
+          }
+
+          .zm-quick-row nav a {
+            font-size: 9.5px;
+          }
+
+          .zm-quick-row .zm-quick-whatsapp {
+            font-size: 9.5px;
+            gap: 3px;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
