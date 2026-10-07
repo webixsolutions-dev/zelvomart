@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import ProductGrid from "@/components/ProductGrid";
 import Faq from "@/components/Faq";
-import HomeVideoShowcase from "@/components/HomeVideoShowcase";
 import HomeBannerCarousel from "@/components/HomeBannerCarousel";
 import { getProductBySlug, getProducts, getStoreBootstrap } from "@/lib/store";
 import { getProductFallbackImage } from "@/lib/product-media";
@@ -11,13 +10,13 @@ import type { Category, Product } from "@/types/product";
 export const revalidate = 120;
 
 const categoryFallbacks: Record<string, string> = {
-  "fashion-accessories": "/images/categories/fashion-accessories.webp",
-  "home-living": "/images/categories/home-living.webp",
-  "home-decor": "/images/categories/home-decor.webp",
-  "beauty-personal-care": "/images/categories/beauty-personal-care.webp",
-  "tech-gadgets": "/images/categories/tech-gadgets.webp",
-  "sports-fitness": "/images/categories/sports-fitness.webp",
-  "kids-toys": "/images/categories/kids-toys.png",
+  "fashion-accessories": "/images/home/Fashion Accessories Zelvomart.png",
+  "home-living": "/images/home/home and living zelvomart.png",
+  "home-decor": "/images/home/Home Decor Zelvomart.png",
+  "beauty-personal-care": "/images/home/Beauty & Personal Care Zelvomart.png",
+  "tech-gadgets": "/images/home/Tech & Gadgets Zelvomart.png",
+  "sports-fitness": "/images/home/Sports & Fitness Zelvomart.png",
+  "kids-toys": "/images/home/Kids & Toys Zelvomart.png",
 };
 
 const categoryCardBlurbs: Record<string, string> = {
@@ -77,12 +76,16 @@ export default async function HomePage() {
   const storeInfo = (bootstrap.settings["store.info"] || {}) as { whatsapp?: string };
   const whatsapp = String(storeInfo.whatsapp || "923002026711").replace(/[^0-9]/g, "");
 
-  const shortVideos = detailedReviewProducts.slice(0, 5).map((product) => ({
-    title: product.name,
-    subtitle: product.shortDescription || product.categories?.[0]?.name || "Zelvomart video preview",
-    poster: product.image || getProductFallbackImage(product),
-    url: product.videoUrl || "",
-  }));
+
+  const youtubeShorts = [
+    "1Ucas-8A7Jc",
+    "2GUG6Osv0Qg",
+    "k5f9jnUUqRg",
+    "nLqUowhaqdE",
+    "DOw3BuB0wi0",
+  ];
+
+  const unboxingYoutubeId = "RkFifzRoieE";
 
 
   return (
@@ -91,7 +94,7 @@ export default async function HomePage() {
 
       
 
-      <section className="site-shell mock-home-section">
+      <section className="site-shell mock-home-section zm-home-category-section">
         <div className="mock-section-head">
           <div><span className="mock-eyebrow">SHOP BY CATEGORY</span><h2>Find what you came for.</h2></div>
           <Link href="/shop">All categories →</Link>
@@ -116,7 +119,6 @@ export default async function HomePage() {
               />
               <span className="mock-category-responsive-overlay" aria-hidden="true" />
               <span className="mock-category-responsive-copy">
-                {index === 0 ? <small>FEATURED COLLECTION</small> : null}
                 <b>{category.name}</b>
                 <span className="zm-category-card-description">
                   {categoryCardBlurbs[category.slug] || category.description || "Explore everyday favourites"}
@@ -260,13 +262,10 @@ export default async function HomePage() {
       <section className="site-shell mock-home-section mock-products-section zm-home-products-four">
         <div className="mock-section-head">
           <div><span className="mock-eyebrow">BESTSELLERS</span><h2>Our most-ordered right now.</h2></div>
+          <Link href="/shop">All products →</Link>
         </div>
 
         <ProductGrid products={products.slice(0, 4)} />
-
-        <div className="zm-view-all-products">
-          <Link href="/shop">View All Products →</Link>
-        </div>
 
         <style>{`
           .zm-view-all-products {
@@ -297,6 +296,17 @@ export default async function HomePage() {
           }
 
           @media (max-width: 620px) {
+            .zm-deals-actions {
+              grid-template-columns: 1fr !important;
+              max-width: 260px !important;
+            }
+
+            .zm-standard-offer-badge {
+              min-height: 44px;
+              padding: 0 17px;
+              font-size: 12px;
+            }
+
             .zm-view-all-products {
               margin-top: 18px;
             }
@@ -313,13 +323,13 @@ export default async function HomePage() {
       <section className="mock-standard-section zm-standard-section">
         <div className="site-shell zm-standard-content-wrap">
           <div className="zm-standard-content">
-            <span className="mock-eyebrow">THE ZELVO STANDARD</span>
-            <h2>We don&apos;t sell everything.<br /><em>Only what&apos;s worth it.</em></h2>
-            <p>Useful, clear and easy to order. That&apos;s the standard behind every Zelvomart pick.</p>
+            <span className="mock-eyebrow">LIMITED-TIME DEALS</span>
+            <h2>Deals You&apos;ll<br /><em>Actually Want</em></h2>
+            <p>Limited-time prices on selected Zelvomart favorites.</p>
 
-            <div className="zm-standard-actions">
-              <Link href="/about-us" className="zm-standard-btn light">Our story →</Link>
-              <Link href="/shop" className="zm-standard-btn blue">Shop now →</Link>
+            <div className="zm-standard-actions zm-deals-actions">
+              <span className="zm-standard-offer-badge">🏷 UP TO 30% OFF</span>
+              <Link href="/shop" className="zm-standard-btn blue">View All Offers →</Link>
             </div>
           </div>
         </div>
@@ -366,7 +376,28 @@ export default async function HomePage() {
           }
 
           .zm-standard-content h2 em {
-            color: #08a8e5 !important;
+            color: #102833 !important;
+            font-style: normal;
+          }
+
+          .zm-standard-offer-badge {
+            min-height: 50px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 22px;
+            background: #ff6840;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: .02em;
+            white-space: nowrap;
+          }
+
+          .zm-deals-actions {
+            grid-template-columns: auto minmax(190px, 1fr) !important;
+            max-width: 470px !important;
           }
 
           .zm-standard-content > p {
@@ -450,173 +481,271 @@ export default async function HomePage() {
                 <Image src={categoryFallbacks[category.slug] || category.image || "/images/hero/zelvomart-hero.webp"} alt={category.name} fill sizes="(max-width:900px) 100vw, 33vw" />
               </div>
               <span>{index === 0 ? "THE STYLE EDIT" : index === 1 ? "THE TECH EDIT" : "EVERYDAY PICKS"}</span>
-              <h3>{category.description || category.name}</h3>
+              <h3>{category.name}</h3>
               <b>Shop {category.name} →</b>
             </Link>
           ))}
         </section>
       ) : null}
 
-      <HomeVideoShowcase videos={shortVideos} />
+      <section className="site-shell zm-youtube-shorts">
+        <div className="mock-section-head zm-youtube-shorts-head">
+          <div>
+            <span className="mock-eyebrow">WATCH &amp; DISCOVER</span>
+            <h2>See Zelvomart products in action</h2>
+          </div>
+        </div>
+
+        <div className="zm-youtube-shorts-grid">
+          {youtubeShorts.map((videoId, index) => (
+            <article className="zm-youtube-short-card" key={videoId}>
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&rel=0&modestbranding=1&playsinline=1`}
+                title={`Zelvomart YouTube Short ${index + 1}`}
+                loading="eager"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+              />
+            </article>
+          ))}
+        </div>
+
+        <style>{`
+          .zm-youtube-shorts {
+            width: 100%;
+            max-width: 100%;
+            padding-top: 56px;
+            padding-bottom: 56px;
+            overflow: hidden !important;
+            box-sizing: border-box;
+          }
+
+          .zm-youtube-shorts-head {
+            margin-bottom: 22px;
+          }
+
+          .zm-youtube-shorts-grid {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+            align-items: stretch;
+            overflow: hidden !important;
+          }
+
+          .zm-youtube-short-card {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            aspect-ratio: 9 / 16;
+            overflow: hidden !important;
+            border-radius: 14px;
+            background: #0b1115;
+            border: 1px solid #dce5ea;
+            box-sizing: border-box;
+          }
+
+          .zm-youtube-short-card iframe {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            border: 0;
+            overflow: hidden !important;
+          }
+
+          @media (max-width: 1000px) {
+            .zm-youtube-shorts-grid {
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+          }
+
+          @media (max-width: 620px) {
+            .zm-youtube-shorts {
+              padding-top: 38px;
+              padding-bottom: 38px;
+            }
+
+            .zm-youtube-shorts-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 9px;
+            }
+
+            .zm-youtube-short-card {
+              border-radius: 10px;
+            }
+
+            .zm-youtube-short-card:nth-child(5) {
+              display: none;
+            }
+          }
+        `}</style>
+      </section>
 
 
-      <section className="mock-order-steps zm-order-steps">
+      <section className="zm-how-it-works">
         <div className="site-shell">
-          <span className="mock-eyebrow">HOW IT WORKS</span>
-          <h2>Order in a minute. Pay when it arrives.</h2>
+          <div className="zm-how-heading">
+            <h2>How It Works</h2>
+            <p>Shopping on Zelvomart is simple and secure.</p>
+          </div>
 
-          <div className="mock-step-grid zm-step-grid">
-            <article className="zm-step-card">
-              <b>01</b>
-              <div className="zm-step-row">
-                <span className="mock-step-icon">
-                  <Image src="/images/order-steps/01-choose.svg" alt="Choose a product" width={46} height={46} />
-                </span>
-                <div>
-                  <h3>Choose</h3>
-                  <p>Pick the product that works for you.</p>
-                </div>
-              </div>
+          <div className="zm-how-grid">
+            <article>
+              <span className="zm-how-icon">
+                <Image src="/images/order-steps/01-choose.svg" alt="" width={54} height={54} />
+              </span>
+              <div><b>1. Choose</b><p>Browse and add your favourite products</p></div>
             </article>
 
-            <article className="zm-step-card">
-              <b>02</b>
-              <div className="zm-step-row">
-                <span className="mock-step-icon">
-                  <Image src="/images/order-steps/02-confirm.svg" alt="Confirm your order" width={46} height={46} />
-                </span>
-                <div>
-                  <h3>Confirm</h3>
-                  <p>Enter delivery details and place your order.</p>
-                </div>
-              </div>
+            <i aria-hidden="true">→</i>
+
+            <article>
+              <span className="zm-how-icon">
+                <Image src="/images/order-steps/02-confirm.svg" alt="" width={54} height={54} />
+              </span>
+              <div><b>2. Confirm</b><p>Share your details and confirm order</p></div>
             </article>
 
-            <article className="zm-step-card">
-              <b>03</b>
-              <div className="zm-step-row">
-                <span className="mock-step-icon">
-                  <Image src="/images/order-steps/03-checked-packed.svg" alt="Order checked and packed" width={46} height={46} />
-                </span>
-                <div>
-                  <h3>Checked &amp; packed</h3>
-                  <p>We check and pack your order carefully before dispatch.</p>
-                </div>
-              </div>
+            <i aria-hidden="true">→</i>
+
+            <article>
+              <span className="zm-how-icon">
+                <Image src="/images/order-steps/03-checked-packed.svg" alt="" width={54} height={54} />
+              </span>
+              <div><b>3. Delivered</b><p>We pack and ship to your doorstep</p></div>
             </article>
 
-            <article className="zm-step-card">
-              <b>04</b>
-              <div className="zm-step-row">
-                <span className="mock-step-icon">
-                  <Image src="/images/order-steps/04-delivered-pay-cash.svg" alt="Delivered and paid with cash" width={46} height={46} />
-                </span>
-                <div>
-                  <h3>Delivered &amp; pay cash</h3>
-                  <p>Receive your parcel and pay Cash on Delivery.</p>
-                </div>
-              </div>
+            <i aria-hidden="true">→</i>
+
+            <article>
+              <span className="zm-how-icon">
+                <Image src="/images/order-steps/04-delivered-pay-cash.svg" alt="" width={54} height={54} />
+              </span>
+              <div><b>4. Pay Cash</b><p>Pay when you receive your order</p></div>
             </article>
           </div>
         </div>
 
         <style>{`
-          .zm-order-steps {
-            background: #eef5f8 !important;
+          .zm-how-it-works {
+            width: 100%;
+            padding: 34px 0 38px;
+            background: #fff;
+            border-top: 1px solid #edf1f3;
+            border-bottom: 1px solid #edf1f3;
           }
 
-          .zm-step-grid .zm-step-card {
-            background: #fff !important;
-            color: #102733 !important;
-            border: 1px solid #dbe5ea !important;
-            border-radius: 14px !important;
-            box-shadow: none !important;
-            padding: 16px !important;
+          .zm-how-heading h2 {
+            margin: 0;
+            color: #102d3e;
+            font-size: 28px !important;
+            line-height: 1.08;
           }
 
-          .zm-step-grid .zm-step-card > b {
-            color: #c7d2d8 !important;
-            font-size: 22px !important;
-            line-height: 1;
-            display: block;
-            text-align: right;
-            margin-bottom: 4px;
+          .zm-how-heading p {
+            margin: 5px 0 0;
+            color: #667b87;
+            font-size: 14px !important;
           }
 
-          .zm-step-row {
+          .zm-how-grid {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);
+            align-items: center;
+            gap: 18px;
+          }
+
+          .zm-how-grid article {
+            min-width: 0;
             display: flex;
             align-items: center;
             gap: 14px;
-            margin-top: 8px;
           }
 
-          .zm-step-row .mock-step-icon {
-            flex: 0 0 auto;
-            width: 54px !important;
-            margin-top: 4px;
-            height: 54px !important;
-            border-radius: 12px !important;
-            background: #e8f7fd !important;
-            display: inline-flex !important;
-            align-items: center;
-            justify-content: center;
+          .zm-how-grid > i {
+            color: #bcc9cf;
+            font-size: 25px;
+            font-style: normal;
           }
 
-          .zm-step-row h3 {
-            margin: 0 0 4px !important;
-            color: #102733 !important;
-            font-size: 16px !important;
-            line-height: 1.15 !important;
+          .zm-how-icon {
+            width: 62px;
+            height: 62px;
+            flex: 0 0 62px;
+            display: grid;
+            place-items: center;
+            border-radius: 999px;
+            background: #eaf7fd;
           }
 
-          .zm-step-row p {
-            margin: 0 !important;
-            color: #637480 !important;
+          .zm-how-icon img {
+            width: 48px !important;
+            height: 48px !important;
+            object-fit: contain !important;
+          }
+
+          .zm-how-grid b {
+            display: block;
+            color: #102d3e;
+            font-size: 16px;
+            line-height: 1.2;
+            font-weight: 800;
+          }
+
+          .zm-how-grid p {
+            margin: 5px 0 0;
+            color: #657984;
             font-size: 12px !important;
-            line-height: 1.45 !important;
+            line-height: 1.4 !important;
           }
 
           @media (max-width: 760px) {
-            .zm-step-grid {
-              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-              gap: 10px !important;
+            .zm-how-it-works {
+              padding: 28px 0;
             }
 
-            .zm-step-grid .zm-step-card {
-              min-width: 0;
-              padding: 11px !important;
+            .zm-how-heading h2 {
+              font-size: 24px !important;
             }
 
-            .zm-step-grid .zm-step-card > b {
-              font-size: 18px !important;
-              margin-bottom: 2px;
+            .zm-how-grid {
+              grid-template-columns: repeat(2, minmax(0,1fr));
+              gap: 12px;
             }
 
-            .zm-step-row {
+            .zm-how-grid > i {
+              display: none;
+            }
+
+            .zm-how-grid article {
               align-items: flex-start;
-              gap: 8px;
-              margin-top: 5px;
+              padding: 12px;
+              border: 1px solid #e0e8ec;
+              border-radius: 12px;
+              background: #fff;
             }
 
-            .zm-step-row .mock-step-icon {
-              width: 40px !important;
-              height: 40px !important;
-              margin-top: 2px;
+            .zm-how-icon {
+              width: 42px;
+              height: 42px;
+              flex-basis: 42px;
             }
 
-            .zm-step-row .mock-step-icon img {
+            .zm-how-icon img {
               width: 34px !important;
               height: 34px !important;
             }
 
-            .zm-step-row h3 {
-              font-size: 12.5px !important;
-              line-height: 1.18 !important;
+            .zm-how-grid b {
+              font-size: 12px;
             }
 
-            .zm-step-row p {
+            .zm-how-grid p {
               font-size: 9.5px !important;
-              line-height: 1.35 !important;
             }
           }
         `}</style>
@@ -624,15 +753,13 @@ export default async function HomePage() {
 
       <section className="site-shell zm-unboxing-section">
         <div className="zm-unboxing-video-wrap">
-          <video
+          <iframe
             className="zm-unboxing-video"
-            controls
-            playsInline
-            preload="metadata"
-          >
-            <source src="/videos/zelvomart-unboxing.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
+            src={`https://www.youtube.com/embed/${unboxingYoutubeId}?autoplay=1&mute=1&loop=1&playlist=${unboxingYoutubeId}&controls=0&rel=0&modestbranding=1&playsinline=1`}
+            title="Zelvomart unboxing video"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
         </div>
 
         <div className="zm-unboxing-copy">
@@ -674,8 +801,8 @@ export default async function HomePage() {
             width: 100%;
             height: 100%;
             min-height: 340px;
-            object-fit: cover;
-            background: #dff3fb;
+            border: 0;
+            background: #0b1115;
           }
 
           .zm-unboxing-copy h2 {
@@ -739,79 +866,167 @@ export default async function HomePage() {
         `}</style>
       </section>
 
-      <section className="mock-whatsapp-strip zm-whatsapp-wide">
-        <div><span>◉</span><p><b>Questions before you order? Ask a real person.</b><small>We&apos;re here for product, stock and delivery questions.</small></p></div>
-        <a className="zm-whatsapp-main-btn" href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer">Chat on WhatsApp</a>
-        <Link className="zm-whatsapp-help-btn" href="/contact-us">Browse help &amp; contact</Link>
-      </section>
+      <section className="zm-whatsapp-banner">
+        <div className="site-shell zm-whatsapp-banner-inner">
+          <div className="zm-wa-icon" aria-hidden="true">☎</div>
 
-      <style>{`
-        .zm-whatsapp-wide {
-          width: 100% !important;
-          max-width: none !important;
-          margin: 18px 0 60px !important;
-          padding: 20px clamp(20px, 3.2vw, 54px) !important;
-          border-radius: 0 !important;
-          background: linear-gradient(90deg, #dcf8e7 0%, #e9fbf0 48%, #dcf8e7 100%) !important;
-          border-top: 1px solid #c5efd4;
-          border-bottom: 1px solid #c5efd4;
-          box-shadow: none !important;
-          box-sizing: border-box;
-        }
-        .zm-whatsapp-wide > div > span {
-          width: 46px !important;
-          height: 46px !important;
-          border-radius: 13px !important;
-          background: #25d366 !important;
-          font-size: 18px !important;
-        }
-        .zm-whatsapp-wide p b {
-          font-size: 14px !important;
-        }
-        .zm-whatsapp-wide p small {
-          font-size: 10.5px !important;
-          margin-top: 4px !important;
-        }
-        .zm-whatsapp-wide .zm-whatsapp-main-btn {
-          padding: 15px 24px !important;
-          border-radius: 10px !important;
-          background: #25d366 !important;
-          color: #fff !important;
-          font-size: 13px !important;
-          font-weight: 900 !important;
-          min-height: 48px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .zm-whatsapp-wide .zm-whatsapp-help-btn {
-          padding: 14px 20px !important;
-          border-radius: 10px !important;
-          font-size: 11px !important;
-          min-height: 48px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: #fff !important;
-          border: 1px solid #bfe6cc !important;
-        }
-        @media (max-width: 620px) {
-          .zm-whatsapp-wide {
-            margin-bottom: 42px !important;
-            padding: 16px 12px !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 10px !important;
-          }
-          .zm-whatsapp-wide > div {
-            grid-column: 1 / -1;
-          }
-          .zm-whatsapp-wide .zm-whatsapp-main-btn,
-          .zm-whatsapp-wide .zm-whatsapp-help-btn {
+          <div className="zm-wa-copy">
+            <span>HAVE A QUESTION?</span>
+            <h2>Chat with us on WhatsApp</h2>
+            <p>Get product help, order updates or recommendations — we&apos;re here to help!</p>
+          </div>
+
+          <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer">
+            Chat on WhatsApp <b>→</b>
+          </a>
+
+          <div className="zm-wa-phone" aria-hidden="true">
+            <div className="zm-wa-phone-screen">
+              <i />
+              <i />
+              <i />
+            </div>
+          </div>
+        </div>
+
+        <style>{`
+          .zm-whatsapp-banner {
             width: 100%;
-            padding-inline: 10px !important;
+            margin: 44px 0 0;
+            padding: 14px 0;
+            background: linear-gradient(90deg, #f5fbff 0%, #eaf7ff 58%, #f6fbff 100%);
+            border-top: 1px solid #d8ebf5;
+            border-bottom: 1px solid #d8ebf5;
           }
-        }
-      `}</style>
+
+          .zm-whatsapp-banner-inner {
+            min-height: 118px;
+            display: grid;
+            grid-template-columns: auto minmax(0,1fr) auto 150px;
+            align-items: center;
+            gap: 24px;
+          }
+
+          .zm-wa-icon {
+            width: 76px;
+            height: 76px;
+            display: grid;
+            place-items: center;
+            border-radius: 999px;
+            background: #25d366;
+            color: #fff;
+            font-size: 32px;
+            font-weight: 900;
+            box-shadow: 0 8px 24px rgba(37,211,102,.22);
+          }
+
+          .zm-wa-copy span {
+            color: #159ad1;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .11em;
+          }
+
+          .zm-wa-copy h2 {
+            margin: 4px 0 4px;
+            color: #102d3e;
+            font-size: 28px !important;
+            line-height: 1.08 !important;
+          }
+
+          .zm-wa-copy p {
+            margin: 0;
+            color: #657985;
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+          }
+
+          .zm-whatsapp-banner-inner > a {
+            min-height: 48px;
+            padding: 0 22px;
+            border: 2px solid #80c8ef;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+            background: #fff;
+            color: #168bc0;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
+          }
+
+          .zm-wa-phone {
+            position: relative;
+            align-self: end;
+            width: 110px;
+            height: 108px;
+            margin-left: auto;
+            transform: rotate(-7deg) translateY(18px);
+            border: 7px solid #162d3b;
+            border-bottom: 0;
+            border-radius: 20px 20px 0 0;
+            background: #fff;
+            overflow: hidden;
+          }
+
+          .zm-wa-phone-screen {
+            display: grid;
+            gap: 8px;
+            padding: 25px 10px;
+          }
+
+          .zm-wa-phone-screen i {
+            height: 12px;
+            border-radius: 999px;
+            background: #dff7e7;
+          }
+
+          .zm-wa-phone-screen i:nth-child(2) {
+            width: 78%;
+            margin-left: auto;
+            background: #bff0cd;
+          }
+
+          @media (max-width: 760px) {
+            .zm-whatsapp-banner {
+              margin-top: 30px;
+              padding: 18px 0;
+            }
+
+            .zm-whatsapp-banner-inner {
+              min-height: 0;
+              grid-template-columns: 54px minmax(0,1fr);
+              gap: 12px;
+            }
+
+            .zm-wa-icon {
+              width: 54px;
+              height: 54px;
+              font-size: 22px;
+            }
+
+            .zm-wa-copy h2 {
+              font-size: 21px !important;
+            }
+
+            .zm-wa-copy p {
+              font-size: 11px !important;
+            }
+
+            .zm-whatsapp-banner-inner > a {
+              grid-column: 1 / -1;
+              width: 100%;
+            }
+
+            .zm-wa-phone {
+              display: none;
+            }
+          }
+        `}</style>
+      </section>
 
       <section className="site-shell mock-faq-section">
         <div className="mock-faq-intro">
@@ -826,6 +1041,211 @@ export default async function HomePage() {
         </div>
         <Faq />
       </section>
+
+      <style>{`
+        .mock-home {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: hidden !important;
+        }
+
+        .mock-home *,
+        .mock-home *::before,
+        .mock-home *::after {
+          box-sizing: border-box;
+        }
+
+        .mock-home .site-shell {
+          max-width: 100%;
+        }
+
+        html,
+        body {
+          max-width: 100vw !important;
+          overflow-x: hidden !important;
+        }
+
+        html,
+        body {
+          max-width: 100%;
+          overflow-x: hidden !important;
+        }
+
+        .zm-home-category-section {
+          padding-top: 48px !important;
+          padding-bottom: 34px !important;
+        }
+
+        .mock-products-section {
+          padding-top: 48px !important;
+          padding-bottom: 48px !important;
+        }
+
+        .mock-editorial-grid {
+          padding-top: 52px !important;
+          padding-bottom: 52px !important;
+        }
+
+        .zm-how-it-works {
+          margin-top: 38px !important;
+          margin-bottom: 38px !important;
+        }
+
+        .zm-unboxing-section {
+          margin-top: 40px !important;
+          margin-bottom: 40px !important;
+        }
+
+        .zm-whatsapp-banner {
+          margin-top: 48px !important;
+          margin-bottom: 48px !important;
+        }
+
+        .mock-faq-section {
+          padding-top: 72px !important;
+          padding-bottom: 110px !important;
+          margin-top: 0 !important;
+          align-items: start !important;
+          overflow: visible !important;
+          max-height: none !important;
+          height: auto !important;
+        }
+
+        .mock-faq-section > *,
+        .mock-faq-section details,
+        .mock-faq-section [class*="faq"] {
+          max-height: none !important;
+          overflow: visible !important;
+        }
+
+        .mock-faq-intro {
+          padding-top: 4px;
+        }
+
+        .zm-home-products-four .product-grid {
+          align-items: stretch;
+        }
+
+        .zm-home-products-four .mock-product-card {
+          height: 100%;
+        }
+
+        .zm-home-products-four .mock-product-media {
+          aspect-ratio: 1 / 1 !important;
+          min-height: 0 !important;
+          overflow: hidden;
+          background: #f5f7f8;
+        }
+
+        .zm-home-products-four .mock-product-media img {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          object-position: center !important;
+        }
+
+        .mock-editorial-grid {
+          margin-top: 42px !important;
+          gap: 14px !important;
+        }
+
+        .mock-editorial-grid .mock-editorial {
+          min-height: 260px !important;
+          overflow: hidden;
+          border-radius: 14px !important;
+        }
+
+        .mock-editorial-grid .mock-editorial-img {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
+
+        .mock-editorial-grid .mock-editorial-img img {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          object-position: center !important;
+        }
+
+        .mock-editorial-grid .mock-editorial > span,
+        .mock-editorial-grid .mock-editorial > h3,
+        .mock-editorial-grid .mock-editorial > b {
+          position: relative;
+          z-index: 2;
+        }
+
+        .mock-editorial-grid .mock-editorial > h3 {
+          color: #fff !important;
+          font-size: 22px !important;
+          line-height: 1.05 !important;
+          text-shadow: 0 2px 10px rgba(0,0,0,.35);
+        }
+
+        .mock-editorial-grid .mock-editorial > b {
+          display: inline-flex !important;
+          width: fit-content;
+          min-height: 34px;
+          align-items: center;
+          padding: 0 13px;
+          border-radius: 9px;
+          background: #fff !important;
+          color: #102d3e !important;
+          font-size: 11px !important;
+          font-weight: 700 !important;
+        }
+
+        .zm-standard-section {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+        }
+
+        @media (max-width: 900px) {
+          .zm-home-category-section {
+            padding-top: 38px !important;
+            padding-bottom: 28px !important;
+          }
+
+          .mock-products-section,
+          .mock-editorial-grid {
+            padding-top: 38px !important;
+            padding-bottom: 38px !important;
+          }
+
+          .mock-faq-section {
+            padding-top: 48px !important;
+            padding-bottom: 64px !important;
+          }
+
+        }
+
+        @media (max-width: 620px) {
+          .zm-home-category-section {
+            padding-top: 30px !important;
+            padding-bottom: 24px !important;
+          }
+
+          .mock-faq-section {
+            margin-top: 28px !important;
+            padding-top: 48px !important;
+            padding-bottom: 96px !important;
+            max-height: none !important;
+            overflow: visible !important;
+          }
+
+          .mock-editorial-grid {
+            grid-template-columns: 1fr !important;
+          }
+
+          .mock-editorial-grid .mock-editorial {
+            min-height: 190px !important;
+          }
+        }
+      `}</style>
+
     </div>
   );
 }

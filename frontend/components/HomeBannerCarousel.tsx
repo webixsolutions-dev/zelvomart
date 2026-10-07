@@ -149,7 +149,7 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
     </section>
 
     <section className="zm-hero-benefits" aria-label="Zelvomart shopping benefits">
-      <div className="zm-hero-benefits-track">
+      <div className="site-shell zm-hero-benefits-track">
         {benefits.map((benefit) => (
           <article className="zm-hero-benefit" key={benefit.title}>
             <span className="zm-hero-benefit-icon">

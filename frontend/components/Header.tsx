@@ -56,22 +56,6 @@ function HelpIcon() {
   );
 }
 
-function NewInIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 3v18M3 12h18" />
-      <path d="m5.6 5.6 12.8 12.8M18.4 5.6 5.6 18.4" opacity=".35" />
-    </svg>
-  );
-}
-
-function BestsellerIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M13.4 2.8c.5 3-1 4.5-2.4 5.8-1.3 1.2-2.6 2.4-2.6 4.7a3.6 3.6 0 0 0 7.2 0c0-1.3-.4-2.4-1.2-3.5 2.7 1.3 4.2 3.6 4.2 6.2A6.6 6.6 0 0 1 12 22a6.6 6.6 0 0 1-6.6-6.6c0-4.4 2.8-7.2 8-12.6Z" />
-    </svg>
-  );
-}
 
 function CategoryIcon({ slug, size = 21 }: { slug: string; size?: number }) {
   switch (slug) {
@@ -111,7 +95,6 @@ export default function Header({
   const router = useRouter();
   const { totalItems, setOpen } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const orderedCategories = useMemo(() => {
     const used = new Set<string>();
 
@@ -149,7 +132,6 @@ export default function Header({
 
     window.dispatchEvent(new Event("zelvo:route-start"));
     router.push(q ? `/shop?q=${encodeURIComponent(q)}` : "/shop");
-    setSearchOpen(false);
     setMobileOpen(false);
   };
 
@@ -184,6 +166,16 @@ export default function Header({
             <BrandLogo />
           </div>
 
+          <form className="zm-header-search" onSubmit={submitSearch}>
+            <SearchIcon size={18} />
+            <input
+              name="q"
+              placeholder="Search tumblers, jewellery sets, gadgets..."
+              aria-label="Search products"
+            />
+            <button type="submit">Search</button>
+          </form>
+
           <div className="zm-header-spacer" />
 
           <div className="zm-header-actions">
@@ -211,41 +203,15 @@ export default function Header({
               <CartIcon size={20} />
               {totalItems > 0 ? <b>{totalItems}</b> : null}
             </button>
-
-            <button
-              type="button"
-              className={`zm-search-button ${searchOpen ? "is-active" : ""}`}
-              onClick={() => setSearchOpen((value) => !value)}
-              aria-label="Search products"
-              aria-expanded={searchOpen}
-            >
-              {searchOpen ? <XIcon size={19} /> : <SearchIcon size={20} />}
-            </button>
           </div>
         </div>
 
-        {searchOpen ? (
-          <div className="site-shell zm-search-panel">
-            <form onSubmit={submitSearch}>
-              <SearchIcon size={18} />
-              <input
-                autoFocus
-                name="q"
-                placeholder="Search products..."
-                aria-label="Search products"
-              />
-              <button type="submit">Search</button>
-            </form>
-          </div>
-        ) : null}
-
-        <div className="site-shell zm-quick-row">
-          <div className="zm-quick-stack">
-            <nav aria-label="Quick shop links">
-              <Link href="/new-in"><NewInIcon /><span>New in</span></Link>
-              <Link href="/bestsellers"><BestsellerIcon /><span>Bestsellers</span></Link>
-            </nav>
-          </div>
+        <div className="site-shell zm-mobile-search-row">
+          <form onSubmit={submitSearch}>
+            <SearchIcon size={17} />
+            <input name="q" placeholder="Search products..." aria-label="Search products" />
+            <button type="submit">Search</button>
+          </form>
         </div>
 
         <div className="zm-category-strip">
@@ -303,8 +269,6 @@ export default function Header({
 
           <nav className="mock-drawer-links">
             <Link href="/account" onClick={() => setMobileOpen(false)}>My Account</Link>
-            <Link href="/new-in" onClick={() => setMobileOpen(false)}>New in</Link>
-            <Link href="/bestsellers" onClick={() => setMobileOpen(false)}>Bestsellers</Link>
             <Link href="/track-order" onClick={() => setMobileOpen(false)}>Track order</Link>
             <Link href="/contact-us" onClick={() => setMobileOpen(false)}>Help & contact</Link>
           </nav>
@@ -936,6 +900,121 @@ export default function Header({
         @media (prefers-reduced-motion: reduce) {
           .zm-ticker-track { animation: none; }
           .zm-search-panel { animation: none; }
+        }
+
+        /* Final header cleanup: old-style search, no quick links/search icon */
+        .zm-header-search {
+          flex: 1 1 520px;
+          max-width: 640px;
+          min-width: 260px;
+          min-height: 44px;
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          align-items: center;
+          gap: 10px;
+          margin-left: 18px;
+          padding-left: 14px;
+          border: 1px solid #cfdde5;
+          border-radius: 10px;
+          background: #f7fafc;
+          overflow: hidden;
+        }
+
+        .zm-header-search input {
+          min-width: 0;
+          width: 100%;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: #102d3e;
+          font: inherit;
+          font-size: 13px;
+        }
+
+        .zm-header-search button,
+        .zm-mobile-search-row button {
+          align-self: stretch;
+          min-width: 84px;
+          border: 0;
+          background: #0797c9;
+          color: #fff;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .zm-mobile-search-row {
+          display: none;
+        }
+
+        .zm-header-spacer {
+          flex: 0 0 4px;
+        }
+
+        @media (max-width: 900px) {
+          .zm-header-search {
+            display: none;
+          }
+
+          .zm-mobile-search-row {
+            display: block;
+            padding: 0 12px 10px;
+          }
+
+          .zm-mobile-search-row form {
+            width: 100%;
+            min-height: 40px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 8px;
+            padding-left: 12px;
+            border: 1px solid #d6e2e8;
+            border-radius: 9px;
+            background: #f7fafc;
+            overflow: hidden;
+          }
+
+          .zm-mobile-search-row input {
+            width: 100%;
+            min-width: 0;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: #102d3e;
+            font: inherit;
+            font-size: 12px;
+          }
+
+          .zm-mobile-search-row button {
+            min-width: 66px;
+            font-size: 11px;
+          }
+
+          .zm-header-spacer {
+            flex: 1 1 auto;
+          }
+        }
+
+        /* Desktop header alignment + breathing space below logo/main row */
+        @media (min-width: 901px) {
+          .zm-header-main {
+            min-height: 78px !important;
+            padding-top: 8px !important;
+            padding-bottom: 12px !important;
+            margin-bottom: 7px !important;
+          }
+
+          .zm-brand-wrap,
+          .zm-header-search,
+          .zm-header-actions {
+            align-self: center;
+          }
+
+          .zm-category-strip {
+            margin-top: 0 !important;
+          }
         }
       `}</style>
     </>
