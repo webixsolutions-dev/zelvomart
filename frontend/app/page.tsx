@@ -1246,6 +1246,81 @@ export default async function HomePage() {
         }
       `}</style>
 
+
+      <style>{`
+        html,
+        body {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: hidden !important;
+        }
+
+        body {
+          position: relative;
+        }
+
+        .mock-home {
+          width: 100% !important;
+          max-width: 100% !important;
+          overflow-x: hidden !important;
+          position: relative;
+        }
+
+        .mock-home > * {
+          max-width: 100%;
+        }
+
+        .mock-home .site-shell {
+          width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+
+        .mock-home iframe,
+        .mock-home video,
+        .mock-home img {
+          max-width: 100%;
+        }
+
+        .zm-youtube-shorts,
+        .zm-youtube-shorts-grid,
+        .zm-unboxing-section,
+        .zm-whatsapp-banner,
+        .mock-faq-section,
+        .mock-editorial-grid,
+        .zm-how-it-works,
+        .mock-products-section,
+        .zm-home-category-section {
+          max-width: 100% !important;
+          overflow-x: hidden !important;
+        }
+
+        .zm-standard-section {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          overflow-x: hidden !important;
+        }
+
+        .zm-youtube-short-card,
+        .zm-youtube-short-card iframe,
+        .zm-unboxing-video-wrap,
+        .zm-unboxing-video {
+          min-width: 0 !important;
+          max-width: 100% !important;
+        }
+
+        @media (max-width: 620px) {
+          .mock-home,
+          .mock-home > *,
+          .mock-home .site-shell {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      `}</style>
+
     </div>
   );
 }
