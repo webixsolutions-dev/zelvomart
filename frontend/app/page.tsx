@@ -328,12 +328,12 @@ export default async function HomePage() {
 
         <style>{`
           .zm-standard-section {
-            width: 100vw !important;
-            max-width: 100vw !important;
-            margin-left: calc(50% - 50vw) !important;
-            margin-right: calc(50% - 50vw) !important;
+            width: calc(100% - 48px) !important;
+            max-width: 1180px !important;
+            margin: 48px auto !important;
             padding: 0 !important;
             overflow: hidden;
+            border-radius: 16px;
             background-image: url("/images/home/best-selling-zelvomart.png") !important;
             background-position: center center !important;
             background-size: cover !important;
@@ -433,6 +433,10 @@ export default async function HomePage() {
 
           @media (max-width: 760px) {
             .zm-standard-section {
+              width: calc(100% - 24px) !important;
+              max-width: none !important;
+              margin: 32px auto !important;
+              border-radius: 13px;
               background-image: url("/images/home/best-selling-zelvomart.png") !important;
               background-position: center center !important;
               background-size: cover !important;
@@ -859,7 +863,7 @@ export default async function HomePage() {
       </section>
 
       <section className="zm-whatsapp-banner">
-        <div className="site-shell zm-whatsapp-banner-inner">
+        <div className="zm-whatsapp-banner-inner">
           <div className="zm-wa-icon" aria-hidden="true">☎</div>
 
           <div className="zm-wa-copy">
@@ -883,20 +887,27 @@ export default async function HomePage() {
 
         <style>{`
           .zm-whatsapp-banner {
-            width: 100%;
-            margin: 44px 0 0;
-            padding: 14px 0;
+            width: calc(100% - 48px) !important;
+            max-width: 1180px !important;
+            margin: 48px auto !important;
+            padding: 0 !important;
             background: linear-gradient(90deg, #f5fbff 0%, #eaf7ff 58%, #f6fbff 100%);
-            border-top: 1px solid #d8ebf5;
-            border-bottom: 1px solid #d8ebf5;
+            border: 1px solid #d8ebf5;
+            border-radius: 16px;
+            overflow: hidden;
+            box-sizing: border-box;
           }
 
           .zm-whatsapp-banner-inner {
+            width: 100% !important;
+            max-width: 100% !important;
             min-height: 118px;
+            padding: 14px 24px;
             display: grid;
-            grid-template-columns: auto minmax(0,1fr) auto 150px;
+            grid-template-columns: auto minmax(0,1fr) auto 130px;
             align-items: center;
             gap: 24px;
+            box-sizing: border-box;
           }
 
           .zm-wa-icon {
@@ -984,12 +995,16 @@ export default async function HomePage() {
 
           @media (max-width: 760px) {
             .zm-whatsapp-banner {
-              margin-top: 30px;
-              padding: 18px 0;
+              width: calc(100% - 24px) !important;
+              max-width: none !important;
+              margin: 32px auto !important;
+              padding: 0 !important;
+              border-radius: 13px;
             }
 
             .zm-whatsapp-banner-inner {
               min-height: 0;
+              padding: 18px 14px;
               grid-template-columns: 54px minmax(0,1fr);
               gap: 12px;
             }
@@ -1094,6 +1109,21 @@ export default async function HomePage() {
           margin-top: 48px !important;
           margin-bottom: 48px !important;
         }
+
+        .zm-whatsapp-banner {
+          width: calc(100% - 48px) !important;
+          max-width: 1180px !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+        }
+
+        @media (max-width: 760px) {
+          .zm-whatsapp-banner {
+            width: calc(100% - 24px) !important;
+            max-width: none !important;
+          }
+        }
+
 
         .mock-faq-section {
           padding-top: 72px !important;
@@ -1224,10 +1254,17 @@ export default async function HomePage() {
         }
 
         .zm-standard-section {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
+          width: calc(100% - 48px) !important;
+          max-width: 1180px !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+        }
+
+        @media (max-width: 760px) {
+          .zm-standard-section {
+            width: calc(100% - 24px) !important;
+            max-width: none !important;
+          }
         }
 
         @media (max-width: 900px) {
@@ -1324,11 +1361,18 @@ export default async function HomePage() {
         }
 
         .zm-standard-section {
-          width: 100% !important;
-          max-width: 100% !important;
-          margin-left: 0 !important;
-          margin-right: 0 !important;
+          width: calc(100% - 48px) !important;
+          max-width: 1180px !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
           overflow-x: hidden !important;
+        }
+
+        @media (max-width: 760px) {
+          .zm-standard-section {
+            width: calc(100% - 24px) !important;
+            max-width: none !important;
+          }
         }
 
         .zm-youtube-short-card,
@@ -1373,6 +1417,31 @@ export default async function HomePage() {
         .mock-home,
         .mock-home * {
           scrollbar-color: transparent transparent !important;
+        }
+      `}</style>
+
+
+      <style>{`
+        /* Keep the middle homepage sections aligned with the rest of the page. */
+        .zm-home-category-section,
+        .mock-products-section,
+        .mock-editorial-grid {
+          width: calc(100% - 48px) !important;
+          max-width: 1180px !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 620px) {
+          .zm-home-category-section,
+          .mock-products-section,
+          .mock-editorial-grid {
+            width: calc(100% - 24px) !important;
+            max-width: none !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
         }
       `}</style>
 
