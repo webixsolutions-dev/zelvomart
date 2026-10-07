@@ -329,7 +329,7 @@ export default async function HomePage() {
         <style>{`
           .zm-standard-section {
             width: calc(100% - 48px) !important;
-            max-width: 1180px !important;
+            max-width: 1280px !important;
             margin: 48px auto !important;
             padding: 0 !important;
             overflow: hidden;
@@ -1255,7 +1255,7 @@ export default async function HomePage() {
 
         .zm-standard-section {
           width: calc(100% - 48px) !important;
-          max-width: 1180px !important;
+          max-width: 1280px !important;
           margin-left: auto !important;
           margin-right: auto !important;
         }
@@ -1362,7 +1362,7 @@ export default async function HomePage() {
 
         .zm-standard-section {
           width: calc(100% - 48px) !important;
-          max-width: 1180px !important;
+          max-width: 1280px !important;
           margin-left: auto !important;
           margin-right: auto !important;
           overflow-x: hidden !important;
