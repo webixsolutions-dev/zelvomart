@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Manrope } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import "@rrweb/replay/dist/style.css";
@@ -13,6 +14,14 @@ import MetaPixelScript from "@/components/MetaPixelScript";
 import ClarityScript from "@/components/ClarityScript";
 import ExperimentProvider from "@/components/ExperimentProvider";
 import SiteChrome from "@/components/SiteChrome";
+
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-manrope",
+  fallback: ["Arial", "Helvetica", "sans-serif"],
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com"),
@@ -54,7 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <link rel="preload" as="image" type="image/webp" href="/images/hero/zelvomart-slider-01.webp" />
       </head>
-      <body>
+      <body className={manrope.variable}>
         <SiteChrome
           header={
             <Header

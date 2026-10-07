@@ -6645,7 +6645,7 @@ body{color:var(--mock-text);background:#fff}.public-site-main{min-height:55vh}.s
 :root{
   --zm-content-max:1280px;
   --zm-page-gutter:32px;
-  --zm-font:"Inter","Aptos","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  --zm-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
 }
 html{scroll-behavior:smooth}
 body{font-family:var(--zm-font);font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
@@ -6811,8 +6811,8 @@ body{font-family:var(--zm-font);font-synthesis:none;text-rendering:optimizeLegib
 
 /* 2026-10-05 — readability pass + premium product detail refinement */
 :root {
-  --zm-font: "Segoe UI Variable Text", "Segoe UI Variable", "Inter", "Aptos", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --zm-display-font: "Segoe UI Variable Display", "Segoe UI Variable", "Inter", "Aptos Display", "Segoe UI", system-ui, sans-serif;
+  --zm-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
+  --zm-display-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
 }
 html { font-size: 16px; }
 body {
@@ -7020,8 +7020,8 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--zm-display-font); letter-spacing: -0.025e
 :root{
   --zm-content-max:1280px;
   --zm-page-gutter:32px;
-  --zm-font:"Segoe UI Variable Text","Segoe UI Variable","Aptos","Inter","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
-  --zm-display-font:"Segoe UI Variable Display","Segoe UI Variable","Aptos Display","Aptos","Inter","Segoe UI",system-ui,sans-serif;
+  --zm-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
+  --zm-display-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
 }
 body{
   font-family:var(--zm-font);
@@ -9955,8 +9955,8 @@ a:hover,button:hover{transform:translateY(-1px)}
 
 /* Use one consistent storefront font family everywhere. */
 :root {
-  --zm-font: "Segoe UI", Arial, Helvetica, sans-serif;
-  --zm-display-font: "Segoe UI", Arial, Helvetica, sans-serif;
+  --zm-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
+  --zm-display-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
 }
 
 body,
@@ -10140,5 +10140,226 @@ body,
     padding-left: 0 !important;
     padding-right: 0 !important;
     font-size: 12.5px !important;
+  }
+}
+
+
+/* 2026-10-07 — Manrope storefront typography */
+:root {
+  --zm-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
+  --zm-display-font: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif;
+}
+
+body,
+.public-site-main,
+.mock-header,
+.mock-footer,
+.public-site-main :where(a,button,input,textarea,select,label,span,p,li,strong,b,small),
+.public-site-main :where(h1,h2,h3,h4,h5,h6),
+.mock-footer :where(a,span,p,h1,h2,h3,h4,h5,h6) {
+  font-family: var(--zm-font) !important;
+}
+
+
+/* ==========================================================================
+   Zelvomart typography scale — Manrope
+   Headings 700–800 | Body 400–500 | Buttons/labels 600–700
+   ========================================================================== */
+
+.public-site-main,
+.mock-header,
+.mock-footer {
+  font-family: var(--font-manrope), "Manrope", Arial, Helvetica, sans-serif !important;
+}
+
+/* Body copy */
+.public-site-main :where(p, li, input, textarea, select),
+.mock-footer :where(p, li) {
+  font-family: inherit !important;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Labels, links and controls */
+.public-site-main :where(label, small, .mock-eyebrow),
+.mock-header a,
+.mock-footer a {
+  font-family: inherit !important;
+  font-weight: 600;
+}
+
+.public-site-main :where(button, [role="button"]),
+.mock-header button,
+.mock-footer button,
+.mock-btn-dark,
+.mock-btn-light {
+  font-family: inherit !important;
+  font-weight: 700 !important;
+}
+
+/* Headings */
+.public-site-main :where(h1, h2, h3, h4, h5, h6),
+.mock-footer :where(h2, h3, h4, h5, h6) {
+  font-family: inherit !important;
+  font-weight: 800 !important;
+}
+
+/* Homepage hero */
+.zm-home-banner-copy h1 {
+  font-size: 56px !important;
+  line-height: 1.02 !important;
+  font-weight: 800 !important;
+  letter-spacing: -1.8px !important;
+}
+
+/* H2 slides in homepage carousel */
+.zm-home-banner-copy h2 {
+  font-size: 48px !important;
+  line-height: 1.04 !important;
+  font-weight: 800 !important;
+  letter-spacing: -1.45px !important;
+}
+
+/* Page/category hero */
+.zm-storefront-hero-copy h1 {
+  font-size: 48px !important;
+  line-height: 1.04 !important;
+  font-weight: 800 !important;
+  letter-spacing: -1.35px !important;
+}
+
+/* Generic page headings */
+.page-head h1,
+.mock-category-about-copy h2 {
+  font-weight: 800 !important;
+}
+
+/* Section headings */
+.mock-section-head h2,
+.section-title h2,
+.zm-shorts-heading h2,
+.mock-order-steps h2,
+.mock-unbox h2,
+.mock-faq-intro h2,
+.zm-unboxing-copy h2 {
+  font-size: 32px !important;
+  line-height: 1.1 !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.7px !important;
+}
+
+/* Standard body sizing */
+.zm-home-banner-copy p,
+.zm-storefront-hero-copy p,
+.mock-section-head p,
+.zm-unboxing-copy > p,
+.mock-category-about-copy p,
+.mock-category-about-faq p {
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  font-weight: 400 !important;
+}
+
+/* Product titles */
+.mock-product-title,
+.zm-product-title,
+.product-title {
+  font-size: 16px !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+}
+
+/* Buttons / CTAs */
+.mock-btn-dark,
+.mock-btn-light,
+.zm-home-banner-actions a,
+.zm-storefront-hero-actions a,
+.zm-product-cart-button,
+.zm-standard-btn,
+.zm-view-all-products a {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+/* Eyebrows and compact labels */
+.mock-eyebrow,
+.zm-home-banner-copy .mock-eyebrow,
+.zm-storefront-hero-copy .mock-eyebrow {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+}
+
+/* Product metadata can remain compact but readable */
+.mock-product-rating,
+.zm-product-rating,
+.mock-product-price,
+.zm-product-review-count {
+  font-weight: 500;
+}
+
+@media (max-width: 620px) {
+  /* Hero heading mobile */
+  .zm-home-banner-copy h1 {
+    font-size: 36px !important;
+    line-height: 1.04 !important;
+    letter-spacing: -1.1px !important;
+  }
+
+  .zm-home-banner-copy h2 {
+    font-size: 32px !important;
+    line-height: 1.06 !important;
+    letter-spacing: -0.8px !important;
+  }
+
+  /* Page/category hero mobile */
+  .zm-storefront-hero-copy h1 {
+    font-size: 32px !important;
+    line-height: 1.06 !important;
+    letter-spacing: -0.8px !important;
+  }
+
+  /* Section heading mobile */
+  .mock-section-head h2,
+  .section-title h2,
+  .zm-shorts-heading h2,
+  .mock-order-steps h2,
+  .mock-unbox h2,
+  .mock-faq-intro h2,
+  .zm-unboxing-copy h2 {
+    font-size: 25px !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.45px !important;
+  }
+
+  /* Body stays readable on mobile */
+  .zm-home-banner-copy p,
+  .zm-storefront-hero-copy p,
+  .mock-section-head p,
+  .zm-unboxing-copy > p,
+  .mock-category-about-copy p,
+  .mock-category-about-faq p {
+    font-size: 16px !important;
+    line-height: 1.58 !important;
+  }
+
+  /* Product title mobile */
+  .mock-product-title,
+  .zm-product-title,
+  .product-title {
+    font-size: 15px !important;
+    line-height: 1.35 !important;
+    font-weight: 700 !important;
+  }
+
+  .mock-btn-dark,
+  .mock-btn-light,
+  .zm-home-banner-actions a,
+  .zm-storefront-hero-actions a,
+  .zm-product-cart-button,
+  .zm-standard-btn,
+  .zm-view-all-products a {
+    font-weight: 700 !important;
   }
 }
