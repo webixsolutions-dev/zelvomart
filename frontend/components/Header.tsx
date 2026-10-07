@@ -194,7 +194,9 @@ export default function Header({
             <MenuIcon size={22} />
           </button>
 
-          <BrandLogo />
+          <div className="zm-brand-wrap">
+            <BrandLogo />
+          </div>
 
           <div className="zm-header-spacer" />
 
@@ -390,6 +392,12 @@ export default function Header({
           display: flex;
           align-items: center;
           gap: 18px;
+        }
+
+        .zm-brand-wrap {
+          display: flex;
+          align-items: center;
+          flex: 0 0 auto;
         }
 
         .zm-header-spacer { flex: 1; }
@@ -631,13 +639,46 @@ export default function Header({
 
         @media (max-width: 900px) {
           .zm-header-main {
-            min-height: 64px;
-            gap: 8px;
+            position: relative;
+            min-height: 68px;
+            gap: 6px;
+            padding-top: 4px;
+            padding-bottom: 6px;
           }
 
-          .zm-menu-button { display: inline-flex; }
+          .zm-brand-wrap {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            max-width: 86px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
 
-          .zm-header-actions { gap: 5px; }
+          .zm-brand-wrap img {
+            width: auto !important;
+            max-width: 86px !important;
+            max-height: 48px !important;
+            object-fit: contain;
+          }
+
+          .zm-menu-button {
+            display: inline-flex;
+            position: relative;
+            z-index: 2;
+          }
+
+          .zm-header-spacer { flex: 1 1 auto; min-width: 74px; }
+
+          .zm-header-actions {
+            position: relative;
+            z-index: 2;
+            gap: 3px;
+            flex: 0 0 auto;
+          }
 
           .zm-action-link {
             min-width: 34px;
@@ -650,17 +691,37 @@ export default function Header({
 
           .zm-quick-row {
             justify-content: flex-end;
-            min-height: 27px;
+            min-height: 34px;
+            padding-top: 3px;
+            padding-bottom: 8px;
+            overflow: visible;
           }
 
           .zm-quick-stack {
-            gap: 12px;
-            padding: 4px 0 6px;
+            width: 100%;
+            min-width: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+            column-gap: 10px;
+            row-gap: 5px;
+            padding: 2px 0 0;
           }
 
           .zm-quick-row nav {
-            gap: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
             padding-bottom: 0;
+            min-width: 0;
+          }
+
+          .zm-quick-row nav a,
+          .zm-quick-whatsapp {
+            white-space: nowrap;
+            max-width: 100%;
           }
 
           .zm-quick-whatsapp {
@@ -682,12 +743,54 @@ export default function Header({
         }
 
         @media (max-width: 520px) {
-          .zm-header-main { padding-left: 10px; padding-right: 10px; }
-          .zm-header-actions { gap: 2px; }
+          .zm-header-main {
+            padding-left: 10px;
+            padding-right: 10px;
+            padding-bottom: 7px;
+          }
+
+          .zm-brand-wrap { max-width: 72px; }
+          .zm-brand-wrap img { max-width: 72px !important; max-height: 44px !important; }
+
+          .zm-header-actions { gap: 0; }
           .zm-action-link,
           .zm-cart-button,
-          .zm-search-button { min-width: 31px; min-height: 31px; }
-          .zm-quick-row { padding-left: 12px; padding-right: 12px; }
+          .zm-search-button {
+            min-width: 27px;
+            width: 27px;
+            min-height: 30px;
+            height: 30px;
+            padding: 0;
+          }
+
+          .zm-header-actions svg {
+            width: 17px !important;
+            height: 17px !important;
+          }
+
+          .zm-menu-button {
+            width: 30px;
+            height: 30px;
+            padding: 4px;
+          }
+
+          .zm-header-spacer { min-width: 58px; }
+
+          .zm-quick-row {
+            padding-left: 12px;
+            padding-right: 12px;
+            padding-bottom: 9px;
+          }
+
+          .zm-quick-stack {
+            column-gap: 8px;
+            row-gap: 4px;
+          }
+
+          .zm-quick-row nav { gap: 8px; }
+          .zm-quick-row a { font-size: 11.5px; }
+          .zm-quick-row .zm-quick-whatsapp { font-size: 12px; }
+
           .zm-search-panel { padding-left: 12px; padding-right: 12px; }
           .zm-search-panel button { padding: 0 15px; }
         }

@@ -40,6 +40,66 @@ const slides = [
   },
 ] as const;
 
+const benefits = [
+  {
+    title: "Cash on Delivery",
+    text: "Pay with cash at delivery.",
+    icon: "cod",
+  },
+  {
+    title: "Fast Delivery",
+    text: "Quick delivery across Pakistan",
+    icon: "delivery",
+  },
+  {
+    title: "Affordable Prices",
+    text: "Premium quality, budget friendly",
+    icon: "price",
+  },
+  {
+    title: "24/7 Support",
+    text: "We're here to help anytime",
+    icon: "support",
+  },
+] as const;
+
+function BenefitIcon({ type }: { type: (typeof benefits)[number]["icon"] }) {
+  if (type === "delivery") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="18" cy="18" r="2" />
+      </svg>
+    );
+  }
+  if (type === "price") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 9h14v9H5z" />
+        <path d="M8 9V6h8v3M8 13h.01M12 13h.01M16 13h.01" />
+        <circle cx="12" cy="5" r="1.4" />
+      </svg>
+    );
+  }
+  if (type === "support") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 13v-2a8 8 0 0 1 16 0v2" />
+        <path d="M4 12h3v6H5a1 1 0 0 1-1-1zM20 12h-3v6h2a1 1 0 0 0 1-1z" />
+        <path d="M17 18c-.8 1.5-2.2 2-4 2" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 14h3l2-6h6l2 6h5" />
+      <path d="M5 14v4h14v-4M9 18v2M17 18v2" />
+      <path d="M2 11h4M18 11h4" />
+    </svg>
+  );
+}
+
 export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
   const [active, setActive] = useState(0);
 
@@ -49,6 +109,7 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
   }, []);
 
   return (
+    <>
     <section className="zm-home-banner" aria-label="Zelvomart highlights">
       <div className="zm-home-banner-track">
         {slides.map((slide, index) => {
@@ -86,5 +147,149 @@ export default function HomeBannerCarousel({ whatsapp }: { whatsapp: string }) {
       <button type="button" className="zm-banner-arrow prev" aria-label="Previous banner" onClick={() => setActive((active - 1 + slides.length) % slides.length)}>‹</button>
       <button type="button" className="zm-banner-arrow next" aria-label="Next banner" onClick={() => setActive((active + 1) % slides.length)}>›</button>
     </section>
+
+    <section className="zm-hero-benefits" aria-label="Zelvomart shopping benefits">
+      <div className="zm-hero-benefits-track">
+        {benefits.map((benefit) => (
+          <article className="zm-hero-benefit" key={benefit.title}>
+            <span className="zm-hero-benefit-icon">
+              <BenefitIcon type={benefit.icon} />
+            </span>
+            <span className="zm-hero-benefit-copy">
+              <strong>{benefit.title}</strong>
+              <small>{benefit.text}</small>
+            </span>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <style jsx global>{`
+      .zm-hero-benefits {
+        width: 100%;
+        background: #f2f5f7;
+        border-top: 1px solid #e0e6ea;
+        border-bottom: 1px solid #e0e6ea;
+      }
+
+      .zm-hero-benefits-track {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        align-items: stretch;
+      }
+
+      .zm-hero-benefit {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 28px;
+        border-right: 1px solid #9aa6ad;
+      }
+
+      .zm-hero-benefit:last-child {
+        border-right: 0;
+      }
+
+      .zm-hero-benefit-icon {
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #07131a;
+      }
+
+      .zm-hero-benefit-icon svg {
+        width: 30px;
+        height: 30px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .zm-hero-benefit-copy {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .zm-hero-benefit-copy strong {
+        color: #050a0d;
+        font-size: clamp(15px, 1.35vw, 22px);
+        line-height: 1.08;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .zm-hero-benefit-copy small {
+        color: #27333a;
+        font-size: clamp(12px, 1vw, 17px);
+        line-height: 1.25;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 760px) {
+        .zm-hero-benefits {
+          padding: 10px 0;
+          overflow: hidden;
+        }
+
+        .zm-hero-benefits-track {
+          display: flex;
+          overflow-x: auto;
+          scroll-snap-type: x mandatory;
+          overscroll-behavior-x: contain;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          gap: 10px;
+          padding: 0 12px 4px;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .zm-hero-benefits-track::-webkit-scrollbar {
+          display: none;
+        }
+
+        .zm-hero-benefit {
+          flex: 0 0 min(82vw, 320px);
+          scroll-snap-align: start;
+          border: 1px solid #d6dee3;
+          border-radius: 12px;
+          background: #f7f9fa;
+          padding: 12px 14px;
+          gap: 11px;
+        }
+
+        .zm-hero-benefit:last-child {
+          border-right: 1px solid #d6dee3;
+        }
+
+        .zm-hero-benefit-icon {
+          width: 31px;
+          height: 31px;
+          flex-basis: 31px;
+        }
+
+        .zm-hero-benefit-icon svg {
+          width: 27px;
+          height: 27px;
+        }
+
+        .zm-hero-benefit-copy strong {
+          font-size: 15px;
+        }
+
+        .zm-hero-benefit-copy small {
+          font-size: 12px;
+        }
+      }
+    `}</style>
+    </>
   );
 }
