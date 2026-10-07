@@ -44,17 +44,9 @@ function uniqueProducts(groups: Product[][], limit = 12) {
 }
 
 function chooseEditorialCategories(categories: Category[]) {
-  const preferred = ["fashion-accessories", "tech-gadgets", "home-living"];
-  const chosen: Category[] = [];
-  for (const slug of preferred) {
-    const category = categories.find((item) => item.slug === slug);
-    if (category && !chosen.some((item) => item.id === category.id)) chosen.push(category);
-  }
-  for (const category of categories) {
-    if (chosen.length >= 3) break;
-    if (!chosen.some((item) => item.id === category.id)) chosen.push(category);
-  }
-  return chosen.slice(0, 3);
+  return ["fashion-accessories", "tech-gadgets", "home-living"]
+    .map((slug) => categories.find((item) => item.slug === slug))
+    .filter((item): item is Category => Boolean(item));
 }
 
 export default async function HomePage() {
@@ -140,13 +132,13 @@ export default async function HomePage() {
           border-radius: 16px !important;
         }
         .zm-category-prominent .mock-category-responsive-card img.zm-category-image {
-          object-fit: cover !important;
+          object-fit: fill !important;
           object-position: center center !important;
         }
         .zm-category-prominent .mock-category-responsive-card img.zm-category-image.is-kids {
-          object-fit: contain !important;
+          object-fit: fill !important;
           object-position: center center !important;
-          background: #f6ead2 !important;
+          background: transparent !important;
         }
         .zm-category-prominent .mock-category-responsive-overlay {
           inset: 30% 0 0 !important;
@@ -227,7 +219,7 @@ export default async function HomePage() {
             object-position: center center !important;
           }
           .zm-category-prominent .mock-category-responsive-card img.zm-category-image.is-kids {
-            object-fit: contain !important;
+            object-fit: fill !important;
           }
           .zm-category-prominent .mock-category-responsive-copy,
           .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy {
@@ -1072,8 +1064,8 @@ export default async function HomePage() {
         }
 
         .zm-home-category-section {
-          padding-top: 48px !important;
-          padding-bottom: 34px !important;
+          padding-top: 58px !important;
+          padding-bottom: 48px !important;
         }
 
         .mock-products-section {
@@ -1082,8 +1074,10 @@ export default async function HomePage() {
         }
 
         .mock-editorial-grid {
-          padding-top: 52px !important;
-          padding-bottom: 52px !important;
+          margin-top: 0 !important;
+          padding-top: 56px !important;
+          padding-bottom: 56px !important;
+          column-gap: 8px !important;
         }
 
         .zm-how-it-works {
@@ -1149,6 +1143,17 @@ export default async function HomePage() {
           gap: 14px !important;
         }
 
+
+        .mock-editorial-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 8px !important;
+        }
+
+        .mock-editorial-grid .mock-editorial {
+          min-width: 0;
+          width: 100%;
+        }
+
         .mock-editorial-grid .mock-editorial {
           min-height: 260px !important;
           overflow: hidden;
@@ -1165,8 +1170,24 @@ export default async function HomePage() {
         .mock-editorial-grid .mock-editorial-img img {
           width: 100% !important;
           height: 100% !important;
-          object-fit: cover !important;
-          object-position: center !important;
+          object-fit: fill !important;
+          object-position: center center !important;
+          transform: none !important;
+          background: transparent !important;
+        }
+
+        .mock-editorial-grid .mock-editorial::before,
+        .mock-editorial-grid .mock-editorial::after,
+        .mock-editorial-grid .mock-editorial-img::before,
+        .mock-editorial-grid .mock-editorial-img::after {
+          display: none !important;
+          content: none !important;
+          background: none !important;
+          opacity: 0 !important;
+        }
+
+        .mock-editorial-grid .mock-editorial {
+          background: #ffffff !important;
         }
 
         .mock-editorial-grid .mock-editorial > span,
@@ -1174,13 +1195,19 @@ export default async function HomePage() {
         .mock-editorial-grid .mock-editorial > b {
           position: relative;
           z-index: 2;
+          color: #0f2633 !important;
+          text-shadow: none !important;
+        }
+
+        .mock-editorial-grid .mock-editorial > span {
+          font-weight: 800 !important;
         }
 
         .mock-editorial-grid .mock-editorial > h3 {
-          color: #fff !important;
+          color: #0f2633 !important;
           font-size: 22px !important;
           line-height: 1.05 !important;
-          text-shadow: 0 2px 10px rgba(0,0,0,.35);
+          text-shadow: none !important;
         }
 
         .mock-editorial-grid .mock-editorial > b {
@@ -1238,6 +1265,7 @@ export default async function HomePage() {
 
           .mock-editorial-grid {
             grid-template-columns: 1fr !important;
+            gap: 12px !important;
           }
 
           .mock-editorial-grid .mock-editorial {
