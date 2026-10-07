@@ -1321,6 +1321,33 @@ export default async function HomePage() {
         }
       `}</style>
 
+
+      <style>{`
+        /* Keep scrolling enabled, but never show scrollbar tracks on homepage. */
+        html,
+        body,
+        .mock-home,
+        .mock-home * {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+
+        html::-webkit-scrollbar,
+        body::-webkit-scrollbar,
+        .mock-home::-webkit-scrollbar,
+        .mock-home *::-webkit-scrollbar {
+          width: 0 !important;
+          height: 0 !important;
+          display: none !important;
+          background: transparent !important;
+        }
+
+        .mock-home,
+        .mock-home * {
+          scrollbar-color: transparent transparent !important;
+        }
+      `}</style>
+
     </div>
   );
 }
