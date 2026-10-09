@@ -23,12 +23,12 @@ const config: runtime.GetPrismaClientConfig = {
       "value": "prisma-client"
     },
     "output": {
-      "value": "C:\\Users\\mz\\Downloads\\zelvomart\\backend\\src\\generated\\prisma",
+      "value": "C:\\Users\\Kashif Nazim\\Desktop\\zelvomart\\zelvomart\\backend\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
-      "moduleFormat": "cjs",
-      "engineType": "client"
+      "engineType": "client",
+      "moduleFormat": "cjs"
     },
     "binaryTargets": [
       {
@@ -38,7 +38,7 @@ const config: runtime.GetPrismaClientConfig = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\mz\\Downloads\\zelvomart\\backend\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\Kashif Nazim\\Desktop\\zelvomart\\zelvomart\\backend\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativePath": "../../../prisma",
@@ -48,6 +48,7 @@ const config: runtime.GetPrismaClientConfig = {
     "db"
   ],
   "activeProvider": "postgresql",
+  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
