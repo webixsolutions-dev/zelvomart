@@ -29,7 +29,7 @@ const REVEAL_SELECTOR = [
   "main .professional-values-grid article",
   "main .premium-contact-form",
   "main .professional-page-endcap",
-  "main .mock-product-card",
+    ".mock-product-card",
   "main .mock-category-minis > a",
   "main .mock-category-feature",
   "main .mock-editorial",
@@ -70,7 +70,9 @@ export default function PageMotion() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     const main = document.querySelector<HTMLElement>("main.public-site-main");
     if (!main || reduceMotion) return;
 
@@ -94,13 +96,23 @@ export default function PageMotion() {
     const seen = new WeakSet<Element>();
 
     const register = (root: ParentNode = document) => {
-      const elements = Array.from(root.querySelectorAll<HTMLElement>(REVEAL_SELECTOR));
+      const elements = Array.from(
+        root.querySelectorAll<HTMLElement>(REVEAL_SELECTOR),
+      );
       elements.forEach((element, index) => {
-        if (seen.has(element) || element.closest("[data-no-motion='true']")) return;
+        if (seen.has(element) || element.closest("[data-no-motion='true']"))
+          return;
         seen.add(element);
         element.classList.add("zm-reveal");
-        if (element.matches(CARD_SELECTOR)) element.classList.add("zm-reveal-card");
-        element.style.setProperty("--zm-motion-delay", `${Math.min(index % 5, 4) * 55}ms`);
+
+        if (element.matches(CARD_SELECTOR)) {
+          element.classList.add("zm-reveal-card");
+        }
+
+        element.style.setProperty(
+          "--zm-motion-delay",
+          `${Math.min(index % 5, 4) * 55}ms`,
+        );
 
         const bounds = element.getBoundingClientRect();
         if (bounds.top < window.innerHeight * 0.94 && bounds.bottom > 0) {

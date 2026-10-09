@@ -8,20 +8,36 @@ import StorePagination from "@/components/StorePagination";
 import CatalogBrowser from "@/components/CatalogBrowser";
 import StorefrontHero from "@/components/StorefrontHero";
 import { getCategories, getProducts } from "@/lib/store";
+import SafeImage from "@/components/SafeImage";
 
 export const revalidate = 120;
 
+// Matches the newly renamed kebab-case files in public/images/home/
 const categoryHeroImages: Record<string, string> = {
-  "home-living": "/images/home/home and living zelvomart.png",
-  "home-decor": "/images/home/Home Decor Zelvomart.png",
-  "beauty-personal-care": "/images/home/Beauty & Personal Care Zelvomart.png",
-  "tech-gadgets": "/images/home/Tech & Gadgets Zelvomart.png",
-  "fashion-accessories": "/images/home/Fashion Accessories Zelvomart.png",
-  "sports-fitness": "/images/home/Sports & Fitness Zelvomart.png",
-  "kids-toys": "/images/home/Kids & Toys Zelvomart.png",
+  "home-living": "/images/home/home-living.png",
+  "home-decor": "/images/home/home-decor.png",
+  "beauty-personal-care": "/images/home/beauty-personal-care.png",
+  "tech-gadgets": "/images/home/tech-gadgets.png",
+  "fashion-accessories": "/images/home/fashion-accessories.png",
+  "sports-fitness": "/images/home/sports-fitness.png",
+  "kids-toys": "/images/home/kids-toys.png",
 };
 
-const v = (x: string | string[] | undefined) => Array.isArray(x) ? x[0] : x || "";
+/**
+ * Safely encodes image URLs so user-uploaded paths with spaces or '&'
+ * do not break the Next.js `/_next/image?url=...` optimizer query string.
+ */
+function getSafeImageUrl(src?: string | null): string {
+  if (!src) return "/images/home/home-living.png";
+  try {
+    return encodeURI(src).replace(/&/g, "%26");
+  } catch {
+    return src;
+  }
+}
+
+const v = (x: string | string[] | undefined) =>
+  Array.isArray(x) ? x[0] : x || "";
 
 const n = (x: string | string[] | undefined) => {
   const raw = v(x).trim();
@@ -42,9 +58,7 @@ export async function generateMetadata({
     ? {
         title: c.seoTitle || c.name,
         description:
-          c.seoDescription ||
-          c.description ||
-          `Shop ${c.name} at Zelvomart.`,
+          c.seoDescription || c.description || `Shop ${c.name} at Zelvomart.`,
       }
     : {};
 }
@@ -66,9 +80,7 @@ export default async function CategoryPage({
 
   const sortRaw = v(sp.sort);
   const sort =
-    sortRaw === "newest" ||
-    sortRaw === "price-asc" ||
-    sortRaw === "price-desc"
+    sortRaw === "newest" || sortRaw === "price-asc" || sortRaw === "price-desc"
       ? sortRaw
       : "popular";
 
@@ -87,10 +99,11 @@ export default async function CategoryPage({
     availability: availability || undefined,
   });
 
-  const heroImage =
+  const heroImage = getSafeImageUrl(
     categoryHeroImages[slug] ||
-    category.image ||
-    `/images/categories/${category.slug}.webp`;
+      category.image ||
+      `/images/categories/${category.slug}.webp`,
+  );
 
   return (
     <div className="mock-category-page zm-category-page">
@@ -110,7 +123,10 @@ export default async function CategoryPage({
         priority
       />
 
-      <section id="products" className="site-shell zm-category-products-section">
+      <section
+        id="products"
+        className="site-shell zm-category-products-section"
+      >
         <Suspense
           fallback={
             <div className="mock-catalog-browser-loading" aria-hidden="true" />
@@ -180,9 +196,7 @@ export default async function CategoryPage({
 
               <details>
                 <summary>Need help choosing?</summary>
-                <p>
-                  Chat with us on WhatsApp for quick product guidance.
-                </p>
+                <p>Chat with us on WhatsApp for quick product guidance.</p>
               </details>
             </div>
           </div>
@@ -198,23 +212,38 @@ export default async function CategoryPage({
           {categories
             .filter((c) => c.slug !== slug)
             .slice(0, 6)
-            .map((c) => (
-              <Link key={c.id} href={`/product-category/${c.slug}/`}>
-                <span style={{ position: "relative" }}>
-                  <Image
-                    src={
-                      categoryHeroImages[c.slug] ||
-                      c.image ||
-                      `/images/categories/${c.slug}.webp`
-                    }
-                    alt={c.name}
-                    fill
-                    sizes="(max-width: 620px) 48vw, (max-width: 1000px) 28vw, 180px"
-                  />
-                </span>
-                <b>{c.name}</b>
-              </Link>
-            ))}
+            .map((c) => {
+              const imageSrc = getSafeImageUrl(
+                categoryHeroImages[c.slug] ||
+                  c.image ||
+                  `/images/categories/${c.slug}.webp`,
+              );
+
+              return (
+                <Link key={c.id} href={`/product-category/${c.slug}/`}>
+                  <span
+                    style={{
+                      position: "relative",
+                      display: "block",
+                      aspectRatio: "1 / 1",
+                    }}
+                  >
+                    <SafeImage
+                      src={
+                        categoryHeroImages[c.slug] ||
+                        c.image ||
+                        `/images/categories/${c.slug}.webp`
+                      }
+                      alt={c.name}
+                      fill
+                      fallbackSrc="/images/home/home-living.png"
+                      sizes="(max-width: 620px) 48vw, (max-width: 1000px) 28vw, 180px"
+                    />
+                  </span>
+                  <b>{c.name}</b>
+                </Link>
+              );
+            })}
         </div>
       </section>
 

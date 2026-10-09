@@ -1,22 +1,22 @@
+import SafeImage from "@/components/SafeImage";
 import Image from "next/image";
 import Link from "next/link";
 import ProductGrid from "@/components/ProductGrid";
 import Faq from "@/components/Faq";
 import HomeBannerCarousel from "@/components/HomeBannerCarousel";
 import { getProductBySlug, getProducts, getStoreBootstrap } from "@/lib/store";
-import { getProductFallbackImage } from "@/lib/product-media";
 import type { Category, Product } from "@/types/product";
 
 export const revalidate = 120;
 
 const categoryFallbacks: Record<string, string> = {
-  "fashion-accessories": "/images/home/Fashion Accessories Zelvomart.png",
-  "home-living": "/images/home/home and living zelvomart.png",
-  "home-decor": "/images/home/Home Decor Zelvomart.png",
-  "beauty-personal-care": "/images/home/Beauty & Personal Care Zelvomart.png",
-  "tech-gadgets": "/images/home/Tech & Gadgets Zelvomart.png",
-  "sports-fitness": "/images/home/Sports & Fitness Zelvomart.png",
-  "kids-toys": "/images/home/Kids & Toys Zelvomart.png",
+  "fashion-accessories": "/images/home/fashion-accessories.png",
+  "home-living": "/images/home/home-living.png",
+  "home-decor": "/images/home/home-decor.png",
+  "beauty-personal-care": "/images/home/beauty-personal-care.png",
+  "tech-gadgets": "/images/home/tech-gadgets.png",
+  "sports-fitness": "/images/home/sports-fitness.png",
+  "kids-toys": "/images/home/kids-toys.png",
 };
 
 const categoryCardBlurbs: Record<string, string> = {
@@ -60,14 +60,9 @@ export default async function HomePage() {
   const products = uniqueProducts([featured.items, latest.items], 12);
   const cards = categories.slice(0, 7);
   const editorialCategories = chooseEditorialCategories(categories);
-  const reviewCandidates = products.slice(0, 5);
-  const detailedReviewProducts = await Promise.all(
-    reviewCandidates.map(async (product) => (await getProductBySlug(product.slug)) || product),
-  );
 
   const storeInfo = (bootstrap.settings["store.info"] || {}) as { whatsapp?: string };
   const whatsapp = String(storeInfo.whatsapp || "923002026711").replace(/[^0-9]/g, "");
-
 
   const youtubeShorts = [
     "1Ucas-8A7Jc",
@@ -79,16 +74,16 @@ export default async function HomePage() {
 
   const unboxingYoutubeId = "RkFifzRoieE";
 
-
   return (
     <div className="mock-home">
       <HomeBannerCarousel whatsapp={whatsapp} />
 
-      
-
       <section className="site-shell mock-home-section zm-home-category-section">
         <div className="mock-section-head">
-          <div><span className="mock-eyebrow">SHOP BY CATEGORY</span><h2>Find what you came for.</h2></div>
+          <div>
+            <span className="mock-eyebrow">SHOP BY CATEGORY</span>
+            <h2>Find what you came for.</h2>
+          </div>
           <Link href="/shop">All categories →</Link>
         </div>
         <div className="mock-category-responsive-grid zm-category-prominent" aria-label="Shop by category">
@@ -100,10 +95,13 @@ export default async function HomePage() {
                 "mock-category-responsive-card",
                 index === 0 ? "is-featured" : "",
                 index === cards.length - 1 ? "is-last" : "",
-              ].filter(Boolean).join(" ")}
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
-              <Image
-                src={categoryFallbacks[category.slug] || category.image || "/images/hero/zelvomart-hero.webp"}
+              <SafeImage
+                src={categoryFallbacks[category.slug] || category.image}
+                fallbackSrc="/images/home/home-living.png"
                 alt={category.name}
                 fill
                 className={`zm-category-image ${category.slug === "kids-toys" ? "is-kids" : ""}`}
@@ -122,138 +120,12 @@ export default async function HomePage() {
         </div>
       </section>
 
-
-      <style>{`
-        .zm-category-prominent {
-          grid-auto-rows: 220px !important;
-          gap: 14px !important;
-        }
-        .zm-category-prominent .mock-category-responsive-card {
-          border-radius: 16px !important;
-        }
-        .zm-category-prominent .mock-category-responsive-card img.zm-category-image {
-          object-fit: fill !important;
-          object-position: center center !important;
-        }
-        .zm-category-prominent .mock-category-responsive-card img.zm-category-image.is-kids {
-          object-fit: fill !important;
-          object-position: center center !important;
-          background: transparent !important;
-        }
-        .zm-category-prominent .mock-category-responsive-overlay {
-          inset: 30% 0 0 !important;
-          background: linear-gradient(transparent, rgba(4, 19, 28, .76)) !important;
-        }
-        .zm-category-prominent .mock-category-responsive-copy,
-        .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy {
-          left: 16px !important;
-          right: 16px !important;
-          bottom: 16px !important;
-          display: flex !important;
-          flex-direction: column !important;
-          align-items: flex-start !important;
-          gap: 5px !important;
-          color: #fff !important;
-        }
-        .zm-category-prominent .mock-category-responsive-copy small {
-          padding: 0 !important;
-          background: transparent !important;
-          color: #ff6e8b !important;
-          font-size: 10px !important;
-          font-weight: 900 !important;
-          letter-spacing: .12em !important;
-        }
-        .zm-category-prominent .mock-category-responsive-copy b,
-        .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy b {
-          width: auto !important;
-          max-width: 100% !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          background: transparent !important;
-          color: #fff !important;
-          font-size: 20px !important;
-          line-height: 1.05 !important;
-          font-weight: 900 !important;
-          letter-spacing: -.45px !important;
-          text-shadow: 0 2px 8px rgba(0,0,0,.45) !important;
-        }
-        .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy b {
-          font-size: 25px !important;
-        }
-        .zm-category-card-description {
-          display: block;
-          color: rgba(255,255,255,.9);
-          font-size: 12px;
-          line-height: 1.3;
-          font-weight: 650;
-          text-shadow: 0 2px 6px rgba(0,0,0,.42);
-        }
-        .zm-category-card-shop {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 36px;
-          margin-top: 9px;
-          padding: 0 18px;
-          border-radius: 999px;
-          background: #08a8e8;
-          color: #fff;
-          font-size: 12px;
-          line-height: 1;
-          font-weight: 900;
-          box-shadow: 0 6px 16px rgba(0,141,202,.2);
-        }
-        @media (max-width: 620px) {
-          .zm-category-prominent {
-            grid-auto-rows: auto !important;
-            gap: 10px !important;
-          }
-          .zm-category-prominent .mock-category-responsive-card,
-          .zm-category-prominent .mock-category-responsive-card.is-featured {
-            min-height: 175px !important;
-          }
-          .zm-category-prominent .mock-category-responsive-card.is-last {
-            min-height: 205px !important;
-          }
-          .zm-category-prominent .mock-category-responsive-card img.zm-category-image {
-            object-position: center center !important;
-          }
-          .zm-category-prominent .mock-category-responsive-card img.zm-category-image.is-kids {
-            object-fit: fill !important;
-          }
-          .zm-category-prominent .mock-category-responsive-copy,
-          .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy {
-            left: 9px !important;
-            right: 9px !important;
-            bottom: 9px !important;
-            gap: 3px !important;
-          }
-          .zm-category-prominent .mock-category-responsive-copy small { display: none !important; }
-          .zm-category-prominent .mock-category-responsive-copy b,
-          .zm-category-prominent .mock-category-responsive-card.is-featured .mock-category-responsive-copy b {
-            font-size: 14px !important;
-            line-height: 1.08 !important;
-          }
-          .zm-category-card-description {
-            font-size: 9px;
-            line-height: 1.2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
-          }
-          .zm-category-card-shop {
-            min-height: 29px;
-            margin-top: 5px;
-            padding: 0 12px;
-            font-size: 10px;
-          }
-        }
-      `}</style>
-
       <section className="site-shell mock-home-section mock-products-section zm-home-products-four">
         <div className="mock-section-head">
-          <div><span className="mock-eyebrow">BESTSELLERS</span><h2>Our most-ordered right now.</h2></div>
+          <div>
+            <span className="mock-eyebrow">BESTSELLERS</span>
+            <h2>Our most-ordered right now.</h2>
+          </div>
           <Link href="/shop">All products →</Link>
         </div>
 
@@ -474,7 +346,13 @@ export default async function HomePage() {
               className={`mock-editorial ${index === 0 ? "pink" : index === 1 ? "blue" : "cream"}`}
             >
               <div className="mock-editorial-img">
-                <Image src={categoryFallbacks[category.slug] || category.image || "/images/hero/zelvomart-hero.webp"} alt={category.name} fill sizes="(max-width:900px) 100vw, 33vw" />
+                <SafeImage
+                  src={categoryFallbacks[category.slug] || category.image}
+                  fallbackSrc="/images/home/home-living.png"
+                  alt={category.name}
+                  fill
+                  sizes="(max-width:900px) 100vw, 33vw"
+                />
               </div>
               <span>{index === 0 ? "THE STYLE EDIT" : index === 1 ? "THE TECH EDIT" : "EVERYDAY PICKS"}</span>
               <h3>{category.name}</h3>
@@ -580,7 +458,6 @@ export default async function HomePage() {
         `}</style>
       </section>
 
-
       <section className="zm-how-it-works">
         <div className="site-shell">
           <div className="zm-how-heading">
@@ -593,7 +470,10 @@ export default async function HomePage() {
               <span className="zm-how-icon">
                 <Image src="/images/order-steps/01-choose.svg" alt="" width={54} height={54} />
               </span>
-              <div><b>1. Choose</b><p>Browse and add your favourite products</p></div>
+              <div>
+                <b>1. Choose</b>
+                <p>Browse and add your favourite products</p>
+              </div>
             </article>
 
             <i aria-hidden="true">→</i>
@@ -602,7 +482,10 @@ export default async function HomePage() {
               <span className="zm-how-icon">
                 <Image src="/images/order-steps/02-confirm.svg" alt="" width={54} height={54} />
               </span>
-              <div><b>2. Confirm</b><p>Share your details and confirm order</p></div>
+              <div>
+                <b>2. Confirm</b>
+                <p>Share your details and confirm order</p>
+              </div>
             </article>
 
             <i aria-hidden="true">→</i>
@@ -611,7 +494,10 @@ export default async function HomePage() {
               <span className="zm-how-icon">
                 <Image src="/images/order-steps/03-checked-packed.svg" alt="" width={54} height={54} />
               </span>
-              <div><b>3. Delivered</b><p>We pack and ship to your doorstep</p></div>
+              <div>
+                <b>3. Delivered</b>
+                <p>We pack and ship to your doorstep</p>
+              </div>
             </article>
 
             <i aria-hidden="true">→</i>
@@ -620,7 +506,10 @@ export default async function HomePage() {
               <span className="zm-how-icon">
                 <Image src="/images/order-steps/04-delivered-pay-cash.svg" alt="" width={54} height={54} />
               </span>
-              <div><b>4. Pay Cash</b><p>Pay when you receive your order</p></div>
+              <div>
+                <b>4. Pay Cash</b>
+                <p>Pay when you receive your order</p>
+              </div>
             </article>
           </div>
         </div>
@@ -1072,12 +961,6 @@ export default async function HomePage() {
           overflow-x: hidden !important;
         }
 
-        html,
-        body {
-          max-width: 100%;
-          overflow-x: hidden !important;
-        }
-
         .zm-home-category-section {
           padding-top: 58px !important;
           padding-bottom: 48px !important;
@@ -1108,9 +991,6 @@ export default async function HomePage() {
         .zm-whatsapp-banner {
           margin-top: 48px !important;
           margin-bottom: 48px !important;
-        }
-
-        .zm-whatsapp-banner {
           width: calc(100% - 48px) !important;
           max-width: 1180px !important;
           margin-left: auto !important;
@@ -1123,7 +1003,6 @@ export default async function HomePage() {
             max-width: none !important;
           }
         }
-
 
         .mock-faq-section {
           padding-top: 72px !important;
@@ -1171,23 +1050,16 @@ export default async function HomePage() {
         .mock-editorial-grid {
           margin-top: 42px !important;
           gap: 14px !important;
-        }
-
-
-        .mock-editorial-grid {
           grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-          gap: 8px !important;
         }
 
         .mock-editorial-grid .mock-editorial {
           min-width: 0;
           width: 100%;
-        }
-
-        .mock-editorial-grid .mock-editorial {
           min-height: 260px !important;
           overflow: hidden;
           border-radius: 14px !important;
+          background: #ffffff !important;
         }
 
         .mock-editorial-grid .mock-editorial-img {
@@ -1214,10 +1086,6 @@ export default async function HomePage() {
           content: none !important;
           background: none !important;
           opacity: 0 !important;
-        }
-
-        .mock-editorial-grid .mock-editorial {
-          background: #ffffff !important;
         }
 
         .mock-editorial-grid .mock-editorial > span,
@@ -1260,13 +1128,6 @@ export default async function HomePage() {
           margin-right: auto !important;
         }
 
-        @media (max-width: 760px) {
-          .zm-standard-section {
-            width: calc(100% - 24px) !important;
-            max-width: none !important;
-          }
-        }
-
         @media (max-width: 900px) {
           .zm-home-category-section {
             padding-top: 38px !important;
@@ -1283,7 +1144,6 @@ export default async function HomePage() {
             padding-top: 48px !important;
             padding-bottom: 64px !important;
           }
-
         }
 
         @media (max-width: 620px) {
@@ -1309,120 +1169,8 @@ export default async function HomePage() {
             min-height: 190px !important;
           }
         }
-      `}</style>
 
-
-      <style>{`
-        html,
-        body {
-          width: 100%;
-          max-width: 100%;
-          overflow-x: hidden !important;
-        }
-
-        body {
-          position: relative;
-        }
-
-        .mock-home {
-          width: 100% !important;
-          max-width: 100% !important;
-          overflow-x: hidden !important;
-          position: relative;
-        }
-
-        .mock-home > * {
-          max-width: 100%;
-        }
-
-        .mock-home .site-shell {
-          width: 100%;
-          max-width: 100%;
-          box-sizing: border-box;
-        }
-
-        .mock-home iframe,
-        .mock-home video,
-        .mock-home img {
-          max-width: 100%;
-        }
-
-        .zm-youtube-shorts,
-        .zm-youtube-shorts-grid,
-        .zm-unboxing-section,
-        .zm-whatsapp-banner,
-        .mock-faq-section,
-        .mock-editorial-grid,
-        .zm-how-it-works,
-        .mock-products-section,
-        .zm-home-category-section {
-          max-width: 100% !important;
-          overflow-x: hidden !important;
-        }
-
-        .zm-standard-section {
-          width: calc(100% - 48px) !important;
-          max-width: 1280px !important;
-          margin-left: auto !important;
-          margin-right: auto !important;
-          overflow-x: hidden !important;
-        }
-
-        @media (max-width: 760px) {
-          .zm-standard-section {
-            width: calc(100% - 24px) !important;
-            max-width: none !important;
-          }
-        }
-
-        .zm-youtube-short-card,
-        .zm-youtube-short-card iframe,
-        .zm-unboxing-video-wrap,
-        .zm-unboxing-video {
-          min-width: 0 !important;
-          max-width: 100% !important;
-        }
-
-        @media (max-width: 620px) {
-          .mock-home,
-          .mock-home > *,
-          .mock-home .site-shell {
-            width: 100% !important;
-            max-width: 100% !important;
-          }
-        }
-      `}</style>
-
-
-      <style>{`
-        /* Keep scrolling enabled, but never show scrollbar tracks on homepage. */
-        html,
-        body,
-        .mock-home,
-        .mock-home * {
-          scrollbar-width: none !important;
-          -ms-overflow-style: none !important;
-        }
-
-        html::-webkit-scrollbar,
-        body::-webkit-scrollbar,
-        .mock-home::-webkit-scrollbar,
-        .mock-home *::-webkit-scrollbar {
-          width: 0 !important;
-          height: 0 !important;
-          display: none !important;
-          background: transparent !important;
-        }
-
-        .mock-home,
-        .mock-home * {
-          scrollbar-color: transparent transparent !important;
-        }
-      `}</style>
-
-
-      <style>{`
-        /* Keep the middle homepage sections aligned with the rest of the page. */
+        /* Middle sections alignment */
         .zm-home-category-section,
         .mock-products-section,
         .mock-editorial-grid {
@@ -1444,7 +1192,6 @@ export default async function HomePage() {
           }
         }
       `}</style>
-
     </div>
   );
 }

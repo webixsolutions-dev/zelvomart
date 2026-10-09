@@ -1,7 +1,6 @@
 "use client";
-
-import Image from "next/image";
 import Link from "next/link";
+import SafeImage from "./SafeImage";
 
 type StorefrontHeroProps = {
   eyebrow?: string;
@@ -31,12 +30,13 @@ export default function StorefrontHero({
   return (
     <section className="zm-storefront-hero">
       <div className="zm-storefront-hero-media">
-        <Image
+        <SafeImage
           src={image}
           alt={alt}
           fill
           priority={priority}
           sizes="100vw"
+          fallbackSrc="/images/home/home-living.png"
         />
       </div>
 
@@ -60,7 +60,6 @@ export default function StorefrontHero({
           </div>
         ) : null}
       </div>
-
 
       <style jsx>{`
         .zm-storefront-hero {
@@ -97,7 +96,7 @@ export default function StorefrontHero({
           margin: 0;
           max-width: 620px;
           color: #0a2f46;
-          text-shadow: 0 1px 0 rgba(255,255,255,.35);
+          text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
         }
 
         .zm-storefront-hero-copy p {
@@ -234,8 +233,6 @@ export default function StorefrontHero({
             width: auto;
             max-width: 100%;
           }
-
-
         }
       `}</style>
     </section>
