@@ -667,6 +667,24 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             >
               <div
                 style={{
+                  marginBottom: "0.85rem",
+                  padding: "6px 12px",
+                  background: "#fef3c7",
+                  border: "1px solid #fde68a",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  color: "#92400e",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span>⚠</span>
+                <span>Variants are not saved yet.</span>
+              </div>
+
+              <div
+                style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",

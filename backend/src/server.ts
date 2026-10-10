@@ -20,7 +20,22 @@ import { consumeRateLimit, requestIp, isLikelyBot } from './lib/rate-limit';
 import { dispatchJobRow } from './lib/jobs';
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
+const ALLOWED_IMAGE_EXTS = /\.(jpe?g|png|webp|gif|avif)$/i;
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const isMimeAllowed = ALLOWED_IMAGE_MIMES.has(String(file.mimetype || '').toLowerCase());
+    const isExtAllowed = ALLOWED_IMAGE_EXTS.test(file.originalname || '');
+    if (!isMimeAllowed || !isExtAllowed) {
+      const err: any = new Error('Only image files (JPEG, PNG, WebP, GIF, AVIF) are allowed.');
+      err.code = 'INVALID_FILE_TYPE';
+      return cb(err);
+    }
+    cb(null, true);
+  },
+});
 const port = Number(process.env.PORT || 4000);
 const frontendOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',').map(v => v.trim()).filter(Boolean);
 app.use(cors({ origin(origin, cb) { if (!origin || frontendOrigins.includes(origin)) return cb(null, true); cb(new Error('CORS_NOT_ALLOWED')); }, credentials: false }));
@@ -1070,7 +1085,25 @@ app.post('/api/admin/products/import', requireAuth('products.write'), async (req
 app.get('/api/admin/products/template.csv', requireAuth('products.write'), (_req,res)=>{res.type('text/csv').send('title,slug,sku,category,price,salePrice,costPrice,stock,status,featured,shortDescription,descriptionHtml,imageUrls,videoUrl,seoTitle,seoDescription\n');});
 app.get('/api/admin/products/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.product.findMany({include:{category:true},orderBy:{updatedAt:'desc'}});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['title,slug,sku,category,price,salePrice,costPrice,stock,status,featured,shortDescription,descriptionHtml,imageUrls,videoUrl,seoTitle,seoDescription',...rows.map(p=>[p.title,p.slug,p.sku,p.category?.name||'',p.price,p.salePrice||'',p.costPrice||'',p.stock,p.status,p.featured,p.shortDescription||'',p.descriptionHtml||'',Array.isArray(p.images)?p.images.join('|'):'',p.videoUrl||'',p.seoTitle||'',p.seoDescription||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
 app.get('/api/admin/orders/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.order.findMany({orderBy:{createdAt:'desc'},take:5000});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['orderNumber,date,customer,phone,city,status,total,source',...rows.map(o=>[o.orderNumber,o.createdAt.toISOString(),o.fullName,o.phone,o.city,o.status,o.total,o.source||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
-app.post('/api/admin/upload', requireAuth('products.write'), upload.single('file'), async (req,res)=>{if(!req.file)return res.status(400).json({error:'FILE_REQUIRED'});const safe=req.file.originalname.replace(/[^a-zA-Z0-9._-]/g,'-');const url=await uploadObject(`products/${Date.now()}-${safe}`,req.file.buffer,req.file.mimetype);res.json({url});});
+app.post('/api/admin/upload', requireAuth('products.write'), (req, res, next) => {
+  upload.single('file')(req, res, (err: any) => {
+    if (err) {
+      if (err.code === 'INVALID_FILE_TYPE') {
+        return res.status(400).json({ error: 'INVALID_FILE_TYPE', message: err.message || 'Only image files (JPEG, PNG, WebP, GIF, AVIF) are allowed.' });
+      }
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'FILE_TOO_LARGE', message: 'File size exceeds the 8MB limit.' });
+      }
+      return res.status(400).json({ error: 'INVALID_FILE_TYPE', message: err.message || 'Failed to process uploaded file.' });
+    }
+    next();
+  });
+}, async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'FILE_REQUIRED' });
+  const safe = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const url = await uploadObject(`products/${Date.now()}-${safe}`, req.file.buffer, req.file.mimetype);
+  res.json({ url });
+});
 
 app.use((err:any,_req:any,res:any,_next:any)=>{console.error(err);res.status(500).json({error:'SERVER_ERROR',message:process.env.NODE_ENV==='development'?err?.message:undefined});});
 export { app };
