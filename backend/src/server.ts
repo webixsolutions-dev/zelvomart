@@ -734,7 +734,9 @@ app.post('/api/admin/products/:id/variants', requireAuth('products.write'), asyn
     const b=req.body||{};
     const product=await prisma.product.findUnique({where:{id:routeParam(req,'id')}});
     if(!product)return res.status(404).json({error:'NOT_FOUND'});
-    if(b.priceOverride!==''&&b.priceOverride!=null) await assertProductPriceFloor({price:Number(b.priceOverride),salePrice:null,bundleEnabled:product.bundleEnabled,bundleDiscountPercent:product.bundleDiscountPercent==null?null:Number(product.bundleDiscountPercent)});
+
+    // if(b.priceOverride!==''&&b.priceOverride!=null) await assertProductPriceFloor({price:Number(b.priceOverride),salePrice:null,bundleEnabled:product.bundleEnabled,bundleDiscountPercent:product.bundleDiscountPercent==null?null:Number(product.bundleDiscountPercent)});
+
     const row=await prisma.variant.create({data:{productId:product.id,sku:String(b.sku),name:String(b.name),attributes:b.attributes||{},priceOverride:b.priceOverride?new Prisma.Decimal(Number(b.priceOverride)):null,stock:Number(b.stock||0),imageUrl:b.imageUrl||null,active:b.active!==false}});
     await audit(req,'create','Variant',row.id);await invalidateFrontendCache(['products']);res.status(201).json(row);
   } catch(error:any) { res.status(400).json({error:error?.message||'VARIANT_CREATE_FAILED'}); }
