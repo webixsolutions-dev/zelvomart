@@ -14,20 +14,20 @@ export default function ProductTabs({
   variant,
   inStock,
 }: ProductTabsProps) {
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    description: true,
-    whyChoose: false,
-    shipping: false,
-    faq: false,
-    additional: false,
-    reviews: false,
-  });
+  // Only one section can be open at a time. null means all are closed.
+  const [openKey, setOpenKey] = useState<string | null>("description");
 
   const toggleSection = (key: string) => {
-    setOpenSections((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    setOpenKey((prev) => (prev === key ? null : key));
+  };
+
+  const openSections: Record<string, boolean> = {
+    description: openKey === "description",
+    whyChoose: openKey === "whyChoose",
+    shipping: openKey === "shipping",
+    faq: openKey === "faq",
+    additional: openKey === "additional",
+    reviews: openKey === "reviews",
   };
 
   // Fix: Check length > 0 first, otherwise fall back to product.reviewCount or 64
@@ -44,8 +44,8 @@ export default function ProductTabs({
       [
         "Category",
         product?.categories?.[0]?.name ||
-          product?.category?.name ||
-          "Home & Living",
+        product?.category?.name ||
+        "Home & Living",
       ],
       [
         "Availability",
@@ -90,17 +90,17 @@ export default function ProductTabs({
           <button
             type="button"
             onClick={() => toggleSection("description")}
+            aria-expanded={openSections.description}
             className="w-full flex items-center justify-between text-left group focus:outline-none cursor-pointer"
           >
             <span className="text-[15px] md:text-base font-bold text-slate-800 group-hover:text-sky-600 transition-colors">
               Description
             </span>
             <span
-              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                openSections.description
-                  ? "bg-slate-100 text-slate-700 text-xs font-bold"
-                  : "text-slate-500 font-normal text-xl leading-none"
-              }`}
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${openSections.description
+                ? "bg-slate-100 text-slate-700 text-xs font-bold"
+                : "text-slate-500 font-normal text-xl leading-none"
+                }`}
             >
               {openSections.description ? "✕" : "+"}
             </span>
@@ -135,17 +135,17 @@ export default function ProductTabs({
           <button
             type="button"
             onClick={() => toggleSection("whyChoose")}
+            aria-expanded={openSections.whyChoose}
             className="w-full flex items-center justify-between text-left group focus:outline-none cursor-pointer"
           >
             <span className="text-[15px] md:text-base font-bold text-slate-800 group-hover:text-sky-600 transition-colors">
               Why Choose Zelvomart
             </span>
             <span
-              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                openSections.whyChoose
-                  ? "bg-slate-100 text-slate-700 text-xs font-bold"
-                  : "text-slate-500 font-normal text-xl leading-none"
-              }`}
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${openSections.whyChoose
+                ? "bg-slate-100 text-slate-700 text-xs font-bold"
+                : "text-slate-500 font-normal text-xl leading-none"
+                }`}
             >
               {openSections.whyChoose ? "✕" : "+"}
             </span>
@@ -166,17 +166,17 @@ export default function ProductTabs({
           <button
             type="button"
             onClick={() => toggleSection("shipping")}
+            aria-expanded={openSections.shipping}
             className="w-full flex items-center justify-between text-left group focus:outline-none cursor-pointer"
           >
             <span className="text-[15px] md:text-base font-bold text-slate-800 group-hover:text-sky-600 transition-colors">
               Shipping Process
             </span>
             <span
-              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                openSections.shipping
-                  ? "bg-slate-100 text-slate-700 text-xs font-bold"
-                  : "text-slate-500 font-normal text-xl leading-none"
-              }`}
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${openSections.shipping
+                ? "bg-slate-100 text-slate-700 text-xs font-bold"
+                : "text-slate-500 font-normal text-xl leading-none"
+                }`}
             >
               {openSections.shipping ? "✕" : "+"}
             </span>
@@ -196,17 +196,17 @@ export default function ProductTabs({
           <button
             type="button"
             onClick={() => toggleSection("faq")}
+            aria-expanded={openSections.faq}
             className="w-full flex items-center justify-between text-left group focus:outline-none cursor-pointer"
           >
             <span className="text-[15px] md:text-base font-bold text-slate-800 group-hover:text-sky-600 transition-colors">
               General FAQ
             </span>
             <span
-              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                openSections.faq
-                  ? "bg-slate-100 text-slate-700 text-xs font-bold"
-                  : "text-slate-500 font-normal text-xl leading-none"
-              }`}
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${openSections.faq
+                ? "bg-slate-100 text-slate-700 text-xs font-bold"
+                : "text-slate-500 font-normal text-xl leading-none"
+                }`}
             >
               {openSections.faq ? "✕" : "+"}
             </span>
@@ -231,17 +231,17 @@ export default function ProductTabs({
           <button
             type="button"
             onClick={() => toggleSection("additional")}
+            aria-expanded={openSections.additional}
             className="w-full flex items-center justify-between text-left group focus:outline-none cursor-pointer"
           >
             <span className="text-[15px] md:text-base font-bold text-slate-800 group-hover:text-sky-600 transition-colors">
               Additional information
             </span>
             <span
-              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                openSections.additional
-                  ? "bg-slate-100 text-slate-700 text-xs font-bold"
-                  : "text-slate-500 font-normal text-xl leading-none"
-              }`}
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${openSections.additional
+                ? "bg-slate-100 text-slate-700 text-xs font-bold"
+                : "text-slate-500 font-normal text-xl leading-none"
+                }`}
             >
               {openSections.additional ? "✕" : "+"}
             </span>
@@ -268,17 +268,17 @@ export default function ProductTabs({
           <button
             type="button"
             onClick={() => toggleSection("reviews")}
+            aria-expanded={openSections.reviews}
             className="w-full flex items-center justify-between text-left group focus:outline-none cursor-pointer"
           >
             <span className="text-[15px] md:text-base font-bold text-slate-800 group-hover:text-sky-600 transition-colors">
               Reviews ({reviewCount})
             </span>
             <span
-              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
-                openSections.reviews
-                  ? "bg-slate-100 text-slate-700 text-xs font-bold"
-                  : "text-slate-500 font-normal text-xl leading-none"
-              }`}
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${openSections.reviews
+                ? "bg-slate-100 text-slate-700 text-xs font-bold"
+                : "text-slate-500 font-normal text-xl leading-none"
+                }`}
             >
               {openSections.reviews ? "✕" : "+"}
             </span>

@@ -62,13 +62,17 @@ export default function ProductBuyBox({
   const twoPieceFull = basePrice * 2;
   const twoPiecePrice = twoPieceFull * (1 - discountPercent / 100);
   const twoPieceSavings = twoPieceFull - twoPiecePrice;
+  const categoryName: string | undefined =
+    (product as any)?.categories?.[0]?.name || (product as any)?.category?.name || undefined;
+  const reviewTotal = product.reviewCount || 42;
+  const reviewCountLabel = `${reviewTotal} customer ${reviewTotal === 1 ? "review" : "reviews"}`;
 
   const handleShare = async () => {
     if (typeof window !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title: product.name, url: window.location.href });
         return;
-      } catch {}
+      } catch { }
     }
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
@@ -93,82 +97,81 @@ export default function ProductBuyBox({
 
   return (
     <div className="w-full bg-white border border-slate-200/90 rounded-2xl md:rounded-3xl p-5 md:p-6 shadow-sm flex flex-col gap-4">
-      {/* 1. TOPLINE: TAG PILL + TOP ACTIONS (WISHLIST HEART & SHARE) */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#e0f2fe] text-[#0369a1]">
-          {product.featured ? "Bestseller" : "Customer favourite"}
-        </span>
-
-        <div className="flex items-center gap-1.5">
-          {/* Wishlist Heart Toggle */}
-          <button
-            type="button"
-            onClick={() => setWished((w) => !w)}
-            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${
-              wished
-                ? "border-rose-200 bg-rose-50 text-rose-500 scale-105"
-                : "border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-700 bg-white"
-            }`}
-            aria-label="Add to wishlist"
-            title={wished ? "Saved to wishlist" : "Add to wishlist"}
-          >
-            <svg
-              className={`w-4 h-4 transition-transform ${wished ? "fill-rose-500 stroke-rose-500" : "fill-none stroke-current"}`}
-              strokeWidth={2}
-              viewBox="0 0 24 24"
+      {/* 1. REVIEWS ROW + WISHLIST / SHARE */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="flex text-amber-400 text-[15px] tracking-tight">★★★★★</span>
+            <span className="text-sm font-bold text-slate-900">
+              {product.averageRating?.toFixed(1) || "4.9"}
+            </span>
+            <a
+              href="#reviews"
+              className="text-sm font-medium text-sky-600 hover:text-sky-700 underline underline-offset-2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
-          </button>
+              ({reviewCountLabel})
+            </a>
+          </div>
 
-          {/* Share Button */}
-          <button
-            type="button"
-            onClick={handleShare}
-            className="w-9 h-9 rounded-full flex items-center justify-center border border-slate-200 hover:border-slate-300 bg-white text-slate-500 hover:text-slate-700 transition cursor-pointer relative"
-            aria-label="Share product"
-            title="Share product link"
-          >
-            <Icon name="share" />
-            {copiedLink && (
-              <span className="absolute -bottom-8 right-0 bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded shadow whitespace-nowrap z-20">
-                Link copied!
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* Wishlist Heart Toggle */}
+            <button
+              type="button"
+              onClick={() => setWished((w) => !w)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all cursor-pointer ${wished
+                  ? "border-rose-200 bg-rose-50 text-rose-500 scale-105"
+                  : "border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-700 bg-white"
+                }`}
+              aria-label="Add to wishlist"
+              title={wished ? "Saved to wishlist" : "Add to wishlist"}
+            >
+              <svg
+                className={`w-4 h-4 transition-transform ${wished ? "fill-rose-500 stroke-rose-500" : "fill-none stroke-current"}`}
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
+              </svg>
+            </button>
+
+            {/* Share Button */}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="w-9 h-9 rounded-full flex items-center justify-center border border-slate-200 hover:border-slate-300 bg-white text-slate-500 hover:text-slate-700 transition cursor-pointer relative"
+              aria-label="Share product"
+              title="Share product link"
+            >
+              <Icon name="share" />
+              {copiedLink && (
+                <span className="absolute -bottom-8 right-0 bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded shadow whitespace-nowrap z-20">
+                  Link copied!
+                </span>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* 2. TITLE & SHORT DESCRIPTION */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
-          {product.name}
-        </h1>
-        {product.shortDescription && (
-          <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-            {product.shortDescription}
+        {/* 2. CATEGORY */}
+        {categoryName && (
+          <p className="text-[11px] md:text-xs font-extrabold uppercase tracking-[0.14em] text-sky-600">
+            {categoryName}
           </p>
         )}
-      </div>
 
-      {/* 3. REVIEWS ROW */}
-      <div className="flex items-center gap-2">
-        <span className="flex text-amber-400 text-sm">★★★★★</span>
-        <span className="text-xs font-bold text-slate-800">
-          {product.averageRating?.toFixed(1) || "4.9"}
-        </span>
-        <a href="#reviews" className="text-xs text-sky-600 underline hover:text-sky-700 font-medium">
-          {product.reviewCount || 42} reviews
-        </a>
+        {/* 3. TITLE */}
+        <h1 className="text-[28px] md:text-[34px] font-extrabold text-slate-900 tracking-tight leading-[1.12]">
+          {product.name}
+        </h1>
       </div>
 
       {/* 4. PRICING ROW */}
       <div className="flex items-baseline gap-2.5 flex-wrap">
-        <span className="text-3xl font-black text-slate-900 tracking-tight">
+        <span className="text-[32px] md:text-4xl font-extrabold text-slate-900 tracking-tight">
           {money(basePrice * (bundleSize === 2 ? 2 * (1 - discountPercent / 100) : 1) * quantity)}
         </span>
         {product.onSale && product.regularPrice > basePrice && (
@@ -182,6 +185,13 @@ export default function ProductBuyBox({
           </span>
         ) : null}
       </div>
+
+      {/* 4b. SHORT DESCRIPTION (directly below the price) */}
+      {product.shortDescription && (
+        <p className="text-[15px] md:text-base leading-relaxed text-slate-600 whitespace-pre-line">
+          {product.shortDescription}
+        </p>
+      )}
 
       <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5 -mt-1">
         <span>✓</span> Free delivery · Pay cash when it arrives
@@ -206,11 +216,10 @@ export default function ProductBuyBox({
                   className="flex flex-col items-center gap-1 group cursor-pointer focus:outline-none"
                 >
                   <span
-                    className={`w-11 h-11 rounded-full p-0.5 border-2 transition-all flex items-center justify-center overflow-hidden bg-slate-50 ${
-                      isSelected
+                    className={`w-11 h-11 rounded-full p-0.5 border-2 transition-all flex items-center justify-center overflow-hidden bg-slate-50 ${isSelected
                         ? "border-sky-600 ring-2 ring-sky-200 scale-105"
                         : "border-slate-300 hover:border-slate-400"
-                    }`}
+                      }`}
                   >
                     {hasValidImg ? (
                       <img
@@ -220,18 +229,16 @@ export default function ProductBuyBox({
                       />
                     ) : (
                       <span
-                        className={`text-[11px] font-bold uppercase ${
-                          isSelected ? "text-sky-600" : "text-slate-500"
-                        }`}
+                        className={`text-[11px] font-bold uppercase ${isSelected ? "text-sky-600" : "text-slate-500"
+                          }`}
                       >
                         {initials(v.name) || "•"}
                       </span>
                     )}
                   </span>
                   <span
-                    className={`text-[11px] leading-tight max-w-[56px] truncate ${
-                      isSelected ? "font-bold text-slate-900" : "font-medium text-slate-500"
-                    }`}
+                    className={`text-[11px] leading-tight max-w-[56px] truncate ${isSelected ? "font-bold text-slate-900" : "font-medium text-slate-500"
+                      }`}
                   >
                     {v.name}
                   </span>
@@ -253,11 +260,10 @@ export default function ProductBuyBox({
           <div className="grid grid-cols-2 gap-2.5">
             <label
               onClick={() => setBundleSize(1)}
-              className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                bundleSize === 1
+              className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all ${bundleSize === 1
                   ? "border-sky-500 bg-sky-50/40"
                   : "border-slate-200 hover:border-slate-300 bg-white"
-              }`}
+                }`}
             >
               <input
                 type="radio"
@@ -279,11 +285,10 @@ export default function ProductBuyBox({
 
             <label
               onClick={() => setBundleSize(2)}
-              className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all relative ${
-                bundleSize === 2
+              className={`flex items-start gap-2.5 p-3 rounded-xl border-2 cursor-pointer transition-all relative ${bundleSize === 2
                   ? "border-sky-500 bg-sky-50/40"
                   : "border-slate-200 hover:border-slate-300 bg-white"
-              }`}
+                }`}
             >
               <input
                 type="radio"
@@ -338,9 +343,8 @@ export default function ProductBuyBox({
 
           <div className="flex items-center gap-1.5">
             <span
-              className={`w-2 h-2 rounded-full ${
-                inStock ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
-              }`}
+              className={`w-2 h-2 rounded-full ${inStock ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+                }`}
             />
             <div className="text-[11px] leading-tight">
               <b className={inStock ? "text-slate-800" : "text-rose-600"}>
