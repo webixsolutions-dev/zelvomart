@@ -1226,6 +1226,16 @@ export default async function HomePage() {
             padding-bottom: 28px !important;
           }
 
+          .mock-editorial-grid,
+          .zm-editorial-reveal {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
+          .zm-editorial-reveal > .zm-editorial-reveal-item:nth-child(3) {
+            display: block;
+            grid-column: 1 / -1;
+          }
+
           .mock-products-section,
           .mock-editorial-grid {
             padding-top: 38px !important;
@@ -1238,32 +1248,65 @@ export default async function HomePage() {
           }
         }
 
-        @media (max-width: 620px) {
-          .zm-home-category-section {
-            padding-top: 30px !important;
-            padding-bottom: 24px !important;
+        @media (max-width: 900px) {
+          .zm-home-category-section .mock-category-responsive-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-auto-rows: auto !important;
+            gap: 10px !important;
+          }
+
+          .zm-home-category-section .mock-category-responsive-card,
+          .zm-home-category-section .mock-category-responsive-card.is-featured,
+          .zm-home-category-section .mock-category-responsive-card.is-last {
+            grid-column: auto !important;
+            grid-row: auto !important;
+            aspect-ratio: auto !important;
+            min-height: 228px;
+            height: auto;
+          }
+
+          .zm-home-category-section .mock-category-responsive-copy,
+          .zm-home-category-section .mock-category-responsive-card.is-featured .mock-category-responsive-copy {
+            left: 10px !important;
+            right: 10px !important;
+            bottom: 10px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            justify-content: flex-end !important;
+            gap: 5px !important;
+            width: auto !important;
           }
 
           .zm-home-category-section .mock-category-responsive-copy b,
           .zm-home-category-section .mock-category-responsive-card.is-featured .mock-category-responsive-copy b {
-            max-width: none;
-            padding: 6px 8px !important;
-            border-radius: 8px !important;
-            font-size: 12px !important;
-            line-height: 1.1 !important;
-            letter-spacing: 0 !important;
+            width: auto !important;
+            max-width: 100% !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere;
+            padding: 7px 10px !important;
+            border-radius: 10px !important;
+            font-size: 15px !important;
+            line-height: 1.15 !important;
+            letter-spacing: -0.02em !important;
           }
 
           .zm-home-category-section .zm-category-card-description,
           .zm-home-category-section .mock-category-responsive-card.is-featured .zm-category-card-description {
-            max-width: none;
-            font-size: 11px;
-            line-height: 1.2;
+            display: block;
+            max-width: 100% !important;
+            font-size: 13px !important;
+            line-height: 1.3 !important;
+            font-weight: 750 !important;
+            white-space: normal !important;
           }
 
           .zm-home-category-section .zm-category-card-shop,
           .zm-home-category-section .mock-category-responsive-card.is-featured .zm-category-card-shop {
-            font-size: 12px;
+            display: block;
+            font-size: 14px !important;
+            line-height: 1.15 !important;
+            font-weight: 800 !important;
           }
 
           .zm-home-category-section .mock-category-responsive-overlay,
@@ -1272,9 +1315,73 @@ export default async function HomePage() {
               linear-gradient(
                 180deg,
                 rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0) 48%,
-                var(--zm-wash-soft) 66%,
-                var(--zm-wash-mid) 84%,
+                rgba(255, 255, 255, 0) 38%,
+                var(--zm-wash-soft) 58%,
+                var(--zm-wash-mid) 78%,
+                var(--zm-wash-deep) 100%
+              ) !important;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .zm-home-category-section {
+            padding-top: 30px !important;
+            padding-bottom: 24px !important;
+          }
+
+          .zm-home-category-section .mock-section-head {
+            align-items: flex-start;
+            gap: 8px;
+          }
+
+          .zm-home-category-section .mock-section-head h2 {
+            font-size: 28px !important;
+            line-height: 1.05 !important;
+            letter-spacing: -0.04em;
+          }
+
+          .zm-home-category-section .mock-category-responsive-grid {
+            gap: 8px !important;
+          }
+
+          .zm-home-category-section .mock-category-responsive-card,
+          .zm-home-category-section .mock-category-responsive-card.is-featured,
+          .zm-home-category-section .mock-category-responsive-card.is-last {
+            min-height: 196px;
+            border-radius: 14px;
+          }
+
+          .zm-home-category-section .mock-category-responsive-copy b,
+          .zm-home-category-section .mock-category-responsive-card.is-featured .mock-category-responsive-copy b {
+            max-width: 100% !important;
+            padding: 6px 8px !important;
+            border-radius: 8px !important;
+            font-size: 13px !important;
+            line-height: 1.15 !important;
+            letter-spacing: 0 !important;
+          }
+
+          .zm-home-category-section .zm-category-card-description,
+          .zm-home-category-section .mock-category-responsive-card.is-featured .zm-category-card-description {
+            max-width: 100% !important;
+            font-size: 12px !important;
+            line-height: 1.25 !important;
+          }
+
+          .zm-home-category-section .zm-category-card-shop,
+          .zm-home-category-section .mock-category-responsive-card.is-featured .zm-category-card-shop {
+            font-size: 13px !important;
+          }
+
+          .zm-home-category-section .mock-category-responsive-overlay,
+          .zm-home-category-section .mock-category-responsive-card.is-featured .mock-category-responsive-overlay {
+            background:
+              linear-gradient(
+                180deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0) 36%,
+                var(--zm-wash-soft) 56%,
+                var(--zm-wash-mid) 78%,
                 var(--zm-wash-deep) 100%
               ) !important;
           }
@@ -1287,13 +1394,32 @@ export default async function HomePage() {
             overflow: visible !important;
           }
 
-          .mock-editorial-grid {
-            grid-template-columns: 1fr !important;
-            gap: 12px !important;
+          .mock-editorial-grid,
+          .zm-editorial-reveal {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 10px !important;
+          }
+
+          .zm-editorial-reveal > .zm-editorial-reveal-item:nth-child(3) {
+            display: block;
+            grid-column: 1 / -1;
           }
 
           .mock-editorial-grid .mock-editorial {
-            min-height: 190px !important;
+            min-height: 230px !important;
+          }
+
+          .mock-editorial-grid .mock-editorial > h3 {
+            font-size: 18px !important;
+            max-width: 100%;
+          }
+
+          .mock-editorial-grid .mock-editorial > b {
+            max-width: 100%;
+            height: auto;
+            padding: 8px 12px;
+            white-space: normal;
+            line-height: 1.25;
           }
         }
 

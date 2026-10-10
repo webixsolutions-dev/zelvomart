@@ -9010,12 +9010,13 @@ a:hover,button:hover{transform:translateY(-1px)}
   .zm-catalog-toolbar{display:grid;grid-template-columns:102px minmax(0,1fr);gap:10px;margin:0 0 14px;min-height:44px}
   .zm-mobile-filter-button{height:42px;border:1px solid #bcd0dc;border-radius:10px;background:#fff;color:#14374b;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:850}
   .zm-sort-control{width:100%}.zm-sort-control select{height:42px;font-size:12.5px}
-  .zm-filter-drawer{position:fixed;inset:0;z-index:9998;display:block;visibility:hidden;pointer-events:none}
-  .zm-filter-drawer.is-open{visibility:visible;pointer-events:auto}
-  .zm-filter-backdrop{position:absolute;inset:0;border:0;background:rgba(7,25,38,.4);opacity:0;transition:opacity .22s ease}
+  .zm-filter-drawer{position:fixed;inset:0;z-index:9998;display:block;visibility:hidden;pointer-events:none;transition:visibility 0s linear .42s}
+  .zm-filter-drawer.is-open{visibility:visible;pointer-events:auto;transition:visibility 0s}
+  .zm-filter-backdrop{position:absolute;inset:0;border:0;background:rgba(7,25,38,.46);opacity:0;transition:opacity .32s ease}
   .zm-filter-drawer.is-open .zm-filter-backdrop{opacity:1}
-  .zm-filter-drawer-panel{position:absolute;left:0;top:0;bottom:0;width:min(88vw,360px);overflow-y:auto;background:#fff;padding:15px 20px 28px;transform:translateX(-102%);transition:transform .25s ease;box-shadow:20px 0 50px rgba(9,35,51,.18)}
-  .zm-filter-drawer.is-open .zm-filter-drawer-panel{transform:translateX(0)}
+  .zm-filter-drawer-panel{position:absolute;left:0;right:0;bottom:0;top:auto;width:100%;max-height:min(82vh,680px);overflow-y:auto;overscroll-behavior:contain;background:#fff;padding:8px 18px calc(22px + env(safe-area-inset-bottom));border-radius:22px 22px 0 0;transform:translateY(110%);transition:transform .42s cubic-bezier(.22,1,.36,1);box-shadow:0 -18px 50px rgba(9,35,51,.22);will-change:transform}
+  .zm-filter-drawer.is-open .zm-filter-drawer-panel{transform:translateY(0)}
+  .zm-filter-drawer-handle{display:block;width:44px;height:5px;margin:4px auto 8px;border-radius:999px;background:#d4dee4}
   .zm-filter-drawer-top{display:flex;align-items:center;justify-content:space-between;min-height:48px;border-bottom:1px solid #e2e9ed}.zm-filter-drawer-top b{font-size:16px}.zm-filter-drawer-top button{width:34px;height:34px;border:0;border-radius:50%;background:#f1f6f8;font-size:22px;color:#17384b}
   .zm-filter-drawer .zm-filter-head{display:none}
 }

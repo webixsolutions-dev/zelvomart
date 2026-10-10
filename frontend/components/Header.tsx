@@ -429,20 +429,6 @@ export default function Header({
             </button>
           </div>
         </div>
-
-        <div className="zm-mobile-search-row">
-          <form onSubmit={submitSearch}>
-            <CategoryMenu
-              categories={orderedCategories}
-              products={products}
-              activeCategory={activeCategory}
-              onNavigate={() => setMobileOpen(false)}
-            />
-            <SearchIcon size={17} />
-            <input name="q" placeholder="Search products..." aria-label="Search products" />
-            <button type="submit">Search</button>
-          </form>
-        </div>
         </div>
         </div>
         <div className="zm-category-strip">

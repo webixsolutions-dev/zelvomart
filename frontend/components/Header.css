@@ -494,8 +494,7 @@
   overflow: visible;
 }
 
-.zm-header-search > svg,
-.zm-mobile-search-row form > svg {
+.zm-header-search > svg {
   margin-left: 2px;
 }
 
@@ -510,8 +509,7 @@
   font-size: 13px;
 }
 
-.zm-header-search button[type="submit"],
-.zm-mobile-search-row button[type="submit"] {
+.zm-header-search button[type="submit"] {
   align-self: stretch;
   min-width: 84px;
   border: 0;
@@ -651,10 +649,6 @@
   font-size: 12px;
 }
 
-.zm-mobile-search-row {
-  display: none;
-}
-
 .zm-header-spacer {
   flex: 0 0 4px;
 }
@@ -670,31 +664,38 @@
   }
 
   .zm-brand-wrap {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1;
-    max-width: 86px;
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    z-index: 2;
+    max-width: none;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    flex: 0 0 auto;
   }
 
-  .zm-brand-wrap img {
-    width: auto !important;
-    max-width: 86px !important;
+  .zm-brand-wrap img,
+  .mock-header .zm-brand-wrap .brand-logo-image {
+    width: 78px !important;
+    max-width: 78px !important;
     max-height: 48px !important;
+    height: auto !important;
     object-fit: contain;
   }
 
   .zm-menu-button {
     display: inline-flex;
-    position: relative;
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
     z-index: 2;
+    flex: 0 0 auto;
   }
 
-  .zm-header-spacer { display: block; flex: 1 1 auto; min-width: 74px; }
+  .zm-header-spacer { display: block; flex: 1 1 auto; min-width: 8px; }
 
   .zm-header-actions {
     position: relative;
@@ -773,27 +774,6 @@
     display: none;
   }
 
-  .zm-mobile-search-row {
-    display: block;
-    width: 100%;
-    padding: 0 0 10px;
-  }
-
-  .zm-mobile-search-row form {
-    position: relative;
-    width: 100%;
-    min-height: 40px;
-    display: grid;
-    grid-template-columns: auto auto 1fr auto;
-    align-items: center;
-    gap: 8px;
-    padding-left: 0;
-    border: 1px solid #d6e2e8;
-    border-radius: 9px;
-    background: #f7fafc;
-    overflow: visible;
-  }
-
   .zm-cat-menu-button {
     min-width: 96px;
     max-width: 118px;
@@ -806,22 +786,6 @@
     grid-template-columns: 1fr;
     max-height: 70vh;
     overflow: auto;
-  }
-
-  .zm-mobile-search-row input {
-    width: 100%;
-    min-width: 0;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: #102d3e;
-    font: inherit;
-    font-size: 12px;
-  }
-
-  .zm-mobile-search-row button {
-    min-width: 66px;
-    font-size: 11px;
   }
 
   .zm-header-spacer {
@@ -846,32 +810,39 @@
     max-width: 100%;
     min-height: 62px;
     padding: 4px 8px 6px;
-    gap: 0;
+    gap: 2px;
     overflow: hidden;
   }
 
   .zm-brand-wrap {
-    left: 50%;
-    max-width: 62px;
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    max-width: none;
     pointer-events: auto;
+    flex: 0 0 auto;
   }
 
-  .zm-brand-wrap img {
-    width: auto !important;
-    max-width: 62px !important;
-    max-height: 40px !important;
+  .zm-brand-wrap img,
+  .mock-header .zm-brand-wrap .brand-logo-image {
+    width: 68px !important;
+    max-width: 68px !important;
+    max-height: 42px !important;
+    height: auto !important;
   }
 
   .zm-menu-button {
-    position: absolute;
-    left: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
     padding: 4px;
     z-index: 3;
+    flex: 0 0 auto;
   }
 
   .zm-header-spacer {
@@ -881,17 +852,19 @@
   }
 
   .zm-header-actions {
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
+    position: static;
+    right: auto;
+    top: auto;
+    transform: none;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 0;
-    max-width: calc(50% - 38px);
-    overflow: hidden;
+    margin-left: auto;
+    max-width: none;
+    overflow: visible;
     z-index: 3;
+    flex: 0 0 auto;
   }
 
   .zm-action-link,
@@ -1004,12 +977,17 @@
 }
 
 @media (max-width: 340px) {
-  .zm-brand-wrap { max-width: 54px; }
-  .zm-brand-wrap img { max-width: 54px !important; max-height: 36px !important; }
+  .zm-brand-wrap { max-width: none; }
+  .zm-brand-wrap img,
+  .mock-header .zm-brand-wrap .brand-logo-image {
+    width: 58px !important;
+    max-width: 58px !important;
+    max-height: 36px !important;
+  }
 
   .zm-header-actions {
-    right: 4px;
-    max-width: calc(50% - 31px);
+    right: auto;
+    max-width: none;
   }
 
   .zm-action-link,

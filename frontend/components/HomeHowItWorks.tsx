@@ -61,8 +61,8 @@ export default function HomeHowItWorks() {
             ];
             if (index > 0) {
               nodes.unshift(
-                <i key={`arrow-${step.tone}`} className="zm-how-arrow" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                <i key={`arrow-${step.tone}`} className={`zm-how-arrow zm-how-arrow--${step.tone}`} aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
                     <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </i>,

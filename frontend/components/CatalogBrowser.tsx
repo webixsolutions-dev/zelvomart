@@ -304,6 +304,7 @@ export default function CatalogBrowser({
         />
 
         <div className="zm-filter-drawer-panel">
+          <span className="zm-filter-drawer-handle" aria-hidden="true" />
           <div className="zm-filter-drawer-top">
             <b>Filter products</b>
 
@@ -505,8 +506,16 @@ export default function CatalogBrowser({
           }
 
           .zm-filter-drawer-panel {
-            width: min(88vw, 360px) !important;
-            padding: 14px 16px 24px !important;
+            width: 100% !important;
+            max-height: min(82vh, 680px) !important;
+            padding: 8px 16px calc(22px + env(safe-area-inset-bottom)) !important;
+            border-radius: 22px 22px 0 0 !important;
+            transform: translateY(110%);
+            transition: transform .42s cubic-bezier(.22, 1, .36, 1) !important;
+          }
+
+          .zm-filter-drawer.is-open .zm-filter-drawer-panel {
+            transform: translateY(0) !important;
           }
 
           .zm-filter-drawer .zm-filter-card {
