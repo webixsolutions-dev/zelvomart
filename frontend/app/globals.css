@@ -6763,6 +6763,9 @@ body{font-family:var(--zm-font);font-synthesis:none;text-rendering:optimizeLegib
 }
 .mock-header .brand-logo-image { width: 104px; }
 .mock-footer .brand-logo-image { width: 126px; filter: brightness(0) invert(1); }
+.footer-logo-link { display: inline-block; line-height: 0; margin: 0 0 14px; }
+.footer-logo-frame { display: block; position: relative; width: 210px; height: 56px; overflow: hidden; }
+.footer-logo-image { position: absolute; width: 312px; max-width: none; height: auto; left: -43px; top: -119px; }
 .brand-logo--compact .brand-logo-image { width: 86px; }
 
 .admin-brand-row-real {
@@ -6805,6 +6808,8 @@ body{font-family:var(--zm-font);font-synthesis:none;text-rendering:optimizeLegib
 @media (max-width: 760px) {
   .mock-header .brand-logo-image { width: 78px; }
   .mock-footer .brand-logo-image { width: 108px; }
+  .footer-logo-frame { width: 188px; height: 50px; }
+  .footer-logo-image { width: 279px; left: -39px; top: -106px; }
   .admin-brand-logo-image { width: 88px; }
   .admin-brand-portal-label { display: none; }
 }
@@ -10409,28 +10414,21 @@ body,
   }
 }
 
-/* Shared hero copy: homepage and every page hero use the same frame. */
+/* Shared hero copy: text sits on the photo, with no card or accent bar. */
 .zm-home-banner-copy.zm-hero-copy,
 .zm-storefront-hero-copy.zm-hero-copy{
   position:relative;
   width:min(560px,46%);
-  padding:26px 28px 24px 26px;
-  border-radius:22px;
-  background:linear-gradient(165deg,rgba(255,255,255,.94),rgba(255,255,255,.78));
-  border:1px solid rgba(255,255,255,.88);
-  box-shadow:0 22px 48px rgba(13,47,69,.1), inset 0 1px 0 rgba(255,255,255,.95);
-  backdrop-filter:blur(14px);
+  padding:0;
+  border-radius:0;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+  backdrop-filter:none;
 }
 .zm-home-banner-copy.zm-hero-copy:before,
 .zm-storefront-hero-copy.zm-hero-copy:before{
-  content:"";
-  position:absolute;
-  left:0;
-  top:22px;
-  bottom:22px;
-  width:3px;
-  border-radius:999px;
-  background:linear-gradient(180deg,#079fd8,#15ad6b);
+  content:none;
 }
 .zm-hero-copy .mock-eyebrow{
   display:inline-flex !important;
@@ -10481,10 +10479,9 @@ body,
 }
 .zm-hero-copy > p{
   max-width:480px;
-  margin:12px 0 0 !important;
-  padding:12px 0 0;
-  border-left:0;
-  border-top:1px solid rgba(13,47,69,.1);
+  margin:14px 0 0 !important;
+  padding:0;
+  border:0;
   color:#3d5666 !important;
   font-size:15.5px !important;
   line-height:1.65 !important;
@@ -10562,7 +10559,7 @@ body,
   margin-top:22px;
 }
 .zm-storefront-hero-shade{
-  background:linear-gradient(90deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,.08) 38%,rgba(255,255,255,0) 64%) !important;
+  background:transparent !important;
 }
 
 @media (max-width:900px){
@@ -10575,7 +10572,10 @@ body,
   .zm-storefront-hero-copy.zm-hero-copy{
     width:min(100%,560px);
     max-width:560px;
-    padding:24px 24px 22px 22px;
+    padding:0;
+    background:transparent;
+    border:0;
+    box-shadow:none;
   }
   .zm-home-banner-copy.zm-hero-copy h1,
   .zm-storefront-hero-copy.zm-hero-copy h1{
@@ -10600,13 +10600,26 @@ body,
   .zm-storefront-hero-copy.zm-hero-copy{
     width:100%;
     max-width:100%;
-    padding:20px 18px 18px 18px;
-    border-radius:18px;
+    padding:0;
+    border-radius:0;
+    background:transparent;
+    border:0;
+    box-shadow:none;
+    isolation:isolate;
   }
   .zm-home-banner-copy.zm-hero-copy:before,
   .zm-storefront-hero-copy.zm-hero-copy:before{
-    top:16px;
-    bottom:16px;
+    content:"";
+    position:absolute;
+    z-index:-1;
+    left:-18px;
+    right:-18px;
+    top:-28px;
+    bottom:-32px;
+    pointer-events:none;
+    border-radius:28px;
+    background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.9) 16%,rgba(255,255,255,.96) 46%,rgba(255,255,255,.92) 78%,rgba(255,255,255,0) 100%);
+    filter:blur(8px);
   }
   .zm-hero-copy .mock-eyebrow{
     margin-bottom:12px !important;
