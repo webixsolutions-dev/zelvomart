@@ -8,14 +8,28 @@ import { money } from "@/lib/format";
 interface ProductGridProps {
   products: Product[];
   onAddToCart?: (productId: string) => void;
+  emptyText?: string;       // <-- Added to fix TS2322
+  className?: string;       // <-- Added optional className
 }
 
-export default function ProductGrid({ products, onAddToCart }: ProductGridProps) {
+export default function ProductGrid({
+  products,
+  onAddToCart,
+  emptyText = "No products found in this category.",
+  className = "",
+}: ProductGridProps) {
+  // Handle empty product list cleanly
+  if (!products || products.length === 0) {
+    return (
+      <div className="w-full py-12 text-center text-slate-500 text-sm">
+        {emptyText}
+      </div>
+    );
+  }
+
   return (
-    /* 1 CARD PER ROW ON MOBILE (grid-cols-1), 2 ON TABLET (sm:grid-cols-2), 4 ON DESKTOP (lg:grid-cols-4) */
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 items-stretch">
+    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 items-stretch ${className}`}>
       {products.map((item) => {
-        // Safe fallbacks for image, pricing, and variants
         const imgSrc =
           (typeof item.images?.[0] === "string" ? item.images[0] : item.images?.[0]?.src) ||
           (item as any).image ||
@@ -34,7 +48,6 @@ export default function ProductGrid({ products, onAddToCart }: ProductGridProps)
             key={item.id}
             className="flex flex-col h-full bg-white rounded-3xl p-4 sm:p-4.5 border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-200 group"
           >
-            {/* 1. SQUARE PRODUCT IMAGE (Equal 1:1 Aspect Ratio) */}
             <Link
               href={`/product/${item.slug}`}
               className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 mb-3.5 block"
@@ -47,7 +60,6 @@ export default function ProductGrid({ products, onAddToCart }: ProductGridProps)
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
 
-              {/* Tag Badge */}
               {item.featured ? (
                 <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-tight bg-slate-900 text-white shadow-xs">
                   Bestseller
@@ -59,14 +71,12 @@ export default function ProductGrid({ products, onAddToCart }: ProductGridProps)
               )}
             </Link>
 
-            {/* 2. PRODUCT TITLE (Fixed 2-line height for perfect alignment) */}
             <Link href={`/product/${item.slug}`} className="block">
               <h3 className="text-sm md:text-[14.5px] font-bold text-slate-900 group-hover:text-sky-600 transition-colors line-clamp-2 min-h-[2.6rem] leading-snug">
                 {item.name}
               </h3>
             </Link>
 
-            {/* 3. STAR RATING & REVIEW COUNT */}
             <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-2 mb-1.5 flex-wrap">
               <span className="text-[#f59e0b] text-xs">★</span>
               <span className="font-bold text-slate-800 text-xs">
@@ -77,7 +87,6 @@ export default function ProductGrid({ products, onAddToCart }: ProductGridProps)
               </span>
             </div>
 
-            {/* 4. PRICING ROW (Locked min-height for cards with/without discount) */}
             <div className="flex items-baseline gap-2 flex-wrap min-h-[1.75rem] mb-1.5">
               <span className="text-base sm:text-lg font-black text-slate-900">
                 {money(price)}
@@ -96,7 +105,6 @@ export default function ProductGrid({ products, onAddToCart }: ProductGridProps)
               )}
             </div>
 
-            {/* 5. COLOR SWATCHES */}
             <div className="flex items-center gap-1.5 min-h-[1.3rem] mb-3.5">
               {colorsCount > 0 ? (
                 <>
@@ -113,7 +121,6 @@ export default function ProductGrid({ products, onAddToCart }: ProductGridProps)
               )}
             </div>
 
-            {/* 6. ACTION BUTTON PINNED TO BOTTOM (mt-auto) */}
             <div className="mt-auto pt-1">
               {hasOptions ? (
                 <Link
