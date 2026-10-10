@@ -10,19 +10,13 @@ interface SafeImageProps extends Omit<ImageProps, "src"> {
 
 export default function SafeImage({
   src,
-  fallbackSrc = "/images/home/home-living.png",
+  fallbackSrc = "/images/Zelvomart images/home and living zelvomart.png",
   alt,
   ...rest
 }: SafeImageProps) {
   const [hasError, setHasError] = useState(false);
 
-  let cleanSrc = hasError || !src ? fallbackSrc : src;
-
-  try {
-    cleanSrc = encodeURI(cleanSrc).replace(/&/g, "%26");
-  } catch {
-    cleanSrc = fallbackSrc;
-  }
+  const cleanSrc = hasError || !src ? fallbackSrc : src;
 
   return (
     <Image

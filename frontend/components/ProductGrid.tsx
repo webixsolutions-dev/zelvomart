@@ -10,6 +10,7 @@ interface ProductGridProps {
   onAddToCart?: (productId: string) => void;
   emptyText?: string;       // <-- Added to fix TS2322
   className?: string;       // <-- Added optional className
+  variant?: "default" | "storefront";
 }
 
 export default function ProductGrid({
@@ -28,7 +29,7 @@ export default function ProductGrid({
   }
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 items-stretch ${className}`}>
+    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 items-start ${className}`}>
       {products.map((item) => {
         const imgSrc =
           (typeof item.images?.[0] === "string" ? item.images[0] : item.images?.[0]?.src) ||
@@ -46,124 +47,84 @@ export default function ProductGrid({
         return (
           <article
             key={item.id}
-            className="flex flex-col h-full bg-white rounded-3xl p-4 sm:p-4.5 border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-200 group"
+            className="flex flex-col overflow-hidden bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 group rounded-2xl"
           >
             <Link
               href={`/product/${item.slug}`}
-              className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 mb-3.5 block"
+              className="relative aspect-square w-full overflow-hidden bg-[#f3f5f7] block"
             >
               <Image
                 src={imgSrc}
                 alt={item.name}
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                className="object-contain object-center"
               />
 
               {item.featured ? (
-                <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-tight bg-slate-900 text-white shadow-xs">
+                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight bg-slate-900/90 text-white">
                   Bestseller
                 </span>
-              ) : (
-                <span className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-tight bg-rose-100 text-rose-700 border border-rose-200/80 shadow-xs">
-                  Gift-ready
-                </span>
-              )}
+              ) : null}
             </Link>
 
-            <Link href={`/product/${item.slug}`} className="block">
-              <h3 className="text-sm md:text-[14.5px] font-bold text-slate-900 group-hover:text-sky-600 transition-colors line-clamp-2 min-h-[2.6rem] leading-snug">
-                {item.name}
-              </h3>
-            </Link>
+            <div className="flex flex-col gap-1 px-2.5 pt-2 pb-2.5">
+              <Link href={`/product/${item.slug}`} className="block">
+                <h3 className="text-[13px] font-semibold text-slate-900 group-hover:text-sky-700 transition-colors line-clamp-2 leading-tight">
+                  {item.name}
+                </h3>
+              </Link>
 
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-2 mb-1.5 flex-wrap">
-              <span className="text-[#f59e0b] text-xs">★</span>
-              <span className="font-bold text-slate-800 text-xs">
-                {rating.toFixed(1)}
-              </span>
-              <span className="text-xs text-slate-400">
-                {reviewsCount.toLocaleString()} reviews
-              </span>
-            </div>
+              <div className="flex items-center gap-1 text-[11px] leading-none text-slate-500">
+                <span className="text-[#f59e0b] text-[12px] leading-none">★</span>
+                <span className="font-semibold text-slate-800">{rating.toFixed(1)}</span>
+                <span className="text-slate-400">{reviewsCount.toLocaleString()} reviews</span>
+              </div>
 
-            <div className="flex items-baseline gap-2 flex-wrap min-h-[1.75rem] mb-1.5">
-              <span className="text-base sm:text-lg font-black text-slate-900">
-                {money(price)}
-              </span>
+              <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
+                <span className="text-[15px] font-extrabold text-slate-900">{money(price)}</span>
+                {regularPrice && regularPrice > price ? (
+                  <span className="text-[11px] text-slate-400 line-through">{money(regularPrice)}</span>
+                ) : null}
+                {savings ? (
+                  <span className="text-[11px] font-bold text-rose-600">Save {money(savings)}</span>
+                ) : null}
+              </div>
 
-              {regularPrice && regularPrice > price && (
-                <span className="text-xs text-slate-400 line-through">
-                  {money(regularPrice)}
-                </span>
-              )}
-
-              {savings && (
-                <span className="text-[11px] font-bold text-rose-600">
-                  Save {money(savings)}
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 min-h-[1.3rem] mb-3.5">
               {colorsCount > 0 ? (
-                <>
+                <div className="flex items-center gap-1.5 leading-none">
                   <div className="flex -space-x-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-300 ring-1 ring-white" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-300 ring-1 ring-white" />
+                    <span className="w-2 h-2 rounded-full bg-rose-300 ring-1 ring-white" />
+                    <span className="w-2 h-2 rounded-full bg-sky-300 ring-1 ring-white" />
                   </div>
-                  <span className="text-xs text-slate-400 font-medium">
-                    {colorsCount} colours
-                  </span>
-                </>
-              ) : (
-                <span className="h-2.5" />
-              )}
-            </div>
+                  <span className="text-[11px] text-slate-400 font-medium">{colorsCount} colours</span>
+                </div>
+              ) : null}
 
-            <div className="mt-auto pt-1">
-              {hasOptions ? (
-                <Link
-                  href={`/product/${item.slug}`}
-                  className="w-full py-3 px-3 rounded-2xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 transition active:scale-[0.98] shadow-2xs"
-                >
-                  <svg
-                    className="w-4 h-4 text-slate-600 shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
+              <div className="pt-1">
+                {hasOptions ? (
+                  <Link
+                    href={`/product/${item.slug}`}
+                    className="w-full py-2 px-3 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 font-bold text-[13px] flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
-                  </svg>
-                  <span className="truncate">Choose Options</span>
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onAddToCart?.(item.id)}
-                  className="w-full py-3 px-3 rounded-2xl bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 shadow-xs hover:shadow transition active:scale-[0.98] cursor-pointer"
-                >
-                  <svg
-                    className="w-4 h-4 text-white shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
+                    <svg className="w-3.5 h-3.5 text-slate-600 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span className="truncate">Choose Options</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onAddToCart?.(item.id)}
+                    className="w-full py-2 px-3 rounded-xl bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-[13px] flex items-center justify-center gap-1.5 shadow-xs hover:shadow transition active:scale-[0.98] cursor-pointer"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                    />
-                  </svg>
-                  <span className="truncate">Add to Cart</span>
-                </button>
-              )}
+                    <svg className="w-3.5 h-3.5 text-white shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span className="truncate">Add to Cart</span>
+                  </button>
+                )}
+              </div>
             </div>
           </article>
         );

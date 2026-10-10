@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, type ReactNode } from "react";
+import { Fragment, Suspense, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { CartProvider } from "@/components/CartProvider";
 import PageMotion from "@/components/PageMotion";
@@ -38,13 +38,13 @@ export default function SiteChrome({
   if (checkoutRoute) {
     return (
       <>
-        {metaPixel}
-        {clarity}
+        <Fragment key="meta-pixel">{metaPixel}</Fragment>
+        <Fragment key="clarity">{clarity}</Fragment>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
         <CartProvider>
           <Suspense fallback={null}><RouteTransitionOverlay /></Suspense>
           <main className="public-site-main">{children}</main>
-          {tracking}
+          <Fragment key="tracking">{tracking}</Fragment>
         </CartProvider>
       </>
     );
@@ -52,21 +52,21 @@ export default function SiteChrome({
 
   return (
     <>
-      {metaPixel}
-      {clarity}
+      <Fragment key="meta-pixel">{metaPixel}</Fragment>
+      <Fragment key="clarity">{clarity}</Fragment>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: organizationJson }}
       />
       <CartProvider>
         <Suspense fallback={null}><RouteTransitionOverlay /></Suspense>
-        {header}
+        <Fragment key="header">{header}</Fragment>
         <main className="public-site-main">{children}</main>
         <PageMotion />
-        {footer}
-        {cartDrawer}
-        {whatsapp}
-        {tracking}
+        <Fragment key="footer">{footer}</Fragment>
+        <Fragment key="cart">{cartDrawer}</Fragment>
+        <Fragment key="whatsapp">{whatsapp}</Fragment>
+        <Fragment key="tracking">{tracking}</Fragment>
       </CartProvider>
     </>
   );

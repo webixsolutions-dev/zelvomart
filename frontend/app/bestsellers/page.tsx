@@ -22,7 +22,7 @@ export default async function Bestsellers({ searchParams }: { searchParams: Prom
         eyebrow="MOST-ORDERED"
         title="Bestsellers."
         description="The products customers keep coming back for — useful, easy to order and available with Cash on Delivery."
-        image="/images/home-banners/banner-household.png"
+        image="/images/Zelvomart images/Best Selling Zelvomart.png"
         alt="Popular Zelvomart products"
         primaryLabel="Shop bestsellers"
         primaryHref="#products"

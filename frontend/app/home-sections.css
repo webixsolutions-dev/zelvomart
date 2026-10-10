@@ -1,0 +1,220 @@
+/* Sections after the deals banner stay visible before hydration.
+   Motion is applied only after the client confirms a block is still off-screen. */
+.zm-scroll-reveal {
+  transition:
+    opacity 0.72s cubic-bezier(0.22, 0.7, 0.2, 1),
+    transform 0.72s cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+
+.zm-scroll-reveal.zm-reveal-pending {
+  opacity: 0;
+  transform: translate3d(0, 28px, 0);
+}
+
+.zm-scroll-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.zm-editorial-reveal {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.zm-editorial-reveal .zm-scroll-reveal {
+  display: contents;
+}
+
+.zm-editorial-reveal .zm-scroll-reveal.zm-reveal-pending .mock-editorial {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0) scale(0.97);
+}
+
+.zm-editorial-reveal .mock-editorial {
+  opacity: 1;
+  transition:
+    opacity 0.75s cubic-bezier(0.22, 0.7, 0.2, 1),
+    transform 0.75s cubic-bezier(0.22, 0.7, 0.2, 1),
+    box-shadow 0.28s ease;
+  box-shadow: 0 14px 36px rgba(12, 36, 52, 0.1);
+  padding: 18px !important;
+}
+
+.zm-editorial-reveal .mock-editorial:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 44px rgba(12, 36, 52, 0.16);
+}
+
+.zm-how-it-works-vivid {
+  position: relative;
+  overflow: hidden;
+  padding: 52px 0 56px !important;
+  border: 0 !important;
+  background:
+    radial-gradient(1200px 420px at 8% -10%, rgba(10, 170, 232, 0.18), transparent 58%),
+    radial-gradient(900px 360px at 92% 110%, rgba(255, 104, 64, 0.16), transparent 55%),
+    linear-gradient(180deg, #f3fbff 0%, #fff8f4 48%, #f5faff 100%) !important;
+}
+
+.zm-how-it-works-vivid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  pointer-events: none;
+}
+
+.zm-how-it-works-vivid > .site-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.zm-how-it-works-vivid .zm-how-heading h2 {
+  margin: 0;
+  color: #0f2f45 !important;
+  font-size: clamp(30px, 3.4vw, 40px) !important;
+  line-height: 1.05 !important;
+}
+
+.zm-how-it-works-vivid .zm-how-heading p {
+  margin: 8px 0 0;
+  color: #4f6b7a !important;
+  font-size: 15px !important;
+}
+
+.zm-how-it-works-vivid .zm-how-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr) 28px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px 6px;
+}
+
+.zm-how-it-works-vivid .zm-how-reveal-cell {
+  display: flex;
+  min-width: 0;
+  height: auto;
+  align-self: stretch;
+}
+
+.zm-how-it-works-vivid .zm-how-step {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 36px rgba(12, 44, 64, 0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.zm-how-it-works-vivid .zm-how-step--choose { background: linear-gradient(135deg, #e8f7ff 0%, #dff2ff 100%); }
+.zm-how-it-works-vivid .zm-how-step--confirm { background: linear-gradient(135deg, #fff2e8 0%, #ffe8dc 100%); }
+.zm-how-it-works-vivid .zm-how-step--deliver { background: linear-gradient(135deg, #eaf8ef 0%, #dff5ea 100%); }
+.zm-how-it-works-vivid .zm-how-step--pay { background: linear-gradient(135deg, #f2ecff 0%, #e8e2ff 100%); }
+
+.zm-how-it-works-vivid .zm-how-step:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(12, 44, 64, 0.12);
+}
+
+.zm-how-it-works-vivid .zm-how-arrow {
+  color: #0aaae8 !important;
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 6px 16px rgba(10, 170, 232, 0.12);
+}
+
+.zm-how-it-works-vivid .zm-how-index {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: #0aaae8;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.zm-how-it-works-vivid .zm-how-icon {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: inset 0 0 0 1px rgba(10, 170, 232, 0.16), 0 8px 18px rgba(12, 44, 64, 0.06);
+}
+
+.zm-how-it-works-vivid .zm-how-icon img {
+  width: 46px !important;
+  height: 46px !important;
+  object-fit: contain !important;
+}
+
+.zm-how-it-works-vivid .zm-how-step b {
+  display: block;
+  color: #102d3e;
+  font-size: 18px;
+  line-height: 1.15;
+  font-weight: 800;
+}
+
+.zm-how-it-works-vivid .zm-how-step p {
+  margin: 6px 0 0;
+  color: #5a7280;
+  font-size: 13.5px !important;
+  line-height: 1.5 !important;
+}
+
+.mock-faq-section.zm-faq-reveal-section .mock-faq-intro .mock-eyebrow { font-size: calc(0.72rem + 5px) !important; }
+.mock-faq-section.zm-faq-reveal-section .mock-faq-intro h2 { font-size: calc(clamp(38px, 4.2vw, 52px) + 5px) !important; }
+.mock-faq-section.zm-faq-reveal-section .mock-faq-intro > p { font-size: calc(12px + 5px) !important; }
+.mock-faq-section.zm-faq-reveal-section .mock-faq-contact-item,
+.mock-faq-section.zm-faq-reveal-section .mock-faq-contact-item b { font-size: calc(12.5px + 5px) !important; }
+.mock-faq-section.zm-faq-reveal-section .faq-question { font-size: calc(13px + 5px) !important; }
+.mock-faq-section.zm-faq-reveal-section .faq-answer { font-size: calc(12px + 5px) !important; }
+
+@media (max-width: 760px) {
+  .zm-how-it-works-vivid { padding: 34px 0 !important; }
+  .zm-how-it-works-vivid .zm-how-grid { grid-template-columns: 1fr; gap: 12px; }
+  .zm-how-it-works-vivid .zm-how-arrow { display: none; }
+  .zm-how-it-works-vivid .zm-how-step {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+  }
+  .zm-how-it-works-vivid .zm-how-icon {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+    border-radius: 16px;
+  }
+  .zm-how-it-works-vivid .zm-how-icon img {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .zm-how-it-works-vivid .zm-how-step b { font-size: 16px; }
+  .zm-editorial-reveal { grid-template-columns: 1fr !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zm-scroll-reveal,
+  .zm-editorial-reveal .mock-editorial,
+  .zm-how-it-works-vivid .zm-how-step {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

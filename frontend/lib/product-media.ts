@@ -21,12 +21,13 @@ const LEGACY_PRODUCT_IMAGES: Record<string, string> = {
 };
 
 const CATEGORY_FALLBACKS: Record<string, string> = {
-  "home-living": "/images/categories/home-living.webp",
-  "home-decor": "/images/categories/home-decor.webp",
-  "beauty-personal-care": "/images/categories/beauty-personal-care.webp",
-  "tech-gadgets": "/images/categories/tech-gadgets.webp",
-  "fashion-accessories": "/images/categories/fashion-accessories.webp",
-  "sports-fitness": "/images/categories/sports-fitness.webp",
+  "home-living": "/images/Zelvomart images/home and living zelvomart.png",
+  "home-decor": "/images/Zelvomart images/Home Decor Zelvomart.png",
+  "beauty-personal-care": "/images/Zelvomart images/Beauty & Personal Care Zelvomart.png",
+  "tech-gadgets": "/images/Zelvomart images/Tech & Gadgets Zelvomart.png",
+  "fashion-accessories": "/images/Zelvomart images/Fashion Accessories Zelvomart.png",
+  "sports-fitness": "/images/Zelvomart images/Sports & Fitness Zelvomart.png",
+  "kids-toys": "/images/Zelvomart images/Kids & Toys Zelvomart.png",
 };
 
 export function getProductFallbackImage(product: Pick<Product, "slug" | "categorySlugs" | "categories">): string {
@@ -36,7 +37,7 @@ export function getProductFallbackImage(product: Pick<Product, "slug" | "categor
   const categorySlug = product.categorySlugs?.[0] || product.categories?.[0]?.slug || "";
   if (categorySlug && CATEGORY_FALLBACKS[categorySlug]) return CATEGORY_FALLBACKS[categorySlug];
 
-  return "/images/hero/zelvomart-hero.webp";
+  return "/images/Zelvomart images/Shop Zelvmart.png";
 }
 
 function isLegacyRemoteImage(src: string): boolean {

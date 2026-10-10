@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { STATIC_PAGES } from "@/lib/dummy-content";
+import StorefrontHero from "@/components/StorefrontHero";
+import { storeImages } from "@/lib/store-images";
 
 const pageIntro: Record<string, { kicker: string; description: string }> = {
   blog: {
@@ -38,13 +40,17 @@ export default async function DbPage({ slug, fallbackSlugs = [] }: { slug: strin
 
   return (
     <div className="premium-content-page">
-      <section className="premium-content-hero">
-        <div className="site-shell premium-content-hero-inner">
-          <span className="premium-overline">{intro.kicker}</span>
-          <h1>{data.title}</h1>
-          <p>{intro.description}</p>
-        </div>
-      </section>
+      <StorefrontHero
+        eyebrow={intro.kicker}
+        title={data.title}
+        description={intro.description}
+        image={storeImages.heroHousehold.src}
+        alt={data.title}
+        primaryLabel="Browse products"
+        primaryHref="/shop"
+        secondaryLabel="Contact us"
+        secondaryHref="/contact-us"
+      />
 
       <div className="site-shell premium-content-body">
         <article className="content-card static-content-card premium-dynamic-content" dangerouslySetInnerHTML={{ __html: data.bodyHtml || "" }} />

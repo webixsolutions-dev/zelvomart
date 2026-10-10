@@ -1,7 +1,6 @@
 import ProductGrid from "@/components/ProductGrid";
 import StorePagination from "@/components/StorePagination";
 import { getProducts, getStoreBootstrap } from "@/lib/store";
-import { getProductFallbackImage } from "@/lib/product-media";
 import StorefrontHero from "@/components/StorefrontHero";
 
 export const revalidate = 120;
@@ -17,7 +16,7 @@ export default async function NewInPage({searchParams}:{searchParams:Promise<Rec
         eyebrow="FRESH AT ZELVOMART"
         title="Just landed."
         description="New useful finds, giftable extras and everyday upgrades — added as soon as they are ready."
-        image={lead?.image || (lead ? getProductFallbackImage(lead) : "/images/home-banners/banner-online-shopping.png")}
+        image="/images/Zelvomart images/New Arrival Zelvomart.png"
         alt={lead ? `${lead.name} newly added at Zelvomart` : "New arrivals at Zelvomart"}
         primaryLabel="Shop new arrivals"
         primaryHref="#new-products"

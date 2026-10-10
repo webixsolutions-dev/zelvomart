@@ -39,7 +39,10 @@ export default function Footer({ categories, phone = "0300-2026711", email = "ze
         <div className="mock-footer-col"><h4>COMPANY</h4><Link href="/about-us">About Zelvomart</Link><Link href="/blog">Blog</Link><Link href="/privacy-policy">Privacy policy</Link><Link href="/terms">Terms & conditions</Link></div>
         <div className="mock-footer-col mock-footer-contact"><h4>TALK TO US</h4><a href={`tel:${phone.replace(/\D/g, "")}`}>⌕&nbsp; {phone}</a><a href={`mailto:${email}`}>✉&nbsp; {email}</a><span>⌖&nbsp; Lahore, Pakistan</span><a className="mock-footer-wa" href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer"><WhatsAppIcon size={15}/> Join WhatsApp Channel</a></div>
       </div>
-      <div className="site-shell mock-footer-bottom"><span>© {new Date().getFullYear()} Zelvomart. All rights reserved. · Trusted by Our Customers</span></div>
+      <div className="site-shell mock-footer-bottom zm-footer-bottom-bar">
+        <span>© {new Date().getFullYear()} Zelvomart. All rights reserved. · Trusted by Our Customers</span>
+        <span className="zm-footer-credit">Developed by Webix</span>
+      </div>
     </footer>
   );
 }

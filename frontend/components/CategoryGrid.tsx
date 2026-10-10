@@ -2,16 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Category } from "@/types/product";
 import { CATEGORY_BLURBS } from "@/lib/dummy-content";
+import { categoryImageSrc } from "@/lib/store-images";
 
-const CATEGORY_FALLBACKS: Record<string, string> = {
-  "home-living": "/images/categories/home-living.webp",
-  "home-decor": "/images/categories/home-decor.webp",
-  "beauty-personal-care": "/images/categories/beauty-personal-care.webp",
-  "tech-gadgets": "/images/categories/tech-gadgets.webp",
-  "fashion-accessories": "/images/categories/fashion-accessories.webp",
-  "sports-fitness": "/images/categories/sports-fitness.webp",
-  "kids-toys": "/images/categories/kids-toys.svg",
-};
+const CATEGORY_FALLBACKS: Record<string, string> = categoryImageSrc;
 
 export default function CategoryGrid({ categories }: { categories: Category[] }) {
   return (
@@ -37,7 +30,6 @@ export default function CategoryGrid({ categories }: { categories: Category[] })
                   sizes="(max-width: 640px) 50vw, (max-width: 1100px) 50vw, 33vw"
                   loading={index < 6 ? "eager" : "lazy"}
                   fetchPriority={index < 3 ? "high" : "auto"}
-                  unoptimized={image.startsWith("/images/")}
                 />
               ) : (
                 <div className="category-card-fallback" aria-hidden="true" />
