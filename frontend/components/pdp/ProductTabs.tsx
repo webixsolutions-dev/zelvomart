@@ -14,19 +14,20 @@ export default function ProductTabs({
   variant,
   inStock,
 }: ProductTabsProps) {
-  const [activeSection, setActiveSection] = useState<string | null>("description");
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    description: true,
+    whyChoose: false,
+    shipping: false,
+    faq: false,
+    additional: false,
+    reviews: false,
+  });
 
   const toggleSection = (key: string) => {
-    setActiveSection((prev) => (prev === key ? null : key));
-  };
-
-  const openSections: Record<string, boolean> = {
-    description: activeSection === "description",
-    whyChoose: activeSection === "whyChoose",
-    shipping: activeSection === "shipping",
-    faq: activeSection === "faq",
-    additional: activeSection === "additional",
-    reviews: activeSection === "reviews",
+    setOpenSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
   // Fix: Check length > 0 first, otherwise fall back to product.reviewCount or 64
