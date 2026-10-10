@@ -72,6 +72,7 @@ function jsonProduct(row: any) {
     videoUrl: row.videoUrl, permalink: `/product/${row.slug}/`, hasOptions: (row.variants || []).length > 0,
     variants: (row.variants || []).map((v: any) => ({ ...v, priceOverride: v.priceOverride == null ? null : Number(v.priceOverride) })),
     bundleEnabled: row.bundleEnabled, bundleDiscountPercent: row.bundleDiscountPercent == null ? null : Number(row.bundleDiscountPercent), reviews,
+    focusKeyword: row.focusKeyword || null,
     seoTitle: row.seoTitle, seoDescription: row.seoDescription, canonicalUrl: row.canonicalUrl,
     costPrice: row.costPrice == null ? null : Number(row.costPrice), status: row.status, categoryId: row.categoryId,
     createdAt: row.createdAt, updatedAt: row.updatedAt,
@@ -697,7 +698,7 @@ app.post('/api/admin/products', requireAuth('products.write'), async (req:Authed
     const bundleEnabled=b.bundleEnabled!==false;
     const bundleDiscountPercent=b.bundleDiscountPercent==null||b.bundleDiscountPercent===''?null:Number(b.bundleDiscountPercent);
     await assertProductPriceFloor({price,salePrice,bundleEnabled,bundleDiscountPercent});
-    const row=await prisma.product.create({data:{title:String(b.title),slug:String(b.slug),sku:String(b.sku),categoryId:b.categoryId||null,price:new Prisma.Decimal(price),salePrice:salePrice==null?null:new Prisma.Decimal(salePrice),costPrice:b.costPrice?new Prisma.Decimal(Number(b.costPrice)):null,stock:Number(b.stock||0),status:(b.status||'DRAFT') as ProductStatus,featured:Boolean(b.featured),bundleEnabled,bundleDiscountPercent:bundleDiscountPercent==null?null:new Prisma.Decimal(bundleDiscountPercent),shortDescription:b.shortDescription||null,descriptionHtml:b.descriptionHtml||null,images:Array.isArray(b.images)?b.images:[],videoUrl:b.videoUrl||null,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,canonicalUrl:b.canonicalUrl||null}});
+    const row=await prisma.product.create({data:{title:String(b.title),slug:String(b.slug),sku:String(b.sku),categoryId:b.categoryId||null,price:new Prisma.Decimal(price),salePrice:salePrice==null?null:new Prisma.Decimal(salePrice),costPrice:b.costPrice?new Prisma.Decimal(Number(b.costPrice)):null,stock:Number(b.stock||0),status:(b.status||'DRAFT') as ProductStatus,featured:Boolean(b.featured),bundleEnabled,bundleDiscountPercent:bundleDiscountPercent==null?null:new Prisma.Decimal(bundleDiscountPercent),shortDescription:b.shortDescription||null,descriptionHtml:b.descriptionHtml||null,images:Array.isArray(b.images)?b.images:[],videoUrl:b.videoUrl||null,focusKeyword:b.focusKeyword?String(b.focusKeyword).trim():null,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,canonicalUrl:b.canonicalUrl||null}});
     await audit(req,'create','Product',row.id);
     await invalidateFrontendCache(['products','featured-products','categories','store',`product:${row.slug}`]);
     res.status(201).json(row);
@@ -717,7 +718,7 @@ app.patch('/api/admin/products/:id', requireAuth('products.write'), async (req:A
     const nextDiscount='bundleDiscountPercent' in b?(b.bundleDiscountPercent===''||b.bundleDiscountPercent==null?null:Number(b.bundleDiscountPercent)):(current.bundleDiscountPercent==null?null:Number(current.bundleDiscountPercent));
     await assertProductPriceFloor({price:nextPrice,salePrice:nextSale,bundleEnabled:nextBundle,bundleDiscountPercent:nextDiscount});
     const data:any={};
-    for(const k of ['title','slug','sku','categoryId','stock','status','featured','bundleEnabled','shortDescription','descriptionHtml','images','videoUrl','seoTitle','seoDescription','canonicalUrl']) if(k in b) data[k]=b[k] === '' ? null : b[k];
+    for(const k of ['title','slug','sku','categoryId','stock','status','featured','bundleEnabled','shortDescription','descriptionHtml','images','videoUrl','focusKeyword','seoTitle','seoDescription','canonicalUrl']) if(k in b) data[k]=b[k] === '' ? null : b[k];
     for(const k of ['price','salePrice','costPrice','bundleDiscountPercent']) if(k in b) data[k]=b[k]===''||b[k]==null?null:new Prisma.Decimal(Number(b[k]));
     if('stock'in data)data.stock=Number(data.stock||0);
     const row=await prisma.product.update({where:{id},data});

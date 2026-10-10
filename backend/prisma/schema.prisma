@@ -96,6 +96,7 @@ model Product {
   featured              Boolean       @default(false)
   bundleEnabled         Boolean       @default(true)
   bundleDiscountPercent Decimal?      @db.Decimal(5, 2)
+  focusKeyword          String?
   seoTitle              String?
   seoDescription        String?       @db.Text
   canonicalUrl          String?
