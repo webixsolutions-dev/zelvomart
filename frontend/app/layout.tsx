@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { Suspense } from "react";
+import Script from "next/script";
 import "./globals.css";
 import "@rrweb/replay/dist/style.css";
 import { getStoreBootstrap } from "@/lib/store";
@@ -14,7 +15,6 @@ import MetaPixelScript from "@/components/MetaPixelScript";
 import ClarityScript from "@/components/ClarityScript";
 import ExperimentProvider from "@/components/ExperimentProvider";
 import SiteChrome from "@/components/SiteChrome";
-
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -34,12 +34,12 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const bootstrap = await getStoreBootstrap();
-  const categories = bootstrap.categories;
-  const announcement = (bootstrap.settings["store.announcement"] || { enabled: true, items: [] }) as any;
-  const info = (bootstrap.settings["store.info"] || { phone: "0300-2026711", email: "zelvomart@gmail.com", whatsapp: "923002026711" }) as any;
-  const pixelId = String(bootstrap.settings["tracking.metaPixelId"] || process.env.NEXT_PUBLIC_META_PIXEL_ID || "1645715973642563");
-  const clarityId = String(bootstrap.settings["tracking.clarityId"] || process.env.NEXT_PUBLIC_CLARITY_ID || "");
+  const bootstrap = await getStoreBootstrap().catch(() => null);
+  const categories = bootstrap?.categories || [];
+  const announcement = (bootstrap?.settings?.["store.announcement"] || { enabled: true, items: [] }) as any;
+  const info = (bootstrap?.settings?.["store.info"] || { phone: "0300-2026711", email: "zelvomart@gmail.com", whatsapp: "923002026711" }) as any;
+  const pixelId = String(bootstrap?.settings?.["tracking.metaPixelId"] || process.env.NEXT_PUBLIC_META_PIXEL_ID || "1645715973642563");
+  const clarityId = String(bootstrap?.settings?.["tracking.clarityId"] || process.env.NEXT_PUBLIC_CLARITY_ID || "");
 
   const phoneDisplay = String(info.phone || "0300-2026711").startsWith("+")
     ? info.phone
@@ -59,9 +59,34 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <html lang="en" data-scroll-behavior="smooth">
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <link rel="preload" as="image" type="image/webp" href="/images/hero/zelvomart-slider-01.webp" />
+
+        {/* Fix for Next.js 16 + Turbopack negative performance timestamp bug */}
+        <Script
+          id="turbopack-timestamp-fix"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window !== 'undefined' && window.performance && window.performance.measure) {
+                  var origMeasure = window.performance.measure.bind(window.performance);
+                  window.performance.measure = function(name, start, end) {
+                    try {
+                      return origMeasure(name, start, end);
+                    } catch (err) {
+                      if (err && err.message && err.message.indexOf('negative time stamp') !== -1) {
+                        return;
+                      }
+                      throw err;
+                    }
+                  };
+                }
+              })();
+            `,
+          }}
+        />
       </head>
       <body className={manrope.variable}>
         <SiteChrome

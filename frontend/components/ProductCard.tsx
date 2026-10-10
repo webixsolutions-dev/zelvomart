@@ -8,6 +8,7 @@ import { money } from "@/lib/format";
 import type { Product } from "@/types/product";
 import { trackStoreEvent } from "@/lib/client-tracking";
 import { getProductFallbackImage } from "@/lib/product-media";
+import "./ProductDetail.css";
 
 const SWATCHES = ["#f6a5b9","#b7d9eb","#c4dec9","#d7c8ef","#d9d9d9"];
 
