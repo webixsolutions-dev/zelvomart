@@ -9,31 +9,14 @@ import CatalogBrowser from "@/components/CatalogBrowser";
 import StorefrontHero from "@/components/StorefrontHero";
 import { getCategories, getProducts } from "@/lib/store";
 import SafeImage from "@/components/SafeImage";
+import { categoryImageFallback, categoryImageSrc } from "@/lib/store-images";
 
 export const revalidate = 120;
 
-// Matches the newly renamed kebab-case files in public/images/home/
-const categoryHeroImages: Record<string, string> = {
-  "home-living": "/images/home/home-living.png",
-  "home-decor": "/images/home/home-decor.png",
-  "beauty-personal-care": "/images/home/beauty-personal-care.png",
-  "tech-gadgets": "/images/home/tech-gadgets.png",
-  "fashion-accessories": "/images/home/fashion-accessories.png",
-  "sports-fitness": "/images/home/sports-fitness.png",
-  "kids-toys": "/images/home/kids-toys.png",
-};
+const categoryHeroImages: Record<string, string> = categoryImageSrc;
 
-/**
- * Safely encodes image URLs so user-uploaded paths with spaces or '&'
- * do not break the Next.js `/_next/image?url=...` optimizer query string.
- */
 function getSafeImageUrl(src?: string | null): string {
-  if (!src) return "/images/home/home-living.png";
-  try {
-    return encodeURI(src).replace(/&/g, "%26");
-  } catch {
-    return src;
-  }
+  return src || categoryImageFallback;
 }
 
 const v = (x: string | string[] | undefined) =>
@@ -229,14 +212,10 @@ export default async function CategoryPage({
                     }}
                   >
                     <SafeImage
-                      src={
-                        categoryHeroImages[c.slug] ||
-                        c.image ||
-                        `/images/categories/${c.slug}.webp`
-                      }
+                      src={imageSrc}
                       alt={c.name}
                       fill
-                      fallbackSrc="/images/home/home-living.png"
+                      fallbackSrc={categoryImageFallback}
                       sizes="(max-width: 620px) 48vw, (max-width: 1000px) 28vw, 180px"
                     />
                   </span>

@@ -54,7 +54,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         eyebrow={gift ? "GIFTABLE FINDS" : q ? "SEARCH ZELVOMART" : "SHOP ZELVOMART"}
         title={heading}
         description={description}
-        image="/images/home-banners/banner-online-shopping.png"
+        image="/images/Zelvomart images/Shop Zelvmart.png"
         alt="Zelvomart online shopping collection"
         primaryLabel="Browse products"
         primaryHref="#products"

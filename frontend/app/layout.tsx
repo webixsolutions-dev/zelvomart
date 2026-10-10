@@ -3,8 +3,9 @@ import { Manrope } from "next/font/google";
 import { Suspense } from "react";
 import Script from "next/script";
 import "./globals.css";
+import "./home-sections.css";
 import "@rrweb/replay/dist/style.css";
-import { getStoreBootstrap } from "@/lib/store";
+import { getMenuProducts, getStoreBootstrap } from "@/lib/store";
 import CartDrawer from "@/components/CartDrawer";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -34,7 +35,10 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const bootstrap = await getStoreBootstrap().catch(() => null);
+  const [bootstrap, menuProducts] = await Promise.all([
+    getStoreBootstrap().catch(() => null),
+    getMenuProducts().catch(() => []),
+  ]);
   const categories = bootstrap?.categories || [];
   const announcement = (bootstrap?.settings?.["store.announcement"] || { enabled: true, items: [] }) as any;
   const info = (bootstrap?.settings?.["store.info"] || { phone: "0300-2026711", email: "zelvomart@gmail.com", whatsapp: "923002026711" }) as any;
@@ -91,11 +95,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={manrope.variable}>
         <SiteChrome
           header={
+            <Suspense fallback={null}>
             <Header
               categories={categories}
+                products={menuProducts}
               announcementItems={announcement.enabled ? announcement.items : []}
               phone={phoneDisplay}
+              whatsapp={String(info.whatsapp || "923002026711")}
             />
+            </Suspense>
           }
           footer={<Footer categories={categories} phone={phoneDisplay} email={info.email} />}
           cartDrawer={<CartDrawer />}

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { cmsSections } from "@/lib/cms-sections";
 import { getCmsPageStrict } from "@/lib/cms-page";
 import { metadataForPage } from "@/lib/page-metadata";
+import StorefrontHero from "@/components/StorefrontHero";
+import { storeImages } from "@/lib/store-images";
 
 export const revalidate = 300;
 
@@ -25,23 +27,23 @@ export default async function BlogPage() {
 
   return (
     <div className="professional-page professional-blog-page">
-      <section className="professional-page-hero professional-blog-hero">
-        <div className="site-shell professional-page-hero-grid">
-          <div className="professional-page-hero-copy">
-            <span className="premium-overline">ZELVOMART JOURNAL</span>
-            <h1>Useful reads for smarter everyday shopping.</h1>
-          </div>
-          <div className="professional-page-hero-side">
-            <p>Buying guidance, product stories and store updates published directly from the Zelvomart content system.</p>
-            <Link href="/shop" className="professional-inline-link">Explore the store <span>→</span></Link>
-          </div>
-        </div>
-      </section>
+      <StorefrontHero
+        eyebrow="ZELVOMART JOURNAL"
+        title="Useful reads for smarter everyday shopping."
+        description="Buying guidance, product stories and store updates published directly from the Zelvomart content system."
+        image={storeImages.discount.src}
+        alt="Zelvomart curated everyday products"
+        primaryLabel="Explore the store"
+        primaryHref="/shop"
+        secondaryLabel="Shop new arrivals"
+        secondaryHref="/new-in"
+        priority
+      />
 
       <section className="site-shell professional-blog-showcase">
         <div className="professional-blog-media">
           <Image
-            src="/images/hero/zelvomart-slider-02.webp"
+            src="/images/Zelvomart images/Discount Zelvomart.png"
             alt="Zelvomart curated everyday products"
             fill
             sizes="(max-width: 900px) 100vw, 52vw"

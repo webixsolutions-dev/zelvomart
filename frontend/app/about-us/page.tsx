@@ -6,6 +6,8 @@ import { getCmsPage } from "@/lib/cms-page";
 import { metadataForPage } from "@/lib/page-metadata";
 import { getProductBySlug, getProducts, getStoreBootstrap } from "@/lib/store";
 import { getProductFallbackImage } from "@/lib/product-media";
+import StorefrontHero from "@/components/StorefrontHero";
+import { storeImages } from "@/lib/store-images";
 
 export const revalidate = 300;
 
@@ -30,21 +32,18 @@ export default async function AboutPage() {
 
   return (
     <div className="mock-about-page">
-      <section className="site-shell mock-about-hero">
-        <div>
-          <span className="mock-eyebrow">ABOUT ZELVOMART</span>
-          <h1>Small things.<br /><em>Better chosen.</em></h1>
-          <p>Zelvomart is built around a simple idea: everyday shopping should feel clearer, more useful and more human.</p>
-          <Link href="/shop" className="mock-btn-dark">Shop Zelvomart →</Link>
-        </div>
-        <div>
-          {lead ? (
-            <Image src={lead.image || getProductFallbackImage(lead)} alt={lead.name} fill priority sizes="(max-width: 900px) 100vw, 50vw" />
-          ) : (
-            <Image src="/images/hero/zelvomart-hero.webp" alt="Zelvomart products" fill priority sizes="(max-width: 900px) 100vw, 50vw" />
-          )}
-        </div>
-      </section>
+      <StorefrontHero
+        eyebrow="ABOUT ZELVOMART"
+        title="Small things. Better chosen."
+        description="Zelvomart is built around a simple idea: everyday shopping should feel clearer, more useful and more human."
+        image={lead?.image || getProductFallbackImage(lead) || storeImages.shop.src}
+        alt={lead ? lead.name : "Zelvomart products"}
+        primaryLabel="Shop Zelvomart"
+        primaryHref="/shop"
+        secondaryLabel="Contact us"
+        secondaryHref="/contact-us"
+        priority
+      />
 
       <section className="site-shell mock-about-stats">
         <article><b>{bootstrap.categories.length || 7}</b><span>live categories</span></article>

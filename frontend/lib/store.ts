@@ -2,6 +2,17 @@ import type { Category, Product, ProductListResponse } from '@/types/product';
 import { apiFetch } from './api';
 import { DEFAULT_CATEGORIES, getDisplayCategories } from './dummy-content';
 import { withProductMedia } from './product-media';
+import { findSiteProduct, siteCatalogResponse } from './site-catalog';
+
+export type MenuProduct = {
+  name: string;
+  slug: string;
+  categorySlugs: string[];
+};
+
+function isOfflineError(error: unknown) {
+  return !(error instanceof Error) || !error.message.startsWith('API_');
+}
 
 export type StoreBootstrap = {
   categories: Category[];
@@ -39,8 +50,10 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       next: { revalidate: 120, tags: ['products', `product:${slug}`] },
     });
     return withProductMedia(product);
-  } catch {
-    return null;
+  } catch (error) {
+    if (!isOfflineError(error)) return null;
+    const fallback = findSiteProduct(slug);
+    return fallback ? withProductMedia(fallback) : null;
   }
 }
 
@@ -72,7 +85,8 @@ export async function getProducts(options: { category?: string; search?: string;
       total: result?.total || 0,
       totalPages: Math.max(1, result?.totalPages || 1),
     };
-  } catch {
+  } catch (error) {
+    if (!isOfflineError(error)) {
     return {
       items: [],
       page: options.page || 1,
@@ -81,4 +95,37 @@ export async function getProducts(options: { category?: string; search?: string;
       totalPages: 1,
     };
   }
+
+    const fallback = siteCatalogResponse(options);
+    return {
+      ...fallback,
+      items: fallback.items.map(withProductMedia),
+    };
+  }
+}
+
+export async function getMenuProducts(): Promise<MenuProduct[]> {
+  const collected: MenuProduct[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const result = await getProducts({ page, limit: 100, sort: 'newest' });
+    collected.push(
+      ...result.items.map((product) => ({
+        name: product.name,
+        slug: product.slug,
+        categorySlugs: product.categorySlugs?.length
+          ? product.categorySlugs
+          : (product.categories || []).map((category) => category.slug),
+      })),
+    );
+    totalPages = result.totalPages || 1;
+    if (!result.items.length) break;
+    page += 1;
+  } while (page <= totalPages && page <= 8);
+
+  const unique = new Map<string, MenuProduct>();
+  for (const product of collected) unique.set(product.slug, product);
+  return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

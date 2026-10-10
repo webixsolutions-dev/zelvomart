@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { storeImages } from "@/lib/store-images";
 
 const slides = [
   {
@@ -10,8 +11,8 @@ const slides = [
     heading: "Online Shopping in Pakistan | Zelvomart",
     description:
       "Shop useful products for everyday life at Zelvomart, from home essentials, fitness and kids' products to lifestyle finds, with convenient Cash on Delivery across Pakistan.",
-    image: "/images/home-banners/banner-online-shopping.png",
-    mobileImage: "/images/home-banners/banner-online-shopping-mobile.png",
+    image: storeImages.heroOnline.src,
+    mobileImage: storeImages.heroOnlineMobile.src,
     alt: "Zelvomart online store essentials for home, fitness and kids",
     primary: {
       label: "Shop Now",
@@ -27,8 +28,8 @@ const slides = [
     heading: "Items for You and Your Household, Delivered by Zelvomart",
     description:
       "From home and living essentials to tech gadgets, kids' products and fitness gear, Zelvomart brings everyday finds for every room and every member of the family to your doorstep. Pay on delivery anywhere in Pakistan, with help on WhatsApp whenever you need it.",
-    image: "/images/home-banners/banner-household.png",
-    mobileImage: "/images/home-banners/banner-household-mobile.png",
+    image: storeImages.heroHousehold.src,
+    mobileImage: storeImages.heroHouseholdMobile.src,
     alt: "Zelvomart household and home essentials",
     primary: {
       label: "Shop Home & Living",
@@ -44,8 +45,8 @@ const slides = [
     heading: "Move More, Train Better: Fitness & Sports Gear at Zelvomart",
     description:
       "From home workouts to gym days, find fitness and sports essentials at Zelvomart that keep you training, recovering and moving with confidence. Order online, pay on delivery across Pakistan, and get help on WhatsApp anytime.",
-    image: "/images/home-banners/banner-fitness.png",
-    mobileImage: "/images/home-banners/banner-fitness-mobile.png",
+    image: storeImages.heroFitness.src,
+    mobileImage: storeImages.heroFitnessMobile.src,
     alt: "Zelvomart fitness and sports products",
     primary: {
       label: "Shop Fitness & Sports",
@@ -131,20 +132,52 @@ export default function HomeBannerCarousel({
   whatsapp: string;
 }) {
   const [active, setActive] = useState(0);
+  const [pointerActive, setPointerActive] = useState(false);
 
   useEffect(() => {
+    if (pointerActive) return;
+
     const timer = window.setInterval(() => {
       setActive((current) => (current + 1) % slides.length);
     }, 6500);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [pointerActive]);
+
+  function showSlideForPointer(clientX: number, bounds: DOMRect) {
+    if (bounds.width <= 0) return;
+
+    const ratio = Math.min(
+      1,
+      Math.max(0, (clientX - bounds.left) / bounds.width)
+    );
+    const index = Math.min(
+      slides.length - 1,
+      Math.floor(ratio * slides.length)
+    );
+
+    setActive(index);
+  }
 
   return (
     <>
       <section
         className="zm-home-banner"
         aria-label="Zelvomart highlights"
+        onMouseEnter={(event) => {
+          setPointerActive(true);
+          showSlideForPointer(
+            event.clientX,
+            event.currentTarget.getBoundingClientRect()
+          );
+        }}
+        onMouseMove={(event) => {
+          showSlideForPointer(
+            event.clientX,
+            event.currentTarget.getBoundingClientRect()
+          );
+        }}
+        onMouseLeave={() => setPointerActive(false)}
       >
         <div className="zm-home-banner-track">
           {slides.map((slide, index) => {
@@ -177,7 +210,7 @@ export default function HomeBannerCarousel({
                 </picture>
 
                 <div className="site-shell zm-home-banner-inner">
-                  <div className="zm-home-banner-copy">
+                  <div className="zm-home-banner-copy zm-hero-copy">
                     <span className="mock-eyebrow">
                       {slide.eyebrow}
                     </span>
@@ -238,29 +271,6 @@ export default function HomeBannerCarousel({
           ))}
         </div>
 
-        <button
-          type="button"
-          className="zm-banner-arrow prev"
-          aria-label="Previous banner"
-          onClick={() =>
-            setActive(
-              (active - 1 + slides.length) % slides.length
-            )
-          }
-        >
-          ‹
-        </button>
-
-        <button
-          type="button"
-          className="zm-banner-arrow next"
-          aria-label="Next banner"
-          onClick={() =>
-            setActive((active + 1) % slides.length)
-          }
-        >
-          ›
-        </button>
       </section>
 
       <section
