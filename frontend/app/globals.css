@@ -10677,7 +10677,11 @@ body,
 }
 
 .mock-footer-bottom.zm-footer-bottom-bar .zm-footer-credit {
-  margin-right: 15px;
+  /* Clear the fixed WhatsApp button (right 20px + 54px wide + a small gap). */
+  margin-right: max(
+    8px,
+    calc(86px - max(calc(var(--zm-page-gutter) / 2), (100vw - var(--zm-content-max)) / 2))
+  );
   color: #b8cad4;
   font-weight: 700;
   white-space: nowrap;
@@ -10690,6 +10694,6 @@ body,
   }
 
   .mock-footer-bottom.zm-footer-bottom-bar .zm-footer-credit {
-    margin-right: 15px;
+    margin-right: 8px;
   }
 }
