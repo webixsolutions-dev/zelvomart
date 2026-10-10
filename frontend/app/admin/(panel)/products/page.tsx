@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import ProductAdminTools from "@/components/admin/ProductAdminTools";
 import { useAdminData, AdminError } from "@/components/admin/useAdminData";
 import { money } from "@/lib/format";
+import { clientApi } from "@/lib/client-api";
 
 type Category = { id: string; name: string; slug?: string; count?: number };
 type Product = {
@@ -97,6 +98,21 @@ export default function ProductsPage() {
         .includes(needle);
     });
   }, [products, query, activeCategory]);
+
+  async function handleDeleteProduct(id: string, itemTitle?: string) {
+    const label = itemTitle ? `"${itemTitle}"` : "this product";
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${label}?\n\nWarning: Associated variants and customer reviews will also be permanently deleted. This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await clientApi(`/api/admin/products/${id}`, { method: "DELETE" }, true);
+      reload();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete product");
+    }
+  }
 
   if (error) return <AdminError message={error} />;
 
@@ -197,7 +213,17 @@ export default function ProductsPage() {
                       </span>
                     </td>
                     <td>
-                      <Link className="admin-row-edit-link" href={`/admin/products/${product.id}`}>Edit</Link>
+                      <div className="admin-head-actions" style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <Link className="admin-row-edit-link" href={`/admin/products/${product.id}`}>Edit</Link>
+                        <button
+                          type="button"
+                          className="admin-btn admin-row-action-danger"
+                          style={{ padding: "2px 8px", fontSize: "12px" }}
+                          onClick={() => handleDeleteProduct(product.id, title)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

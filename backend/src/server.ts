@@ -728,7 +728,14 @@ app.patch('/api/admin/products/:id', requireAuth('products.write'), async (req:A
     res.status(400).json({error:error?.message||'PRODUCT_UPDATE_FAILED'});
   }
 });
-app.delete('/api/admin/products/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => { await prisma.product.delete({where:{id:routeParam(req, 'id')}}); await audit(req,'delete','Product',routeParam(req, 'id')); await invalidateFrontendCache(['products','featured-products','categories','store']); res.json({ok:true}); });
+app.delete('/api/admin/products/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => {
+  const id = routeParam(req, 'id');
+  const existing = await prisma.product.findUnique({ where: { id }, select: { slug: true } });
+  await prisma.product.delete({ where: { id } });
+  await audit(req, 'delete', 'Product', id);
+  await invalidateFrontendCache(['products', 'featured-products', 'categories', 'store', ...(existing?.slug ? [`product:${existing.slug}`] : [])]);
+  res.json({ ok: true });
+});
 app.post('/api/admin/products/:id/variants', requireAuth('products.write'), async (req:AuthedRequest,res) => {
   try {
     const b=req.body||{};
