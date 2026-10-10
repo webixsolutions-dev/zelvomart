@@ -59,6 +59,7 @@ export type ProductMinAggregateOutputType = {
   featured: boolean | null
   bundleEnabled: boolean | null
   bundleDiscountPercent: runtime.Decimal | null
+  focusKeyword: string | null
   seoTitle: string | null
   seoDescription: string | null
   canonicalUrl: string | null
@@ -85,6 +86,7 @@ export type ProductMaxAggregateOutputType = {
   featured: boolean | null
   bundleEnabled: boolean | null
   bundleDiscountPercent: runtime.Decimal | null
+  focusKeyword: string | null
   seoTitle: string | null
   seoDescription: string | null
   canonicalUrl: string | null
@@ -112,6 +114,7 @@ export type ProductCountAggregateOutputType = {
   featured: number
   bundleEnabled: number
   bundleDiscountPercent: number
+  focusKeyword: number
   seoTitle: number
   seoDescription: number
   canonicalUrl: number
@@ -156,6 +159,7 @@ export type ProductMinAggregateInputType = {
   featured?: true
   bundleEnabled?: true
   bundleDiscountPercent?: true
+  focusKeyword?: true
   seoTitle?: true
   seoDescription?: true
   canonicalUrl?: true
@@ -182,6 +186,7 @@ export type ProductMaxAggregateInputType = {
   featured?: true
   bundleEnabled?: true
   bundleDiscountPercent?: true
+  focusKeyword?: true
   seoTitle?: true
   seoDescription?: true
   canonicalUrl?: true
@@ -209,6 +214,7 @@ export type ProductCountAggregateInputType = {
   featured?: true
   bundleEnabled?: true
   bundleDiscountPercent?: true
+  focusKeyword?: true
   seoTitle?: true
   seoDescription?: true
   canonicalUrl?: true
@@ -323,6 +329,7 @@ export type ProductGroupByOutputType = {
   featured: boolean
   bundleEnabled: boolean
   bundleDiscountPercent: runtime.Decimal | null
+  focusKeyword: string | null
   seoTitle: string | null
   seoDescription: string | null
   canonicalUrl: string | null
@@ -373,6 +380,7 @@ export type ProductWhereInput = {
   featured?: Prisma.BoolFilter<"Product"> | boolean
   bundleEnabled?: Prisma.BoolFilter<"Product"> | boolean
   bundleDiscountPercent?: Prisma.DecimalNullableFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.StringNullableFilter<"Product"> | string | null
   seoTitle?: Prisma.StringNullableFilter<"Product"> | string | null
   seoDescription?: Prisma.StringNullableFilter<"Product"> | string | null
   canonicalUrl?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -404,6 +412,7 @@ export type ProductOrderByWithRelationInput = {
   featured?: Prisma.SortOrder
   bundleEnabled?: Prisma.SortOrder
   bundleDiscountPercent?: Prisma.SortOrderInput | Prisma.SortOrder
+  focusKeyword?: Prisma.SortOrderInput | Prisma.SortOrder
   seoTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   seoDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   canonicalUrl?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -438,6 +447,7 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   featured?: Prisma.BoolFilter<"Product"> | boolean
   bundleEnabled?: Prisma.BoolFilter<"Product"> | boolean
   bundleDiscountPercent?: Prisma.DecimalNullableFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.StringNullableFilter<"Product"> | string | null
   seoTitle?: Prisma.StringNullableFilter<"Product"> | string | null
   seoDescription?: Prisma.StringNullableFilter<"Product"> | string | null
   canonicalUrl?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -469,6 +479,7 @@ export type ProductOrderByWithAggregationInput = {
   featured?: Prisma.SortOrder
   bundleEnabled?: Prisma.SortOrder
   bundleDiscountPercent?: Prisma.SortOrderInput | Prisma.SortOrder
+  focusKeyword?: Prisma.SortOrderInput | Prisma.SortOrder
   seoTitle?: Prisma.SortOrderInput | Prisma.SortOrder
   seoDescription?: Prisma.SortOrderInput | Prisma.SortOrder
   canonicalUrl?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -504,6 +515,7 @@ export type ProductScalarWhereWithAggregatesInput = {
   featured?: Prisma.BoolWithAggregatesFilter<"Product"> | boolean
   bundleEnabled?: Prisma.BoolWithAggregatesFilter<"Product"> | boolean
   bundleDiscountPercent?: Prisma.DecimalNullableWithAggregatesFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   seoTitle?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   seoDescription?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   canonicalUrl?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
@@ -530,6 +542,7 @@ export type ProductCreateInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -561,6 +574,7 @@ export type ProductUncheckedCreateInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -590,6 +604,7 @@ export type ProductUpdateInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -621,6 +636,7 @@ export type ProductUncheckedUpdateInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -651,6 +667,7 @@ export type ProductCreateManyInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -677,6 +694,7 @@ export type ProductUpdateManyMutationInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -704,6 +722,7 @@ export type ProductUncheckedUpdateManyInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -741,6 +760,7 @@ export type ProductCountOrderByAggregateInput = {
   featured?: Prisma.SortOrder
   bundleEnabled?: Prisma.SortOrder
   bundleDiscountPercent?: Prisma.SortOrder
+  focusKeyword?: Prisma.SortOrder
   seoTitle?: Prisma.SortOrder
   seoDescription?: Prisma.SortOrder
   canonicalUrl?: Prisma.SortOrder
@@ -775,6 +795,7 @@ export type ProductMaxOrderByAggregateInput = {
   featured?: Prisma.SortOrder
   bundleEnabled?: Prisma.SortOrder
   bundleDiscountPercent?: Prisma.SortOrder
+  focusKeyword?: Prisma.SortOrder
   seoTitle?: Prisma.SortOrder
   seoDescription?: Prisma.SortOrder
   canonicalUrl?: Prisma.SortOrder
@@ -801,6 +822,7 @@ export type ProductMinOrderByAggregateInput = {
   featured?: Prisma.SortOrder
   bundleEnabled?: Prisma.SortOrder
   bundleDiscountPercent?: Prisma.SortOrder
+  focusKeyword?: Prisma.SortOrder
   seoTitle?: Prisma.SortOrder
   seoDescription?: Prisma.SortOrder
   canonicalUrl?: Prisma.SortOrder
@@ -955,6 +977,7 @@ export type ProductCreateWithoutCategoryInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -984,6 +1007,7 @@ export type ProductUncheckedCreateWithoutCategoryInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -1043,6 +1067,7 @@ export type ProductScalarWhereInput = {
   featured?: Prisma.BoolFilter<"Product"> | boolean
   bundleEnabled?: Prisma.BoolFilter<"Product"> | boolean
   bundleDiscountPercent?: Prisma.DecimalNullableFilter<"Product"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.StringNullableFilter<"Product"> | string | null
   seoTitle?: Prisma.StringNullableFilter<"Product"> | string | null
   seoDescription?: Prisma.StringNullableFilter<"Product"> | string | null
   canonicalUrl?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -1069,6 +1094,7 @@ export type ProductCreateWithoutVariantsInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -1099,6 +1125,7 @@ export type ProductUncheckedCreateWithoutVariantsInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -1143,6 +1170,7 @@ export type ProductUpdateWithoutVariantsInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1173,6 +1201,7 @@ export type ProductUncheckedUpdateWithoutVariantsInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1201,6 +1230,7 @@ export type ProductCreateWithoutOrderItemsInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -1231,6 +1261,7 @@ export type ProductUncheckedCreateWithoutOrderItemsInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -1275,6 +1306,7 @@ export type ProductUpdateWithoutOrderItemsInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1305,6 +1337,7 @@ export type ProductUncheckedUpdateWithoutOrderItemsInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1333,6 +1366,7 @@ export type ProductCreateWithoutReviewsInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -1363,6 +1397,7 @@ export type ProductUncheckedCreateWithoutReviewsInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -1407,6 +1442,7 @@ export type ProductUpdateWithoutReviewsInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1437,6 +1473,7 @@ export type ProductUncheckedUpdateWithoutReviewsInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1465,6 +1502,7 @@ export type ProductCreateManyCategoryInput = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: string | null
   seoTitle?: string | null
   seoDescription?: string | null
   canonicalUrl?: string | null
@@ -1491,6 +1529,7 @@ export type ProductUpdateWithoutCategoryInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1520,6 +1559,7 @@ export type ProductUncheckedUpdateWithoutCategoryInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1549,6 +1589,7 @@ export type ProductUncheckedUpdateManyWithoutCategoryInput = {
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   bundleDiscountPercent?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  focusKeyword?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoTitle?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   seoDescription?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   canonicalUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1625,6 +1666,7 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: boolean
+  focusKeyword?: boolean
   seoTitle?: boolean
   seoDescription?: boolean
   canonicalUrl?: boolean
@@ -1657,6 +1699,7 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: boolean
+  focusKeyword?: boolean
   seoTitle?: boolean
   seoDescription?: boolean
   canonicalUrl?: boolean
@@ -1685,6 +1728,7 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: boolean
+  focusKeyword?: boolean
   seoTitle?: boolean
   seoDescription?: boolean
   canonicalUrl?: boolean
@@ -1713,6 +1757,7 @@ export type ProductSelectScalar = {
   featured?: boolean
   bundleEnabled?: boolean
   bundleDiscountPercent?: boolean
+  focusKeyword?: boolean
   seoTitle?: boolean
   seoDescription?: boolean
   canonicalUrl?: boolean
@@ -1722,7 +1767,7 @@ export type ProductSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "slug" | "sku" | "shortDescription" | "descriptionHtml" | "images" | "videoUrl" | "categoryId" | "price" | "salePrice" | "costPrice" | "stock" | "status" | "featured" | "bundleEnabled" | "bundleDiscountPercent" | "seoTitle" | "seoDescription" | "canonicalUrl" | "sourceUrl" | "sourceId" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "title" | "slug" | "sku" | "shortDescription" | "descriptionHtml" | "images" | "videoUrl" | "categoryId" | "price" | "salePrice" | "costPrice" | "stock" | "status" | "featured" | "bundleEnabled" | "bundleDiscountPercent" | "focusKeyword" | "seoTitle" | "seoDescription" | "canonicalUrl" | "sourceUrl" | "sourceId" | "createdAt" | "updatedAt", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   category?: boolean | Prisma.Product$categoryArgs<ExtArgs>
   variants?: boolean | Prisma.Product$variantsArgs<ExtArgs>
@@ -1763,6 +1808,7 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     featured: boolean
     bundleEnabled: boolean
     bundleDiscountPercent: runtime.Decimal | null
+    focusKeyword: string | null
     seoTitle: string | null
     seoDescription: string | null
     canonicalUrl: string | null
@@ -2214,6 +2260,7 @@ export interface ProductFieldRefs {
   readonly featured: Prisma.FieldRef<"Product", 'Boolean'>
   readonly bundleEnabled: Prisma.FieldRef<"Product", 'Boolean'>
   readonly bundleDiscountPercent: Prisma.FieldRef<"Product", 'Decimal'>
+  readonly focusKeyword: Prisma.FieldRef<"Product", 'String'>
   readonly seoTitle: Prisma.FieldRef<"Product", 'String'>
   readonly seoDescription: Prisma.FieldRef<"Product", 'String'>
   readonly canonicalUrl: Prisma.FieldRef<"Product", 'String'>

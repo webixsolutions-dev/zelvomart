@@ -125,6 +125,7 @@ export const ProductScalarFieldEnum = {
   featured: 'featured',
   bundleEnabled: 'bundleEnabled',
   bundleDiscountPercent: 'bundleDiscountPercent',
+  focusKeyword: 'focusKeyword',
   seoTitle: 'seoTitle',
   seoDescription: 'seoDescription',
   canonicalUrl: 'canonicalUrl',
