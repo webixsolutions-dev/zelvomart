@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import BrandLogo from "@/components/BrandLogo";
 import {
   FacebookIcon,
   InstagramIcon,
@@ -24,7 +24,17 @@ export default function Footer({ categories, phone = "0300-2026711", email = "ze
     <footer className="mock-footer">
       <div className="site-shell mock-footer-grid">
         <div className="mock-footer-brand">
-          <BrandLogo />
+          <Link href="/" className="footer-logo-link" aria-label="Zelvomart">
+            <span className="footer-logo-frame">
+              <Image
+                src="/images/logo.png"
+                alt="Zelvomart"
+                width={4500}
+                height={4500}
+                className="footer-logo-image"
+              />
+            </span>
+          </Link>
           <p>Everyday things, chosen better — checked by hand and delivered across Pakistan with Cash on Delivery.</p>
           <div className="mock-socials">
             {SOCIALS.map(({ label, href, icon: Icon }) => (
