@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { bundleLineTotal, BUY_TWO_DISCOUNT_PERCENT } from "@/lib/bundle-price";
 
 export type CartItem = {
   productId: string;
@@ -14,6 +15,7 @@ export type CartItem = {
   bundleSize: 1 | 2;
   bundleDiscountPercent?: number;
   variantLabel?: string;
+  freeShipping?: boolean;
 };
 
 type CartContextValue = {
@@ -33,8 +35,21 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 const COOKIE = "zm_cart";
 
+// Cookies cap out near 4 KB, so a larger cart is kept in localStorage as well.
+function readStorage() {
+  try {
+    const raw = window.localStorage.getItem(COOKIE);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? (parsed as CartItem[]) : null;
+  } catch {
+    return null;
+  }
+}
+
 function readCookie() {
   if (typeof document === "undefined") return [] as CartItem[];
+  const stored = readStorage();
+  if (stored) return stored;
   const row = document.cookie
     .split("; ")
     .find((item) => item.startsWith(`${COOKIE}=`));
@@ -48,6 +63,9 @@ function readCookie() {
 
 export function writeCartCookie(items: CartItem[]) {
   if (typeof document === "undefined") return;
+  try {
+    window.localStorage.setItem(COOKIE, JSON.stringify(items));
+  } catch {}
   document.cookie = `${COOKIE}=${encodeURIComponent(JSON.stringify(items))}; Max-Age=2592000; Path=/; SameSite=Lax`;
 }
 
@@ -79,7 +97,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       );
       if (index === -1) return [...current, item];
       const next = [...current];
-      next[index] = { ...next[index], quantity: Math.min(20, next[index].quantity + item.quantity) };
+      next[index] = {
+        ...next[index],
+        quantity: Math.min(20, next[index].quantity + item.quantity),
+        freeShipping: Boolean(item.freeShipping),
+      };
       return next;
     });
     setOpen(true);
@@ -104,24 +126,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setOpen(false);
   }, []);
 
-  const bundleSaving = useMemo(
-    () =>
-      items.reduce((sum, item) => {
-        const raw = item.price * item.quantity * item.bundleSize;
-        const discount = item.bundleSize === 2 ? raw * ((item.bundleDiscountPercent || 5) / 100) : 0;
-        return sum + discount;
-      }, 0),
+  const pricedItems = useMemo(
+    () => items.map((item) => bundleLineTotal(item.price, item.quantity, item.bundleSize, BUY_TWO_DISCOUNT_PERCENT)),
     [items],
   );
 
+  const bundleSaving = useMemo(
+    () => pricedItems.reduce((sum, item) => sum + item.saving, 0),
+    [pricedItems],
+  );
+
   const subtotal = useMemo(
-    () =>
-      items.reduce((sum, item) => {
-        const raw = item.price * item.quantity * item.bundleSize;
-        const discount = item.bundleSize === 2 ? raw * ((item.bundleDiscountPercent || 5) / 100) : 0;
-        return sum + raw - discount;
-      }, 0),
-    [items],
+    () => pricedItems.reduce((sum, item) => sum + item.total, 0),
+    [pricedItems],
   );
 
   const totalItems = useMemo(

@@ -1,6 +1,9 @@
 import { Prisma, type OrderStatus } from "../generated/prisma/client";
 import { prisma } from "./db";
 import { getSetting } from "./settings";
+import { productHasFreeShipping } from "./catalog-meta";
+import { BUY_TWO_DISCOUNT_PERCENT, bundleLineTotal, priceSummary, variantPriceSummary } from "./pricing";
+import { quoteDelivery } from "./shipping";
 import { dispatchJobRow } from "./jobs";
 
 type CheckoutInput = {
@@ -36,9 +39,7 @@ export async function createOrder(input: CheckoutInput) {
   });
   if (existing) return existing;
 
-  const [minimumPrice, defaultBundleDiscount, deliveryRule, requiredFields, paymentMethods] = await Promise.all([
-    getSetting<number>("store.minimumSellingPrice", 1000),
-    getSetting<number>("store.bundleDefaultDiscountPercent", 5),
+  const [deliveryRule, requiredFields, paymentMethods] = await Promise.all([
     getSetting<any>("store.delivery", { mode: "FREE", flatRate: 0, freeAbove: 0, codFee: 0 }),
     getSetting<Record<string, boolean>>("checkout.requiredFields", {
       fullName: true,
@@ -77,6 +78,7 @@ export async function createOrder(input: CheckoutInput) {
     lineTotal: number;
     bundleDiscount: number;
     imageUrl?: string;
+    freeShipping: boolean;
   };
 
   const prepared: Prepared[] = [];
@@ -88,19 +90,11 @@ export async function createOrder(input: CheckoutInput) {
     const variant = item.variantId ? product.variants.find((row) => row.id === item.variantId && row.active) : undefined;
     if (item.variantId && !variant) throw new Error("VARIANT_NOT_AVAILABLE");
 
-    const base = Number(variant?.priceOverride ?? product.salePrice ?? product.price);
-    if (base < minimumPrice) throw new Error("PRICE_FLOOR_VIOLATION");
-
-    const bundleDiscountPercent = Number(product.bundleDiscountPercent ?? defaultBundleDiscount);
-    if (item.bundleSize === 2 && product.bundleEnabled && base * (1 - bundleDiscountPercent / 100) < minimumPrice) {
-      throw new Error("PRICE_FLOOR_VIOLATION");
-    }
-    const unitCount = item.quantity * item.bundleSize;
-    const raw = base * unitCount;
-    const discount = item.bundleSize === 2 && product.bundleEnabled ? raw * (bundleDiscountPercent / 100) : 0;
-    const total = raw - discount;
+    const base = variantPriceSummary(priceSummary(product.price, product.salePrice), { priceOverride: variant?.priceOverride }).price;
+    const offerSize: 1 | 2 = item.bundleSize === 2 && product.bundleEnabled ? 2 : 1;
+    const priced = bundleLineTotal(base, item.quantity, offerSize, BUY_TWO_DISCOUNT_PERCENT);
     const stock = variant ? variant.stock : product.stock;
-    if (stock < unitCount) throw new Error("OUT_OF_STOCK");
+    if (stock < priced.pieces) throw new Error("OUT_OF_STOCK");
 
     const images = Array.isArray(product.images) ? (product.images as string[]) : [];
     prepared.push({
@@ -109,23 +103,21 @@ export async function createOrder(input: CheckoutInput) {
       sku: variant?.sku || product.sku,
       title: product.title,
       variantLabel: variant?.name,
-      quantity: unitCount,
-      stockNeeded: unitCount,
+      quantity: priced.pieces,
+      stockNeeded: priced.pieces,
       unitPrice: base,
-      lineTotal: total,
-      bundleDiscount: discount,
+      lineTotal: priced.total,
+      bundleDiscount: priced.saving,
       imageUrl: variant?.imageUrl || images[0],
+      freeShipping: productHasFreeShipping(product.sourceUrl),
     });
   }
 
   const subtotal = prepared.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const bundleSaving = prepared.reduce((sum, item) => sum + item.bundleDiscount, 0);
   const discountedSubtotal = subtotal - bundleSaving;
-  let deliveryFee = 0;
-  if (deliveryRule.mode === "FLAT") deliveryFee = Number(deliveryRule.flatRate || 0);
-  if (deliveryRule.mode === "FREE_ABOVE") {
-    deliveryFee = discountedSubtotal >= Number(deliveryRule.freeAbove || 0) ? 0 : Number(deliveryRule.flatRate || 0);
-  }
+  const everyItemFree = prepared.length > 0 && prepared.every((item) => item.freeShipping);
+  const deliveryFee = quoteDelivery(discountedSubtotal, everyItemFree, deliveryRule).fee;
   const codFee = input.paymentMethod === "COD" ? Number(deliveryRule.codFee || 0) : 0;
   const total = discountedSubtotal + deliveryFee + codFee;
 

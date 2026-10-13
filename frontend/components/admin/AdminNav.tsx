@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { prefetchAdminData } from "./useAdminData";
 
 function Icon({ children }: { children: ReactNode }) {
@@ -37,6 +37,11 @@ const icons = {
 const adminApiByHref: Record<string, string> = {
   "/admin": "/api/admin/dashboard",
   "/admin/products": "/api/admin/products",
+  "/admin/products/drafts": "/api/admin/products",
+  "/admin/products/add": "/api/admin/categories",
+  "/admin/tags": "/api/admin/products",
+  "/admin/discounts": "/api/admin/products",
+  "/admin/product-tabs": "/api/admin/product-tabs",
   "/admin/orders": "/api/admin/orders",
   "/admin/categories": "/api/admin/categories",
   "/admin/customers": "/api/admin/customers",
@@ -54,16 +59,27 @@ const adminApiByHref: Record<string, string> = {
   "/admin/redirects": "/api/admin/redirects",
 };
 
+type NavLink = readonly [string, string, ReactNode];
+
+const productLinks: NavLink[] = [
+  ["/admin/products", "All products", icons.products],
+  ["/admin/products/drafts", "Drafts", icons.products],
+  ["/admin/products/add", "Add product", icons.products],
+  ["/admin/categories", "Categories", icons.categories],
+  ["/admin/tags", "Tags", icons.products],
+  ["/admin/discounts", "Discounts", icons.products],
+  ["/admin/reviews", "Reviews", icons.reviews],
+  ["/admin/product-tabs", "Product tabs", icons.pages],
+];
+
 const groups = [
   {
     label: "Store",
     links: [
       ["/admin", "Dashboard", icons.dashboard],
-      ["/admin/products", "Products", icons.products],
       ["/admin/orders", "Orders", icons.orders],
-      ["/admin/categories", "Categories", icons.categories],
       ["/admin/customers", "Customers", icons.customers],
-    ],
+    ] as NavLink[],
   },
   {
     label: "Management",
@@ -74,7 +90,7 @@ const groups = [
       ["/admin/marketing", "Meta & Attribution", icons.marketing],
       ["/admin/cro", "CRO", icons.cro],
       ["/admin/session-replays", "Session Replays", icons.replays],
-    ],
+    ] as NavLink[],
   },
   {
     label: "Operations",
@@ -83,11 +99,46 @@ const groups = [
       ["/admin/jobs", "Background Jobs", icons.jobs],
       ["/admin/abandoned", "Abandoned", icons.abandoned],
       ["/admin/experiments", "Experiments", icons.experiments],
-      ["/admin/reviews", "Reviews", icons.reviews],
       ["/admin/redirects", "SEO Redirects", icons.redirects],
-    ],
+    ] as NavLink[],
   },
-] as const;
+];
+
+function linkIsActive(pathname: string, href: string) {
+  if (href === "/admin") return pathname === href;
+  if (href === "/admin/products") {
+    return pathname === href || /^\/admin\/products\/(?!add(?:\/|$)|drafts(?:\/|$))[^/]+$/.test(pathname);
+  }
+  if (href === "/admin/products/drafts") return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function NavItem({
+  href,
+  label,
+  icon,
+  pathname,
+}: {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  pathname: string;
+}) {
+  const active = linkIsActive(pathname, href);
+  return (
+    <Link
+      href={href}
+      prefetch
+      className={`admin-nav-link${active ? " active" : ""}`}
+      aria-current={active ? "page" : undefined}
+      onMouseEnter={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}
+      onFocus={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}
+    >
+      <span className="admin-nav-icon">{icon}</span>
+      <span>{label}</span>
+    </Link>
+  );
+}
 
 export default function AdminNav({ role = "OWNER" }: { role?: string }) {
   const pathname = usePathname();
@@ -95,24 +146,142 @@ export default function AdminNav({ role = "OWNER" }: { role?: string }) {
     if (role === "OWNER") return true;
     if (role === "ORDER_AGENT") return ["/admin", "/admin/orders", "/admin/customers"].includes(href);
     if (role === "MANAGER") return !["/admin/settings", "/admin/users", "/admin/redirects"].includes(href);
-    if (role === "MARKETER") return ["/admin/products", "/admin/categories", "/admin/reports", "/admin/marketing", "/admin/cro", "/admin/session-replays", "/admin/tracking", "/admin/jobs", "/admin/experiments", "/admin/reviews"].includes(href);
+    if (role === "MARKETER") {
+      return [
+        "/admin/products",
+        "/admin/products/drafts",
+        "/admin/products/add",
+        "/admin/categories",
+        "/admin/tags",
+        "/admin/discounts",
+        "/admin/product-tabs",
+        "/admin/reports",
+        "/admin/marketing",
+        "/admin/cro",
+        "/admin/session-replays",
+        "/admin/tracking",
+        "/admin/jobs",
+        "/admin/experiments",
+        "/admin/reviews",
+      ].includes(href);
+    }
     return false;
   };
 
+  const visibleProductLinks = productLinks.filter(([href]) => allowed(href));
+  const productsActive = visibleProductLinks.some(([href]) => linkIsActive(pathname, href));
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [panelPos, setPanelPos] = useState({ left: 240, top: 0, height: "100vh" });
+  const productsRef = useRef<HTMLDivElement>(null);
+
+  function placeProductsPanel() {
+    const sidebar = productsRef.current?.closest(".admin-sidebar") as HTMLElement | null;
+    const button = productsRef.current?.querySelector(".admin-nav-parent") as HTMLElement | null;
+    if (!sidebar || !button) return;
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    const mobile = window.innerWidth <= 980;
+    if (mobile) {
+      setPanelPos({
+        left: Math.max(8, buttonRect.left),
+        top: buttonRect.bottom + 8,
+        height: "auto",
+      });
+      return;
+    }
+    setPanelPos({
+      left: sidebarRect.right,
+      top: buttonRect.top + buttonRect.height / 2,
+      height: "auto",
+    });
+  }
+
+  useEffect(() => {
+    setProductsOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!productsOpen) return;
+    placeProductsPanel();
+    const onReposition = () => placeProductsPanel();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setProductsOpen(false);
+    };
+    const onPointer = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest(".admin-nav-flyout-group") && !target?.closest(".admin-nav-flyout-panel")) {
+        setProductsOpen(false);
+      }
+    };
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onPointer);
+    return () => {
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onPointer);
+    };
+  }, [productsOpen]);
+
   return (
     <nav className="admin-nav" aria-label="Admin sidebar">
-      {groups.map((group) => (
+      {groups[0] ? (
+        <div className="admin-nav-group" key={groups[0].label}>
+          <div className="admin-nav-label">{groups[0].label}</div>
+          {groups[0].links.filter(([href]) => allowed(href)).map(([href, label, icon]) => (
+            <NavItem key={href} href={href} label={label} icon={icon} pathname={pathname} />
+          ))}
+        </div>
+      ) : null}
+
+      {visibleProductLinks.length ? (
+        <div className="admin-nav-group admin-nav-flyout-group" ref={productsRef}>
+          <div className="admin-nav-label">Catalog</div>
+          <button
+            type="button"
+            className={`admin-nav-link admin-nav-parent${productsOpen ? " is-open" : ""}${productsActive ? " is-current" : ""}`}
+            aria-expanded={productsOpen}
+            aria-controls="admin-products-submenu"
+            onClick={() => setProductsOpen((open) => !open)}
+          >
+            <span className="admin-nav-icon">{icons.products}</span>
+            <span>Products</span>
+            <em className="admin-nav-caret" aria-hidden="true" />
+          </button>
+          <div
+            className={`admin-nav-flyout-panel${productsOpen ? " is-open" : ""}`}
+            id="admin-products-submenu"
+            style={{ left: panelPos.left, top: panelPos.top, height: panelPos.height }}
+          >
+            <div className="admin-nav-flyout-panel-inner">
+              {visibleProductLinks.map(([href, label]) => {
+                const active = linkIsActive(pathname, href);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    prefetch
+                    className={`admin-nav-flyout-link${active ? " active" : ""}`}
+                    aria-current={active ? "page" : undefined}
+                    onMouseEnter={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}
+                    onFocus={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}
+                    onClick={() => setProductsOpen(false)}
+                  >
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {groups.slice(1).map((group) => (
         <div className="admin-nav-group" key={group.label}>
           <div className="admin-nav-label">{group.label}</div>
-          {group.links.filter(([href]) => allowed(href)).map(([href, label, icon]) => {
-            const active = href === "/admin" ? pathname === href : pathname.startsWith(href);
-            return (
-              <Link key={href} href={href} prefetch className={`admin-nav-link${active ? " active" : ""}`} aria-current={active ? "page" : undefined} onMouseEnter={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])} onFocus={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}>
-                <span className="admin-nav-icon">{icon}</span>
-                <span>{label}</span>
-              </Link>
-            );
-          })}
+          {group.links.filter(([href]) => allowed(href)).map(([href, label, icon]) => (
+            <NavItem key={href} href={href} label={label} icon={icon} pathname={pathname} />
+          ))}
         </div>
       ))}
     </nav>

@@ -13,15 +13,18 @@ async function check(name: string, fn: () => Promise<unknown>) {
 }
 
 async function main() {
-  const results = await Promise.all([
-    check("database connection", async () => prisma.$queryRaw`SELECT 1`),
-    check("orders table", async () => prisma.order.count()),
-    check("event log table", async () => prisma.eventLog.count()),
-    check("session replay table", async () => prisma.sessionReplay.count()),
-    check("session replay chunks table", async () => prisma.sessionReplayChunk.count()),
-    check("experiments table", async () => prisma.experiment.count()),
-    check("rate limit table", async () => prisma.rateLimitBucket.count()),
-  ]);
+  const results: boolean[] = [];
+  for (const [name, fn] of [
+    ["database connection", async () => prisma.$queryRaw`SELECT 1`],
+    ["orders table", async () => prisma.order.count()],
+    ["event log table", async () => prisma.eventLog.count()],
+    ["session replay table", async () => prisma.sessionReplay.count()],
+    ["session replay chunks table", async () => prisma.sessionReplayChunk.count()],
+    ["experiments table", async () => prisma.experiment.count()],
+    ["rate limit table", async () => prisma.rateLimitBucket.count()],
+  ] as const) {
+    results.push(await check(name, fn));
+  }
   await prisma.$disconnect();
   if (results.some((ok) => !ok)) process.exitCode = 1;
 }

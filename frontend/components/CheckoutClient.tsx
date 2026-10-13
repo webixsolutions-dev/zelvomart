@@ -3,7 +3,9 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearPersistedCart, useCart } from "@/components/CartProvider";
+import { bundleLineTotal, BUY_TWO_DISCOUNT_PERCENT } from "@/lib/bundle-price";
 import { money } from "@/lib/format";
+import { amountUntilFreeShipping, quoteDelivery } from "@/lib/shipping";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
 import { getReplaySessionId, requestReplayFlush } from "@/lib/session-replay-client";
 
@@ -65,11 +67,13 @@ export default function CheckoutClient({
   const abandonTimer = useRef<number | null>(null);
   const checkoutTracked = useRef(false);
 
-  const deliveryFee = useMemo(() => {
-    if (delivery.mode === "FLAT") return Number(delivery.flatRate || 0);
-    if (delivery.mode === "FREE_ABOVE") return subtotal >= Number(delivery.freeAbove || 0) ? 0 : Number(delivery.flatRate || 0);
-    return 0;
-  }, [delivery, subtotal]);
+  const everyFree = items.length > 0 && items.every((item) => item.freeShipping);
+  const shippingQuote = useMemo(
+    () => quoteDelivery(subtotal, everyFree, delivery),
+    [delivery, everyFree, subtotal],
+  );
+  const deliveryFee = shippingQuote.fee;
+  const shippingGap = amountUntilFreeShipping(subtotal, shippingQuote.threshold);
   const codFee = Number(delivery.codFee || 0);
   const total = subtotal + deliveryFee + codFee;
 
@@ -312,11 +316,18 @@ export default function CheckoutClient({
 
         <aside className="mock-checkout-summary">
           <h2>Your order</h2>
-          {items.map((item) => <div className="mock-checkout-line" key={`${item.productId}-${item.variantId || "base"}-${item.bundleSize}`}><span>{item.name}<small>Qty {item.quantity * item.bundleSize}</small></span><b>{money(item.price * item.quantity * item.bundleSize * (item.bundleSize === 2 ? 1 - (item.bundleDiscountPercent || 5) / 100 : 1))}</b></div>)}
+          {items.map((item) => <div className="mock-checkout-line" key={`${item.productId}-${item.variantId || "base"}-${item.bundleSize}`}><span>{item.name}<small>Qty {item.quantity * item.bundleSize}</small></span><b>{money(bundleLineTotal(item.price, item.quantity, item.bundleSize, BUY_TWO_DISCOUNT_PERCENT).total)}</b></div>)}
           <hr />
           <div><span>Items</span><b>{money(subtotal)}</b></div>
           {bundleSaving > 0 ? <div className="saving"><span>Bundle saving</span><b>-{money(bundleSaving)}</b></div> : null}
           <div><span>Delivery</span><b>{deliveryFee ? money(deliveryFee) : "Free"}</b></div>
+          <p className="mock-order-help">
+            {deliveryFee
+              ? `Add ${money(shippingGap)} more and shipping is free. Orders above ${money(shippingQuote.threshold)} ship free.`
+              : shippingQuote.qualifiesByTotal
+                ? `Free shipping because this order is above ${money(shippingQuote.threshold)}.`
+                : "Free shipping is included for the products in this order."}
+          </p>
           {codFee ? <div><span>COD fee</span><b>{money(codFee)}</b></div> : null}
           <div className="total"><span>Total</span><b>{money(total)}</b></div>
           <div className="mock-pay-arrival">✓ Pay cash when your parcel arrives</div>

@@ -1,12 +1,11 @@
-import { PrismaClient } from "../src/generated/prisma/client";
+import "dotenv/config";
+import { prisma } from "../src/lib/db";
 import { dispatchJobRow, getBoss } from "../src/lib/jobs";
 import { sendCustomerOrderEmail, sendCustomerStatusEmail, sendFailureAlert, sendOrderTeamEmail } from "../src/lib/email";
 import { sendMetaServerEvent } from "../src/lib/meta";
 import { Resend } from "resend";
 import { money } from "../src/lib/format";
 import { getSetting } from "../src/lib/settings";
-
-const prisma = new PrismaClient();
 
 async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>) {
   if (jobLogId) {

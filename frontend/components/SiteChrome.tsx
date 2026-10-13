@@ -3,6 +3,8 @@
 import { Fragment, Suspense, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { CartProvider } from "@/components/CartProvider";
+import { DeliveryPolicyProvider } from "@/components/DeliveryPolicy";
+import type { DeliverySettings } from "@/lib/shipping";
 import PageMotion from "@/components/PageMotion";
 import RouteTransitionOverlay from "@/components/RouteTransitionOverlay";
 
@@ -16,6 +18,7 @@ export default function SiteChrome({
   metaPixel,
   clarity,
   organizationJson,
+  delivery,
 }: {
   children: ReactNode;
   header: ReactNode;
@@ -26,6 +29,7 @@ export default function SiteChrome({
   metaPixel: ReactNode;
   clarity: ReactNode;
   organizationJson: string;
+  delivery?: DeliverySettings | null;
 }) {
   const pathname = usePathname();
   const adminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
@@ -41,11 +45,13 @@ export default function SiteChrome({
         <Fragment key="meta-pixel">{metaPixel}</Fragment>
         <Fragment key="clarity">{clarity}</Fragment>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
+        <DeliveryPolicyProvider value={delivery}>
         <CartProvider>
           <Suspense fallback={null}><RouteTransitionOverlay /></Suspense>
           <main className="public-site-main">{children}</main>
           <Fragment key="tracking">{tracking}</Fragment>
         </CartProvider>
+        </DeliveryPolicyProvider>
       </>
     );
   }
@@ -58,6 +64,7 @@ export default function SiteChrome({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: organizationJson }}
       />
+      <DeliveryPolicyProvider value={delivery}>
       <CartProvider>
         <Suspense fallback={null}><RouteTransitionOverlay /></Suspense>
         <Fragment key="header">{header}</Fragment>
@@ -68,6 +75,7 @@ export default function SiteChrome({
         <Fragment key="whatsapp">{whatsapp}</Fragment>
         <Fragment key="tracking">{tracking}</Fragment>
       </CartProvider>
+      </DeliveryPolicyProvider>
     </>
   );
 }

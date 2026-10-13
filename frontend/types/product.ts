@@ -9,14 +9,37 @@ export type Category = {
   count?: number;
 };
 
+export type PriceSummary = {
+  price: number;
+  regularPrice: number;
+  salePrice: number | null;
+  onSale: boolean;
+  saveAmount: number;
+  discountPercent: number;
+};
+
 export type Variant = {
+  pricing?: PriceSummary;
   id: string;
   sku: string;
   name: string;
   attributes: Record<string, string>;
   priceOverride?: number | null;
+  regularPrice?: number | null;
+  salePrice?: number | null;
   stock: number;
+  stockStatus?: "instock" | "outofstock" | "onbackorder";
   imageUrl?: string | null;
+  images?: string[];
+  gtin?: string | null;
+  weight?: string;
+  length?: string;
+  width?: string;
+  height?: string;
+  shippingClass?: string;
+  downloadable?: boolean;
+  virtual?: boolean;
+  enabled?: boolean;
   active: boolean;
 };
 
@@ -41,6 +64,7 @@ export type Product = {
   salePrice?: number | null;
   onSale: boolean;
   discountPercent: number;
+  saveAmount?: number;
   stockStatus: "instock" | "outofstock";
   stockQuantity: number;
   featured: boolean;
@@ -60,6 +84,17 @@ export type Product = {
   seoTitle?: string | null;
   seoDescription?: string | null;
   canonicalUrl?: string | null;
+  tags?: string[];
+  badges?: string[];
+  brand?: string | null;
+  freeShipping?: boolean;
+  buyTwoDiscountPercent?: number;
+  catalogMeta?: {
+    freeShipping?: boolean;
+    productTabs?: Record<string, { override?: boolean; content?: string }>;
+    redirectUrl?: string;
+    [key: string]: unknown;
+  } | null;
 };
 
 export type ProductListResponse = {

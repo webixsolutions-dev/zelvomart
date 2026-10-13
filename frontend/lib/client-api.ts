@@ -46,3 +46,24 @@ export async function clientApi<T>(path: string, init: RequestInit = {}, auth = 
   if (!response.ok) throw new Error(body?.error || body?.message || `API_${response.status}`);
   return body as T;
 }
+
+export async function uploadAdminImage(file: File): Promise<string> {
+  const data = new FormData();
+  data.append('file', file);
+
+  let response: Response;
+  try {
+    response = await adminFetch('/api/admin/upload', { method: 'POST', body: data });
+  } catch {
+    throw new Error(`Unable to upload "${file.name}": the server could not be reached.`);
+  }
+
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    const reason = body?.message || String(body?.error || `API_${response.status}`).replace(/_/g, ' ');
+    throw new Error(/^unable to upload/i.test(reason) ? reason : `Unable to upload "${file.name}": ${reason}`);
+  }
+  const url = body?.url || body?.data?.url;
+  if (!url) throw new Error(`Unable to upload "${file.name}": Cloudflare did not return an image URL.`);
+  return url;
+}

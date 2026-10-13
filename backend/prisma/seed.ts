@@ -1,7 +1,6 @@
-import { Prisma, PrismaClient, Role } from "../src/generated/prisma/client";
+import { Prisma, Role } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
+import { prisma } from "../src/lib/db";
 
 const categories = [
   ["Home & Living", "home-living", 10, "/images/categories/home-living.svg"],
@@ -33,10 +32,27 @@ const defaultSettings: Record<string, unknown> = {
   "store.bundleDefaultDiscountPercent": 5,
   "store.minimumSellingPrice": 1000,
   "store.delivery": {
-    mode: "FREE",
-    flatRate: 0,
-    freeAbove: 0,
+    mode: "FREE_ABOVE",
+    flatRate: 250,
+    freeAbove: 8000,
     codFee: 0,
+  },
+  "store.productTabs": {
+    whyChoose: {
+      title: "Why Choose Zelvomart",
+      content:
+        "<p><strong>Cash on Delivery</strong> — Pay only when your order arrives at your door.</p><p><strong>Quality Checked</strong> — Every product is inspected before dispatch.</p><p><strong>Nationwide Delivery</strong> — We reach cities across Pakistan.</p><p><strong>Real Support</strong> — Message us on WhatsApp and talk to a real person.</p>",
+    },
+    shippingProcess: {
+      title: "Shipping Process",
+      content:
+        "<p><strong>Order confirmation.</strong> We verify the order by call or WhatsApp before it leaves.</p><p><strong>Dispatch.</strong> Parcels are handed to our delivery partners and packed for the journey.</p><p><strong>Timeline.</strong> Major cities usually take 2–4 working days. Other cities usually take 3–5 working days.</p><p><strong>Free shipping.</strong> The whole order ships free when the total is above Rs 8,000. Products with free shipping turned on ship free on their own.</p>",
+    },
+    generalFaq: {
+      title: "General FAQ",
+      content:
+        "<p><strong>Can I check the product before paying?</strong><br/>Riders in major cities can let you inspect the parcel. We also offer a 7-day replacement window.</p><p><strong>What if I receive a damaged product?</strong><br/>Share photos on WhatsApp within 7 days and we will arrange a replacement.</p><p><strong>When is shipping free?</strong><br/>Shipping is free on an order above Rs 8,000, and on any product whose free-shipping option is turned on.</p>",
+    },
   },
   "checkout.requiredFields": {
     fullName: true,
@@ -146,6 +162,18 @@ async function main() {
       where: { key },
       update: {},
       create: { key, value: value as Prisma.InputJsonValue },
+    });
+  }
+
+  const currentDelivery = await prisma.setting.findUnique({ where: { key: "store.delivery" } });
+  const deliveryValue = currentDelivery?.value as { mode?: string; flatRate?: number; freeAbove?: number } | null;
+  const legacyFree =
+    !deliveryValue ||
+    ((deliveryValue.mode || "FREE") === "FREE" && Number(deliveryValue.flatRate || 0) === 0 && Number(deliveryValue.freeAbove || 0) === 0);
+  if (legacyFree) {
+    await prisma.setting.update({
+      where: { key: "store.delivery" },
+      data: { value: defaultSettings["store.delivery"] as Prisma.InputJsonValue },
     });
   }
 

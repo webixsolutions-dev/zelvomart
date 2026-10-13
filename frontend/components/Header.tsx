@@ -180,6 +180,9 @@ function CategoryMenu({
           >
             All Products
           </Link>
+          <Link href="/bestsellers" role="menuitem" onClick={close}>Best selling</Link>
+          <Link href="/new-in" role="menuitem" onClick={close}>New arrival</Link>
+          <Link href="/discount" role="menuitem" onClick={close}>Discounts</Link>
           {categories.map((category) => (
             <Link
               key={category.id}

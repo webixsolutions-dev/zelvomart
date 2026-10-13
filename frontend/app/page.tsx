@@ -7,9 +7,9 @@ import HomeBannerCarousel from "@/components/HomeBannerCarousel";
 import HomeEditorialGrid from "@/components/HomeEditorialGrid";
 import HomeFaqReveal from "@/components/HomeFaqReveal";
 import HomeHowItWorks from "@/components/HomeHowItWorks";
-import { getProductBySlug, getProducts, getStoreBootstrap } from "@/lib/store";
+import { getProducts, getStoreBootstrap } from "@/lib/store";
 import { categoryImageFallback, categoryImageSrc, storeImages } from "@/lib/store-images";
-import type { Category, Product } from "@/types/product";
+import type { Category } from "@/types/product";
 
 export const revalidate = 120;
 
@@ -36,20 +36,6 @@ const categoryCardBlurbs: Record<string, string> = {
   "sports-fitness": "Gear up, stay active",
 };
 
-function uniqueProducts(groups: Product[][], limit = 12) {
-  const seen = new Set<string>();
-  const items: Product[] = [];
-  for (const group of groups) {
-    for (const product of group) {
-      if (!product?.id || seen.has(product.id)) continue;
-      seen.add(product.id);
-      items.push(product);
-      if (items.length >= limit) return items;
-    }
-  }
-  return items;
-}
-
 function chooseEditorialCategories(categories: Category[]) {
   return ["fashion-accessories", "tech-gadgets", "home-living"]
     .map((slug) => categories.find((item) => item.slug === slug))
@@ -57,14 +43,14 @@ function chooseEditorialCategories(categories: Category[]) {
 }
 
 export default async function HomePage() {
-  const [bootstrap, featured, latest] = await Promise.all([
+  const [bootstrap, taggedBestsellers, featuredProducts] = await Promise.all([
     getStoreBootstrap(),
-    getProducts({ featured: true, limit: 10 }),
-    getProducts({ limit: 14, sort: "newest" }),
+    getProducts({ tag: "best-selling", limit: 8 }),
+    getProducts({ featured: true, limit: 8 }),
   ]);
 
   const categories = bootstrap.categories;
-  const products = uniqueProducts([featured.items, latest.items], 12);
+  const products = taggedBestsellers.items.length ? taggedBestsellers.items : featuredProducts.items;
   const cards = categories.slice(0, 7);
   const editorialCategories = chooseEditorialCategories(categories);
 

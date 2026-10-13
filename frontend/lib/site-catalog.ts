@@ -10,6 +10,7 @@ type CatalogOptions = {
   minPrice?: number;
   maxPrice?: number;
   availability?: "instock";
+  tag?: string;
 };
 
 const category = (slug: string, name: string): Category => ({
@@ -108,6 +109,9 @@ export function siteCatalogResponse(options: CatalogOptions = {}): ProductListRe
   if (options.minPrice != null) items = items.filter((product) => product.price >= (options.minPrice || 0));
   if (options.maxPrice != null) items = items.filter((product) => product.price <= (options.maxPrice || 0));
   if (options.availability === "instock") items = items.filter((product) => product.stockStatus === "instock");
+  if (options.tag === "discount") items = items.filter((product) => product.onSale);
+  else if (options.tag === "best-selling") items = items.filter((product) => product.featured);
+  else if (options.tag) items = items.filter((product) => (product.tags || []).includes(options.tag || ""));
 
   if (options.sort === "price-asc") items.sort((a, b) => a.price - b.price);
   else if (options.sort === "price-desc") items.sort((a, b) => b.price - a.price);

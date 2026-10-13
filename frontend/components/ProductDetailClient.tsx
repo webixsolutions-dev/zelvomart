@@ -6,10 +6,13 @@ import type { SyntheticEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useCart } from "@/components/CartProvider";
+import { bundleLineTotal, BUY_TWO_DISCOUNT_PERCENT } from "@/lib/bundle-price";
 import { money } from "@/lib/format";
 import { trackStoreEvent } from "@/lib/client-tracking";
 import { getProductFallbackImage } from "@/lib/product-media";
+import { productPricing } from "@/lib/product-price";
 import type { Product, Variant } from "@/types/product";
+import type { ResolvedProductTab } from "@/lib/product-tabs";
 
 import ProductGallery from "./pdp/ProductGallery";
 import ProductBuyBox from "./pdp/ProductBuyBox";
@@ -17,6 +20,19 @@ import ProductTabs from "./pdp/ProductTabs";
 import ProductReviews from "./pdp/ProductReviews";
 import { isValidImageUrl } from "./pdp/pdp-icons";
 import "./ProductDetail.css";
+import "./pdp/pdp.css";
+
+function variantInStock(variant: Variant) {
+  const status = variant.stockStatus ?? (variant.attributes?.stockStatus as string | undefined);
+  if (status === "outofstock") return false;
+  return status === "instock" || (variant.stock ?? 0) > 0;
+}
+
+// Open on a variant the shopper can actually buy
+function getInitialVariant(product?: Product | null): Variant | null {
+  const variants = product?.variants || [];
+  return variants.find(variantInStock) || variants[0] || null;
+}
 
 // Helper to reliably extract the first valid image whether stored as string or object
 function getInitialProductImage(product?: Product | null, fallback: string = "/placeholder.png"): string {
@@ -36,10 +52,12 @@ export default function ProductDetailClient({
   product,
   defaultBundleDiscount = 5,
   whatsapp = "923002026711",
+  sections = [],
 }: {
   product: Product;
   defaultBundleDiscount?: number;
   whatsapp?: string;
+  sections?: ResolvedProductTab[];
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -53,7 +71,7 @@ export default function ProductDetailClient({
   const [selectedImage, setSelectedImage] = useState<string>(() =>
     getInitialProductImage(product, fallbackImage)
   );
-  const [variant, setVariant] = useState<Variant | null>(product?.variants?.[0] || null);
+  const [variant, setVariant] = useState<Variant | null>(() => getInitialVariant(product));
   const [bundleSize, setBundleSize] = useState<1 | 2>(1);
   const [quantity, setQuantity] = useState<number>(1);
   const [sticky, setSticky] = useState<boolean>(false);
@@ -63,20 +81,22 @@ export default function ProductDetailClient({
   useEffect(() => {
     if (product) {
       setSelectedImage(getInitialProductImage(product, fallbackImage));
-      setVariant(product.variants?.[0] || null);
+      setVariant(getInitialVariant(product));
     }
   }, [product?.id, fallbackImage]);
 
   // Pricing calculations
-  const basePrice = Number(variant?.priceOverride ?? product?.price ?? 0);
-  const discountPercent = Number(product?.bundleDiscountPercent ?? defaultBundleDiscount);
-  const inStock = variant ? (variant.stock ?? 0) > 0 : product?.stockStatus === "instock";
+  const pricing = useMemo(() => productPricing(product, variant), [product, variant]);
+  const basePrice = pricing.price;
+  const discountPercent = Number(product?.buyTwoDiscountPercent ?? defaultBundleDiscount ?? BUY_TWO_DISCOUNT_PERCENT);
+  const inStock = variant ? variantInStock(variant) : product?.stockStatus === "instock";
   const isPrimary = !pathname || (product?.slug ? pathname.includes(product.slug) : true);
 
-  const bundleTotal = useMemo(() => {
-    const raw = basePrice * bundleSize;
-    return bundleSize === 2 && product?.bundleEnabled ? raw * (1 - discountPercent / 100) : raw;
-  }, [basePrice, bundleSize, discountPercent, product?.bundleEnabled]);
+  const priced = useMemo(
+    () => bundleLineTotal(basePrice, quantity, bundleSize === 2 && product?.bundleEnabled ? 2 : 1, discountPercent),
+    [basePrice, quantity, bundleSize, discountPercent, product?.bundleEnabled],
+  );
+  const bundleTotal = quantity > 0 ? priced.total / quantity : priced.total;
 
   // Analytics tracking
   useEffect(() => {
@@ -132,10 +152,30 @@ export default function ProductDetailClient({
     };
   }, []);
 
+  const galleryProduct = useMemo(() => {
+    const existing = (product.images || [])
+      .map((item) => (typeof item === "string" ? item : item.src))
+      .filter((src) => src && isValidImageUrl(src));
+    const variantSources = (product.variants || [])
+      .flatMap((item) => [...(item.images || []), item.imageUrl || ""])
+      .filter((src) => src && isValidImageUrl(src));
+    const merged: string[] = [];
+    for (const src of [...existing, ...variantSources]) {
+      if (!merged.includes(src)) merged.push(src);
+    }
+    if (!merged.length) return product;
+    return {
+      ...product,
+      image: merged[0] || product.image,
+      images: merged.map((src) => ({ src, alt: product.name })),
+    };
+  }, [product]);
+
   const handleSelectVariant = (next: Variant) => {
     setVariant(next);
-    if (isValidImageUrl(next?.imageUrl)) {
-      setSelectedImage(next.imageUrl!);
+    const first = next.images?.find((src) => isValidImageUrl(src)) || next.imageUrl;
+    if (isValidImageUrl(first)) {
+      setSelectedImage(first!);
     }
   };
 
@@ -154,6 +194,7 @@ export default function ProductDetailClient({
       bundleSize,
       bundleDiscountPercent: discountPercent,
       variantLabel: variant?.name,
+      freeShipping: Boolean(product.freeShipping),
     });
 
     await trackStoreEvent(
@@ -195,11 +236,11 @@ export default function ProductDetailClient({
   }
 
   return (
-    <div className="mock-pdp-container">
-      <div className="mock-pdp-top">
+    <div className="zpd">
+      <div className="zpd-top">
         {/* 1. Gallery Section */}
         <ProductGallery
-          product={product}
+          product={galleryProduct}
           selectedImage={selectedImage}
           setSelectedImage={setSelectedImage}
           fallbackImage={fallbackImage}
@@ -215,6 +256,7 @@ export default function ProductDetailClient({
           quantity={quantity}
           setQuantity={setQuantity}
           basePrice={basePrice}
+          pricing={pricing}
           bundleTotal={bundleTotal}
           discountPercent={discountPercent}
           inStock={inStock}
@@ -225,7 +267,7 @@ export default function ProductDetailClient({
       </div>
 
       {/* 3. Specifications & Description Tabs */}
-      <ProductTabs product={product} variant={variant} inStock={inStock} />
+      <ProductTabs product={product} variant={variant} inStock={inStock} sections={sections} />
 
       {/* 4. Customer Reviews Section */}
       <ProductReviews product={product} />
@@ -233,10 +275,10 @@ export default function ProductDetailClient({
       {/* Sticky Bottom Order Bar */}
       {sticky && isPrimary && typeof document !== "undefined"
         ? createPortal(
-            <div className="mock-sticky-atc" style={{ bottom: stickyLift }}>
-              <div className="mock-sticky-atc-inner">
-                <div className="mock-sticky-atc-info">
-                  <div className="thumb">
+            <div className="zpd-portal zpd-sticky" style={{ bottom: stickyLift }}>
+              <div className="zpd-sticky-inner">
+                <div className="zpd-sticky-info">
+                  <div className="zpd-sticky-thumb">
                     {isValidImageUrl(selectedImage) ? (
                       <Image
                         src={selectedImage}
@@ -247,7 +289,7 @@ export default function ProductDetailClient({
                       />
                     ) : null}
                   </div>
-                  <div className="mock-sticky-atc-text">
+                  <div className="zpd-sticky-text">
                     <b>{product.name}</b>
                     <span>{money(bundleTotal * quantity)}</span>
                   </div>
