@@ -4,6 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/types/product";
 import { money } from "@/lib/format";
+import { useCart } from "@/components/CartProvider";
+import { BUY_TWO_DISCOUNT_PERCENT } from "@/lib/bundle-price";
+import { productPricing } from "@/lib/product-price";
+import { trackStoreEvent } from "@/lib/client-tracking";
 
 interface ProductGridProps {
   products: Product[];
@@ -19,6 +23,8 @@ export default function ProductGrid({
   emptyText = "No products found in this category.",
   className = "",
 }: ProductGridProps) {
+  const { addItem } = useCart();
+
   // Handle empty product list cleanly
   if (!products || products.length === 0) {
     return (
@@ -36,13 +42,40 @@ export default function ProductGrid({
           (item as any).image ||
           "/images/placeholder.webp";
 
-        const price = Number(item.price || 0);
-        const regularPrice = item.regularPrice ? Number(item.regularPrice) : null;
-        const savings = regularPrice && regularPrice > price ? regularPrice - price : null;
         const colorsCount = item.variants?.length || 0;
         const hasOptions = colorsCount > 1;
-        const rating = Number(item.averageRating || 4.8);
-        const reviewsCount = Number(item.reviewCount || 29);
+        const onlyVariant = colorsCount === 1 ? item.variants[0] : null;
+        const pricing = productPricing(item, onlyVariant);
+        const price = pricing.price;
+        const regularPrice = pricing.onSale ? pricing.regularPrice : null;
+        const savings = pricing.saveAmount || null;
+        const reviewsCount = Number(item.reviewCount || 0);
+        const rating = Number(item.averageRating || 0);
+        const inStock = item.stockStatus === "instock";
+
+        const addToCart = () => {
+          if (onAddToCart) return onAddToCart(item.id);
+          const sku = onlyVariant?.sku || item.sku;
+          addItem({
+            productId: item.id,
+            variantId: onlyVariant?.id,
+            sku,
+            slug: item.slug,
+            name: item.name,
+            image: onlyVariant?.imageUrl || imgSrc,
+            price,
+            quantity: 1,
+            bundleSize: 1,
+            bundleDiscountPercent: item.buyTwoDiscountPercent || BUY_TWO_DISCOUNT_PERCENT,
+            variantLabel: onlyVariant?.name,
+            freeShipping: Boolean(item.freeShipping),
+          });
+          trackStoreEvent(
+            "AddToCart",
+            { content_ids: [sku], contents: [{ id: sku, quantity: 1, item_price: price }], value: price, currency: "PKR" },
+            { clarityEvent: "add_to_cart" },
+          ).catch(() => undefined);
+        };
 
         return (
           <article
@@ -75,11 +108,13 @@ export default function ProductGrid({
                 </h3>
               </Link>
 
-              <div className="flex items-center gap-1 text-[11px] leading-none text-slate-500">
-                <span className="text-[#f59e0b] text-[12px] leading-none">★</span>
-                <span className="font-semibold text-slate-800">{rating.toFixed(1)}</span>
-                <span className="text-slate-400">{reviewsCount.toLocaleString()} reviews</span>
-              </div>
+              {reviewsCount > 0 ? (
+                <div className="flex items-center gap-1 text-[11px] leading-none text-slate-500">
+                  <span className="text-[#f59e0b] text-[12px] leading-none">★</span>
+                  <span className="font-semibold text-slate-800">{rating.toFixed(1)}</span>
+                  <span className="text-slate-400">{reviewsCount.toLocaleString()} review{reviewsCount === 1 ? "" : "s"}</span>
+                </div>
+              ) : null}
 
               <div className="flex items-baseline gap-1.5 flex-wrap leading-none">
                 <span className="text-[15px] font-extrabold text-slate-900">{money(price)}</span>
@@ -87,7 +122,7 @@ export default function ProductGrid({
                   <span className="text-[11px] text-slate-400 line-through">{money(regularPrice)}</span>
                 ) : null}
                 {savings ? (
-                  <span className="text-[11px] font-bold text-rose-600">Save {money(savings)}</span>
+                  <span className="text-[11px] font-bold text-rose-600">Save {money(savings)} ({pricing.discountPercent}%)</span>
                 ) : null}
               </div>
 
@@ -115,13 +150,14 @@ export default function ProductGrid({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => onAddToCart?.(item.id)}
-                    className="w-full py-2 px-3 rounded-xl bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-[13px] flex items-center justify-center gap-1.5 shadow-xs hover:shadow transition active:scale-[0.98] cursor-pointer"
+                    onClick={addToCart}
+                    disabled={!inStock}
+                    className="w-full py-2 px-3 rounded-xl bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-[13px] flex items-center justify-center gap-1.5 shadow-xs hover:shadow transition active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg className="w-3.5 h-3.5 text-white shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
-                    <span className="truncate">Add to Cart</span>
+                    <span className="truncate">{inStock ? "Add to Cart" : "Out of stock"}</span>
                   </button>
                 )}
               </div>

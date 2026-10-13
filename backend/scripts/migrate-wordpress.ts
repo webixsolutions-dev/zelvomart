@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { Prisma, PrismaClient } from "../src/generated/prisma/client";
-import { uploadObject } from "../src/lib/storage";
+import { isCloudStorageConfigured, uploadObject } from "../src/lib/storage";
 
 const prisma = new PrismaClient();
 const source = (process.env.SOURCE_STORE_URL || "https://zelvomart.com").replace(/\/$/, "");
@@ -41,7 +41,7 @@ function productVideoUrl(row: any) {
 }
 
 async function maybeRehost(url: string) {
-  if (!process.env.S3_BUCKET || !process.env.S3_PUBLIC_BASE_URL) return url;
+  if (!isCloudStorageConfigured()) return url;
   const response = await fetch(url);
   if (!response.ok) return url;
   const bytes = new Uint8Array(await response.arrayBuffer());

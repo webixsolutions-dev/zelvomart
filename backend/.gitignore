@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# env / secrets (keep the .env.example template)
+.env
+.env.*
+!.env.example
+
+# locally stored uploads
+uploads/
+
+# deploy / tooling
+.vercel/
+coverage/
+
+# logs
+*.log
+npm-debug.log*
+
+# scratch files
+tmp-*
+
+# OS / editor
+.DS_Store
+Thumbs.db

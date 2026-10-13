@@ -16,11 +16,17 @@ export default function AddProductPage() {
       <div className="admin-title admin-product-form-page-title">
         <div>
           <Link className="admin-back-link" href="/admin/products">← Back to Products</Link>
-          <h1>Add Product</h1>
-          <p>Create a new catalog product with pricing, stock, media, SEO and publishing controls.</p>
+          <h1>Add new product</h1>
+          <p>Name, price and stock are enough to post. Image and brand are optional. Tags place the product on bestsellers, new arrivals or discounts, and the shop still lists every posted product.</p>
         </div>
       </div>
-      <ProductForm categories={categories} onSaved={() => router.push("/admin/products")} />
+      <ProductForm
+        categories={categories}
+        onSaved={(product) => {
+          if (product?.id) router.replace(`/admin/products/${product.id}`);
+          else router.push("/admin/products");
+        }}
+      />
     </>
   );
 }

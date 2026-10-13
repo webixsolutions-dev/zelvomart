@@ -1,34 +1,106 @@
+import path from "node:path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
+function env(name: string) {
+  return (process.env[name] || "").trim();
+}
+
+export function isCloudStorageConfigured() {
+  return Boolean(
+    env("S3_ENDPOINT") &&
+      env("S3_BUCKET") &&
+      env("S3_ACCESS_KEY_ID") &&
+      env("S3_SECRET_ACCESS_KEY") &&
+      env("S3_PUBLIC_BASE_URL"),
+  );
+}
+
+export function getLocalUploadDir() {
+  return env("LOCAL_UPLOAD_DIR") || path.join(process.cwd(), "uploads");
+}
+
+const REQUIRED_ENV = ["S3_ENDPOINT", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_PUBLIC_BASE_URL"];
+
+export class StorageError extends Error {
+  code: "STORAGE_NOT_CONFIGURED" | "UPLOAD_FAILED";
+
+  constructor(code: StorageError["code"], message: string, cause?: unknown) {
+    super(message);
+    this.name = "StorageError";
+    this.code = code;
+    this.cause = cause;
+  }
+}
+
+function describeUploadFailure(error: any) {
+  const status = error?.$metadata?.httpStatusCode;
+  const code = error?.Code || error?.code || error?.cause?.code || error?.name;
+  if (code === "NoSuchBucket") return `bucket "${env("S3_BUCKET")}" does not exist (check S3_BUCKET)`;
+  if (code === "InvalidAccessKeyId" || code === "SignatureDoesNotMatch" || status === 401) {
+    return "the R2 access key was rejected (check S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY)";
+  }
+  if (code === "AccessDenied" || status === 403) return "the R2 API token is not allowed to write to this bucket";
+  if (["ENOTFOUND", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "EAI_AGAIN", "EPROTO"].includes(code)) {
+    return `could not reach Cloudflare R2 (${code}; check S3_ENDPOINT and the network connection)`;
+  }
+  const detail = error?.message || "unknown error";
+  return code && code !== "Error" ? `${code}: ${detail}` : detail;
+}
+
+function sanitizeKey(key: string) {
+  return key
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter((part) => part && part !== "." && part !== "..")
+    .join("/");
+}
+
 function s3() {
+  const endpoint = env("S3_ENDPOINT");
+  const isR2 = /r2\.cloudflarestorage\.com/i.test(endpoint);
+  const forcePathStyle =
+    env("S3_FORCE_PATH_STYLE") === "true" || (!isR2 && env("S3_FORCE_PATH_STYLE") !== "false");
+
   return new S3Client({
-    endpoint: process.env.S3_ENDPOINT,
-    region: process.env.S3_REGION || "ap-northeast-1",
-    forcePathStyle: true, // <-- Fixes the SSL handshake failure with Supabase
-    credentials:
-      process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY
-        ? {
-            accessKeyId: process.env.S3_ACCESS_KEY_ID,
-            secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
-          }
-        : undefined,
+    endpoint,
+    region: env("S3_REGION") || "auto",
+    forcePathStyle,
+    // R2 rejects the default AWS SDK checksum headers.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
+    credentials: {
+      accessKeyId: env("S3_ACCESS_KEY_ID"),
+      secretAccessKey: env("S3_SECRET_ACCESS_KEY"),
+    },
   });
 }
 
 export async function uploadObject(key: string, body: Uint8Array, contentType: string) {
-  if (!process.env.S3_BUCKET || !process.env.S3_PUBLIC_BASE_URL) {
-    throw new Error("S3/R2 storage is not configured");
+  const safeKey = sanitizeKey(key);
+  if (!safeKey) throw new StorageError("UPLOAD_FAILED", "Unable to upload to Cloudflare: a storage object key is required.");
+
+  const missing = REQUIRED_ENV.filter((name) => !env(name));
+  if (missing.length) {
+    throw new StorageError(
+      "STORAGE_NOT_CONFIGURED",
+      `Unable to upload to Cloudflare: R2 is not configured. Missing ${missing.join(", ")} in the backend environment.`,
+    );
   }
 
-  await s3().send(
-    new PutObjectCommand({
-      Bucket: process.env.S3_BUCKET,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-      CacheControl: "public,max-age=31536000,immutable",
-    })
-  );
+  try {
+    await s3().send(
+      new PutObjectCommand({
+        Bucket: env("S3_BUCKET"),
+        Key: safeKey,
+        Body: body,
+        ContentType: contentType,
+        CacheControl: "public,max-age=31536000,immutable",
+      }),
+    );
+  } catch (error) {
+    console.error("Cloudflare R2 upload failed", { key: safeKey, error });
+    throw new StorageError("UPLOAD_FAILED", `Unable to upload to Cloudflare: ${describeUploadFailure(error)}.`, error);
+  }
 
-  return `${process.env.S3_PUBLIC_BASE_URL.replace(/\/$/, "")}/${key}`;
+  return `${env("S3_PUBLIC_BASE_URL").replace(/\/$/, "")}/${safeKey}`;
 }

@@ -8,7 +8,12 @@ export const metadata = { title: "New In" };
 const v=(x:string|string[]|undefined)=>Array.isArray(x)?x[0]:x||"";
 export default async function NewInPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
   const sp=await searchParams; const page=Math.max(1,Number(v(sp.page))||1);
-  const [result, bootstrap] = await Promise.all([getProducts({ sort: "newest", page, limit: 12 }),getStoreBootstrap()]);
+  const [tagged, newest, bootstrap] = await Promise.all([
+    getProducts({ tag: "new-arrival", page, limit: 12, sort: "newest" }),
+    getProducts({ sort: "newest", page, limit: 12 }),
+    getStoreBootstrap(),
+  ]);
+  const result = tagged.items.length ? tagged : newest;
   const lead = result.items[0]; const info = (bootstrap.settings["store.info"] || {}) as { whatsapp?: string }; const whatsapp = String(info.whatsapp || "923002026711").replace(/[^0-9]/g, "");
   return (
     <div className="mock-newin-page">

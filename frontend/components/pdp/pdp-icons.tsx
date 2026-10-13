@@ -42,6 +42,19 @@ export function Icon({ name, className = "pdp-icon" }: { name: IconName; classNa
   );
 }
 
+// Five stars filled to match the rating (grey when there is none)
+export function Stars({ value, className = "" }: { value: number; className?: string }) {
+  const safe = Number.isFinite(value) ? Math.max(0, Math.min(5, value)) : 0;
+  return (
+    <span className={`zpd-stars ${className}`.trim()} role="img" aria-label={`${safe.toFixed(1)} out of 5 stars`}>
+      <span aria-hidden="true">★★★★★</span>
+      <span aria-hidden="true" className="zpd-stars-fill" style={{ width: `${(safe / 5) * 100}%` }}>
+        ★★★★★
+      </span>
+    </span>
+  );
+}
+
 export function isValidImageUrl(url?: string | null): url is string {
   if (!url || typeof url !== "string") return false;
   const trimmed = url.trim();

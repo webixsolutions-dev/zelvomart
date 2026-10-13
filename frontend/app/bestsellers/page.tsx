@@ -10,11 +10,12 @@ const v = (x: string | string[] | undefined) => Array.isArray(x) ? x[0] : x || "
 export default async function Bestsellers({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const page = Math.max(1, Number(v(sp.page)) || 1);
-  const [featured, fallback] = await Promise.all([
+  const [tagged, featured, fallback] = await Promise.all([
+    getProducts({ tag: "best-selling", page, limit: 12 }),
     getProducts({ featured: true, page, limit: 12 }),
     getProducts({ page, limit: 12 }),
   ]);
-  const result = featured.items.length ? featured : fallback;
+  const result = tagged.items.length ? tagged : featured.items.length ? featured : fallback;
 
   return (
     <div className="mock-listing-page">

@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next.js build output
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# env / secrets (keep the .env.example template)
+.env
+.env.*
+!.env.example
+
+# deploy / tooling
+.vercel/
+coverage/
+
+# logs
+*.log
+npm-debug.log*
+
+# scratch files (screenshots, browser profiles, one-off scripts)
+tmp-*
+
+# OS / editor
+.DS_Store
+Thumbs.db

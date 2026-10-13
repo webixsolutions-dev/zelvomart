@@ -16,8 +16,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "zelvomart.com" },
       { protocol: "https", hostname: "www.zelvomart.com" },
       { protocol: "https", hostname: "*.r2.dev" },
+      { protocol: "https", hostname: "pub-6861daa0380241a2acc38cd5ca85b301.r2.dev" },
       { protocol: "https", hostname: "*.cloudflarestorage.com" },
       { protocol: "https", hostname: "*.supabase.co" },
+      { protocol: "http", hostname: "localhost", port: "4000", pathname: "/uploads/**" },
+      { protocol: "http", hostname: "127.0.0.1", port: "4000", pathname: "/uploads/**" },
+      ...((process.env.NEXT_PUBLIC_IMAGE_HOSTS || "").split(",").map((value) => value.trim()).filter(Boolean).map((hostname) => ({ protocol: "https" as const, hostname }))),
     ],
   },
   poweredByHeader: false,
@@ -33,7 +37,10 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     const api = (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "");
-    return [{ source: "/feeds/meta.xml", destination: `${api}/api/feed/meta.xml` }];
+    return [
+      { source: "/feeds/meta.xml", destination: `${api}/api/feed/meta.xml` },
+      { source: "/uploads/:path*", destination: `${api}/uploads/:path*` },
+    ];
   },
 };
 

@@ -3,10 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 
+type HeadingTag = "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+
 type Props = {
   name: string;
   defaultValue?: string;
   placeholder?: string;
+  onChange?: (value: string) => void;
+  compact?: boolean;
+  tickBullets?: boolean;
 };
 
 function showEditorError(message: string) {
@@ -60,9 +65,15 @@ function normalizeLeadingBareUrlLink(html: string): string {
 function ReferenceRichTextEditor({
   value,
   onChange,
+  placeholder = "Write the full product description...",
+  compact = false,
+  tickBullets = false,
 }: {
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
+  compact?: boolean;
+  tickBullets?: boolean;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const savedRangeRef = useRef<Range | null>(null);
@@ -211,10 +222,60 @@ function ReferenceRichTextEditor({
     syncValue();
   }
 
+  function currentBlockTag(): HeadingTag {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount || !editorRef.current) return "p";
+    const block = closestEditableBlock(selection.getRangeAt(0).startContainer);
+    const tag = block?.tagName.toLowerCase();
+    if (tag === "h1" || tag === "h2" || tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6") return tag;
+    return "p";
+  }
+
+  function syncBlockType() {
+    setBlockType(currentBlockTag());
+  }
+
   function applyBlock(tag: string) {
     restoreSelection();
-    document.execCommand("formatBlock", false, tag);
+    const editor = editorRef.current;
+    if (editor) editor.focus();
+
+    const wrapped = `<${tag}>`;
+    const applied =
+      document.execCommand("formatBlock", false, wrapped) ||
+      document.execCommand("formatBlock", false, tag);
+
+    if (!applied && (tag === "h1" || tag === "h2" || tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6" || tag === "p")) {
+      applyHeadingShortcut(tag);
+      return;
+    }
+
+    const selection = window.getSelection();
+    const block = selection?.rangeCount ? closestEditableBlock(selection.getRangeAt(0).startContainer) : null;
+    if (block && block.tagName.toLowerCase() !== tag) {
+      const replacement = document.createElement(tag);
+      replacement.innerHTML = block.innerHTML || "<br>";
+      block.replaceWith(replacement);
+    }
+
     setBlockType(tag);
+    saveSelection();
+    syncValue();
+  }
+
+  function insertTickList() {
+    restoreSelection();
+    const editor = editorRef.current;
+    if (editor) editor.focus();
+    document.execCommand("insertUnorderedList");
+    editor?.querySelectorAll("ul").forEach((list) => {
+      list.classList.add("tick-list");
+      list.querySelectorAll("li").forEach((item) => {
+        if (!item.textContent?.replace(/[✓\s]/g, "").trim() && !item.querySelector("img,br")) {
+          item.textContent = "";
+        }
+      });
+    });
     saveSelection();
     syncValue();
   }
@@ -455,7 +516,7 @@ function ReferenceRichTextEditor({
     return block;
   }
 
-  function applyHeadingShortcut(tag: "h1" | "h2" | "h3") {
+  function applyHeadingShortcut(tag: HeadingTag) {
     restoreSelection();
 
     const editor = editorRef.current;
@@ -481,7 +542,7 @@ function ReferenceRichTextEditor({
      * heading block and leaves the text before/after it untouched.
      */
     if (range.collapsed) {
-      showEditorError("Select the heading text first, then use Ctrl+Alt+1, 2 or 3.");
+      showEditorError("Select the heading text first, then use Ctrl+Alt+1 to 6.");
       return;
     }
 
@@ -569,22 +630,18 @@ function ReferenceRichTextEditor({
 
     if (!headingShortcut) return;
 
-    if (event.code === "Digit1") {
-      event.preventDefault();
-      applyHeadingShortcut("h1");
-      return;
-    }
-
-    if (event.code === "Digit2") {
-      event.preventDefault();
-      applyHeadingShortcut("h2");
-      return;
-    }
-
-    if (event.code === "Digit3") {
-      event.preventDefault();
-      applyHeadingShortcut("h3");
-    }
+    const headingMap: Record<string, HeadingTag> = {
+      Digit1: "h1",
+      Digit2: "h2",
+      Digit3: "h3",
+      Digit4: "h4",
+      Digit5: "h5",
+      Digit6: "h6",
+    };
+    const heading = headingMap[event.code];
+    if (!heading) return;
+    event.preventDefault();
+    applyHeadingShortcut(heading);
   }
 
   const buttonClass =
@@ -626,7 +683,7 @@ function ReferenceRichTextEditor({
 
         <select
           value={blockType}
-          title="Paragraph style - Ctrl+Alt+1/2/3 for Heading 1/2/3"
+          title="Paragraph style - Ctrl+Alt+1 to 6 for Heading 1 to 6"
           aria-label="Paragraph style"
           className="h-9 min-w-[145px] rounded-md border border-border-strong bg-white px-3 text-[13px] font-semibold text-navy outline-none transition hover:border-teal focus:border-teal"
           onMouseDown={saveSelection}
@@ -636,6 +693,9 @@ function ReferenceRichTextEditor({
           <option value="h1">Heading 1</option>
           <option value="h2">Heading 2</option>
           <option value="h3">Heading 3</option>
+          <option value="h4">Heading 4</option>
+          <option value="h5">Heading 5</option>
+          <option value="h6">Heading 6</option>
         </select>
 
         <div className={dividerClass} />
@@ -749,15 +809,16 @@ function ReferenceRichTextEditor({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            title="Bulleted List"
-            aria-label="Bulleted List"
+            title={tickBullets ? "Tick bullet list" : "Bulleted List"}
+            aria-label={tickBullets ? "Tick bullet list" : "Bulleted List"}
             className={buttonClass}
             onMouseDown={(event) => {
               event.preventDefault();
-              runCommand("insertUnorderedList");
+              if (tickBullets) insertTickList();
+              else runCommand("insertUnorderedList");
             }}
           >
-            Bullets
+            {tickBullets ? "✓" : "Bullets"}
           </button>
           <button
             type="button"
@@ -820,7 +881,7 @@ function ReferenceRichTextEditor({
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
-        data-placeholder="Write the full product description..."
+        data-placeholder={placeholder}
         onInput={() => {
           saveSelection();
           syncValue();
@@ -829,13 +890,19 @@ function ReferenceRichTextEditor({
           saveSelection();
           syncValue();
         }}
-        onMouseUp={saveSelection}
+        onMouseUp={() => {
+          saveSelection();
+          syncBlockType();
+        }}
         onClick={handleEditorLinkClick}
         onKeyDown={handleEditorKeyDown}
-        onKeyUp={saveSelection}
+        onKeyUp={() => {
+          saveSelection();
+          syncBlockType();
+        }}
         onFocus={saveSelection}
         onPaste={handlePaste}
-        className="min-h-[300px] bg-white px-5 py-4 text-[13px] leading-7 text-charcoal outline-none empty:before:pointer-events-none empty:before:text-slate/60 empty:before:content-[attr(data-placeholder)] [&_p]:my-3 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:leading-tight [&_h1]:text-navy [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight [&_h2]:text-navy [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:leading-snug [&_h3]:text-navy [&_ul]:my-3 [&_ul]:ml-7 [&_ul]:list-disc [&_ol]:my-3 [&_ol]:ml-7 [&_ol]:list-decimal [&_li]:my-1 [&_a]:cursor-pointer [&_a]:font-medium [&_a]:text-teal [&_a]:underline [&_a]:underline-offset-2 [&_a]:transition-colors [&_a:hover]:text-navy [&_strong]:font-bold"
+        className={`${compact ? "min-h-[92px] max-h-[168px] overflow-y-auto px-4 py-3" : "min-h-[300px] px-5 py-4"} bg-white text-[13px] leading-7 text-charcoal outline-none empty:before:pointer-events-none empty:before:text-slate/60 empty:before:content-[attr(data-placeholder)] [&_p]:my-3 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:leading-tight [&_h1]:text-navy [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight [&_h2]:text-navy [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:leading-snug [&_h3]:text-navy [&_h4]:mb-2 [&_h4]:mt-3 [&_h4]:text-lg [&_h4]:font-bold [&_h4]:text-navy [&_h5]:mb-1 [&_h5]:mt-3 [&_h5]:text-base [&_h5]:font-bold [&_h5]:text-navy [&_h6]:mb-1 [&_h6]:mt-2 [&_h6]:text-sm [&_h6]:font-bold [&_h6]:uppercase [&_h6]:tracking-wide [&_h6]:text-navy [&_ul]:my-3 [&_ul]:ml-7 [&_ul]:list-disc [&_ul.tick-list]:ml-0 [&_ul.tick-list]:list-none [&_ul.tick-list_li]:relative [&_ul.tick-list_li]:pl-6 [&_ul.tick-list_li]:before:absolute [&_ul.tick-list_li]:before:left-0 [&_ul.tick-list_li]:before:font-bold [&_ul.tick-list_li]:before:text-emerald-600 [&_ul.tick-list_li]:before:content-['✓'] [&_ol]:my-3 [&_ol]:ml-7 [&_ol]:list-decimal [&_li]:my-1 [&_a]:cursor-pointer [&_a]:font-medium [&_a]:text-teal [&_a]:underline [&_a]:underline-offset-2 [&_a]:transition-colors [&_a:hover]:text-navy [&_strong]:font-bold`}
       />
     </div>
   );
@@ -844,6 +911,10 @@ function ReferenceRichTextEditor({
 export default function AdminRichTextEditor({
   name,
   defaultValue = "",
+  placeholder,
+  onChange,
+  compact = false,
+  tickBullets = false,
 }: Props) {
   const [html, setHtml] = useState(defaultValue);
 
@@ -851,9 +922,14 @@ export default function AdminRichTextEditor({
     setHtml(defaultValue);
   }, [defaultValue]);
 
+  function update(value: string) {
+    setHtml(value);
+    onChange?.(value);
+  }
+
   return (
     <>
-      <ReferenceRichTextEditor value={html} onChange={setHtml} />
+      <ReferenceRichTextEditor value={html} onChange={update} placeholder={placeholder} compact={compact} tickBullets={tickBullets} />
       <textarea name={name} value={html} readOnly hidden aria-hidden="true" />
     </>
   );

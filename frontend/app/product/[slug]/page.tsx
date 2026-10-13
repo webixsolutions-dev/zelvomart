@@ -1,17 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import ProductGrid from "@/components/ProductGrid";
 import { getProductBySlug, getProducts } from "@/lib/store";
+import { apiFetch } from "@/lib/api";
 import { getSettings } from "@/lib/settings";
+import { resolveProductTabs } from "@/lib/product-tabs";
 import type { Product } from "@/types/product";
 
 export const revalidate = 120;
 
+function productRedirectUrl(product: Product | null) {
+  const value = product?.catalogMeta && typeof product.catalogMeta.redirectUrl === "string" ? product.catalogMeta.redirectUrl.trim() : "";
+  return value;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
+  const destination = productRedirectUrl(product);
+  if (destination) redirect(destination);
   if (!product) return {};
   return {
     title: product.seoTitle || product.name,
@@ -40,11 +49,24 @@ function uniqueRelated(product: Product, groups: Product[][]): Product[] {
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  if (!product) notFound();
+  const destination = productRedirectUrl(product);
+  if (destination) redirect(destination);
+  if (!product) {
+    let destination = "";
+    try {
+      const row = await apiFetch<{ destination?: string }>(`/api/redirects/resolve?path=${encodeURIComponent(`/product/${slug}/`)}`, {
+        next: { revalidate: 120, tags: ["redirects"] },
+      });
+      destination = row?.destination || "";
+    } catch {
+      destination = "";
+    }
+    redirect(destination || "/shop");
+  }
 
   const categorySlug = product.categorySlugs[0] || product.categories[0]?.slug;
   const [settings, categoryProducts, featuredProducts, newestProducts] = await Promise.all([
-    getSettings(["store.bundleDefaultDiscountPercent", "store.info"]),
+    getSettings(["store.bundleDefaultDiscountPercent", "store.info", "store.productTabs"]),
     categorySlug ? getProducts({ category: categorySlug, limit: 8 }) : Promise.resolve({ items: [], page: 1, limit: 8, total: 0, totalPages: 1 }),
     getProducts({ featured: true, limit: 8 }),
     getProducts({ limit: 8, sort: "newest" }),
@@ -64,6 +86,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     sku: product.sku,
     image: product.images.map((image) => image.src),
     description: product.shortDescription || product.name,
+    brand: { "@type": "Brand", name: product.brand || "Zelvomart" },
     offers: {
       "@type": "Offer",
       priceCurrency: "PKR",
@@ -85,15 +108,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   };
 
   return (
-    <div className="product-page">
+    <div className="product-page zpd-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }} />
 
       <div className="site-shell">
-        <nav className="pdp-reference-breadcrumb" aria-label="Breadcrumb">
+        <nav className="zpd-breadcrumb" aria-label="Breadcrumb">
           <Link href="/">Home</Link><span>›</span><Link href="/shop">Shop</Link><span>›</span><span>{product.name}</span>
         </nav>
-        <ProductDetailClient product={product} defaultBundleDiscount={defaultDiscount} whatsapp={whatsapp} />
+        <ProductDetailClient
+          product={product}
+          defaultBundleDiscount={defaultDiscount}
+          whatsapp={whatsapp}
+          sections={resolveProductTabs(settings["store.productTabs"], product.catalogMeta)}
+        />
       </div>
 
       {related.length ? (

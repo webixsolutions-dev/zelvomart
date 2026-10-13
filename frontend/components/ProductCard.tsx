@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/components/CartProvider";
+import { BUY_TWO_DISCOUNT_PERCENT } from "@/lib/bundle-price";
 import { money } from "@/lib/format";
+import { useDeliveryPolicy } from "@/components/DeliveryPolicy";
 import type { Product } from "@/types/product";
 import { trackStoreEvent } from "@/lib/client-tracking";
 import { getProductFallbackImage } from "@/lib/product-media";
@@ -14,7 +16,12 @@ const SWATCHES = ["#f6a5b9","#b7d9eb","#c4dec9","#d7c8ef","#d9d9d9"];
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
-  const addable = product.stockStatus === "instock" && !product.hasOptions;
+  const delivery = useDeliveryPolicy();
+  const onlyVariant = product.variants?.length === 1 ? product.variants[0] : null;
+  const needsChoice = (product.variants?.length || 0) > 1;
+  const addable = product.stockStatus === "instock" && !needsChoice;
+  const unitPrice = Number(onlyVariant?.priceOverride ?? product.price);
+  const badge = product.badges?.[0] || "";
   const fallbackImage = getProductFallbackImage(product);
   const [imageSrc, setImageSrc] = useState(product.image || fallbackImage);
   const reviewCount = product.reviewCount ?? 0;
@@ -23,8 +30,8 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const add = () => {
     if (!addable) return;
-    addItem({ productId: product.id, sku: product.sku, slug: product.slug, name: product.name, image: imageSrc, price: product.price, quantity: 1, bundleSize: 1, bundleDiscountPercent: product.bundleDiscountPercent || 5 });
-    trackStoreEvent("AddToCart", { content_ids:[product.sku], contents:[{id:product.sku,quantity:1,item_price:product.price}], value:product.price, currency:"PKR" }, { clarityEvent:"add_to_cart" }).catch(()=>undefined);
+    addItem({ productId: product.id, variantId: onlyVariant?.id, sku: onlyVariant?.sku || product.sku, slug: product.slug, name: product.name, image: onlyVariant?.imageUrl || imageSrc, price: unitPrice, quantity: 1, bundleSize: 1, bundleDiscountPercent: product.buyTwoDiscountPercent || BUY_TWO_DISCOUNT_PERCENT, variantLabel: onlyVariant?.name, freeShipping: Boolean(product.freeShipping) });
+    trackStoreEvent("AddToCart", { content_ids:[onlyVariant?.sku || product.sku], contents:[{id:onlyVariant?.sku || product.sku,quantity:1,item_price:unitPrice}], value:unitPrice, currency:"PKR" }, { clarityEvent:"add_to_cart" }).catch(()=>undefined);
   };
 
   return (
@@ -41,7 +48,7 @@ export default function ProductCard({ product }: { product: Product }) {
             onError={()=>{if(imageSrc!==fallbackImage)setImageSrc(fallbackImage)}}
           />
         </Link>
-        {product.featured ? <span className="mock-product-badge">Bestseller</span> : product.discountPercent > 0 ? <span className="mock-product-badge gift">Gift-ready</span> : null}
+        {badge ? <span className="zm-center-badge">{badge}</span> : null}
       </div>
 
       <div className="mock-product-copy zm-product-copy">
@@ -58,10 +65,13 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
 
         <div className="mock-product-price zm-product-price">
-          <strong>{money(product.price)}</strong>
+          <strong>{money(unitPrice)}</strong>
           {product.onSale ? <del>{money(product.regularPrice)}</del> : null}
           {save > 0 ? <em>Save {money(save)}</em> : null}
         </div>
+        <p className={product.freeShipping ? "zm-ship-note is-free" : "zm-ship-note"}>
+          {product.freeShipping ? "Free shipping" : `Delivery ${money(delivery.flatRate)}`}
+        </p>
 
         <div className="mock-product-swatches zm-product-swatches">
           {SWATCHES.slice(0, Math.min(5, product.hasOptions ? Math.max(2, product.variants.length) : 2)).map((c,i)=><i key={i} style={{background:c}} />)}
@@ -124,6 +134,27 @@ export default function ProductCard({ product }: { product: Product }) {
           height: 100%;
         }
 
+        .zm-center-badge {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          z-index: 2;
+          transform: translate(-50%, -50%);
+          max-width: calc(100% - 24px);
+          padding: 6px 12px;
+          border-radius: 999px;
+          background: rgba(224, 242, 254, 0.96);
+          color: #0369a1;
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.2;
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+          pointer-events: none;
+        }
         .mock-product-media :global(.zm-product-image) {
           display: block;
           width: 100% !important;
@@ -248,6 +279,8 @@ export default function ProductCard({ product }: { product: Product }) {
           .zm-product-price strong {
             font-size: 17px !important;
           }
+          .zm-ship-note { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: #0b6f93; }
+          .zm-ship-note.is-free { color: #178a49; }
           .zm-product-cart-button {
             min-height: 40px;
             font-size: 13px;

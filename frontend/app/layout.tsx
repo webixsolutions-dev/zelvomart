@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { Suspense } from "react";
-import Script from "next/script";
 import "./globals.css";
 import "./home-sections.css";
 import "@rrweb/replay/dist/style.css";
@@ -68,9 +67,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="preload" as="image" type="image/webp" href="/images/hero/zelvomart-slider-01.webp" />
 
         {/* Fix for Next.js 16 + Turbopack negative performance timestamp bug */}
-        <Script
+        <script
           id="turbopack-timestamp-fix"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
@@ -118,6 +116,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           metaPixel={<MetaPixelScript pixelId={pixelId} />}
           clarity={<ClarityScript projectId={clarityId} />}
           organizationJson={JSON.stringify(org)}
+          delivery={(bootstrap?.settings?.["store.delivery"] || null) as any}
         >
           {children}
         </SiteChrome>
