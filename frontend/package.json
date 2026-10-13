@@ -12,11 +12,12 @@
     "build:webpack": "next build --webpack"
   },
   "dependencies": {
+    "@rrweb/record": "^2.1.6",
+    "@rrweb/replay": "^2.1.6",
     "next": "^16.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "@rrweb/record": "^2.1.6",
-    "@rrweb/replay": "^2.1.6"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",
