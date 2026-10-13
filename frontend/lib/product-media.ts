@@ -30,14 +30,19 @@ const CATEGORY_FALLBACKS: Record<string, string> = {
   "kids-toys": "/images/Zelvomart images/Kids & Toys Zelvomart.png",
 };
 
-export function getProductFallbackImage(product: Pick<Product, "slug" | "categorySlugs" | "categories">): string {
+const DEFAULT_PRODUCT_IMAGE = "/images/Zelvomart images/Shop Zelvmart.png";
+
+// Product may be missing (e.g. an empty catalog during a build), so fall back to the shop image
+export function getProductFallbackImage(product?: Pick<Product, "slug" | "categorySlugs" | "categories"> | null): string {
+  if (!product) return DEFAULT_PRODUCT_IMAGE;
+
   const legacy = LEGACY_PRODUCT_IMAGES[product.slug];
   if (legacy) return legacy;
 
   const categorySlug = product.categorySlugs?.[0] || product.categories?.[0]?.slug || "";
   if (categorySlug && CATEGORY_FALLBACKS[categorySlug]) return CATEGORY_FALLBACKS[categorySlug];
 
-  return "/images/Zelvomart images/Shop Zelvmart.png";
+  return DEFAULT_PRODUCT_IMAGE;
 }
 
 function isLegacyRemoteImage(src: string): boolean {
