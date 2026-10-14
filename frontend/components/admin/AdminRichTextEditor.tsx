@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 
 type HeadingTag = "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
@@ -12,6 +12,7 @@ type Props = {
   onChange?: (value: string) => void;
   compact?: boolean;
   tickBullets?: boolean;
+  onAddMedia?: () => void;
 };
 
 function showEditorError(message: string) {
@@ -68,12 +69,14 @@ function ReferenceRichTextEditor({
   placeholder = "Write the full product description...",
   compact = false,
   tickBullets = false,
+  onAddMedia,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   compact?: boolean;
   tickBullets?: boolean;
+  onAddMedia?: () => void;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const savedRangeRef = useRef<Range | null>(null);
@@ -83,6 +86,22 @@ function ReferenceRichTextEditor({
     selectedText: string;
   } | null>(null);
   const [blockType, setBlockType] = useState("p");
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    strikeThrough: false,
+    alignLeft: false,
+    alignCenter: false,
+    alignRight: false,
+  });
+
+  const wordCount = useMemo(() => {
+    if (!value) return 0;
+    const text = value.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").trim();
+    if (!text) return 0;
+    return text.split(/\s+/).filter(Boolean).length;
+  }, [value]);
 
   function createTextBookmark(editor: HTMLDivElement, range: Range) {
     try {
@@ -215,11 +234,29 @@ function ReferenceRichTextEditor({
     selection.addRange(savedRangeRef.current);
   }
 
+  function syncActiveStates() {
+    setBlockType(currentBlockTag());
+    if (typeof document !== "undefined") {
+      try {
+        setActiveFormats({
+          bold: document.queryCommandState("bold"),
+          italic: document.queryCommandState("italic"),
+          underline: document.queryCommandState("underline"),
+          strikeThrough: document.queryCommandState("strikeThrough"),
+          alignLeft: document.queryCommandState("justifyLeft"),
+          alignCenter: document.queryCommandState("justifyCenter"),
+          alignRight: document.queryCommandState("justifyRight"),
+        });
+      } catch {}
+    }
+  }
+
   function runCommand(command: string, commandValue?: string) {
     restoreSelection();
     document.execCommand(command, false, commandValue);
     saveSelection();
     syncValue();
+    syncActiveStates();
   }
 
   function currentBlockTag(): HeadingTag {
@@ -644,50 +681,28 @@ function ReferenceRichTextEditor({
     applyHeadingShortcut(heading);
   }
 
-  const buttonClass =
-    "grid h-9 min-w-9 place-items-center rounded-md border border-transparent bg-white px-2 text-[13px] font-semibold text-navy transition hover:border-border-strong hover:bg-offwhite hover:text-teal active:bg-teal/10";
+  const getButtonClass = (isActive: boolean) =>
+    `inline-flex h-8.5 min-w-8.5 items-center justify-center rounded-lg border text-[13px] font-semibold transition cursor-pointer select-none px-2.5 ${
+      isActive
+        ? "border-[#1b63ff] bg-blue-50/90 text-[#1b63ff] shadow-xs ring-1 ring-[#1b63ff]/20"
+        : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 active:border-[#1b63ff]/50"
+    }`;
 
-  const dividerClass = "mx-1 hidden h-7 w-px bg-border sm:block";
+  const dividerClass = "mx-1 hidden h-6 w-px bg-slate-200 sm:block";
 
   return (
-    <div className="relative max-h-[640px] overflow-y-auto rounded-lg border border-border-strong bg-white shadow-sm transition focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/10 [scrollbar-gutter:stable]">
-      <div className="sticky top-0 z-30 flex flex-wrap items-center gap-1 border-b border-border bg-offwhite/95 p-2 shadow-sm backdrop-blur">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            title="Undo"
-            aria-label="Undo"
-            className={buttonClass}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              runCommand("undo");
-            }}
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            title="Redo"
-            aria-label="Redo"
-            className={buttonClass}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              runCommand("redo");
-            }}
-          >
-            Redo
-          </button>
-        </div>
-
-        <div className={dividerClass} />
-
+    <div className="relative max-h-[640px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs transition focus-within:border-[#1b63ff] focus-within:ring-2 focus-within:ring-[#1b63ff]/15 [scrollbar-gutter:stable]">
+      <div className="sticky top-0 z-30 flex flex-wrap items-center gap-1.5 border-b border-slate-200/80 bg-slate-50/90 p-2 shadow-xs backdrop-blur-xs">
         <select
           value={blockType}
-          title="Paragraph style - Ctrl+Alt+1 to 6 for Heading 1 to 6"
+          title="Paragraph style"
           aria-label="Paragraph style"
-          className="h-9 min-w-[145px] rounded-md border border-border-strong bg-white px-3 text-[13px] font-semibold text-navy outline-none transition hover:border-teal focus:border-teal"
+          className="h-8.5 min-w-[130px] rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 outline-none transition hover:border-slate-300 focus:border-[#1b63ff] focus:ring-2 focus:ring-[#1b63ff]/15 cursor-pointer"
           onMouseDown={saveSelection}
-          onChange={(event) => applyBlock(event.target.value)}
+          onChange={(event) => {
+            applyBlock(event.target.value);
+            syncActiveStates();
+          }}
         >
           <option value="p">Paragraph</option>
           <option value="h1">Heading 1</option>
@@ -703,51 +718,51 @@ function ReferenceRichTextEditor({
         <div className="flex items-center gap-1">
           <button
             type="button"
-            title="Bold"
+            title="Bold (Ctrl+B)"
             aria-label="Bold"
-            className={`${buttonClass} font-black`}
+            className={getButtonClass(activeFormats.bold)}
             onMouseDown={(event) => {
               event.preventDefault();
               runCommand("bold");
             }}
           >
-            B
+            <span className="font-extrabold text-sm leading-none">B</span>
           </button>
           <button
             type="button"
-            title="Italic"
+            title="Italic (Ctrl+I)"
             aria-label="Italic"
-            className={`${buttonClass} font-serif italic`}
+            className={getButtonClass(activeFormats.italic)}
             onMouseDown={(event) => {
               event.preventDefault();
               runCommand("italic");
             }}
           >
-            I
+            <span className="font-serif italic font-bold text-sm leading-none">I</span>
           </button>
           <button
             type="button"
-            title="Underline"
+            title="Underline (Ctrl+U)"
             aria-label="Underline"
-            className={`${buttonClass} underline`}
+            className={getButtonClass(activeFormats.underline)}
             onMouseDown={(event) => {
               event.preventDefault();
               runCommand("underline");
             }}
           >
-            U
+            <span className="underline font-bold text-sm leading-none">U</span>
           </button>
           <button
             type="button"
             title="Strikethrough"
             aria-label="Strikethrough"
-            className={`${buttonClass} line-through`}
+            className={getButtonClass(activeFormats.strikeThrough)}
             onMouseDown={(event) => {
               event.preventDefault();
               runCommand("strikeThrough");
             }}
           >
-            S
+            <span className="line-through font-bold text-sm leading-none">S</span>
           </button>
         </div>
 
@@ -758,49 +773,49 @@ function ReferenceRichTextEditor({
             type="button"
             title="Align Left"
             aria-label="Align Left"
-            className={buttonClass}
+            className={getButtonClass(activeFormats.alignLeft)}
             onMouseDown={(event) => {
               event.preventDefault();
               runCommand("justifyLeft");
             }}
           >
-            Left
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="21" y1="6" x2="3" y2="6" />
+              <line x1="15" y1="12" x2="3" y2="12" />
+              <line x1="17" y1="18" x2="3" y2="18" />
+            </svg>
           </button>
           <button
             type="button"
             title="Align Center"
             aria-label="Align Center"
-            className={buttonClass}
+            className={getButtonClass(activeFormats.alignCenter)}
             onMouseDown={(event) => {
               event.preventDefault();
               runCommand("justifyCenter");
             }}
           >
-            Center
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="6" />
+              <line x1="21" y1="12" x2="3" y2="12" />
+              <line x1="18" y1="18" x2="6" y2="18" />
+            </svg>
           </button>
           <button
             type="button"
             title="Align Right"
             aria-label="Align Right"
-            className={buttonClass}
+            className={getButtonClass(activeFormats.alignRight)}
             onMouseDown={(event) => {
               event.preventDefault();
               runCommand("justifyRight");
             }}
           >
-            Right
-          </button>
-          <button
-            type="button"
-            title="Justify"
-            aria-label="Justify"
-            className={buttonClass}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              runCommand("justifyFull");
-            }}
-          >
-            Justify
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="21" y1="6" x2="3" y2="6" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+              <line x1="21" y1="18" x2="7" y2="18" />
+            </svg>
           </button>
         </div>
 
@@ -811,68 +826,38 @@ function ReferenceRichTextEditor({
             type="button"
             title={tickBullets ? "Tick bullet list" : "Bulleted List"}
             aria-label={tickBullets ? "Tick bullet list" : "Bulleted List"}
-            className={buttonClass}
+            className={getButtonClass(false)}
             onMouseDown={(event) => {
               event.preventDefault();
               if (tickBullets) insertTickList();
               else runCommand("insertUnorderedList");
             }}
           >
-            {tickBullets ? "✓" : "Bullets"}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="9" y1="6" x2="20" y2="6" />
+              <line x1="9" y1="12" x2="20" y2="12" />
+              <line x1="9" y1="18" x2="20" y2="18" />
+              <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" />
+              <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" />
+              <circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" />
+            </svg>
           </button>
+
           <button
             type="button"
-            title="Numbered List"
-            aria-label="Numbered List"
-            className={buttonClass}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              runCommand("insertOrderedList");
-            }}
-          >
-            1.
-          </button>
-        </div>
-
-        <div className={dividerClass} />
-
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            title="Insert Link"
-            aria-label="Insert Link"
-            className={buttonClass}
+            title="Insert / Edit Link"
+            aria-label="Insert / Edit Link"
+            className={getButtonClass(false)}
             onMouseDown={(event) => {
               event.preventDefault();
               saveSelection();
               addLink();
             }}
           >
-            Link
-          </button>
-          <button
-            type="button"
-            title="Remove Link"
-            aria-label="Remove Link"
-            className={buttonClass}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              removeLink();
-            }}
-          >
-            Unlink
-          </button>
-          <button
-            type="button"
-            title="Clear Formatting"
-            aria-label="Clear Formatting"
-            className={buttonClass}
-            onMouseDown={(event) => {
-              event.preventDefault();
-              runCommand("removeFormat");
-            }}
-          >
-            Tx
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
           </button>
         </div>
       </div>
@@ -885,6 +870,7 @@ function ReferenceRichTextEditor({
         onInput={() => {
           saveSelection();
           syncValue();
+          syncActiveStates();
         }}
         onBlur={() => {
           saveSelection();
@@ -892,18 +878,27 @@ function ReferenceRichTextEditor({
         }}
         onMouseUp={() => {
           saveSelection();
-          syncBlockType();
+          syncActiveStates();
         }}
         onClick={handleEditorLinkClick}
         onKeyDown={handleEditorKeyDown}
         onKeyUp={() => {
           saveSelection();
-          syncBlockType();
+          syncActiveStates();
         }}
-        onFocus={saveSelection}
+        onFocus={() => {
+          saveSelection();
+          syncActiveStates();
+        }}
         onPaste={handlePaste}
         className={`${compact ? "min-h-[92px] max-h-[168px] overflow-y-auto px-4 py-3" : "min-h-[300px] px-5 py-4"} bg-white text-[13px] leading-7 text-charcoal outline-none empty:before:pointer-events-none empty:before:text-slate/60 empty:before:content-[attr(data-placeholder)] [&_p]:my-3 [&_h1]:mb-4 [&_h1]:mt-6 [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:leading-tight [&_h1]:text-navy [&_h2]:mb-3 [&_h2]:mt-5 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:leading-tight [&_h2]:text-navy [&_h3]:mb-2 [&_h3]:mt-4 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:leading-snug [&_h3]:text-navy [&_h4]:mb-2 [&_h4]:mt-3 [&_h4]:text-lg [&_h4]:font-bold [&_h4]:text-navy [&_h5]:mb-1 [&_h5]:mt-3 [&_h5]:text-base [&_h5]:font-bold [&_h5]:text-navy [&_h6]:mb-1 [&_h6]:mt-2 [&_h6]:text-sm [&_h6]:font-bold [&_h6]:uppercase [&_h6]:tracking-wide [&_h6]:text-navy [&_ul]:my-3 [&_ul]:ml-7 [&_ul]:list-disc [&_ul.tick-list]:ml-0 [&_ul.tick-list]:list-none [&_ul.tick-list_li]:relative [&_ul.tick-list_li]:pl-6 [&_ul.tick-list_li]:before:absolute [&_ul.tick-list_li]:before:left-0 [&_ul.tick-list_li]:before:font-bold [&_ul.tick-list_li]:before:text-emerald-600 [&_ul.tick-list_li]:before:content-['✓'] [&_ol]:my-3 [&_ol]:ml-7 [&_ol]:list-decimal [&_li]:my-1 [&_a]:cursor-pointer [&_a]:font-medium [&_a]:text-teal [&_a]:underline [&_a]:underline-offset-2 [&_a]:transition-colors [&_a:hover]:text-navy [&_strong]:font-bold`}
       />
+
+      {!compact && (
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/70 px-4 py-2 text-xs font-medium text-slate-500">
+          <span>Word count: {wordCount}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -915,6 +910,7 @@ export default function AdminRichTextEditor({
   onChange,
   compact = false,
   tickBullets = false,
+  onAddMedia,
 }: Props) {
   const [html, setHtml] = useState(defaultValue);
 
@@ -929,7 +925,14 @@ export default function AdminRichTextEditor({
 
   return (
     <>
-      <ReferenceRichTextEditor value={html} onChange={update} placeholder={placeholder} compact={compact} tickBullets={tickBullets} />
+      <ReferenceRichTextEditor
+        value={html}
+        onChange={update}
+        placeholder={placeholder}
+        compact={compact}
+        tickBullets={tickBullets}
+        onAddMedia={onAddMedia}
+      />
       <textarea name={name} value={html} readOnly hidden aria-hidden="true" />
     </>
   );

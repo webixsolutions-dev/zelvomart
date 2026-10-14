@@ -1551,12 +1551,21 @@ app.post('/api/admin/upload', requireAuth('products.write'), (req,res,next)=>{
   try {
     const ext=path.extname(req.file.originalname||'').replace(/[^.a-zA-Z0-9]/g,'')||'';
     const base=path.basename(req.file.originalname||'image',ext).replace(/[^a-zA-Z0-9._-]/g,'-')||'image';
-    const url=await uploadObject(`products/${Date.now()}-${base}${ext}`,req.file.buffer,req.file.mimetype);
-    res.json({url});
+    const filename = `${Date.now()}-${base}${ext}`;
+    try {
+      const url=await uploadObject(`products/${filename}`,req.file.buffer,req.file.mimetype);
+      return res.json({url});
+    } catch (storageError:any) {
+      console.warn('[upload] Cloud storage upload failed or unconfigured; saving to local storage fallback:', storageError?.message);
+      const fs = await import('node:fs/promises');
+      const uploadDir = path.join(getLocalUploadDir(), 'products');
+      await fs.mkdir(uploadDir, { recursive: true });
+      await fs.writeFile(path.join(uploadDir, filename), req.file.buffer);
+      const localUrl = `/uploads/products/${filename}`;
+      return res.json({ url: localUrl });
+    }
   } catch (error:any) {
-    const unconfigured=error instanceof StorageError&&error.code==='STORAGE_NOT_CONFIGURED';
-    const message=error instanceof StorageError?error.message:`Unable to upload to Cloudflare: ${error?.message||'unknown error'}.`;
-    res.status(unconfigured?503:502).json({error:unconfigured?'STORAGE_NOT_CONFIGURED':'UPLOAD_FAILED',message});
+    res.status(500).json({error:'UPLOAD_FAILED',message:`Unable to save image: ${error?.message||'unknown error'}`});
   }
 });
 

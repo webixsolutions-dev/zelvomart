@@ -7,6 +7,7 @@ import { clientApi, uploadAdminImage } from "@/lib/client-api";
 import { badgesFromCatalog } from "@/lib/product-badges";
 import { PRODUCT_TAB_DEFS, mergeGlobalProductTabs, readProductTabOverrides, type ProductTabKey, type ProductTabOverride } from "@/lib/product-tabs";
 import type { Product } from "@/types/product";
+import { toast } from "react-toastify";
 
 type Category = { id: string; name: string; slug?: string };
 type ProductType = "simple" | "variable";
@@ -24,7 +25,7 @@ type DataTab =
   | "swatches"
   | "advanced"
   | "delivery";
-type SeoTab = "general" | "advanced";
+type SeoTab = "general" | "advanced" | "social" | "schema";
 type ImageMeta = {
   alt: string;
   title: string;
@@ -105,14 +106,19 @@ const SIMPLE_TABS: { id: DataTab; label: string }[] = [
   { id: "general", label: "General" },
   { id: "inventory", label: "Inventory" },
   { id: "shipping", label: "Shipping" },
+  { id: "linked", label: "Linked Products" },
+  { id: "attributes", label: "Attributes" },
+  { id: "advanced", label: "Advanced" },
   { id: "tabs", label: "Product Tabs" },
 ];
 
 const VARIABLE_TABS: { id: DataTab; label: string }[] = [
   { id: "inventory", label: "Inventory" },
   { id: "shipping", label: "Shipping" },
+  { id: "linked", label: "Linked Products" },
   { id: "attributes", label: "Attributes" },
   { id: "variations", label: "Variations" },
+  { id: "advanced", label: "Advanced" },
   { id: "tabs", label: "Product Tabs" },
 ];
 
@@ -378,9 +384,59 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   const [gallery, setGallery] = useState<string[]>(initialImages.slice(1));
   const [imageMeta, setImageMeta] = useState<ImageMeta>({ ...EMPTY_IMAGE_META, ...(catalog.imageMeta || {}) });
   const [imageEditorOpen, setImageEditorOpen] = useState(false);
-  const [brand] = useState(catalog.brand || "");
+  const [brand, setBrand] = useState(catalog.brand || "Hash Deals");
+  const [brandList, setBrandList] = useState<string[]>(() => {
+    const defaults = ["Hash Deals", "Zelvomart", "Generic"];
+    if (catalog.brand && !defaults.includes(catalog.brand)) defaults.push(catalog.brand);
+    return defaults;
+  });
+  const [brandTab, setBrandTab] = useState<"all" | "mostUsed">("all");
+  const [newBrandInput, setNewBrandInput] = useState("");
+  const [showAddBrand, setShowAddBrand] = useState(false);
+  function addBrand() {
+    const trimmed = newBrandInput.trim();
+    if (!trimmed) return;
+    if (!brandList.includes(trimmed)) setBrandList((prev) => [...prev, trimmed]);
+    setBrand(trimmed);
+    setNewBrandInput("");
+    setShowAddBrand(false);
+  }
+  const [catTab, setCatTab] = useState<"all" | "mostUsed">("all");
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [virtual, setVirtual] = useState(Boolean(catalog.virtual));
+  const [downloadable, setDownloadable] = useState(Boolean(catalog.downloadable));
+  const [taxStatus, setTaxStatus] = useState(catalog.taxStatus || "taxable");
+  const [taxClass, setTaxClass] = useState(catalog.taxClass || "standard");
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const toggleCollapse = (id: string) => setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
   const [badge, setBadge] = useState(typeof catalog.badge === "string" ? catalog.badge : "");
   const [tags, setTags] = useState<string[]>(Array.isArray(catalog.tags) ? catalog.tags.filter((tag: unknown) => typeof tag === "string") : []);
+  const [tagList, setTagList] = useState<{ id: string; label: string; hint: string }[]>(() => {
+    const list = [...PRODUCT_TAGS];
+    const initialTags = Array.isArray(catalog.tags) ? catalog.tags.filter((tag: unknown) => typeof tag === "string") : [];
+    initialTags.forEach((t: string) => {
+      if (!list.some((item) => item.id === t)) {
+        list.push({ id: t, label: t.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), hint: "Custom tag" });
+      }
+    });
+    return list;
+  });
+  const [newTagInput, setNewTagInput] = useState("");
+  const [showAddTag, setShowAddTag] = useState(false);
+
+  function addNewTag() {
+    const val = newTagInput.trim();
+    if (!val) return;
+    const tagId = slugify(val);
+    if (!tagList.some((t) => t.id === tagId)) {
+      setTagList((prev) => [...prev, { id: tagId, label: val, hint: "Custom tag" }]);
+    }
+    if (!tags.includes(tagId)) {
+      setTags((prev) => [...prev, tagId]);
+    }
+    setNewTagInput("");
+    setShowAddTag(false);
+  }
   const [redirectFallback, setRedirectFallback] = useState(catalog.redirectFallback !== false);
   const [redirectUrl, setRedirectUrl] = useState(typeof catalog.redirectUrl === "string" ? catalog.redirectUrl : "");
   const [uploadBusy, setUploadBusy] = useState<"main" | "gallery" | "variation" | "">("");
@@ -392,10 +448,26 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   const [canonicalUrl, setCanonicalUrl] = useState(initial?.canonicalUrl || "");
   const [snippetOpen, setSnippetOpen] = useState(false);
   const [seoTab, setSeoTab] = useState<SeoTab>("general");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [inlineSnippetOpen, setInlineSnippetOpen] = useState(false);
+  const [robotsIndex, setRobotsIndex] = useState<"index" | "noindex">(catalog.robotsIndex || "index");
+  const [robotsNoFollow, setRobotsNoFollow] = useState<boolean>(Boolean(catalog.robotsNoFollow));
+  const [socialTitle, setSocialTitle] = useState(catalog.socialTitle || "");
+  const [socialDescription, setSocialDescription] = useState(catalog.socialDescription || "");
   const [seoOpen, setSeoOpen] = useState({ basic: true, additional: true, title: true, content: true });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
+
+  function notifyError(message: string) {
+    setError(message);
+    toast.error(message);
+  }
+
+  function notifySuccess(message: string) {
+    setSavedMessage(message);
+    toast.success(message);
+  }
 
   useEffect(() => {
     setCategoryOptions(categories);
@@ -589,7 +661,11 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       );
     }
     previews.forEach((url) => URL.revokeObjectURL(url));
-    if (failure) setError(failure);
+    if (failure) {
+      notifyError(failure);
+    } else if (uploaded.filter(Boolean).length > 0) {
+      notifySuccess(uploaded.filter(Boolean).length === 1 ? "Image uploaded successfully." : `${uploaded.filter(Boolean).length} images uploaded successfully.`);
+    }
     setUploadBusy("");
   }
 
@@ -675,15 +751,26 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   async function saveForm(targetStatus?: "DRAFT" | "PUBLISHED") {
     if (busy) return;
     if (uploadBusy) {
-      setError("Wait for the image upload to finish, then save.");
+      notifyError("Wait for the image upload to finish, then save.");
       return;
     }
     const nextStatus = targetStatus || (status === "PUBLISHED" ? "PUBLISHED" : "DRAFT");
-    if (!title.trim() || !slug.trim() || !sku.trim()) {
-      setError("Product name, permalink and SKU are required.");
-      setActiveTab("inventory");
+    if (!title.trim()) {
+      notifyError("Please enter a product name.");
+      const titleEl = document.getElementById("product-title-input");
+      if (titleEl) {
+        titleEl.focus();
+        titleEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
+
+    const finalSlug = slug.trim() || slugify(title.trim() || "product");
+    if (!slug.trim()) setSlug(finalSlug);
+
+    const finalSku = sku.trim() || `ZVM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    if (!sku.trim()) setSku(finalSku);
+
     const description = descriptionHtml;
     const shortDescription = shortHtml;
     const enabledVariations = variations.filter((item) => item.enabled);
@@ -691,8 +778,15 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
     const rawPrice = productType === "variable" ? Math.min(...(variationPrices.length ? variationPrices : [Number(regularPrice || 0)])) : Number(regularPrice || 0);
     const price = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0;
     if (nextStatus === "PUBLISHED" && price <= 0) {
-      setError("Add a regular price before posting. Each variation can keep its own price.");
+      notifyError("Add a regular price before posting. Each variation can keep its own price.");
       setActiveTab(productType === "simple" ? "general" : "variations");
+      setTimeout(() => {
+        const priceEl = document.getElementById("product-regular-price");
+        if (priceEl) {
+          priceEl.focus();
+          priceEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
       return;
     }
     const parentStock = stockFrom(stockStatus, quantity, trackStock);
@@ -709,7 +803,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             delete (attributes as { gallery?: string[] }).gallery;
             return {
               name: item.name,
-              sku: item.sku.trim() || `${sku}-V${index + 1}`,
+              sku: item.sku.trim() || `${finalSku}-V${index + 1}`,
               stock: stockFrom(item.stockStatus, item.quantity, item.trackStock),
               priceOverride: Number(item.salePrice || item.regularPrice || price) || null,
               imageUrl: item.images?.find((src) => src && !src.startsWith("blob:")) || null,
@@ -723,15 +817,15 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
     setSavedMessage("");
     const payload = {
       title: title.trim(),
-      slug: slug.trim(),
-      sku: sku.trim(),
+      slug: finalSlug,
+      sku: finalSku,
       categoryId: categoryId || null,
       price,
       salePrice: salePrice ? Number(salePrice) : null,
       stock,
       status: nextStatus,
       featured: tags.includes("best-selling"),
-      previousSlug: initial?.slug && initial.slug !== slug.trim() ? initial.slug : undefined,
+      previousSlug: initial?.slug && initial.slug !== finalSlug ? initial.slug : undefined,
       redirectFallback,
       redirectUrl: redirectUrl.trim() || null,
       bundleEnabled,
@@ -773,10 +867,18 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
         freeShipping: Boolean(catalog.freeShipping),
         focusKeyword,
         brand: brand.trim(),
+        virtual,
+        downloadable,
+        taxStatus,
+        taxClass,
         badge: badge.trim(),
         tags,
         redirectFallback,
         redirectUrl: redirectUrl.trim(),
+        robotsIndex,
+        robotsNoFollow,
+        socialTitle: socialTitle.trim(),
+        socialDescription: socialDescription.trim(),
         imageMeta,
       },
     };
@@ -788,12 +890,16 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
         true,
       );
       setStatus(nextStatus);
-      setSavedMessage(nextStatus === "PUBLISHED" ? "Product posted. It now appears on the shop and in its category." : "Draft saved. Reload this page and it stays a draft until you post it.");
+      const successMsg =
+        nextStatus === "PUBLISHED"
+          ? "Product published successfully! It is now live in your store."
+          : "Product saved as draft successfully.";
+      notifySuccess(successMsg);
       clearAdminDataCache("/api/admin/products");
       if (product?.id) clearAdminDataCache(`/api/admin/products/${product.id}`);
       onSaved?.(product);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message.replace(/_/g, " ") : "Save failed");
+      notifyError(requestError instanceof Error ? requestError.message.replace(/_/g, " ") : "Save failed");
     } finally {
       setBusy(false);
     }
@@ -891,122 +997,183 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   }
 
   return (
-    <form ref={formRef} className="pd-form" onSubmit={submit}>
-      <section className="pd-card">
-        <div className="pd-name-row">
-          <label className="pd-name">
-            <span>Product name</span>
-            <input value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="Product name" required />
-          </label>
-          <div className="pd-name-actions">
-            <button type="button" className={`pd-name-action${status === "DRAFT" ? " is-active" : ""}`} disabled={busy} onClick={() => void saveForm("DRAFT")}>
-              {busy && status === "DRAFT" ? "Saving..." : "Draft"}
-            </button>
-            <button type="button" className={`pd-name-action is-post${status === "PUBLISHED" ? " is-active" : ""}`} disabled={busy} onClick={() => void saveForm("PUBLISHED")}>
-              {busy && status === "PUBLISHED" ? "Saving..." : "Post"}
-            </button>
-          </div>
-        </div>
-        <div className="pd-permalink">
-          <span>Permalink:</span>
-          {editingSlug && !publishedSlugLocked ? (
+    <form ref={formRef} className="pd-form wp-editor-wrap" onSubmit={submit}>
+      <div className="wp-editor-grid">
+        {/* Main Column */}
+        <div className="wp-main-col">
+          {/* Title & Permalink */}
+          <div className="wp-title-wrap">
             <input
-              value={slug}
-              onChange={(event) => {
-                setSlugTouched(true);
-                setSlug(slugify(event.target.value));
-              }}
-              onBlur={() => setEditingSlug(false)}
-              aria-label="Permalink slug"
+              id="product-title-input"
+              className="wp-title-input"
+              value={title}
+              onChange={(event) => onTitleChange(event.target.value)}
+              placeholder="Product name"
+              required
             />
-          ) : (
-            <a href={`/product/${slug || "product"}/`} target="_blank" rel="noreferrer">
-              {previewUrl}
-            </a>
-          )}
-          {!publishedSlugLocked ? (
-            <button type="button" onClick={() => setEditingSlug((open) => !open)}>
-              {editingSlug ? "OK" : "Edit"}
-            </button>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="pd-card">
-        <div className="pd-card-head">
-          <h2>Product description</h2>
-          <p>Full story for the product page. Use paragraphs, headings and lists.</p>
-        </div>
-        <AdminRichTextEditor name="descriptionHtml" defaultValue={initial?.descriptionHtml || initial?.description || ""} onChange={setDescriptionHtml} placeholder="Describe the product, materials and how to use it..." />
-      </section>
-
-      <section className="pd-card pd-short-copy">
-        <div className="pd-card-head">
-          <h2>Product short description</h2>
-          <p>Shown beside the price before Add to cart. Keep it to two lines, then add tick-mark bullets for the key benefits.</p>
-        </div>
-        <AdminRichTextEditor
-          name="shortDescription"
-          defaultValue={initial?.shortDescription || ""}
-          onChange={setShortHtml}
-          placeholder="Two short lines, then ✓ bullets for the key benefits..."
-          compact
-          tickBullets
-        />
-      </section>
-
-      <div className="pd-layout">
-        <section className="pd-card pd-data">
-          <header className="pd-data-bar">
-            <div>
-              <span>Product data</span>
-              <select value={productType} onChange={(event) => chooseType(event.target.value as ProductType)} aria-label="Product type">
-                <option value="simple">Simple product</option>
-                <option value="variable">Variable product</option>
-              </select>
-            </div>
-            <p>{productType === "simple" ? "One price, one stock count." : "Options such as color or size, each with its own stock."}</p>
-          </header>
-          <div className="pd-data-body">
-            <nav aria-label="Product data sections">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={activeTab === tab.id ? "is-active" : ""}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  <TabIcon id={tab.id} />
-                  {tab.label}
+            <div className="wp-permalink-row">
+              <strong>Permalink:</strong>
+              {editingSlug && !publishedSlugLocked ? (
+                <input
+                  value={slug}
+                  onChange={(event) => {
+                    setSlugTouched(true);
+                    setSlug(slugify(event.target.value));
+                  }}
+                  onBlur={() => setEditingSlug(false)}
+                  aria-label="Permalink slug"
+                />
+              ) : (
+                <a href={`/product/${slug || "product"}/`} target="_blank" rel="noreferrer">
+                  {previewUrl}
+                </a>
+              )}
+              {!publishedSlugLocked ? (
+                <button type="button" className="wp-btn-secondary" onClick={() => setEditingSlug((open) => !open)}>
+                  {editingSlug ? "OK" : "Edit"}
                 </button>
-              ))}
-            </nav>
-            <div className="pd-data-panel" key={activeTab}>
-              {activeTab === "general" && productType === "simple" ? (
-                <>
-                  <Field label="Regular price (Rs) (ex. tax)">
-                    <input type="number" min="0" step="0.01" value={regularPrice} onChange={(event) => setRegularPrice(event.target.value)} placeholder="0" />
-                  </Field>
-                  <Field label="Sale price (Rs) (ex. tax)">
-                    <input type="number" min="0" step="0.01" value={salePrice} onChange={(event) => setSalePrice(event.target.value)} placeholder="" />
-                    <button type="button" className="pd-link" onClick={() => setScheduleOpen((open) => !open)}>
-                      Schedule
-                    </button>
-                    {scheduleOpen ? (
-                      <div className="pd-schedule">
-                        <label>
-                          From
-                          <input type="date" value={saleFrom} onChange={(event) => setSaleFrom(event.target.value)} />
-                        </label>
-                        <label>
-                          To
-                          <input type="date" value={saleTo} onChange={(event) => setSaleTo(event.target.value)} />
-                        </label>
-                      </div>
-                    ) : null}
-                  </Field>
-                </>
               ) : null}
+            </div>
+          </div>
+
+          {/* Product description metabox */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("description")}>
+              <h3 className="wp-metabox-title">Product description</h3>
+              <span className="wp-metabox-toggle">{collapsed.description ? "▾" : "▴"}</span>
+            </div>
+            {!collapsed.description ? (
+              <div className="wp-metabox-body" style={{ padding: 0 }}>
+                <AdminRichTextEditor
+                  name="descriptionHtml"
+                  defaultValue={initial?.descriptionHtml || initial?.description || ""}
+                  onChange={setDescriptionHtml}
+                  placeholder="Describe the product, materials and how to use it..."
+                  onAddMedia={() => galleryRef.current?.click()}
+                />
+              </div>
+            ) : null}
+          </div>
+
+          {/* Product data metabox */}
+          <section className="wp-metabox">
+            <header className="wp-product-data-header">
+              <div className="wp-product-data-title-group">
+                <strong>Product data &mdash;</strong>
+                <select
+                  className="wp-product-data-select"
+                  value={productType}
+                  onChange={(event) => chooseType(event.target.value as ProductType)}
+                  aria-label="Product type"
+                >
+                  <option value="simple">Simple product</option>
+                  <option value="variable">Variable product</option>
+                </select>
+                <span className="wp-help-icon" title="Choose whether this is a simple or variable product">?</span>
+                <label className="wp-check-label" style={{ marginLeft: 8 }}>
+                  <input type="checkbox" checked={virtual} onChange={(e) => setVirtual(e.target.checked)} />
+                  <span>Virtual</span>
+                </label>
+                <label className="wp-check-label" style={{ marginLeft: 4 }}>
+                  <input type="checkbox" checked={downloadable} onChange={(e) => setDownloadable(e.target.checked)} />
+                  <span>Downloadable</span>
+                </label>
+              </div>
+              <span className="wp-metabox-toggle" onClick={() => toggleCollapse("productData")}>
+                {collapsed.productData ? "▾" : "▴"}
+              </span>
+            </header>
+            {!collapsed.productData ? (
+              <div className="wp-product-data-body">
+                <nav className="wp-data-tabs" aria-label="Product data sections">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className={`wp-data-tab-item${activeTab === tab.id ? " is-active" : ""}`}
+                      onClick={() => setActiveTab(tab.id)}
+                    >
+                      <TabIcon id={tab.id} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </nav>
+                <div className="wp-data-panel-content" key={activeTab}>
+                  {activeTab === "general" && productType === "simple" ? (
+                    <>
+                      <div className="wp-form-row">
+                        <label>Regular price (Rs) (ex. tax)</label>
+                        <div>
+                          <input
+                            id="product-regular-price"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={regularPrice}
+                            onChange={(event) => setRegularPrice(event.target.value)}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                      <div className="wp-form-row">
+                        <label>Sale price (Rs) (ex. tax)</label>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={salePrice}
+                              onChange={(event) => setSalePrice(event.target.value)}
+                              placeholder=""
+                            />
+                            <button
+                              type="button"
+                              className="wp-link-action"
+                              style={{ margin: 0 }}
+                              onClick={() => setScheduleOpen((open) => !open)}
+                            >
+                              Schedule
+                            </button>
+                          </div>
+                          {scheduleOpen ? (
+                            <div className="pd-schedule" style={{ marginTop: 8 }}>
+                              <label>
+                                From
+                                <input type="date" value={saleFrom} onChange={(event) => setSaleFrom(event.target.value)} />
+                              </label>
+                              <label>
+                                To
+                                <input type="date" value={saleTo} onChange={(event) => setSaleTo(event.target.value)} />
+                              </label>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="wp-form-row">
+                        <label>Tax status</label>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <select value={taxStatus} onChange={(e) => setTaxStatus(e.target.value)}>
+                            <option value="taxable">Taxable</option>
+                            <option value="shipping">Shipping only</option>
+                            <option value="none">None</option>
+                          </select>
+                          <span className="wp-help-icon" title="Define whether or not the product is taxable.">?</span>
+                        </div>
+                      </div>
+                      <div className="wp-form-row">
+                        <label>Tax class</label>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <select value={taxClass} onChange={(e) => setTaxClass(e.target.value)}>
+                            <option value="standard">Standard</option>
+                            <option value="reduced-rate">Reduced rate</option>
+                            <option value="zero-rate">Zero rate</option>
+                          </select>
+                          <span className="wp-help-icon" title="Choose a tax class for this product.">?</span>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
 
               {activeTab === "inventory" ? (
                 <>
@@ -1074,6 +1241,17 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                     </select>
                   </Field>
                 </>
+              ) : null}
+
+              {activeTab === "linked" ? (
+                <div className="pd-stack">
+                  <Field label="Upsells">
+                    <input placeholder="Search for a product…" readOnly style={{ background: "#f6f7f7" }} />
+                  </Field>
+                  <Field label="Cross-sells">
+                    <input placeholder="Search for a product…" readOnly style={{ background: "#f6f7f7" }} />
+                  </Field>
+                </div>
               ) : null}
 
               {activeTab === "attributes" ? (
@@ -1491,221 +1669,862 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
               ) : null}
             </div>
           </div>
-        </section>
+        ) : null}
+      </section>
 
-        <aside className="pd-side">
-          <section className="pd-card">
-            <div className="pd-side-head">
-              <h2>Product image</h2>
-              <em>Optional</em>
+          {/* Product Short Description Metabox */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("shortDescription")}>
+              <h3 className="wp-metabox-title">Product short description</h3>
+              <span className="wp-metabox-toggle">{collapsed.shortDescription ? "▾" : "▴"}</span>
             </div>
-            <input
-              ref={mainImageRef}
-              hidden
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) rememberImageFile(file);
-                void uploadFiles(Array.from(event.target.files || []).slice(0, 1), "main");
-                event.target.value = "";
-              }}
-            />
-            {mainImage ? (
-              <div className="pd-main-image">
-                <img src={mainImage} alt={imageMeta.alt || title || "Product image"} />
-                <div>
-                  <button type="button" onClick={() => setImageEditorOpen(true)}>Edit details</button>
-                  <button type="button" onClick={() => mainImageRef.current?.click()}>{uploadBusy === "main" ? "Uploading..." : "Replace"}</button>
-                  <button type="button" onClick={() => { setMainImage(""); setImageMeta(EMPTY_IMAGE_META); }}>Remove</button>
+            {!collapsed.shortDescription ? (
+              <div className="wp-metabox-body" style={{ padding: 0 }}>
+                <AdminRichTextEditor
+                  name="shortDescription"
+                  defaultValue={initial?.shortDescription || ""}
+                  onChange={setShortHtml}
+                  placeholder="Two short lines, then ✓ bullets for the key benefits..."
+                  compact
+                  tickBullets
+                  onAddMedia={() => galleryRef.current?.click()}
+                />
+              </div>
+            ) : null}
+          </div>
+
+          {/* Product SEO Metabox (Rank Math Style) */}
+          <section className="rankmath-box">
+            <header className="rankmath-header">
+              <div className="rankmath-title-area">
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#1b63ff" }}>
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                  <h3 className="wp-metabox-title" style={{ margin: 0 }}>Product SEO</h3>
+                </div>
+
+                <div className={`rankmath-badge-score ${seo.score >= 80 ? "score-good" : seo.score >= 50 ? "score-fair" : "score-poor"}`}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "currentColor" }} />
+                  {seo.score} / 100
+                </div>
+
+                <div className="rankmath-tabs">
+                  {(["general", "advanced", "social", "schema"] as SeoTab[]).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      className={`rankmath-tab-btn${seoTab === tab ? " is-active" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSeoTab(tab);
+                      }}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <button type="button" className="pd-upload-link" onClick={() => mainImageRef.current?.click()}>
-                {uploadBusy === "main" ? "Uploading..." : "Set product image"}
-              </button>
-            )}
-            <p className="pd-side-hint">Optional. A product can be posted with no image. Alt text, title, caption and description are saved with the photo.</p>
-          </section>
 
-          <section className="pd-card">
-            <div className="pd-side-head">
-              <h2>Product gallery</h2>
-            </div>
-            <input ref={galleryRef} hidden type="file" accept="image/*" multiple onChange={(event) => { void uploadFiles(Array.from(event.target.files || []), "gallery"); event.target.value = ""; }} />
-            {gallery.length ? (
-              <div className="pd-gallery">
-                {gallery.map((src) => (
-                  <figure key={src}>
-                    <img src={src} alt="" />
-                    <button type="button" aria-label="Remove gallery image" onClick={() => setGallery((current) => current.filter((item) => item !== src))}>
-                      ×
-                    </button>
-                  </figure>
-                ))}
+              <span className="wp-metabox-toggle" onClick={() => toggleCollapse("seo")} style={{ cursor: "pointer" }}>
+                {collapsed.seo ? "▾" : "▴"}
+              </span>
+            </header>
+
+            {!collapsed.seo ? (
+              <div style={{ padding: 20 }}>
+                {/* 1. GENERAL TAB */}
+                {seoTab === "general" ? (
+                  <>
+                    {/* Google SERP Card */}
+                    <div className="rankmath-serp-card">
+                      <div className="rankmath-serp-meta">
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--adm-text-main)" }}>Google Search Preview</span>
+                          <div className="rankmath-serp-device-switch">
+                            <button
+                              type="button"
+                              className={`rankmath-serp-device-btn ${previewDevice === "desktop" ? "is-active" : ""}`}
+                              onClick={() => setPreviewDevice("desktop")}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+                              Desktop
+                            </button>
+                            <button
+                              type="button"
+                              className={`rankmath-serp-device-btn ${previewDevice === "mobile" ? "is-active" : ""}`}
+                              onClick={() => setPreviewDevice("mobile")}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12.01" y2="18" /></svg>
+                              Mobile
+                            </button>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="wp-btn-secondary"
+                          onClick={() => setInlineSnippetOpen((prev) => !prev)}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, height: 32, padding: "0 12px" }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                          {inlineSnippetOpen ? "Close Snippet" : "Edit Snippet"}
+                        </button>
+                      </div>
+
+                      {/* Real Google SERP Visual */}
+                      <div className={`rankmath-serp-google ${previewDevice === "mobile" ? "is-mobile" : ""}`}>
+                        <div className="rankmath-serp-header">
+                          <span className="rankmath-serp-favicon">Z</span>
+                          <div>
+                            <div className="rankmath-serp-site">Zelvomart</div>
+                            <div className="rankmath-serp-url">{previewUrl}</div>
+                          </div>
+                        </div>
+                        <h4 className="rankmath-serp-title" onClick={() => setInlineSnippetOpen(true)}>
+                          {seoTitle || title || "Product Title"}
+                        </h4>
+                        <p className="rankmath-serp-desc">
+                          {seoDescription || plainText(shortHtml) || "Add a meta description so search results explain this product clearly to potential shoppers."}
+                        </p>
+                      </div>
+
+                      {/* Rank Math Inline Snippet Editor Drawer */}
+                      {inlineSnippetOpen ? (
+                        <div className="rankmath-snippet-editor">
+                          <div className="rankmath-input-group">
+                            <label className="rankmath-input-label">
+                              <span>SEO Title</span>
+                              <div className="rankmath-progress-wrap">
+                                <span>{(seoTitle || title).length} / 60</span>
+                                <div className="rankmath-progress-bar">
+                                  <div
+                                    className="rankmath-progress-fill"
+                                    style={{
+                                      width: `${Math.min(100, ((seoTitle || title).length / 60) * 100)}%`,
+                                      backgroundColor: (seoTitle || title).length >= 40 && (seoTitle || title).length <= 60 ? "#10b981" : (seoTitle || title).length > 60 ? "#ef4444" : "#f59e0b",
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </label>
+                            <input
+                              className="wp-form-row"
+                              style={{ width: "100%", height: 38, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13, background: "#fff" }}
+                              value={seoTitle}
+                              maxLength={120}
+                              onChange={(e) => setSeoTitle(e.target.value)}
+                              placeholder={title || "SEO Title"}
+                            />
+                            <small style={{ fontSize: 11, color: "var(--adm-text-muted)" }}>Optimal title length is between 40 and 60 characters.</small>
+                          </div>
+
+                          <div className="rankmath-input-group">
+                            <label className="rankmath-input-label">
+                              <span>Permalink Slug</span>
+                              <div className="rankmath-progress-wrap">
+                                <span>{slug.length} / 75</span>
+                                <div className="rankmath-progress-bar">
+                                  <div
+                                    className="rankmath-progress-fill"
+                                    style={{
+                                      width: `${Math.min(100, (slug.length / 75) * 100)}%`,
+                                      backgroundColor: slug.length <= 75 ? "#10b981" : "#ef4444",
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </label>
+                            <input
+                              style={{ width: "100%", height: 38, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13, background: "#fff" }}
+                              value={slug}
+                              readOnly={publishedSlugLocked}
+                              onChange={(e) => {
+                                setSlugTouched(true);
+                                setSlug(slugify(e.target.value));
+                              }}
+                              placeholder="product-slug"
+                            />
+                          </div>
+
+                          <div className="rankmath-input-group">
+                            <label className="rankmath-input-label">
+                              <span>Meta Description</span>
+                              <div className="rankmath-progress-wrap">
+                                <span>{seoDescription.length} / 160</span>
+                                <div className="rankmath-progress-bar">
+                                  <div
+                                    className="rankmath-progress-fill"
+                                    style={{
+                                      width: `${Math.min(100, (seoDescription.length / 160) * 100)}%`,
+                                      backgroundColor: seoDescription.length >= 120 && seoDescription.length <= 160 ? "#10b981" : seoDescription.length > 160 ? "#ef4444" : "#f59e0b",
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </label>
+                            <textarea
+                              rows={3}
+                              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13, background: "#fff", resize: "vertical" }}
+                              value={seoDescription}
+                              maxLength={220}
+                              onChange={(e) => setSeoDescription(e.target.value)}
+                              placeholder="Add an enticing meta description to increase click-through rates from search results..."
+                            />
+                            <small style={{ fontSize: 11, color: "var(--adm-text-muted)" }}>Optimal description length is between 120 and 160 characters.</small>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Focus Keyword Card */}
+                    <div className="rankmath-focus-box">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--adm-text-main)" }}>Focus Keyword</span>
+                          {focusKeyword ? <span className="rankmath-keyword-pill">{focusKeyword}</span> : null}
+                        </div>
+                        <span style={{ fontSize: 12, color: "var(--adm-text-muted)" }}>{focusKeyword.length} / 100 chars</span>
+                      </div>
+                      <input
+                        style={{ width: "100%", height: 42, padding: "8px 14px", borderRadius: 10, border: "1px solid var(--adm-border)", fontSize: 13, background: "#fff", outline: "none" }}
+                        value={focusKeyword}
+                        maxLength={100}
+                        onChange={(event) => setFocusKeyword(event.target.value)}
+                        placeholder="e.g. casual cotton t-shirt"
+                      />
+                      <small style={{ display: "block", marginTop: 6, fontSize: 11, color: "var(--adm-text-muted)" }}>
+                        Pick the main search query you want this product to rank for. Rank Math checks your content against this keyword.
+                      </small>
+                    </div>
+
+                    {/* Rank Math Checklists */}
+                    <SeoGroup title="Basic SEO" meta={seo.groups.basic} open={seoOpen.basic} onToggle={() => setSeoOpen((current) => ({ ...current, basic: !current.basic }))}>
+                      <Check ok={seo.checks.keywordInTitle} text="Add Focus Keyword to the SEO title." />
+                      <Check ok={seo.checks.keywordInDescription} text="Add Focus Keyword to your SEO meta description." />
+                      <Check ok={seo.checks.keywordInUrl} text="Use Focus Keyword in the product URL / permalink." />
+                      <Check ok={seo.checks.keywordAtStart} text="Use Focus Keyword at the beginning of your content." />
+                      <Check ok={seo.checks.keywordInContent} text="Use Focus Keyword inside the product description." />
+                      <Check ok={seo.checks.contentLength} text={`Content should be 600–2500 words long (Currently ${seo.words} words).`} />
+                    </SeoGroup>
+
+                    <SeoGroup title="Additional SEO" meta={seo.groups.additional} open={seoOpen.additional} onToggle={() => setSeoOpen((current) => ({ ...current, additional: !current.additional }))}>
+                      <Check ok={seo.checks.keywordInSubheading} text="Use Focus Keyword in a subheading (H2, H3, or H4)." />
+                      <Check ok={seo.checks.imageAlt} text="Use Focus Keyword in product image ALT attribute." />
+                      <Check ok={seo.checks.density} text={`Keyword density is ${seo.density.toFixed(2)}% (Optimal: ~1.0%).`} />
+                      <Check ok={seo.checks.urlLength} text={seo.checks.urlLength ? "URL length looks good (under 75 characters)." : "Keep the URL shorter than 75 characters."} />
+                      <Check ok={seo.checks.externalLinks} text="Add external links pointing to helpful resources." />
+                      <Check ok={seo.checks.dofollow} text="Add at least one DoFollow external link." />
+                      <Check ok={seo.checks.internalLinks} text="Add internal links pointing to related products/categories." />
+                      <Check ok={seo.checks.hasKeyword} text="Focus Keyword is configured for this product." />
+                    </SeoGroup>
+
+                    <SeoGroup title="Title Readability" meta={seo.groups.title} open={seoOpen.title} onToggle={() => setSeoOpen((current) => ({ ...current, title: !current.title }))}>
+                      <Check ok={seo.checks.keywordNearTitleStart} text="Focus Keyword appears near the beginning of the SEO title." />
+                      <Check ok={seo.checks.sentiment} text="Title contains a positive or enticing sentiment word." />
+                      <Check ok={seo.checks.power} text="Title contains a high-converting power word." />
+                      <Check ok={seo.checks.numberInTitle} text="Title contains a number (e.g. pack count or discount %)." />
+                    </SeoGroup>
+
+                    <SeoGroup title="Content Readability" meta={seo.groups.content} open={seoOpen.content} onToggle={() => setSeoOpen((current) => ({ ...current, content: !current.content }))}>
+                      <Check ok={seo.checks.shortParagraphs} text="Use short, readable paragraphs for better mobile scanning." />
+                      <Check ok={seo.checks.richMedia} text="Product has rich media (photos and gallery images)." />
+                    </SeoGroup>
+                  </>
+                ) : null}
+
+                {/* 2. ADVANCED TAB */}
+                {seoTab === "advanced" ? (
+                  <div style={{ display: "grid", gap: 18 }}>
+                    <div className="wp-form-row">
+                      <label>Robots Meta</label>
+                      <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                          <input type="radio" name="robotsIndex" checked={robotsIndex === "index"} onChange={() => setRobotsIndex("index")} />
+                          <span>Index (Recommended)</span>
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer" }}>
+                          <input type="radio" name="robotsIndex" checked={robotsIndex === "noindex"} onChange={() => setRobotsIndex("noindex")} />
+                          <span>No Index</span>
+                        </label>
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, cursor: "pointer", marginLeft: 10 }}>
+                          <input type="checkbox" checked={robotsNoFollow} onChange={(e) => setRobotsNoFollow(e.target.checked)} />
+                          <span>No Follow</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="wp-form-row">
+                      <label>Canonical URL</label>
+                      <div style={{ width: "100%" }}>
+                        <input
+                          style={{ width: "100%", height: 38, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13 }}
+                          value={canonicalUrl}
+                          onChange={(e) => setCanonicalUrl(e.target.value)}
+                          placeholder="https://zelvomart.com/product/..."
+                        />
+                        <small style={{ fontSize: 11, color: "var(--adm-text-muted)", display: "block", marginTop: 4 }}>
+                          The canonical URL tells search engines which page is the master copy if this product exists in multiple categories.
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="wp-form-row">
+                      <label>301 Redirect URL</label>
+                      <div style={{ width: "100%" }}>
+                        <input
+                          style={{ width: "100%", height: 38, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13 }}
+                          value={redirectUrl}
+                          onChange={(e) => setRedirectUrl(e.target.value)}
+                          placeholder="https://zelvomart.com/product/replacement-item/"
+                        />
+                        <small style={{ fontSize: 11, color: "var(--adm-text-muted)", display: "block", marginTop: 4 }}>
+                          If this product is retired or replaced, paste the replacement URL to redirect visitors.
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="wp-form-row">
+                      <label>Redirect Fallback</label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                        <input type="checkbox" checked={redirectFallback} onChange={(e) => setRedirectFallback(e.target.checked)} />
+                        <span style={{ fontSize: 13 }}>Send shoppers to <code>/shop</code> if product link is broken or unpublished</span>
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 3. SOCIAL TAB */}
+                {seoTab === "social" ? (
+                  <div style={{ display: "grid", gap: 20 }}>
+                    <p style={{ margin: 0, fontSize: 13, color: "var(--adm-text-muted)" }}>
+                      Customize how this product appears when shared on WhatsApp, Facebook, LinkedIn, or Twitter.
+                    </p>
+
+                    {/* Social Preview Card */}
+                    <div className="rankmath-social-card">
+                      {mainImage ? (
+                        <img src={mainImage} alt="Social preview" className="rankmath-social-img" />
+                      ) : (
+                        <div className="rankmath-social-img">
+                          <span style={{ color: "var(--adm-text-muted)", fontSize: 13 }}>No product image selected</span>
+                        </div>
+                      )}
+                      <div className="rankmath-social-body">
+                        <div className="rankmath-social-domain">ZELVOMART.COM</div>
+                        <div className="rankmath-social-title">{socialTitle || seoTitle || title || "Product Title"}</div>
+                        <p className="rankmath-social-desc">
+                          {socialDescription || seoDescription || plainText(shortHtml) || "Discover premium products on Zelvomart with fast delivery across Pakistan."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="wp-form-row">
+                      <label>Social Title</label>
+                      <input
+                        style={{ width: "100%", height: 38, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13 }}
+                        value={socialTitle}
+                        onChange={(e) => setSocialTitle(e.target.value)}
+                        placeholder={seoTitle || title || "Custom social title"}
+                      />
+                    </div>
+
+                    <div className="wp-form-row">
+                      <label>Social Description</label>
+                      <textarea
+                        rows={3}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13, resize: "vertical" }}
+                        value={socialDescription}
+                        onChange={(e) => setSocialDescription(e.target.value)}
+                        placeholder={seoDescription || "Custom social description"}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 4. SCHEMA TAB */}
+                {seoTab === "schema" ? (
+                  <div style={{ display: "grid", gap: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--adm-text-main)" }}>Product Schema (JSON-LD)</span>
+                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "#ecfdf5", color: "#059669", fontWeight: 700 }}>Valid Schema</span>
+                    </div>
+                    <pre style={{ margin: 0, padding: 14, borderRadius: 10, background: "#0b1a2e", color: "#93c5fd", fontSize: 12, lineHeight: 1.6, overflowX: "auto" }}>
+                      {JSON.stringify(
+                        {
+                          "@context": "https://schema.org",
+                          "@type": "Product",
+                          name: title || "Product Name",
+                          image: mainImage ? [mainImage, ...gallery] : [],
+                          description: seoDescription || plainText(shortHtml) || "",
+                          sku: sku || "ZVM-0001",
+                          offers: {
+                            "@type": "Offer",
+                            price: Number(regularPrice || 0) || 0,
+                            priceCurrency: "PKR",
+                            availability: stockStatus === "instock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+                            url: previewUrl,
+                          },
+                        },
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  </div>
+                ) : null}
               </div>
-            ) : (
-              <p className="pd-side-hint">Add several gallery images from your computer.</p>
-            )}
-            <button type="button" className="pd-upload-link" onClick={() => galleryRef.current?.click()}>
-              {uploadBusy === "gallery" ? "Uploading..." : gallery.length ? "Add more gallery images" : "Add product gallery images"}
-            </button>
+            ) : null}
           </section>
+        </div>
 
-          <section className="pd-card">
-            <div className="pd-side-head">
-              <h2>Product categories</h2>
+        {/* Right Sidebar Column */}
+        <aside className="wp-sidebar-col">
+          {/* 1. Publish */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("publish")}>
+              <h3 className="wp-metabox-title">Publish</h3>
+              <span className="wp-metabox-toggle">{collapsed.publish ? "▾" : "▴"}</span>
             </div>
-            <div className="pd-categories">
-              {categoryOptions.length ? (
-                categoryOptions.map((category) => (
-                  <label key={category.id}>
-                    <input
-                      type="checkbox"
-                      checked={categoryId === category.id}
-                      onChange={() => setCategoryId((current: string) => (current === category.id ? "" : category.id))}
-                    />
-                    {category.name}
-                  </label>
-                ))
-              ) : (
-                <p className="pd-side-hint">No categories yet. Add one below.</p>
-              )}
-            </div>
-            <div className="pd-new-category">
-              <input value={newCategory} onChange={(event) => setNewCategory(event.target.value)} placeholder="New category name" />
-              <button type="button" onClick={() => void createCategory()} disabled={addingCategory || !newCategory.trim()}>
-                {addingCategory ? "Adding..." : "+ Add new category"}
-              </button>
-            </div>
-          </section>
-
-          <section className="pd-card">
-            <div className="pd-side-head">
-              <h2>Product tags</h2>
-            </div>
-            <p className="pd-side-hint">Every posted product appears in the shop. A tag also places it on that collection and can show as a badge.</p>
-            <label className="pd-focus">
-              <span>Badge on the photo</span>
-              <input value={badge} maxLength={40} onChange={(event) => setBadge(event.target.value)} placeholder="Customer favourite" />
-            </label>
-            <p className="pd-side-hint">Shown in the centre of this product’s photo. Leave it empty to use the tag badges only.</p>
-            <div className="pd-tags">
-              {PRODUCT_TAGS.map((tag) => {
-                const selected = tags.includes(tag.id);
-                return (
+            {!collapsed.publish ? (
+              <div className="wp-metabox-body">
+                <div className="wp-publish-actions-top">
                   <button
-                    key={tag.id}
                     type="button"
-                    className={selected ? "is-on" : ""}
-                    aria-pressed={selected}
-                    onClick={() => setTags((current) => (current.includes(tag.id) ? current.filter((item) => item !== tag.id) : [...current, tag.id]))}
+                    className="wp-publish-btn-outline"
+                    disabled={busy}
+                    onClick={() => void saveForm("DRAFT")}
                   >
-                    <strong>{tag.label}</strong>
-                    <small>{tag.hint}</small>
+                    {busy && status === "DRAFT" ? "Saving..." : "Save Draft"}
                   </button>
-                );
-              })}
+                  <button
+                    type="button"
+                    className="wp-publish-btn-outline"
+                    onClick={openPreview}
+                  >
+                    Preview
+                  </button>
+                </div>
+                <div className="wp-publish-meta-row">
+                  <span>📌 Status: <strong>{status === "PUBLISHED" ? "Published" : "Draft"}</strong></span>
+                  <button
+                    type="button"
+                    className="wp-link-action"
+                    style={{ margin: 0 }}
+                    onClick={() => setStatus((current) => (current === "PUBLISHED" ? "DRAFT" : "PUBLISHED"))}
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div className="wp-publish-meta-row">
+                  <span>👁 Visibility: <strong>Public</strong></span>
+                  <span className="wp-link-action" style={{ margin: 0 }}>Edit</span>
+                </div>
+                <div className="wp-publish-actions-bottom">
+                  <button
+                    type="button"
+                    className="wp-btn-trash"
+                    onClick={() => window.history.back()}
+                  >
+                    Move to trash
+                  </button>
+                  <button
+                    type="submit"
+                    className="wp-btn-publish"
+                    disabled={busy}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void saveForm("PUBLISHED");
+                    }}
+                  >
+                    {busy && status === "PUBLISHED" ? "Saving..." : initial?.id ? "Update" : "Publish"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* 2. Product image */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("mainImage")}>
+              <h3 className="wp-metabox-title">Product image</h3>
+              <span className="wp-metabox-toggle">{collapsed.mainImage ? "▾" : "▴"}</span>
             </div>
-          </section>
+            {!collapsed.mainImage ? (
+              <div className="wp-metabox-body">
+                <input
+                  ref={mainImageRef}
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) rememberImageFile(file);
+                    void uploadFiles(Array.from(event.target.files || []).slice(0, 1), "main");
+                    event.target.value = "";
+                  }}
+                />
+                {mainImage ? (
+                  <div className="pd-main-image">
+                    <img src={mainImage} alt={imageMeta.alt || title || "Product image"} />
+                    <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button type="button" className="wp-btn-secondary" onClick={() => setImageEditorOpen(true)}>Edit details</button>
+                      <button type="button" className="wp-btn-secondary" onClick={() => mainImageRef.current?.click()}>{uploadBusy === "main" ? "Uploading..." : "Replace"}</button>
+                      <button type="button" className="wp-btn-secondary" style={{ color: "#b32d2e" }} onClick={() => { setMainImage(""); setImageMeta(EMPTY_IMAGE_META); }}>Remove</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button
+                      type="button"
+                      className="wp-link-action"
+                      style={{ marginTop: 0 }}
+                      onClick={() => mainImageRef.current?.click()}
+                    >
+                      {uploadBusy === "main" ? "Uploading..." : "Set product image"}
+                    </button>
+                    <span className="wp-help-icon" title="Featured primary product image">?</span>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          {/* 3. Product gallery */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("gallery")}>
+              <h3 className="wp-metabox-title">Product gallery</h3>
+              <span className="wp-metabox-toggle">{collapsed.gallery ? "▾" : "▴"}</span>
+            </div>
+            {!collapsed.gallery ? (
+              <div className="wp-metabox-body">
+                <input
+                  ref={galleryRef}
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(event) => {
+                    void uploadFiles(Array.from(event.target.files || []), "gallery");
+                    event.target.value = "";
+                  }}
+                />
+                {gallery.length ? (
+                  <div className="pd-gallery" style={{ marginBottom: 12 }}>
+                    {gallery.map((src) => (
+                      <figure key={src}>
+                        <img src={src} alt="" />
+                        <button
+                          type="button"
+                          aria-label="Remove gallery image"
+                          onClick={() => setGallery((current) => current.filter((item) => item !== src))}
+                        >
+                          ×
+                        </button>
+                      </figure>
+                    ))}
+                  </div>
+                ) : null}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    type="button"
+                    className="wp-link-action"
+                    style={{ marginTop: 0 }}
+                    onClick={() => galleryRef.current?.click()}
+                  >
+                    {uploadBusy === "gallery" ? "Uploading..." : gallery.length ? "Add more gallery images" : "Add product gallery images"}
+                  </button>
+                  <span className="wp-help-icon" title="Product gallery images displayed in product image slider">?</span>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {/* 3. Product categories */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("categories")}>
+              <h3 className="wp-metabox-title">Product categories</h3>
+              <span className="wp-metabox-toggle">{collapsed.categories ? "▾" : "▴"}</span>
+            </div>
+            {!collapsed.categories ? (
+              <div className="wp-metabox-body">
+                <div className="wp-tabs">
+                  <button
+                    type="button"
+                    className={`wp-tab-btn ${catTab === "all" ? "is-active" : ""}`}
+                    onClick={() => setCatTab("all")}
+                  >
+                    All categories
+                  </button>
+                  <button
+                    type="button"
+                    className={`wp-tab-btn ${catTab === "mostUsed" ? "is-active" : ""}`}
+                    onClick={() => setCatTab("mostUsed")}
+                  >
+                    Most Used
+                  </button>
+                </div>
+                <div className="wp-scroll-checklist">
+                  {categoryOptions.length ? (
+                    categoryOptions.map((category) => (
+                      <label key={category.id} className="wp-check-label">
+                        <input
+                          type="checkbox"
+                          checked={categoryId === category.id}
+                          onChange={() => setCategoryId((current: string) => (current === category.id ? "" : category.id))}
+                        />
+                        <span>{category.name}</span>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="pd-side-hint" style={{ margin: 0 }}>No categories found.</p>
+                  )}
+                </div>
+                {!showNewCatInput ? (
+                  <button
+                    type="button"
+                    className="wp-link-action"
+                    onClick={() => setShowNewCatInput(true)}
+                  >
+                    + Add new category
+                  </button>
+                ) : (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <input
+                      value={newCategory}
+                      onChange={(event) => setNewCategory(event.target.value)}
+                      placeholder="New category name"
+                      style={{
+                        padding: "4px 8px",
+                        border: "1px solid #8c8f94",
+                        borderRadius: 3,
+                        fontSize: 13,
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void createCategory();
+                        }
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        className="wp-btn-secondary"
+                        onClick={() => void createCategory()}
+                        disabled={addingCategory || !newCategory.trim()}
+                      >
+                        {addingCategory ? "Adding..." : "Add"}
+                      </button>
+                      <button
+                        type="button"
+                        className="wp-btn-secondary"
+                        onClick={() => {
+                          setShowNewCatInput(false);
+                          setNewCategory("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          {/* 4. Product brands */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("brands")}>
+              <h3 className="wp-metabox-title">Product brands</h3>
+              <span className="wp-metabox-toggle">{collapsed.brands ? "▾" : "▴"}</span>
+            </div>
+            {!collapsed.brands ? (
+              <div className="wp-metabox-body">
+                <div className="wp-tabs">
+                  <button
+                    type="button"
+                    className={`wp-tab-btn ${brandTab === "all" ? "is-active" : ""}`}
+                    onClick={() => setBrandTab("all")}
+                  >
+                    All Brands
+                  </button>
+                  <button
+                    type="button"
+                    className={`wp-tab-btn ${brandTab === "mostUsed" ? "is-active" : ""}`}
+                    onClick={() => setBrandTab("mostUsed")}
+                  >
+                    Most Used
+                  </button>
+                </div>
+                <div className="wp-scroll-checklist">
+                  {brandList.map((item) => (
+                    <label key={item} className="wp-check-label">
+                      <input
+                        type="checkbox"
+                        checked={brand === item}
+                        onChange={() => setBrand((current: string) => (current === item ? "" : item))}
+                      />
+                      <span>{item}</span>
+                    </label>
+                  ))}
+                </div>
+                {!showAddBrand ? (
+                  <button
+                    type="button"
+                    className="wp-link-action"
+                    onClick={() => setShowAddBrand(true)}
+                  >
+                    + Add New Brand
+                  </button>
+                ) : (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <input
+                      value={newBrandInput}
+                      onChange={(e) => setNewBrandInput(e.target.value)}
+                      placeholder="New brand name"
+                      style={{
+                        padding: "4px 8px",
+                        border: "1px solid #8c8f94",
+                        borderRadius: 3,
+                        fontSize: 13,
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addBrand();
+                        }
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        className="wp-btn-secondary"
+                        onClick={addBrand}
+                        disabled={!newBrandInput.trim()}
+                      >
+                        Add
+                      </button>
+                      <button
+                        type="button"
+                        className="wp-btn-secondary"
+                        onClick={() => {
+                          setShowAddBrand(false);
+                          setNewBrandInput("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          {/* 5. Product tags & badges */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("tags")}>
+              <h3 className="wp-metabox-title">Product tags &amp; badges</h3>
+              <span className="wp-metabox-toggle">{collapsed.tags ? "▾" : "▴"}</span>
+            </div>
+            {!collapsed.tags ? (
+              <div className="wp-metabox-body">
+                <label className="pd-focus" style={{ marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--adm-text-main)" }}>Badge on photo</span>
+                  <input
+                    value={badge}
+                    maxLength={40}
+                    onChange={(event) => setBadge(event.target.value)}
+                    placeholder="e.g. Customer favourite"
+                    style={{ width: "100%", padding: "7px 12px", border: "1px solid var(--adm-border)", borderRadius: "var(--adm-radius-sm)", fontSize: 13 }}
+                  />
+                  <small style={{ color: "var(--adm-text-muted)", marginTop: 4, display: "block" }}>
+                    Shown directly on the center badge of this product photo.
+                  </small>
+                </label>
+
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--adm-text-main)" }}>Collection Tags</span>
+                </div>
+                <div className="pd-tags" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {tagList.map((tag) => {
+                    const selected = tags.includes(tag.id);
+                    return (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        className={selected ? "is-on" : ""}
+                        aria-pressed={selected}
+                        onClick={() =>
+                          setTags((current) =>
+                            current.includes(tag.id) ? current.filter((item) => item !== tag.id) : [...current, tag.id],
+                          )
+                        }
+                      >
+                        <strong>{tag.label}</strong>
+                        <small>{tag.hint}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {!showAddTag ? (
+                  <button
+                    type="button"
+                    className="wp-link-action"
+                    style={{ marginTop: 12 }}
+                    onClick={() => setShowAddTag(true)}
+                  >
+                    + Add New Tag
+                  </button>
+                ) : (
+                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <input
+                      value={newTagInput}
+                      onChange={(e) => setNewTagInput(e.target.value)}
+                      placeholder="New tag name (e.g. Mega Deal)"
+                      style={{
+                        padding: "6px 12px",
+                        border: "1px solid var(--adm-border)",
+                        borderRadius: "var(--adm-radius-sm)",
+                        fontSize: 13,
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addNewTag();
+                        }
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        className="wp-btn-secondary"
+                        onClick={addNewTag}
+                        disabled={!newTagInput.trim()}
+                      >
+                        Add Tag
+                      </button>
+                      <button
+                        type="button"
+                        className="wp-btn-secondary"
+                        onClick={() => {
+                          setShowAddTag(false);
+                          setNewTagInput("");
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
 
         </aside>
       </div>
-
-      <section className="pd-card pd-seo">
-        <header className="pd-seo-head">
-          <h2>Product SEO</h2>
-          <div>
-            {(["general", "advanced"] as SeoTab[]).map((tab) => (
-              <button key={tab} type="button" className={seoTab === tab ? "is-active" : ""} onClick={() => setSeoTab(tab)}>
-                {tab}
-              </button>
-            ))}
-          </div>
-        </header>
-
-        {seoTab === "general" ? (
-          <>
-            <div className="pd-snippet">
-              <span>Preview</span>
-              <strong>{seoTitle || title || "Product title"}</strong>
-              <a href={`/product/${slug || "product"}/`} target="_blank" rel="noreferrer">{previewUrl}</a>
-              <p>{seoDescription || plainText(shortHtml) || "Add a meta description so search results explain this product clearly."}</p>
-              <button type="button" className="admin-btn admin-btn-primary" onClick={() => setSnippetOpen(true)}>
-                Edit Snippet
-              </button>
-            </div>
-            <label className="pd-check pd-redirect">
-              <input type="checkbox" checked={redirectFallback} onChange={(event) => setRedirectFallback(event.target.checked)} />
-              <span>
-                Redirect fallback
-                <small>If this product URL expires, is unpublished, or stops working, visitors go to the shop.</small>
-              </span>
-            </label>
-            <label className="pd-focus">
-              <span>
-                Focus Keyword
-                <small>{focusKeyword.length} / 100</small>
-              </span>
-              <input value={focusKeyword} maxLength={100} onChange={(event) => setFocusKeyword(event.target.value)} placeholder="Example: insulated tumbler" />
-              <b className={seo.score >= 70 ? "is-good" : "is-poor"}>{seo.score} / 100</b>
-            </label>
-            <SeoGroup title="Basic SEO" meta={seo.groups.basic} open={seoOpen.basic} onToggle={() => setSeoOpen((current) => ({ ...current, basic: !current.basic }))}>
-              <Check ok={seo.checks.keywordInTitle} text="Add Focus Keyword to the SEO title." />
-              <Check ok={seo.checks.keywordInDescription} text="Add Focus Keyword to your SEO meta description." />
-              <Check ok={seo.checks.keywordInUrl} text="Use Focus Keyword in the URL." />
-              <Check ok={seo.checks.keywordAtStart} text="Use Focus Keyword at the beginning of your content." />
-              <Check ok={seo.checks.keywordInContent} text="Use Focus Keyword in the content." />
-              <Check ok={seo.checks.contentLength} text={`Content should be 600–2500 words long. Currently ${seo.words} words.`} />
-            </SeoGroup>
-            <SeoGroup title="Additional" meta={seo.groups.additional} open={seoOpen.additional} onToggle={() => setSeoOpen((current) => ({ ...current, additional: !current.additional }))}>
-              <Check ok={seo.checks.keywordInSubheading} text="Use Focus Keyword in a subheading (H2, H3 or H4)." />
-              <Check ok={seo.checks.imageAlt} text="Product image is optional. When you add one, put the Focus Keyword in the alt text." />
-              <Check ok={seo.checks.density} text={`Keyword density is ${seo.density.toFixed(2)}%. Aim for around 1%.`} />
-              <Check ok={seo.checks.urlLength} text={seo.checks.urlLength ? "URL length looks good." : "Keep the URL shorter than 75 characters."} />
-              <Check ok={seo.checks.externalLinks} text="Link out to external resources." />
-              <Check ok={seo.checks.dofollow} text="Add DoFollow links pointing to external resources." />
-              <Check ok={seo.checks.internalLinks} text="Add internal links in your content." />
-              <Check ok={seo.checks.hasKeyword} text="Set a Focus Keyword for this product." />
-            </SeoGroup>
-            <SeoGroup title="Title Readability" meta={seo.groups.title} open={seoOpen.title} onToggle={() => setSeoOpen((current) => ({ ...current, title: !current.title }))}>
-              <Check ok={seo.checks.keywordNearTitleStart} text="Use the Focus Keyword near the beginning of the SEO title." />
-              <Check ok={seo.checks.sentiment} text="Your title should contain a positive or negative sentiment word." />
-              <Check ok={seo.checks.power} text="Your title should contain a power word." />
-              <Check ok={seo.checks.numberInTitle} text="Your SEO title should contain a number." />
-            </SeoGroup>
-            <SeoGroup title="Content Readability" meta={seo.groups.content} open={seoOpen.content} onToggle={() => setSeoOpen((current) => ({ ...current, content: !current.content }))}>
-              <Check ok={seo.checks.shortParagraphs} text="You are using short paragraphs." />
-              <Check ok={seo.checks.richMedia} text="You are using rich media like images or videos." />
-            </SeoGroup>
-          </>
-        ) : null}
-
-        {seoTab === "advanced" ? (
-          <div className="pd-stack">
-            <label className="pd-focus">
-              <span>Canonical URL</span>
-              <input value={canonicalUrl} onChange={(event) => setCanonicalUrl(event.target.value)} placeholder="https://zelvomart.com/product/..." />
-            </label>
-            <label className="pd-focus">
-              <span>Redirect URL</span>
-              <input
-                value={redirectUrl}
-                onChange={(event) => setRedirectUrl(event.target.value)}
-                placeholder="https://zelvomart.com/product/replacement/"
-              />
-              <small>Paste a URL. Visitors who open this product are sent there.</small>
-            </label>
-            <label className="pd-check pd-redirect">
-              <input type="checkbox" checked={redirectFallback} onChange={(event) => setRedirectFallback(event.target.checked)} />
-              <span>
-                Redirect fallback
-                <small>Broken or retired product URLs send shoppers to /shop if no Redirect URL is set.</small>
-              </span>
-            </label>
-          </div>
-        ) : null}
-      </section>
 
       {snippetOpen ? (
         <div className="pd-modal-back" role="presentation" onClick={() => setSnippetOpen(false)}>
@@ -1815,19 +2634,6 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
         </div>
       ) : null}
 
-      {error ? <div className="admin-import-message error">{error}</div> : null}
-      {savedMessage ? <div className="admin-import-message success">{savedMessage}</div> : null}
-
-      <div className="pd-footer">
-        <button type="button" className="admin-btn admin-btn-light" onClick={() => window.history.back()}>
-          Cancel
-        </button>
-        <div>
-          <button type="button" className="admin-btn admin-btn-light" onClick={openPreview}>
-            Preview
-          </button>
-        </div>
-      </div>
     </form>
   );
 }
@@ -1856,22 +2662,26 @@ function SeoGroup({
 }) {
   const errors = meta.total - meta.passed;
   return (
-    <section className="pd-seo-group">
-      <button type="button" onClick={onToggle}>
-        <strong>{title}</strong>
-        <em className={errors ? "is-bad" : "is-good"}>{errors ? `${errors} ${errors === 1 ? "Error" : "Errors"}` : "All good"}</em>
-        <span>{open ? "▴" : "▾"}</span>
+    <div className="rankmath-checklist-group">
+      <button type="button" className="rankmath-checklist-header" onClick={onToggle}>
+        <div className="rankmath-checklist-title">
+          <span>{title}</span>
+          <span className={`rankmath-checklist-badge ${errors ? "has-errors" : "all-passed"}`}>
+            {errors ? `${errors} ${errors === 1 ? "issue" : "issues"}` : "All passed"}
+          </span>
+        </div>
+        <span style={{ fontSize: 13, color: "var(--adm-text-muted)" }}>{open ? "▴" : "▾"}</span>
       </button>
-      {open ? <div>{children}</div> : null}
-    </section>
+      {open ? <div className="rankmath-checklist-items">{children}</div> : null}
+    </div>
   );
 }
 
 function Check({ ok, text }: { ok: boolean; text: string }) {
   return (
-    <p className={ok ? "is-ok" : "is-bad"}>
-      <i>{ok ? "✓" : "×"}</i>
-      {text}
-    </p>
+    <div className="rankmath-check-item">
+      <span className={`rankmath-check-icon ${ok ? "is-pass" : "is-fail"}`}>{ok ? "✓" : "✕"}</span>
+      <span>{text}</span>
+    </div>
   );
 }

@@ -20,11 +20,25 @@ export default function EditProductPage() {
 
   return (
     <>
-      <div className="admin-title admin-product-form-page-title">
-        <div>
-          <Link className="admin-back-link" href="/admin/products">← Back to Products</Link>
-          <h1>{product.title || product.name || "Edit product"}</h1>
-          <p>{posted ? "This product is posted. It appears on the shop and in its category." : "This product is saved as a draft. Reloading keeps it as a draft until you post it."}</p>
+      <div className="admin-products-header-container" style={{ marginBottom: 20 }}>
+        <div className="admin-products-header-copy">
+          <Link
+            className="admin-back-link"
+            href="/admin/products"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              color: "var(--adm-primary)",
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+              marginBottom: 8,
+            }}
+          >
+            ← Back to Products
+          </Link>
+          <h1 className="admin-products-heading" style={{ margin: 0 }}>{product.title || product.name || "Edit product"}</h1>
         </div>
       </div>
       <ProductForm
