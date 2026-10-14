@@ -34,3 +34,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# local-only Vercel env export files (contain real secrets)
+deploy.env
+deploy.*.env

@@ -216,7 +216,6 @@ export default function ProductDetailClient({
 
     if (goCheckout) {
       setOpen(false);
-      window.dispatchEvent(new Event("zelvo:route-start"));
       router.push("/checkout?buyNow=1");
     }
   };

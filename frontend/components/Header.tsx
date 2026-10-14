@@ -295,7 +295,6 @@ export default function Header({
     if (activeCategory) params.set("category", activeCategory);
     const query = params.toString();
 
-    window.dispatchEvent(new Event("zelvo:route-start"));
     router.push(query ? `/shop?${query}` : "/shop");
     setMobileOpen(false);
   };
