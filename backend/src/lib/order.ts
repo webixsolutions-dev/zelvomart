@@ -260,7 +260,10 @@ export async function createOrder(input: CheckoutInput) {
       tx.job.create({ data: { name: "customer-order-email", orderId: order.id, payload: { orderId: order.id } } }),
       ...(order.test || order.staffCreated
         ? []
-        : [tx.job.create({ data: { name: "meta-purchase", orderId: order.id, payload: { orderId: order.id } } })]),
+        : [
+            tx.job.create({ data: { name: "meta-purchase", orderId: order.id, payload: { orderId: order.id } } }),
+            tx.job.create({ data: { name: "tiktok-purchase", orderId: order.id, payload: { orderId: order.id } } }),
+          ]),
     ]);
 
     return { order, jobIds: jobs.map((job) => job.id) };

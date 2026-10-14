@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { trackStoreEvent } from "@/lib/client-tracking";
 
 type FormState = "idle" | "sending" | "success" | "error";
 
@@ -40,6 +41,10 @@ export default function ContactForm({ whatsapp }: { whatsapp: string }) {
       form.reset();
       setState("success");
       setMessage("Thanks — your message has been sent. Our team will get back to you as soon as possible.");
+      trackStoreEvent("Lead", {
+        content_name: "contact_form",
+        form_name: "Contact Us",
+      }, { clarityEvent: "contact_form_submit" }).catch(() => undefined);
     } catch (error) {
       setState("error");
       setMessage(error instanceof Error ? error.message : "Unable to send your message right now.");

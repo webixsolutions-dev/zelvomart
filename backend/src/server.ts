@@ -350,11 +350,15 @@ async function writeVariants(tx: Prisma.TransactionClient, productId: string, va
   }
 }
 
-const META_EVENT_NAMES = new Set(['PageView','ViewContent','Search','AddToCart','InitiateCheckout','Purchase','Contact']);
+const META_EVENT_NAMES = new Set(['PageView','ViewContent','Search','AddToCart','InitiateCheckout','Purchase','Contact','Lead']);
 
 let replayCleanupAt = 0;
 async function maybeCleanupOldSessionReplays() {
-  const days = Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
+  const settingDays = await getSetting<number | string | null>('tracking.sessionReplayRetentionDays', null).catch(() => null);
+  const parsedSettingDays = settingDays !== null && settingDays !== undefined ? Number(settingDays) : NaN;
+  const days = Number.isFinite(parsedSettingDays) && parsedSettingDays > 0
+    ? parsedSettingDays
+    : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 14);
   if (!Number.isFinite(days) || days <= 0) return;
   const now = Date.now();
   if (now - replayCleanupAt < 6 * 60 * 60 * 1000) return;
@@ -394,7 +398,19 @@ app.get('/api/store/bootstrap', async (_req, res) => {
   setPublicCache(res, 300, 1800, ['store', 'categories', 'settings']);
   const [categories, settings] = await Promise.all([
     prisma.category.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], include: { _count: { select: { products: { where: { status: 'PUBLISHED' } } } } } }),
-    getSettings(['store.announcement','store.info','tracking.metaPixelId','tracking.clarityId','homepage.config','store.bundleDefaultDiscountPercent'])
+    getSettings([
+      'store.announcement',
+      'store.info',
+      'tracking.metaPixelEnabled',
+      'tracking.metaPixelId',
+      'tracking.tiktokPixelEnabled',
+      'tracking.tiktokPixelId',
+      'tracking.clarityEnabled',
+      'tracking.clarityId',
+      'tracking.sessionReplayEnabled',
+      'homepage.config',
+      'store.bundleDefaultDiscountPercent',
+    ])
   ]);
   res.json({ categories: categories.map(c => ({ id:c.id,name:c.name,slug:c.slug,description:c.description,image:c.imageUrl,seoTitle:c.seoTitle,seoDescription:c.seoDescription,count:c._count.products })), settings });
 });
@@ -552,7 +568,7 @@ app.post('/api/events', async (req,res) => {
   }
 
   // Purchase is dispatched from the order transaction. All other storefront events
-  // are queued to CAPI with the SAME event ID as the browser Pixel event.
+  // are queued to CAPI and TikTok with the SAME event ID as the browser Pixel event.
   if (eventName !== 'Purchase') {
     const job = await prisma.job.create({
       data: {
@@ -570,6 +586,22 @@ app.post('/api/events', async (req,res) => {
       },
     });
     dispatchJobRow(job.id).catch(() => undefined);
+
+    const ttJob = await prisma.job.create({
+      data: {
+        name: 'tiktok-event',
+        payload: {
+          eventName,
+          eventId,
+          sourceUrl,
+          userAgent,
+          ip: requestIp(req),
+          ttp: req.body.ttp || null,
+          customData: params,
+        } as Prisma.InputJsonValue,
+      },
+    });
+    dispatchJobRow(ttJob.id).catch(() => undefined);
   }
 
   res.json({ ok: true, id: row.id });
@@ -997,8 +1029,29 @@ app.put('/api/admin/product-tabs', requireAuth('products.write'), async (req:Aut
   res.json({ ok: true, tabs });
 });
 
-app.get('/api/admin/settings', requireAuth('settings.write'), async (_req,res)=>{const [settings,cities]=await Promise.all([prisma.setting.findMany(),prisma.city.findMany({orderBy:{name:'asc'}})]);res.json({settings:Object.fromEntries(settings.filter(s=>!isSensitiveSettingKey(s.key)).map(s=>[s.key,s.value])),cities});});
-app.put('/api/admin/settings', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{for(const [key,value] of Object.entries(req.body||{}))await setSetting(key,value);await audit(req,'update','Settings',undefined,{keys:Object.keys(req.body||{})});await invalidateFrontendCache(['settings','store']);res.json({ok:true});});
+app.get('/api/admin/settings', requireAuth('settings.write'), async (_req,res)=>{
+  const [settings,cities]=await Promise.all([prisma.setting.findMany(),prisma.city.findMany({orderBy:{name:'asc'}})]);
+  const safeSettings:Record<string,unknown>={};
+  for(const s of settings){
+    if(s.key==='tracking.metaCapiToken'||s.key==='tracking.tiktokEventsApiToken'){
+      safeSettings[s.key]=s.value?'••••••••':'';
+    }else if(!isSensitiveSettingKey(s.key)){
+      safeSettings[s.key]=s.value;
+    }
+  }
+  res.json({settings:safeSettings,cities});
+});
+app.put('/api/admin/settings', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{
+  for(const [key,value] of Object.entries(req.body||{})){
+    if((key==='tracking.metaCapiToken'||key==='tracking.tiktokEventsApiToken')&&(!value||value==='••••••••')){
+      continue;
+    }
+    await setSetting(key,value);
+  }
+  await audit(req,'update','Settings',undefined,{keys:Object.keys(req.body||{})});
+  await invalidateFrontendCache(['settings','store']);
+  res.json({ok:true});
+});
 app.put('/api/admin/cities', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{const cities=Array.isArray(req.body.cities)?req.body.cities:[];for(const c of cities){if(!c.name)continue;await prisma.city.upsert({where:{name:String(c.name)},update:{deliveryMinDays:Number(c.deliveryMinDays||2),deliveryMaxDays:Number(c.deliveryMaxDays||5),active:c.active!==false},create:{name:String(c.name),deliveryMinDays:Number(c.deliveryMinDays||2),deliveryMaxDays:Number(c.deliveryMaxDays||5),active:c.active!==false}});}await audit(req,'update','Cities');await invalidateFrontendCache(['cities']);res.json({ok:true});});
 
 app.get('/api/admin/users', requireAuth('users.write'), async (_req,res)=>res.json(await prisma.user.findMany({select:{id:true,name:true,email:true,role:true,active:true,createdAt:true,updatedAt:true},orderBy:{createdAt:'desc'}})));
@@ -1107,23 +1160,141 @@ app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
     prisma.eventLog.findMany({where:{createdAt:{gte:since}},orderBy:{createdAt:'desc'},take:3000}),
     prisma.eventLog.groupBy({by:['eventName','channel'],where:{createdAt:{gte:since}},_count:{_all:true}}),
     prisma.order.count({where:{createdAt:{gte:since},test:false,staffCreated:false}}),
-    getSettings(['tracking.metaPixelId','tracking.clarityId']),
+    getSettings([
+      'tracking.metaPixelEnabled',
+      'tracking.metaPixelId',
+      'tracking.metaCapiEnabled',
+      'tracking.metaCapiToken',
+      'tracking.metaTestEventCode',
+      'tracking.tiktokPixelEnabled',
+      'tracking.tiktokPixelId',
+      'tracking.tiktokEventsApiEnabled',
+      'tracking.tiktokEventsApiToken',
+      'tracking.tiktokAccessToken',
+      'tracking.tiktokTestEventCode',
+      'tracking.clarityEnabled',
+      'tracking.clarityId',
+      'tracking.sessionReplayEnabled',
+      'tracking.sessionReplayRetentionDays',
+    ]),
   ]);
-  const browser:Record<string,number>={};const server:Record<string,number>={};
-  for(const row of grouped){const target=row.channel==='server'?server:browser;target[row.eventName]=row._count._all;}
+  const browser:Record<string,number>={};
+  const server:Record<string,number>={};
+  const tiktokServer:Record<string,number>={};
+  for(const row of grouped){
+    if(row.channel==='tiktok-server'){
+      tiktokServer[row.eventName]=(tiktokServer[row.eventName]||0)+row._count._all;
+    }else if(row.channel==='server'||row.channel==='meta-server'){
+      server[row.eventName]=(server[row.eventName]||0)+row._count._all;
+    }else{
+      browser[row.eventName]=(browser[row.eventName]||0)+row._count._all;
+    }
+  }
+
   const browserIds=new Set(events.filter(e=>e.channel==='browser').map(e=>`${e.eventName}:${e.eventId}`));
-  const serverIds=new Set(events.filter(e=>e.channel==='server'&&e.accepted===true).map(e=>`${e.eventName}:${e.eventId}`));
+  const metaServerIds=new Set(events.filter(e=>(e.channel==='server'||e.channel==='meta-server')&&e.accepted===true).map(e=>`${e.eventName}:${e.eventId}`));
+  const tiktokServerIds=new Set(events.filter(e=>e.channel==='tiktok-server'&&e.accepted===true).map(e=>`${e.eventName}:${e.eventId}`));
+
   const pairEligibleIds=[...browserIds].filter(id=>!id.startsWith('Purchase:'));
-  const paired=pairEligibleIds.filter(id=>serverIds.has(id)).length;
   const pairEligible=pairEligibleIds.length;
-  const acceptedPurchases=events.filter(e=>e.channel==='server'&&e.eventName==='Purchase'&&e.accepted===true).length;
+
+  // Meta deduplication metrics
+  const paired=pairEligibleIds.filter(id=>metaServerIds.has(id)).length;
+  const dedupeCoverage=pairEligible?Math.round((paired/pairEligible)*1000)/10:100;
+  const acceptedPurchases=events.filter(e=>(e.channel==='server'||e.channel==='meta-server')&&e.eventName==='Purchase'&&e.accepted===true).length;
+  const purchaseCoverage=orders?Math.round((acceptedPurchases/orders)*1000)/10:100;
+
+  // TikTok deduplication metrics
+  const tiktokPaired=pairEligibleIds.filter(id=>tiktokServerIds.has(id)).length;
+  const tiktokDedupeCoverage=pairEligible?Math.round((tiktokPaired/pairEligible)*1000)/10:100;
+  const tiktokAcceptedPurchases=events.filter(e=>e.channel==='tiktok-server'&&e.eventName==='Purchase'&&e.accepted===true).length;
+  const tiktokPurchaseCoverage=orders?Math.round((tiktokAcceptedPurchases/orders)*1000)/10:100;
+
+  // Tracking integration statuses
+  const metaPixelEnabled = settings['tracking.metaPixelEnabled'] !== false && settings['tracking.metaPixelEnabled'] !== 'false';
+  const metaPixelId = String(settings['tracking.metaPixelId'] || process.env.META_PIXEL_ID || '');
+  const metaPixelConfigured = Boolean(metaPixelId);
+
+  const metaCapiEnabled = settings['tracking.metaCapiEnabled'] !== false && settings['tracking.metaCapiEnabled'] !== 'false';
+  const metaCapiConfigured = Boolean(settings['tracking.metaCapiToken'] || process.env.META_CAPI_TOKEN);
+  const metaTestEventCodeConfigured = Boolean(settings['tracking.metaTestEventCode'] || process.env.META_TEST_EVENT_CODE);
+
+  const tiktokPixelEnabled = settings['tracking.tiktokPixelEnabled'] !== false && settings['tracking.tiktokPixelEnabled'] !== 'false';
+  const tiktokPixelId = String(settings['tracking.tiktokPixelId'] || process.env.TIKTOK_PIXEL_ID || '');
+  const tiktokPixelConfigured = Boolean(tiktokPixelId);
+
+  const tiktokEventsApiEnabled = settings['tracking.tiktokEventsApiEnabled'] !== false && settings['tracking.tiktokEventsApiEnabled'] !== 'false';
+  const tiktokEventsApiConfigured = Boolean(settings['tracking.tiktokEventsApiToken'] || settings['tracking.tiktokAccessToken'] || process.env.TIKTOK_EVENTS_API_TOKEN || process.env.TIKTOK_ACCESS_TOKEN);
+  const tiktokTestEventCodeConfigured = Boolean(settings['tracking.tiktokTestEventCode'] || process.env.TIKTOK_TEST_EVENT_CODE);
+
+  const clarityEnabled = settings['tracking.clarityEnabled'] !== false && settings['tracking.clarityEnabled'] !== 'false';
+  const clarityId = String(settings['tracking.clarityId'] || process.env.NEXT_PUBLIC_CLARITY_ID || process.env.CLARITY_ID || '');
+  const clarityConfigured = Boolean(clarityId);
+
+  const sessionReplayEnabled = settings['tracking.sessionReplayEnabled'] !== false && settings['tracking.sessionReplayEnabled'] !== 'false';
+  const sessionReplayRetentionDays = Number(settings['tracking.sessionReplayRetentionDays'] || process.env.SESSION_REPLAY_RETENTION_DAYS || 14);
+
+  const metaLastSuccess = events.find(e=>(e.channel==='server'||e.channel==='meta-server')&&e.accepted===true)?.createdAt||null;
+  const tiktokLastSuccess = events.find(e=>e.channel==='tiktok-server'&&e.accepted===true)?.createdAt||null;
+  const serverErrors = events.filter(e=>(e.channel==='server'||e.channel==='meta-server'||e.channel==='tiktok-server')&&(e.error||e.accepted===false)).slice(0,100);
+
   res.json({
-    browser,server,orders,acceptedPurchases,
-    purchaseCoverage:orders?Math.round((acceptedPurchases/orders)*1000)/10:100,
-    paired,pairEligible,dedupeCoverage:pairEligible?Math.round((paired/pairEligible)*1000)/10:100,
-    lastSuccess:events.find(e=>e.channel==='server'&&e.accepted===true)?.createdAt||null,
-    errors:events.filter(e=>e.channel==='server'&&(e.error||e.accepted===false)).slice(0,100),
-    config:{pixelId:String(settings['tracking.metaPixelId']||''),clarityId:String(settings['tracking.clarityId']||''),capiConfigured:Boolean(process.env.META_CAPI_TOKEN),testEventCodeConfigured:Boolean(process.env.META_TEST_EVENT_CODE),appEnv:process.env.APP_ENV||'development'},
+    browser,
+    server,
+    tiktokServer,
+    orders,
+    // Meta default / backward-compatible properties
+    acceptedPurchases,
+    purchaseCoverage,
+    paired,
+    pairEligible,
+    dedupeCoverage,
+    lastSuccess: metaLastSuccess,
+    errors: serverErrors,
+
+    // Dedicated Meta & TikTok metrics blocks
+    meta: {
+      server,
+      acceptedPurchases,
+      purchaseCoverage,
+      paired,
+      pairEligible,
+      dedupeCoverage,
+      lastSuccess: metaLastSuccess,
+    },
+    tiktok: {
+      server: tiktokServer,
+      acceptedPurchases: tiktokAcceptedPurchases,
+      purchaseCoverage: tiktokPurchaseCoverage,
+      paired: tiktokPaired,
+      pairEligible,
+      dedupeCoverage: tiktokDedupeCoverage,
+      lastSuccess: tiktokLastSuccess,
+    },
+
+    // Integration status summary
+    integrations: {
+      metaPixel: { enabled: metaPixelEnabled, configured: metaPixelConfigured, id: metaPixelId },
+      metaCapi: { enabled: metaCapiEnabled, configured: metaCapiConfigured, testEventCodeConfigured: metaTestEventCodeConfigured },
+      tiktokPixel: { enabled: tiktokPixelEnabled, configured: tiktokPixelConfigured, id: tiktokPixelId },
+      tiktokEventsApi: { enabled: tiktokEventsApiEnabled, configured: tiktokEventsApiConfigured, testEventCodeConfigured: tiktokTestEventCodeConfigured },
+      clarity: { enabled: clarityEnabled, configured: clarityConfigured, id: clarityId },
+      sessionReplay: { enabled: sessionReplayEnabled, configured: true, retentionDays: sessionReplayRetentionDays },
+    },
+
+    config: {
+      pixelId: metaPixelId,
+      clarityId,
+      capiConfigured: metaCapiConfigured,
+      testEventCodeConfigured: metaTestEventCodeConfigured,
+      appEnv: process.env.APP_ENV || 'development',
+      metaPixel: { enabled: metaPixelEnabled, configured: metaPixelConfigured, id: metaPixelId },
+      metaCapi: { enabled: metaCapiEnabled, configured: metaCapiConfigured, testEventCodeConfigured: metaTestEventCodeConfigured },
+      tiktokPixel: { enabled: tiktokPixelEnabled, configured: tiktokPixelConfigured, id: tiktokPixelId },
+      tiktokEventsApi: { enabled: tiktokEventsApiEnabled, configured: tiktokEventsApiConfigured, testEventCodeConfigured: tiktokTestEventCodeConfigured },
+      clarity: { enabled: clarityEnabled, configured: clarityConfigured, id: clarityId },
+      sessionReplay: { enabled: sessionReplayEnabled, configured: true, retentionDays: sessionReplayRetentionDays },
+    },
   });
 });
 app.get('/api/admin/cro', requireAuth('reports.read'), async (_req,res)=>{

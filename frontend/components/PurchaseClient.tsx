@@ -10,7 +10,15 @@ export default function PurchaseClient({ orderNumber, total, skus, quantities, p
     localStorage.setItem(key, "1");
     trackStoreEvent("Purchase", {
       content_ids: skus,
-      contents: skus.map((id, index) => ({ id, quantity: quantities[index] || 1, item_price: prices[index] || 0 })),
+      content_type: "product",
+      contents: skus.map((id, index) => ({
+        id,
+        content_id: id,
+        content_name: id,
+        quantity: quantities[index] || 1,
+        item_price: prices[index] || 0,
+        price: prices[index] || 0,
+      })),
       num_items: quantities.reduce((sum, value) => sum + value, 0),
       value: total,
       currency: "PKR",

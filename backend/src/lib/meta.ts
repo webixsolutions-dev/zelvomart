@@ -25,13 +25,24 @@ export type MetaServerEvent = {
 };
 
 export async function sendMetaServerEvent(event: MetaServerEvent) {
+  const isCapiEnabled = await getSetting<boolean | string>("tracking.metaCapiEnabled", true);
+  if (isCapiEnabled === false || isCapiEnabled === "false") {
+    return { ok: false, skipped: "META_CAPI_DISABLED" };
+  }
+
   const configuredPixelId = await getSetting<string>(
     "tracking.metaPixelId",
     process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "1645715973642563",
   );
-  const pixelId = configuredPixelId || process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID;
-  const token = process.env.META_CAPI_TOKEN;
-  if (!pixelId || !token) throw new Error("Meta Conversions API is not configured");
+  const pixelId = String(configuredPixelId || process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
+  const configuredToken = await getSetting<string>(
+    "tracking.metaCapiToken",
+    process.env.META_CAPI_TOKEN || "",
+  );
+  const token = String(configuredToken || process.env.META_CAPI_TOKEN || "").trim();
+  if (!pixelId || !token) {
+    return { ok: false, skipped: "META_CAPI_NOT_CONFIGURED" };
+  }
 
   const userData: Record<string, unknown> = {
     client_ip_address: event.ip,
@@ -64,8 +75,13 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
     ],
   };
 
-  if (process.env.APP_ENV === "staging" && process.env.META_TEST_EVENT_CODE) {
-    payload.test_event_code = process.env.META_TEST_EVENT_CODE;
+  const configuredTestCode = await getSetting<string>(
+    "tracking.metaTestEventCode",
+    process.env.META_TEST_EVENT_CODE || "",
+  );
+  const testEventCode = String(configuredTestCode || process.env.META_TEST_EVENT_CODE || "").trim();
+  if (testEventCode) {
+    payload.test_event_code = testEventCode;
   }
 
   let response: Response;

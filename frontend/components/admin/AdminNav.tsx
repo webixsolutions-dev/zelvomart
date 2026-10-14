@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { prefetchAdminData } from "./useAdminData";
 
 function Icon({ children }: { children: ReactNode }) {
@@ -14,24 +14,141 @@ function Icon({ children }: { children: ReactNode }) {
 }
 
 const icons = {
-  dashboard: <Icon><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z" /></Icon>,
-  orders: <Icon><path d="M6 3h12l2 4v14H4V7l2-4Z"/><path d="M4 8h16M9 12h6"/></Icon>,
-  products: <Icon><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></Icon>,
-  categories: <Icon><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></Icon>,
-  pages: <Icon><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 11h6M9 15h6"/></Icon>,
-  customers: <Icon><circle cx="9" cy="8" r="3"/><path d="M3.5 20c.5-4 2.4-6 5.5-6s5 2 5.5 6M16 5.5a3 3 0 0 1 0 5.8M16.5 14c2.4.3 3.7 2.2 4 5"/></Icon>,
-  settings: <Icon><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21v4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></Icon>,
-  users: <Icon><circle cx="9" cy="8" r="3"/><path d="M3.5 20c.5-4 2.4-6 5.5-6s5 2 5.5 6M17 10v6M14 13h6"/></Icon>,
-  reports: <Icon><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></Icon>,
-  marketing: <Icon><path d="M4 18V8l8-4 8 4v10l-8 3-8-3Z"/><path d="M8 11h8M8 15h5"/></Icon>,
-  cro: <Icon><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-7"/><path d="M16 6h3v3"/></Icon>,
-  replays: <Icon><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/></Icon>,
-  tracking: <Icon><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></Icon>,
-  jobs: <Icon><path d="M4 7h16v12H4zM8 7V4h8v3M8 12h8M8 16h5"/></Icon>,
-  abandoned: <Icon><path d="M5 5h14v14H5zM8 9h8M8 13h5"/><path d="m15 15 3 3"/></Icon>,
-  experiments: <Icon><path d="M9 3h6M10 3v5l-5 9a3 3 0 0 0 2.6 4h8.8A3 3 0 0 0 19 17l-5-9V3M8 15h8"/></Icon>,
-  reviews: <Icon><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6-5.4-2.9-5.4 2.9 1-6-4.4-4.3 6.1-.9L12 3Z"/></Icon>,
-  redirects: <Icon><path d="M4 7h10a5 5 0 0 1 5 5v1M16 10l3 3 3-3M20 17H10a5 5 0 0 1-5-5v-1M8 14l-3-3-3 3"/></Icon>,
+  dashboard: (
+    <Icon>
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </Icon>
+  ),
+  orders: (
+    <Icon>
+      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
+    </Icon>
+  ),
+  products: (
+    <Icon>
+      <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" />
+      <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
+    </Icon>
+  ),
+  categories: (
+    <Icon>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+    </Icon>
+  ),
+  tags: (
+    <Icon>
+      <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+      <line x1="7" y1="7" x2="7.01" y2="7" />
+    </Icon>
+  ),
+  discounts: (
+    <Icon>
+      <circle cx="9" cy="9" r="2" />
+      <circle cx="15" cy="15" r="2" />
+      <line x1="16" y1="8" x2="8" y2="16" />
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+    </Icon>
+  ),
+  pages: (
+    <Icon>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </Icon>
+  ),
+  customers: (
+    <Icon>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </Icon>
+  ),
+  settings: (
+    <Icon>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21v4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+    </Icon>
+  ),
+  users: (
+    <Icon>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </Icon>
+  ),
+  reports: (
+    <Icon>
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </Icon>
+  ),
+  marketing: (
+    <Icon>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </Icon>
+  ),
+  cro: (
+    <Icon>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </Icon>
+  ),
+  replays: (
+    <Icon>
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="10 8 16 12 10 16 10 8" />
+    </Icon>
+  ),
+  tracking: (
+    <Icon>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </Icon>
+  ),
+  jobs: (
+    <Icon>
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+    </Icon>
+  ),
+  abandoned: (
+    <Icon>
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+    </Icon>
+  ),
+  experiments: (
+    <Icon>
+      <path d="M10 2v7.31L4.69 19A2 2 0 0 0 6.42 22h11.16a2 2 0 0 0 1.73-3L14 9.31V2" />
+      <line x1="8" y1="2" x2="16" y2="2" />
+      <line x1="8.5" y1="14" x2="15.5" y2="14" />
+    </Icon>
+  ),
+  reviews: (
+    <Icon>
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </Icon>
+  ),
+  redirects: (
+    <Icon>
+      <polyline points="16 3 21 3 21 8" />
+      <line x1="4" y1="20" x2="21" y2="3" />
+      <polyline points="21 16 21 21 16 21" />
+      <line x1="15" y1="15" x2="21" y2="21" />
+      <line x1="4" y1="4" x2="9" y2="9" />
+    </Icon>
+  ),
 };
 
 const adminApiByHref: Record<string, string> = {
@@ -61,17 +178,6 @@ const adminApiByHref: Record<string, string> = {
 
 type NavLink = readonly [string, string, ReactNode];
 
-const productLinks: NavLink[] = [
-  ["/admin/products", "All products", icons.products],
-  ["/admin/products/drafts", "Drafts", icons.products],
-  ["/admin/products/add", "Add product", icons.products],
-  ["/admin/categories", "Categories", icons.categories],
-  ["/admin/tags", "Tags", icons.products],
-  ["/admin/discounts", "Discounts", icons.products],
-  ["/admin/reviews", "Reviews", icons.reviews],
-  ["/admin/product-tabs", "Product tabs", icons.pages],
-];
-
 const groups = [
   {
     label: "Store",
@@ -79,6 +185,17 @@ const groups = [
       ["/admin", "Dashboard", icons.dashboard],
       ["/admin/orders", "Orders", icons.orders],
       ["/admin/customers", "Customers", icons.customers],
+    ] as NavLink[],
+  },
+  {
+    label: "Catalog",
+    links: [
+      ["/admin/products", "Products", icons.products],
+      ["/admin/categories", "Categories", icons.categories],
+      ["/admin/tags", "Tags", icons.tags],
+      ["/admin/discounts", "Discounts", icons.discounts],
+      ["/admin/reviews", "Reviews", icons.reviews],
+      ["/admin/product-tabs", "Product tabs", icons.pages],
     ] as NavLink[],
   },
   {
@@ -118,11 +235,13 @@ function NavItem({
   label,
   icon,
   pathname,
+  onNavigate,
 }: {
   href: string;
   label: string;
   icon: ReactNode;
   pathname: string;
+  onNavigate?: () => void;
 }) {
   const active = linkIsActive(pathname, href);
   return (
@@ -133,6 +252,7 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       onMouseEnter={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}
       onFocus={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}
+      onClick={() => onNavigate?.()}
     >
       <span className="admin-nav-icon">{icon}</span>
       <span>{label}</span>
@@ -140,7 +260,13 @@ function NavItem({
   );
 }
 
-export default function AdminNav({ role = "OWNER" }: { role?: string }) {
+export default function AdminNav({
+  role = "OWNER",
+  onNavigate,
+}: {
+  role?: string;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   const allowed = (href: string) => {
     if (role === "OWNER") return true;
@@ -168,122 +294,28 @@ export default function AdminNav({ role = "OWNER" }: { role?: string }) {
     return false;
   };
 
-  const visibleProductLinks = productLinks.filter(([href]) => allowed(href));
-  const productsActive = visibleProductLinks.some(([href]) => linkIsActive(pathname, href));
-  const [productsOpen, setProductsOpen] = useState(false);
-  const [panelPos, setPanelPos] = useState({ left: 240, top: 0, height: "100vh" });
-  const productsRef = useRef<HTMLDivElement>(null);
-
-  function placeProductsPanel() {
-    const sidebar = productsRef.current?.closest(".admin-sidebar") as HTMLElement | null;
-    const button = productsRef.current?.querySelector(".admin-nav-parent") as HTMLElement | null;
-    if (!sidebar || !button) return;
-    const sidebarRect = sidebar.getBoundingClientRect();
-    const buttonRect = button.getBoundingClientRect();
-    const mobile = window.innerWidth <= 980;
-    if (mobile) {
-      setPanelPos({
-        left: Math.max(8, buttonRect.left),
-        top: buttonRect.bottom + 8,
-        height: "auto",
-      });
-      return;
-    }
-    setPanelPos({
-      left: sidebarRect.right,
-      top: buttonRect.top + buttonRect.height / 2,
-      height: "auto",
-    });
-  }
-
-  useEffect(() => {
-    setProductsOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!productsOpen) return;
-    placeProductsPanel();
-    const onReposition = () => placeProductsPanel();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setProductsOpen(false);
-    };
-    const onPointer = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (!target?.closest(".admin-nav-flyout-group") && !target?.closest(".admin-nav-flyout-panel")) {
-        setProductsOpen(false);
-      }
-    };
-    window.addEventListener("resize", onReposition);
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("mousedown", onPointer);
-    return () => {
-      window.removeEventListener("resize", onReposition);
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("mousedown", onPointer);
-    };
-  }, [productsOpen]);
-
   return (
     <nav className="admin-nav" aria-label="Admin sidebar">
-      {groups[0] ? (
-        <div className="admin-nav-group" key={groups[0].label}>
-          <div className="admin-nav-label">{groups[0].label}</div>
-          {groups[0].links.filter(([href]) => allowed(href)).map(([href, label, icon]) => (
-            <NavItem key={href} href={href} label={label} icon={icon} pathname={pathname} />
-          ))}
-        </div>
-      ) : null}
+      {groups.map((group) => {
+        const visibleLinks = group.links.filter(([href]) => allowed(href));
+        if (!visibleLinks.length) return null;
 
-      {visibleProductLinks.length ? (
-        <div className="admin-nav-group admin-nav-flyout-group" ref={productsRef}>
-          <div className="admin-nav-label">Catalog</div>
-          <button
-            type="button"
-            className={`admin-nav-link admin-nav-parent${productsOpen ? " is-open" : ""}${productsActive ? " is-current" : ""}`}
-            aria-expanded={productsOpen}
-            aria-controls="admin-products-submenu"
-            onClick={() => setProductsOpen((open) => !open)}
-          >
-            <span className="admin-nav-icon">{icons.products}</span>
-            <span>Products</span>
-            <em className="admin-nav-caret" aria-hidden="true" />
-          </button>
-          <div
-            className={`admin-nav-flyout-panel${productsOpen ? " is-open" : ""}`}
-            id="admin-products-submenu"
-            style={{ left: panelPos.left, top: panelPos.top, height: panelPos.height }}
-          >
-            <div className="admin-nav-flyout-panel-inner">
-              {visibleProductLinks.map(([href, label]) => {
-                const active = linkIsActive(pathname, href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    prefetch
-                    className={`admin-nav-flyout-link${active ? " active" : ""}`}
-                    aria-current={active ? "page" : undefined}
-                    onMouseEnter={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}
-                    onFocus={() => adminApiByHref[href] && prefetchAdminData(adminApiByHref[href])}
-                    onClick={() => setProductsOpen(false)}
-                  >
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
+        return (
+          <div className="admin-nav-group" key={group.label}>
+            <div className="admin-nav-label">{group.label}</div>
+            {visibleLinks.map(([href, label, icon]) => (
+              <NavItem
+                key={href}
+                href={href}
+                label={label}
+                icon={icon}
+                pathname={pathname}
+                onNavigate={onNavigate}
+              />
+            ))}
           </div>
-        </div>
-      ) : null}
-
-      {groups.slice(1).map((group) => (
-        <div className="admin-nav-group" key={group.label}>
-          <div className="admin-nav-label">{group.label}</div>
-          {group.links.filter(([href]) => allowed(href)).map(([href, label, icon]) => (
-            <NavItem key={href} href={href} label={label} icon={icon} pathname={pathname} />
-          ))}
-        </div>
-      ))}
+        );
+      })}
     </nav>
   );
 }

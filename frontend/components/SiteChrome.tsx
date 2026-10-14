@@ -15,6 +15,7 @@ export default function SiteChrome({
   whatsapp,
   tracking,
   metaPixel,
+  tiktokPixel,
   clarity,
   organizationJson,
   delivery,
@@ -26,6 +27,7 @@ export default function SiteChrome({
   whatsapp: ReactNode;
   tracking: ReactNode;
   metaPixel: ReactNode;
+  tiktokPixel?: ReactNode;
   clarity: ReactNode;
   organizationJson: string;
   delivery?: DeliverySettings | null;
@@ -42,6 +44,7 @@ export default function SiteChrome({
     return (
       <>
         <Fragment key="meta-pixel">{metaPixel}</Fragment>
+        <Fragment key="tiktok-pixel">{tiktokPixel}</Fragment>
         <Fragment key="clarity">{clarity}</Fragment>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
         <DeliveryPolicyProvider value={delivery}>
@@ -57,6 +60,7 @@ export default function SiteChrome({
   return (
     <>
       <Fragment key="meta-pixel">{metaPixel}</Fragment>
+      <Fragment key="tiktok-pixel">{tiktokPixel}</Fragment>
       <Fragment key="clarity">{clarity}</Fragment>
       <script
         type="application/ld+json"
