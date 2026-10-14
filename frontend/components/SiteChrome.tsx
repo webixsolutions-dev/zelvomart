@@ -1,12 +1,11 @@
 "use client";
 
-import { Fragment, Suspense, type ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { CartProvider } from "@/components/CartProvider";
 import { DeliveryPolicyProvider } from "@/components/DeliveryPolicy";
 import type { DeliverySettings } from "@/lib/shipping";
 import PageMotion from "@/components/PageMotion";
-import RouteTransitionOverlay from "@/components/RouteTransitionOverlay";
 
 export default function SiteChrome({
   children,
@@ -47,7 +46,6 @@ export default function SiteChrome({
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
         <DeliveryPolicyProvider value={delivery}>
         <CartProvider>
-          <Suspense fallback={null}><RouteTransitionOverlay /></Suspense>
           <main className="public-site-main">{children}</main>
           <Fragment key="tracking">{tracking}</Fragment>
         </CartProvider>
@@ -66,7 +64,6 @@ export default function SiteChrome({
       />
       <DeliveryPolicyProvider value={delivery}>
       <CartProvider>
-        <Suspense fallback={null}><RouteTransitionOverlay /></Suspense>
         <Fragment key="header">{header}</Fragment>
         <main className="public-site-main">{children}</main>
         <PageMotion />

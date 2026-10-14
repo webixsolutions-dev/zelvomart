@@ -13,7 +13,11 @@ export async function GET(request: NextRequest) {
   for (const base of candidates) {
     try {
       const upstream = await fetch(`${base}/api/health`, { cache:"no-store" });
-      const data = await upstream.json().catch(() => ({}));
+      // A crashed backend returns a non-JSON error page; say so instead of answering with {}.
+      const data = await upstream.json().catch(() => null);
+      if (!data || typeof data !== "object") {
+        return NextResponse.json({ ok:false, error:"BACKEND_BAD_RESPONSE", upstreamStatus: upstream.status }, { status:502, headers: { "cache-control":"no-store" } });
+      }
       return NextResponse.json(data, { status: upstream.status, headers: { "cache-control":"no-store" } });
     } catch {}
   }

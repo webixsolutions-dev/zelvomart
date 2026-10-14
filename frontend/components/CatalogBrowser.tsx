@@ -66,7 +66,6 @@ export default function CatalogBrowser({
 
     const query = params.toString();
 
-    window.dispatchEvent(new Event("zelvo:route-start"));
     router.push(query ? `${pathname}?${query}` : pathname);
   }
 

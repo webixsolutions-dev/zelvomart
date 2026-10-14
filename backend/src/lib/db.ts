@@ -4,13 +4,15 @@ import { Pool } from "pg";
 import { PrismaClient } from "../generated/prisma/client";
 
 const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
+// On Vercel a throw at import kills the whole function before any route can answer
+// (FUNCTION_INVOCATION_FAILED), so there server.ts reports the missing variable as JSON instead.
+if (!connectionString && !process.env.VERCEL) {
   throw new Error("DATABASE_URL is not configured");
 }
 
 const useSsl =
   process.env.DATABASE_SSL === "true" ||
-  /supabase\.co/i.test(connectionString);
+  /supabase\.co/i.test(connectionString || "");
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 const pool = new Pool({

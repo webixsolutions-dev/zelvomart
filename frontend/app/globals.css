@@ -11138,3 +11138,62 @@ body,
   .pd-var-row { grid-template-columns: 76px minmax(0, 1fr); }
   .pd-var-price-slot, .pd-var-card .pd-var-actions { grid-column: 2; }
 }
+
+
+/* ==========================================================================
+   Admin products list: day groups, added time, row actions, mobile cards
+   ========================================================================== */
+.admin-products-control-row-compact:has(.admin-category-filter + .admin-category-filter) { grid-template-columns: minmax(220px, 1fr) 190px 170px auto; }
+.admin-product-day-row td { padding: 10px 12px !important; border-bottom: 1px solid #e3eaee; background: #f3f7f9; }
+.admin-product-day-row b { margin-right: 10px; color: #12303f; font-size: 12px; font-weight: 800; letter-spacing: .01em; }
+.admin-product-day-row span { color: #6f828e; font-size: 11px; font-weight: 600; }
+.admin-product-added { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
+.admin-product-added b { color: #12303f; font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.admin-product-added span { color: #6f828e; font-size: 10.5px; font-weight: 600; }
+.admin-products-dated-table .admin-import-row-actions .admin-btn { min-height: 32px; padding: 0 12px; border-radius: 8px; font-size: 10.5px; text-decoration: none; }
+.admin-products-dated-table .admin-import-row-actions .admin-btn-light { border-color: #d6e0e6; background: #fff; color: #203a4c; }
+.admin-products-dated-table .admin-import-row-actions .admin-btn-light:hover:not(:disabled) { border-color: #0a86b8; color: #0a86b8; }
+.admin-products-dated-table .admin-import-row-actions .admin-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+@media (max-width: 1180px) {
+  .admin-products-control-row-compact:has(.admin-category-filter + .admin-category-filter) { grid-template-columns: minmax(200px, 1fr) 170px 160px; }
+  .admin-products-control-row-compact:has(.admin-category-filter + .admin-category-filter) .admin-products-actions-reference { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+/* Phones and small tablets: each product becomes a card instead of a wide table */
+@media (max-width: 820px) {
+  .admin-products-control-row-compact:has(.admin-category-filter + .admin-category-filter) { grid-template-columns: 1fr 1fr; }
+  .admin-products-control-row-compact:has(.admin-category-filter + .admin-category-filter) .admin-product-search-wide { grid-column: 1 / -1; }
+  .admin-products-control-row-compact .admin-products-actions-reference { flex-wrap: wrap; }
+  .admin-products-dated-table { overflow: visible; border: 0; background: transparent; box-shadow: none; }
+  .admin-products-dated-table .admin-table { display: block; min-width: 0; width: 100%; }
+  .admin-products-dated-table .admin-table thead { display: none; }
+  .admin-products-dated-table .admin-table tbody { display: flex; flex-direction: column; gap: 10px; }
+  .admin-products-dated-table .admin-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; padding: 14px; border: 1px solid #dde5ea; border-radius: 14px; background: #fff; }
+  .admin-products-dated-table .admin-table td { display: block; min-width: 0; padding: 0 !important; border: 0; font-size: 12px; }
+  .admin-products-dated-table .admin-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 3px; color: #7b8c96; font-size: 9.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+  .admin-products-dated-table .admin-table td[data-label="Item"],
+  .admin-products-dated-table .admin-table td[data-label="Actions"] { grid-column: 1 / -1; }
+  .admin-products-dated-table .admin-table td[data-label="Item"]::before,
+  .admin-products-dated-table .admin-table td[data-label="Actions"]::before { display: none; }
+  .admin-products-dated-table .admin-table td[data-label="Item"] { padding-bottom: 12px !important; border-bottom: 1px solid #eef2f4; }
+  .admin-products-dated-table .admin-table td[data-label="Actions"] { padding-top: 12px !important; border-top: 1px solid #eef2f4; }
+  .admin-products-dated-table .admin-product-cell b { font-size: 13.5px; overflow-wrap: anywhere; }
+  .admin-products-dated-table .admin-import-row-actions { justify-content: stretch; }
+  .admin-products-dated-table .admin-import-row-actions .admin-btn { flex: 1; min-height: 40px; font-size: 12px; }
+  .admin-products-dated-table .admin-table tr.admin-product-day-row { display: block; margin-top: 6px; padding: 0 2px; border: 0; background: transparent; }
+  .admin-products-dated-table .admin-product-day-row td { padding: 0 !important; background: transparent; }
+  .admin-products-dated-table .admin-product-day-row b { font-size: 14px; }
+  .admin-products-dated-table .admin-table td.admin-empty { grid-column: 1 / -1; padding: 24px 0 !important; text-align: center; }
+  .admin-product-added { flex-direction: row; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+  .admin-products-control-row-compact:has(.admin-category-filter + .admin-category-filter) { grid-template-columns: 1fr; }
+}
+
+/* Admin shell on phones/tablets: a plain 1fr track grows to fit the side-scrolling nav
+   and pushes every admin page off-screen, so the single column is capped to the viewport. */
+@media (max-width: 980px) {
+  .admin-shell { grid-template-columns: minmax(0, 1fr); }
+  .admin-sidebar, .admin-workspace, .admin-main { min-width: 0; max-width: 100%; }
+}
