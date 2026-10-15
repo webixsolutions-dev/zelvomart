@@ -3,6 +3,7 @@ import { prisma } from "../src/lib/db";
 import { dispatchJobRow, getBoss } from "../src/lib/jobs";
 import { sendCustomerOrderEmail, sendCustomerStatusEmail, sendFailureAlert, sendOrderTeamEmail } from "../src/lib/email";
 import { sendMetaServerEvent } from "../src/lib/meta";
+import { sendTikTokServerEvent } from "../src/lib/tiktok";
 import { Resend } from "resend";
 import { money } from "../src/lib/format";
 import { getSetting } from "../src/lib/settings";
@@ -103,6 +104,54 @@ async function main() {
             item_price: Number(item.unitPrice),
           })),
           num_items: order.items.reduce((sum, item) => sum + item.quantity, 0),
+          value: Number(order.total),
+          currency: "PKR",
+          order_id: order.orderNumber,
+        },
+      });
+    });
+  });
+
+  await boss.work("tiktok-event", async ([job]) => {
+    const data = job.data as any;
+    return withJobLog(data.jobLogId, () => sendTikTokServerEvent({
+      eventName: String(data.eventName),
+      eventId: String(data.eventId),
+      sourceUrl: data.sourceUrl || undefined,
+      userAgent: data.userAgent || undefined,
+      ip: data.ip || undefined,
+      ttp: data.ttp || undefined,
+      customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
+    }));
+  });
+
+  await boss.work("tiktok-purchase", async ([job]) => {
+    const data = job.data as any;
+    return withJobLog(data.jobLogId, async () => {
+      const order = await prisma.order.findUnique({
+        where: { id: data.orderId },
+        include: { items: true },
+      });
+      if (!order || order.test || order.staffCreated) return;
+
+      await sendTikTokServerEvent({
+        eventName: "Purchase",
+        eventId: order.orderNumber,
+        orderId: order.id,
+        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/checkout/success/${order.orderNumber}`,
+        ip: order.clientIp || undefined,
+        userAgent: order.clientUserAgent || undefined,
+        phone: order.phone,
+        email: order.email || undefined,
+        externalId: order.customerId || undefined,
+        customData: {
+          content_type: "product",
+          contents: order.items.map((item) => ({
+            content_id: item.sku,
+            content_name: item.title,
+            quantity: item.quantity,
+            price: Number(item.unitPrice),
+          })),
           value: Number(order.total),
           currency: "PKR",
           order_id: order.orderNumber,
@@ -251,6 +300,18 @@ async function main() {
     return result.count;
   });
 
+  await boss.work("session-replay-retention-cleanup", async () => {
+    const settingDays = await getSetting<number | string | null>("tracking.sessionReplayRetentionDays", null).catch(() => null);
+    const parsedSettingDays = settingDays !== null && settingDays !== undefined ? Number(settingDays) : NaN;
+    const days = Number.isFinite(parsedSettingDays) && parsedSettingDays > 0
+      ? parsedSettingDays
+      : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 14);
+    if (!Number.isFinite(days) || days <= 0) return 0;
+    const cutoff = new Date(Date.now() - days * 86400000);
+    const result = await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } });
+    return result.count;
+  });
+
   await boss.work("job-recovery", async () => {
     const cutoff = new Date(Date.now() - 60 * 1000);
     const stranded = await prisma.job.findMany({
@@ -273,6 +334,7 @@ async function main() {
   await boss.schedule("abandoned-checkout-scan", "*/15 * * * *", {});
   await boss.schedule("job-recovery", "*/5 * * * *", {});
   await boss.schedule("rate-limit-cleanup", "30 3 * * *", {});
+  await boss.schedule("session-replay-retention-cleanup", "0 3 * * *", {});
 
   console.log("Zelvomart worker is running.");
 }

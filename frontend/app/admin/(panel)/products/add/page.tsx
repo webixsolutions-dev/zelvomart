@@ -13,11 +13,25 @@ export default function AddProductPage() {
 
   return (
     <>
-      <div className="admin-title admin-product-form-page-title">
-        <div>
-          <Link className="admin-back-link" href="/admin/products">← Back to Products</Link>
-          <h1>Add new product</h1>
-          <p>Name, price and stock are enough to post. Image and brand are optional. Tags place the product on bestsellers, new arrivals or discounts, and the shop still lists every posted product.</p>
+      <div className="admin-products-header-container" style={{ marginBottom: 20 }}>
+        <div className="admin-products-header-copy">
+          <Link
+            className="admin-back-link"
+            href="/admin/products"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              color: "var(--adm-primary)",
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+              marginBottom: 8,
+            }}
+          >
+            ← Back to Products
+          </Link>
+          <h1 className="admin-products-heading" style={{ margin: 0 }}>Add new product</h1>
         </div>
       </div>
       <ProductForm

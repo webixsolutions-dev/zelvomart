@@ -14,7 +14,7 @@ function setCookie(name: string, value: string, maxAge = 2592000) {
 
 function sourceFromUrl() {
   const params = new URLSearchParams(window.location.search);
-  const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "campaign_id", "adset_id", "ad_id", "fbclid"];
+  const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_id", "campaign_id", "adset_id", "ad_id", "fbclid", "ttclid"];
   const source: Record<string, string> = {};
   for (const key of keys) {
     const value = params.get(key);
@@ -37,6 +37,9 @@ export default function TrackingProvider() {
 
       if (source.fbclid && !document.cookie.includes("_fbc=")) {
         setCookie("_fbc", `fb.1.${Date.now()}.${source.fbclid}`);
+      }
+      if (source.ttclid && !document.cookie.includes("ttclid=")) {
+        setCookie("ttclid", source.ttclid);
       }
     }
 
