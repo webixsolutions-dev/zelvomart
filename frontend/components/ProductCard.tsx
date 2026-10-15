@@ -40,7 +40,8 @@ export default function ProductCard({ product }: { product: Product }) {
         <Link href={`/product/${product.slug}/`}>
           <Image
             src={imageSrc}
-            alt={product.name}
+            alt={(imageSrc === product.image && product.imageAlt) || product.name}
+            title={(imageSrc === product.image && product.imageTitle) || undefined}
             width={800}
             height={800}
             className="zm-product-image"

@@ -15,6 +15,7 @@
     "worker": "tsx workers/main.ts",
     "migrate:wordpress": "tsx scripts/migrate-wordpress.ts",
     "templates": "tsx scripts/generate-import-templates.ts",
+    "stock:backfill": "tsx scripts/backfill-stock-columns.ts",
     "qa:urls": "tsx scripts/check-urls.ts",
     "migrate:urls": "tsx scripts/migration/export-wordpress-urls.ts",
     "postinstall": "prisma generate --schema=prisma/schema.prisma",

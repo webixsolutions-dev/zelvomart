@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "pub-6861daa0380241a2acc38cd5ca85b301.r2.dev" },
       { protocol: "https", hostname: "*.cloudflarestorage.com" },
       { protocol: "https", hostname: "*.supabase.co" },
+      // Product video thumbnails (the player itself only loads after a click).
+      { protocol: "https", hostname: "i.ytimg.com", pathname: "/vi/**" },
+      { protocol: "https", hostname: "i.vimeocdn.com" },
       { protocol: "http", hostname: "localhost", port: "4000", pathname: "/uploads/**" },
       { protocol: "http", hostname: "127.0.0.1", port: "4000", pathname: "/uploads/**" },
       ...((process.env.NEXT_PUBLIC_IMAGE_HOSTS || "").split(",").map((value) => value.trim()).filter(Boolean).map((hostname) => ({ protocol: "https" as const, hostname }))),

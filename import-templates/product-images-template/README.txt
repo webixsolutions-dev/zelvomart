@@ -1,56 +1,56 @@
 ZELVOMART - PRODUCT IMAGE TEMPLATE
 ==================================
 
-Upload at: Admin > Products > Upload Image ZIP
+Upload at: Admin > Products > Bulk Image Upload
 The product must already exist (a draft is fine). Import the CSV first.
 
-STRUCTURE
----------
-One folder per product. The folder name is the product SKU. The images go inside it.
+Images are matched to products by NAME: the product title, or its slug or SKU.
+The system never guesses. A name that matches no product, or more than one, is
+listed as "Unassigned" and you pick the product by hand. Nothing is uploaded
+until you click Confirm.
 
-  ZVM-L-7581/                 <- folder name = product SKU
-    1.jpg                     <- the image named 1 = FEATURED (main) image
-    2.jpg                     <- every other image = the rest of the product's images
-    3.jpg
-    side-view.jpg
+THREE WAYS TO NAME THE IMAGES
+-----------------------------
+1. One ZIP per product, named like the product. Inside, the images can be 1, 2, 3...
 
-Zip that folder (ZVM-L-7581.zip) and upload it.
-For several products, put all the SKU folders in one ZIP:
+     EXAMPLE Cotton T-Shirt.zip
+       1.webp                  <- main image
+       2.webp
 
-  product-images.zip
-    ZVM-L-7581/
-      1.jpg
-      2.jpg
-    ZVM-EXAMPLE-LIP-001/
-      1.jpg
-      2.jpg
+2. One ZIP with a folder per product, named like the product:
 
-RULES (only this structure is accepted)
----------------------------------------
-If the ZIP breaks any rule, the upload is blocked and every problem is listed with the
-folder or file and how to fix it. Nothing is uploaded until the ZIP is fixed.
+     product-images.zip
+       EXAMPLE Matte Lipstick Rose Red/   <- simple product
+         1.jpg                            <- main image
+         2.jpg
+         3.png
+       EXAMPLE Cotton T-Shirt/            <- variable product, same layout
+         1.webp
+         2.webp
 
-1. Folder name = the exact product SKU, as shown in the admin.
-   A slug or a product title is rejected.
-2. Name the featured image 1 (1.jpg, 1.png or 1.webp). It becomes the main product
-   image, also when the product already has images.
-   A product with no images yet must have an image named 1.
-3. The other images can have any name. Numbered images come first in number order
-   (2, 3, 4 ...), then the rest by name.
-4. All images sit directly in the SKU folder. No images outside a SKU folder and
-   no ZIP inside the ZIP. One outer wrapper folder is fine.
-5. Formats: JPG, JPEG, PNG, WEBP, GIF, AVIF. Maximum 8 MB per image.
-   The file must really be that format; a renamed or damaged file is rejected.
-6. Maximum 13 images per product, including the ones it already has unless
-   "Replace existing images" is ticked.
-7. No password on the ZIP. Normal .zip only (not RAR or 7z). Keep it under 4 GB.
-8. .txt, .md and .csv files like this one are ignored.
+3. Loose image files (Image folder option) named with the product name:
 
-OPTIONAL - images for one option of a variable product
-------------------------------------------------------
-Inside the SKU folder of a variable product, add a sub-folder named with a variation
-SKU or one option value (for example Black). The images in it are saved on those
-variations. Simple products cannot have sub-folders.
+     EXAMPLE Cotton T-Shirt.jpg
+     EXAMPLE Cotton T-Shirt-1.jpg
+     EXAMPLE Cotton T-Shirt-front.webp
 
-The exact folder name for every product is in "Folder names CSV", downloadable from the
-Upload Image ZIP window.
+RULES
+-----
+1. Names are compared exactly, ignoring case, spaces, punctuation and "&" vs "and".
+   Title first, then slug, then SKU. A SKU or slug as the folder name also works.
+2. Main image: the file numbered 1, then 2, 3 and so on. Without numbers, the first
+   file in name order is the main image. You can change it later in the admin.
+3. No sub-folders. A variable product's images belong to the product and show for
+   every variation. Set a variation's own images by hand in the product form.
+4. Formats: JPG, JPEG, PNG, WEBP, GIF. Images are converted to WEBP in the browser
+   (longest side 1200 px). GIFs upload as they are. Maximum 4 MB per image after
+   conversion.
+5. Existing product images are kept. Maximum 13 images per product.
+6. The same image uploaded again is skipped as a duplicate.
+7. The ZIP holds images only. Alt text and image title come from the CSV
+   (imageAlt, imageTitle) and apply to every image of the product.
+8. No password on the ZIP. Normal .zip only (not RAR or 7z).
+9. .txt, .md and .csv files like this one are ignored.
+
+The exact product names are in "Download product names CSV", in the Bulk Image
+Upload window.

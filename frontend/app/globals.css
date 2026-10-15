@@ -1094,6 +1094,30 @@ img { max-width: 100%; display: block; }
 .admin-import-state.saved { background: #fff6e0; color: #9a6b00; }
 .admin-import-state.posted { background: #eefaf3; color: #198958; }
 .admin-import-state.error { background: #fff1f1; color: #b84b4b; }
+.admin-import-state.exists { background: #f1f1f4; color: #5b6470; }
+.admin-import-message.warning { background: #fff8e6; color: #8a5d00; }
+.admin-import-sub.warning { color: #9a6b00; }
+.admin-import-category { width: 100%; min-width: 150px; padding: 5px 6px; border: 1px solid #d6e0e6; border-radius: 7px; background: #fff; color: #294251; font-size: 10px; }
+.admin-import-category.missing { border-color: #e2a4a4; background: #fff8f8; }
+.admin-bulk-help { margin-bottom: 12px; padding: 12px 14px; border: 1px solid #e3eaee; border-radius: 10px; background: #fafcfd; color: #4f6270; font-size: 10px; line-height: 1.55; }
+.admin-bulk-help > b { display: block; margin-bottom: 4px; color: #294251; font-size: 10.5px; }
+.admin-bulk-help p { margin: 6px 0 0; }
+.admin-bulk-help p b { color: #294251; }
+.admin-bulk-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.admin-bulk-input { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #e3eaee; border-radius: 10px; cursor: pointer; }
+.admin-bulk-input > span:first-child { color: #294251; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.admin-bulk-input small { color: #84949e; font-size: 9px; }
+.admin-bulk-file { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px; border: 1px solid #e3eaee; border-radius: 8px; }
+.admin-bulk-file em { overflow: hidden; color: #4f6270; font-size: 10px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.admin-bulk-formats { margin: 8px 0 0; color: #84949e; font-size: 9.5px; }
+.admin-bulk-product { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.admin-bulk-thumb { flex: none; width: 38px; height: 38px; border: 1px solid #e3eaee; border-radius: 7px; background: #f3f6f8; object-fit: cover; }
+.admin-bulk-thumb.empty { display: inline-block; }
+.admin-bulk-progress { display: block; width: 100%; max-width: 120px; height: 5px; margin-top: 5px; overflow: hidden; border-radius: 999px; background: #e7eef2; }
+.admin-bulk-progress span { display: block; height: 100%; background: #087fab; transition: width .2s ease; }
+.admin-bulk-section { margin-top: 14px; }
+.admin-bulk-section h3 { margin: 0; color: #294251; font-size: 11.5px; }
+.admin-bulk-section p { margin: 3px 0 8px; color: #84949e; font-size: 9.5px; }
 .admin-import-problems { max-height: 220px; margin: 8px 0 0; padding: 0 0 0 16px; overflow: auto; font-weight: 500; line-height: 1.6; }
 .admin-import-problems b { display: block; font-weight: 800; overflow-wrap: anywhere; }
 .admin-import-problems li + li { margin-top: 6px; }
@@ -11131,6 +11155,91 @@ body,
 }
 .pd-product-tabs .pd-tab-preview p { margin: 0 0 8px; }
 .pd-product-tabs .pd-tab-preview p:last-child { margin-bottom: 0; }
+.pd-product-tabs .pd-acc { margin-bottom: 0; }
+.pd-acc-state { padding: 2px 8px; border-radius: 999px; background: #f1f5f9; color: #64748b; font-size: 11px; font-weight: 700; }
+.pd-acc-state.is-custom { background: #e8f5fc; color: #0b77a8; }
+.pd-acc-body { display: grid; gap: 10px; padding: 12px 16px 16px; border-top: 1px solid #f1f5f9; }
+.pd-var-row { cursor: pointer; }
+.pd-var-row select, .pd-var-row button { cursor: pointer; }
+/* Admin: Product video box */
+.pd-video-box { display: grid; gap: 10px; }
+.pd-video-box input { width: 100%; min-height: 38px; padding: 8px 12px; border: 1px solid var(--adm-border, #d7e1e7); border-radius: 8px; font-size: 13px; background: #fff; }
+.pd-video-box input.is-invalid { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1); }
+.pd-video-error { margin: 0; color: #b91c1c; font-size: 12px; font-weight: 650; line-height: 1.45; }
+.pd-video-preview { position: relative; overflow: hidden; aspect-ratio: 16 / 9; border-radius: 12px; background: #0f172a; }
+button.pd-video-preview { display: block; width: 100%; padding: 0; border: 0; cursor: pointer; }
+button.pd-video-preview:hover .pd-video-play { transform: scale(1.12); }
+.pd-video-play { transition: transform 0.15s ease; }
+.pd-video-preview iframe { width: 100%; height: 100%; border: 0; display: block; }
+.pd-video-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pd-video-placeholder { display: grid; place-items: center; height: 100%; color: #cbd5e1; font-size: 13px; font-weight: 700; }
+.pd-video-play { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 22px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); pointer-events: none; }
+.pd-video-preview small { position: absolute; left: 8px; bottom: 8px; padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 11px; font-weight: 700; }
+.pd-var-stock-tag { width: fit-content; margin-top: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 800; }
+.pd-var-stock-tag.is-in { background: #eef8f2; color: #247a4f; }
+.pd-var-stock-tag.is-out { background: #fff1f1; color: #a94b4b; }
+
+/* Variation cards size to the panel they sit in (not the window), so nothing is clipped
+   when the product data panel is narrow next to its tab menu and the sidebar. */
+.wp-data-panel-content { min-width: 0; }
+.pd-var { container-type: inline-size; min-width: 0; }
+.pd-var-tools span { white-space: nowrap; }
+.pd-var-row {
+  grid-template-columns: 76px minmax(0, 1fr) auto auto;
+  grid-template-areas: "thumb id price actions";
+}
+.pd-var-thumb { grid-area: thumb; }
+.pd-var-identity { grid-area: id; }
+.pd-var-price-slot { grid-area: price; min-width: 0; }
+.pd-var-card .pd-var-actions { grid-area: actions; flex-wrap: nowrap; }
+.pd-var-card .pd-var-actions button { white-space: nowrap; }
+.pd-var-picks select { flex: 1 1 120px; min-width: 0; max-width: 220px; }
+.pd-var-gallery-head strong { white-space: nowrap; }
+
+/* Inputs inside an open variation (SKU, quantity, schedule dates) */
+.pd-var-woo input:not([type="checkbox"]):not([type="radio"]) {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #d7e1e7;
+  border-radius: 10px;
+  outline: 0;
+  background: #fff;
+  color: #1b3444;
+  font-size: 13px;
+}
+/* Checkbox and its text on one line (Enabled, Manage stock?) */
+.pd-var-woo .pd-check { display: flex; align-items: center; gap: 8px; }
+.pd-var-woo .pd-check input { width: 16px; height: 16px; min-height: 0; flex: 0 0 auto; }
+.pd-var-woo-fields { align-content: start; }
+.pd-var-woo .pd-variation-grid { align-items: start; }
+.pd-var-woo .pd-variation-grid label { align-content: start; }
+
+@container (max-width: 640px) {
+  .pd-var-row {
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "thumb id id"
+      "thumb price actions";
+    row-gap: 10px;
+  }
+  .pd-var-woo-top,
+  .pd-var-woo .pd-variation-grid { grid-template-columns: minmax(0, 1fr); }
+  .pd-var-stock-status { max-width: none; }
+}
+@container (max-width: 380px) {
+  .pd-var-row {
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-areas:
+      "thumb id"
+      "price price"
+      "actions actions";
+  }
+  .pd-var-thumb { width: 64px; height: 64px; }
+  .pd-var-card .pd-var-actions { justify-content: flex-start; }
+  .pd-schedule { grid-template-columns: minmax(0, 1fr); }
+}
 .pd-save-note { margin: 0; color: #247a4f; font-size: 13px; font-weight: 650; }
 .pd-save-error { margin: 0; color: #a94b4b; font-size: 13px; font-weight: 650; }
 @media (max-width: 980px) {
@@ -11139,8 +11248,6 @@ body,
   .pd-data-bar p { text-align: left; }
   .pd-data-body nav { grid-template-columns: repeat(2, minmax(0, 1fr)); border-right: 0; border-bottom: 1px solid #e8eef2; }
   .pd-row > span { padding-top: 0; }
-  .pd-var-row { grid-template-columns: 76px minmax(0, 1fr); }
-  .pd-var-price-slot, .pd-var-card .pd-var-actions { grid-column: 2; }
 }
 
 

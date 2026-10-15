@@ -8,6 +8,7 @@ import ProductToolbar from "./products/ProductToolbar";
 import ProductStatusTabs from "./products/ProductStatusTabs";
 import ProductsTable from "./products/ProductsTable";
 import { Product } from "./products/ProductTableRow";
+import { stockBadgeState } from "./products/StockBadge";
 
 type Category = { id: string; name: string; slug?: string; count?: number };
 
@@ -146,14 +147,10 @@ export default function ProductsAdminList({
     let outOfStock = 0;
 
     for (const p of scopedProducts) {
-      const qty = Number(p.stock ?? p.stockQuantity ?? 0);
-      if (qty <= 0) {
-        outOfStock += 1;
-      } else if (qty <= 5) {
-        lowStock += 1;
-      } else {
-        inStock += 1;
-      }
+      const state = stockBadgeState(p.stockStatus, p.stockQuantity).variant;
+      if (state === "out") outOfStock += 1;
+      else if (state === "low") lowStock += 1;
+      else inStock += 1;
     }
 
     return {

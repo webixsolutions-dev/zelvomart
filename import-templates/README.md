@@ -5,10 +5,10 @@ Everything needed to add products and product images in bulk from the admin pane
 
 | File | Use it for |
 |---|---|
-| `simple-products-template.csv` | Products with one price and one stock count |
-| `variable-products-template.csv` | Products with options (Color, Size...) |
+| `simple-products-template.csv` | Products with one price |
+| `variable-products-template.csv` | Products with options (Color, Size...), one row per product |
 | `CSV-COLUMNS.md` | What every column means and which values are allowed |
-| `product-images-template.zip` | Example of the image ZIP structure |
+| `product-images-template.zip` | Example of the image ZIP: one folder per product, named like the product |
 | `product-images-template/` | The same example, unzipped |
 
 The two CSV files and `CSV-COLUMNS.md` are generated from the import code. After changing
@@ -24,55 +24,68 @@ The same two CSV templates can be downloaded inside the admin: **Import CSV → 
 
 ## 1. Products from CSV
 
+The CSV carries only what an AI writes for a **new** product. Everything else (stock,
+shipping, badge, featured, delivery, tabs, redirects, video) is set by hand in the
+product form after import. Images come only from the image ZIP (section 2).
+
 ### Steps
 
 1. Give an AI assistant three things: the template CSV (simple or variable), `CSV-COLUMNS.md`,
    and your product data. Use the prompt below.
 2. Admin → **Products** → **Import CSV** → choose the CSV the AI returned.
-3. The file is checked first. Nothing is saved yet. Each product shows **New**,
-   **Will update** or **Error** with the reason and the spreadsheet row number.
-4. Save to drafts:
+3. The file is checked first (dry run). Nothing is saved yet. Each product shows **New**,
+   **Already exists** or **Error** with the reason and the spreadsheet row number, plus any
+   warnings (removed columns, unknown tags, a category that did not match...).
+4. Every row has a **Category** dropdown with the store's categories. It is pre-selected when
+   the CSV value matches a category name or slug, and empty when it is blank or wrong.
+   Saving starts only when every row that will be saved has a category.
+5. Save to drafts:
    - **Add all to drafts** saves every valid product at once, or
    - **Add to draft** on one row saves only that product.
-5. Post:
-   - **Post** on a row puts that product on the shop in one click, or
-   - **Post all drafts** posts every product saved from this file.
-   - Later, the same **Post** / **Post all** buttons are on **Products → Drafts**.
+6. Check each draft, then post it (**Post** on a row, **Post all drafts**, or later from
+   **Products → Drafts**).
 
 ### Rules the importer follows
 
-- **SKU decides create or update.** A new SKU creates a product. An existing SKU updates it.
-- **New products are always drafts.** An existing product keeps its current status.
-- **Empty cells never erase data.** On an update, only filled cells change the product.
-- **Categories are created automatically** when the name or slug does not exist yet. The
-  `category*` columns fill the category's description, image, sort order and SEO fields.
-- **Slug** is generated from the title when blank. A posted product never changes its slug.
-- A product can be saved as a draft without a price, but it cannot be posted until it has one.
-- Lists inside one cell are separated with `|` (tags, image URLs, attribute values).
+- **Create-only.** A row is rejected as **Already exists**, and nothing changes, when its SKU,
+  slug or title matches an existing product (drafts included). The title match ignores case,
+  extra spaces and punctuation. Variation SKUs are checked too. To change an existing product,
+  edit it in the admin.
+- **Duplicates in the file.** Two rows with the same SKU, slug or title are both flagged.
+- **New products are always drafts.**
+- **Blank cells are normal.** Blank means the default or empty, never an error, except in the
+  required columns (`type`, `title`, `sku`, `category`, `regularPrice`, and for variable
+  products `attribute1Name` / `attribute1Values`).
+- **Categories are never created.** The category must be one of the store's categories.
+- **Slug** is made from the title when blank.
+- **descriptionHtml**: any `<h1>` is saved as `<h2>` (the product name is the page's only `<h1>`).
+- Lists inside one cell are separated with `|` (tags, attribute values).
+- **Defaults** for everything not in the CSV: In stock (Track stock OFF), delivery charges
+  apply (not free), buy-2 bundle on, no brand, redirect fallback on, store-wide product tabs,
+  indexable. Variable products: swatches on, circle, medium.
 
-### What gets rejected
+### Old files
 
-The whole file is rejected, and nothing is saved, when the header row was changed:
-an added or renamed column, a repeated column, a column without a name, or a missing
-`type`, `title`, `sku` or `regularPrice` column. The same happens for a file that is not
-a comma-separated CSV (an .xlsx file, or a semicolon-separated export).
+Files made from the previous templates still import:
 
-A single product is rejected, with its row number and the reason, when a value is wrong:
-missing title or SKU, a SKU repeated in the file, a price or stock that is not a number,
-a sale price that is not lower than the regular price, a yes/no column with another value,
-a date that is not `YYYY-MM-DD`, an invalid URL, a variation without its variable row, or
-a variation value that is not listed on the variable row. The other products in the file
-can still be added.
+- A removed column (`brand`, `costPrice`, `stock`, `badge`, `featured`, `imageUrls`,
+  `categorySlug`, `tabWhyChoose`...) is ignored with a warning. An unknown column is ignored
+  with a warning too.
+- Old variable files with one `variation` row per combination (`parentSku`) import as before,
+  with a warning.
 
-### Variable products
+The whole file is rejected only when a required column (`type`, `title`, `sku`,
+`regularPrice`) is missing from the header row, a column is repeated, or the file is not a
+comma-separated CSV (an .xlsx file, or a semicolon-separated export).
 
-- One row with `type = variable` describes the product: title, category, descriptions, SEO,
-  `attribute1Name` (e.g. `Color`) and `attribute1Values` (e.g. `Black | White`).
-- One row with `type = variation` per combination follows it. Set `parentSku` to the variable
-  row's `sku`, put the single value in `attribute1Values` (e.g. `Black`), and give the
-  variation its own `sku`, `regularPrice`, `salePrice` and `stock`.
-- The product's price is the lowest variation price and its stock is the sum of the variations.
-- Up to three attributes (`attribute1…3`).
+### Variable products: one row per product
+
+- `type = variable`, the same columns as a simple product, plus `attribute1Name` (e.g. `Color`)
+  and `attribute1Values` (e.g. `Black | White`). Up to three options (`attribute1…3`).
+- The import creates every combination as a variation, all at the row's `regularPrice` /
+  `salePrice` and In stock, the same as the form's **Regenerate variations** button.
+  Color `Black | White` and Size `M | L` gives 4 variations with SKUs `<sku>-V1` … `<sku>-V4`.
+- Remove a combination or change a variation's price by hand in the admin afterwards.
 
 ### Prompt to give the AI (CSV)
 
@@ -82,85 +95,99 @@ Fill the template with my products and return one CSV file.
 
 Rules:
 - Keep the header row exactly as it is. Do not add, remove, rename or reorder columns.
-- Delete the EXAMPLE rows. One row per product (and one row per variation for variable products).
+- Delete the EXAMPLE rows. One row per product (a variable product is also one row).
 - Follow CSV-COLUMNS.md for every column: required columns, allowed values and formats.
-- Prices and stock are digits only (1500, not "Rs 1,500").
-- yes/no columns contain only yes or no. Dates are YYYY-MM-DD.
+- category must be exactly one of: <paste your category names here>.
+- Prices are digits only (1500, not "Rs 1,500").
 - Separate several values in one cell with " | ".
 - Give every product a unique sku. Keep SKUs I already supplied unchanged.
-- Leave a cell empty when I did not give that information. Do not invent prices, stock or URLs.
-- Leave imageUrls empty; images are uploaded separately in a ZIP.
-- Write descriptionHtml as clean HTML (<p>, <h2>, <ul><li>) and wrap any cell that contains
-  a comma, a quote or a line break in double quotes, doubling quotes inside it.
+- Leave a cell empty when I did not give that information. Do not invent prices.
+- shortDescription: two lines of text, then 3-4 points: <p>...</p><ul><li>...</li></ul>.
+- descriptionHtml: clean HTML with <h2>-<h6>, <p>, <ul><li>. Never use <h1>.
+- seoTitle up to 60 characters, seoDescription up to 155 characters.
+- Wrap any cell that contains a comma, a quote or a line break in double quotes,
+  doubling quotes inside it.
 - Save as UTF-8 CSV.
 ```
 
 ---
 
-## 2. Product images from a ZIP
+## 2. Product images (Bulk Image Upload)
 
 Import the products first (they can still be drafts), then upload their images.
+Images are matched by **product name** and never placed on a product by guess: an image
+must never land on the wrong product.
 
-### Template structure
-
-One folder per product. **The folder name is the product SKU**, and the images go inside it.
+### Three ways to name the images
 
 ```
-ZVM-L-7581/                 ← folder name = product SKU
-├── 1.jpg                   ← the image named 1 = featured (main) image
-├── 2.jpg                   ← every other image = the rest of the product's images
-├── 3.jpg
-└── side-view.jpg
+EXAMPLE Cotton T-Shirt.zip          ← one ZIP per product, named like the product
+├── 1.webp                          ← 1 = main image
+└── 2.webp
+
+product-images.zip                  ← one ZIP, one folder per product
+├── Stainless Steel Tumbler 1200ml/ ← simple product
+│   ├── 1.jpg                       ← main image
+│   ├── 2.jpg
+│   └── 3.png
+└── Cotton T-Shirt/                 ← variable product, same layout
+    ├── 1.webp
+    └── 2.webp
+
+Loose files (Image folder option):
+  HP EliteBook 840 G8 Laptop.jpg
+  HP EliteBook 840 G8 Laptop-1.jpg
+  HP EliteBook 840 G8 Laptop-front.webp
 ```
 
-Zip that folder (`ZVM-L-7581.zip`) and upload it. For several products, put all the SKU
-folders in one ZIP.
+### Matching rules
 
-Only this structure is accepted. If anything in the ZIP breaks a rule, the upload is
-blocked, every problem is listed with the folder or file and how to fix it, and nothing is
-uploaded until you fix the ZIP and choose it again.
+- Names are compared **exactly** after normalising: case, spaces, punctuation and `&` vs `and`
+  are ignored. Title first, then slug, then SKU. A SKU or slug as the folder or ZIP name also
+  works. There is no fuzzy matching.
+- Loose files may add `-1`, `-2`… or a view word (`-front`, `-back`, `-side`, `-detail`…) after
+  the product name.
+- A name that matches no product, or more than one, goes to the **Unassigned** list with a
+  dropdown to pick the product by hand. Unassigned files are not uploaded.
+- **Main image:** the file numbered `1`, then `2`, `3`… Without numbers, the first file in name
+  order. The owner can change it later in the admin. When the product already has images and
+  the upload has no `1`, the new images are added after the current ones.
+- **No sub-folders.** Simple and variable products use the same layout. A variable product's
+  images belong to the product and show for every variation; set a variation's own images by
+  hand in the product form.
+- **13 images per product**, counting the ones it already has. Existing images are kept.
+- The ZIP holds images only. Alt text and image title come from the CSV (`imageAlt`,
+  `imageTitle`) and apply to every image of the product.
 
-- **Folder name = the exact product SKU.** A slug or title is rejected, with the SKU to use.
-- **The image named `1` is the featured image.** It becomes the main product image, also when
-  the product already has images. A product with no images yet must have an image named `1`.
-- **The other images can have any name.** Numbered images come first in number order
-  (`2`, `3`, `4`…), then the rest by name.
-- All images sit directly in the SKU folder. No images outside a SKU folder, no ZIP inside the ZIP.
-- A ZIP named after the SKU with the SKU folder inside it is fine, and so is one outer wrapper folder.
-- **Formats:** JPG, PNG, WEBP, GIF, AVIF, up to 8 MB each. The file must really be that format:
-  a renamed or damaged file is rejected.
-- **Limit:** 13 images per product, counting the ones it already has unless you replace them.
-- `.txt`, `.md`, `.csv` and system files (`.DS_Store`, `Thumbs.db`) are ignored.
-- Not supported: password-protected ZIPs, RAR/7z, ZIPs over 4 GB.
+### Size and speed
 
-Optional, variable products only: a sub-folder inside the SKU folder named with a variation
-SKU or one option value (`Black`) saves its images on those variations (up to 8 each).
+- Every image (bulk upload, main image, gallery, variation images) is converted in the
+  browser before upload: WebP, longest side 1200 px, no upscaling, no cropping, quality about
+  80, aiming at 150–250 KB. GIFs upload as they are. Anything still above 4 MB is rejected.
+- 4 images upload at once, with a progress bar per product. A failed image is retried once;
+  if it still fails, nothing is saved for that product and the others carry on.
+- Files are stored in R2 as `products/<sha256>.webp`. The same image uploaded again gets the
+  same URL and is skipped ("duplicate skipped") on the product and on its variations.
 
 ### Steps
 
-1. Admin → **Products** → **Upload Image ZIP**.
-2. Optional: **Folder names CSV** downloads every product with the exact folder name (SKU)
-   to use and how many images it already has. Give this file to the AI together with your images.
-3. Choose the ZIP. Every file is checked against the structure above. If there are
-   problems they are listed and the upload button stays disabled.
-4. When the check passes, click **Upload images**. The image named `1` becomes the main image
-   and the others are added after the existing ones. Tick **Replace existing images** to
-   swap all of them instead.
-5. If one image of a product fails while uploading, nothing is saved for that product and
-   the row shows why; the other products are still saved.
+1. Admin → **Products** → **Bulk Image Upload**.
+2. Optional: **Download product names CSV** lists every product's exact title, slug and SKU.
+3. Choose an **Image folder** or one or more **Product ZIP file(s)**.
+4. Check the preview: file or folder → matched product (thumbnail and title), image count,
+   main image and the alt text found. Pick a product for any unassigned file.
+5. Click **Confirm and upload**. Nothing is uploaded before that.
 
 ### Prompt to give the AI (images)
 
 ```
-I am attaching my product images, zelvomart-image-folders.csv and the template rules
-(product-images-template/README.txt). Organise the images into one ZIP.
+I am attaching my product images and zelvomart-product-names.csv. Organise the images into one ZIP.
 
 Rules:
-- Create one folder per product. Name it exactly as the folderName column in the CSV (the SKU).
-- Put that product's images directly inside its folder.
-- Rename the best front-facing image to 1 (keep its extension, e.g. 1.jpg). It is the featured image.
-- Rename the other images 2, 3, 4... in the order they should appear.
-- Keep the original file format and do not resize or recompress the images.
+- Create one folder per product. Name it exactly as the title column in the CSV.
+- Put that product's images directly inside its folder. No sub-folders.
+- Rename the best front-facing image to 1 (keep its extension, e.g. 1.jpg). It is the main image.
+- Rename the other images 2, 3, 4... in the order they should appear. At most 13 per product.
 - Do not create folders for products that have no images.
 - List any image you could not assign to a product instead of guessing.
 - Return a single ZIP file with no password.
@@ -171,13 +198,14 @@ Rules:
 ## Testing checklist
 
 1. Start the app (`START_DEV.bat`, or `npm run dev` in `backend` and `frontend`) and sign in to `/admin`.
-2. **Import CSV** → choose `simple-products-template.csv` as it is. One row shows as **New**.
-   Click **Add to draft**, then open **Products → Drafts**: "EXAMPLE Matte Lipstick Rose Red" is there.
+2. **Import CSV** → choose `simple-products-template.csv` as it is. One row shows as **New** with
+   the category "Beauty & Personal Care" pre-selected. Click **Add to draft**, then open
+   **Products → Drafts**: "EXAMPLE Matte Lipstick Rose Red" is there.
 3. Import `variable-products-template.csv` the same way. The draft "EXAMPLE Cotton T-Shirt"
-   has Color and Size attributes and four variations.
-4. Import the same file again: the row now shows **Will update**.
-5. **Upload Image ZIP** → choose `product-images-template.zip` after replacing the placeholder
-   `.txt` files with real images, one of them named `1` in each folder (the folder names already
-   match the two example SKUs).
+   has Color and Size attributes and four variations (`-V1` … `-V4`), each at Rs 1,500 / 1,200.
+4. Import the same file again: the row now shows **Already exists** and cannot be saved.
+5. **Bulk Image Upload** → **Product ZIP file(s)** → choose `product-images-template.zip` after
+   replacing the placeholder `.txt` files with real images named `1`, `2`… (the folder names already
+   match the two example product titles). Check the preview, then **Confirm and upload**.
 6. Click **Post** on a draft and open `/product/<slug>` on the shop.
 7. Delete the two EXAMPLE products when you are done.

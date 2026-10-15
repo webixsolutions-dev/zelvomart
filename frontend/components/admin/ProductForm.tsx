@@ -7,31 +7,28 @@ import { clientApi, uploadAdminImage } from "@/lib/client-api";
 import { badgesFromCatalog } from "@/lib/product-badges";
 import { PRODUCT_TAB_DEFS, mergeGlobalProductTabs, readProductTabOverrides, type ProductTabKey, type ProductTabOverride } from "@/lib/product-tabs";
 import type { Product } from "@/types/product";
+import { resolveDeliveryPolicy, type DeliveryPolicy } from "@/lib/shipping";
+import { buildProductSchema } from "@/lib/product-schema";
+import { parseVideoUrl, VIDEO_URL_ERROR } from "@/lib/product-video";
 import { toast } from "react-toastify";
 
 type Category = { id: string; name: string; slug?: string };
 type ProductType = "simple" | "variable";
-type StockStatus = "instock" | "outofstock" | "onbackorder";
+type StockStatus = "instock" | "outofstock";
 type DataTab =
   | "general"
   | "inventory"
   | "shipping"
-  | "linked"
   | "attributes"
   | "variations"
-  | "google"
-  | "facebook"
   | "tabs"
   | "swatches"
-  | "advanced"
   | "delivery";
-type SeoTab = "general" | "advanced" | "social" | "schema";
+type SeoTab = "general" | "advanced" | "schema";
+type SeoGroupKey = "basic" | "additional" | "title" | "content";
 type ImageMeta = {
   alt: string;
   title: string;
-  caption: string;
-  description: string;
-  excludeFromSitemap: boolean;
   fileName: string;
   fileSize: number;
   width: number;
@@ -50,9 +47,6 @@ const PRODUCT_TAGS: { id: string; label: string; hint: string }[] = [
 const EMPTY_IMAGE_META: ImageMeta = {
   alt: "",
   title: "",
-  caption: "",
-  description: "",
-  excludeFromSitemap: false,
   fileName: "",
   fileSize: 0,
   width: 0,
@@ -79,19 +73,21 @@ type VariationItem = {
   saleFrom: string;
   saleTo: string;
   scheduleOpen: boolean;
+  /** "Manage stock?": ON = quantity is live and goes down with each order. */
   trackStock: boolean;
   quantity: number;
+  /** Used when Manage stock is OFF. */
   stockStatus: StockStatus;
   weight: string;
   length: string;
   width: string;
   height: string;
-  shippingClass: string;
   images: string[];
   enabled: boolean;
-  downloadable: boolean;
-  virtual: boolean;
   open: boolean;
+  /** SKU and quantity of the saved variation, so a save only writes a quantity the admin changed. */
+  liveSku: string;
+  liveQuantity: number | null;
 };
 
 type CustomTab = { id: string; title: string; content: string };
@@ -106,21 +102,23 @@ const SIMPLE_TABS: { id: DataTab; label: string }[] = [
   { id: "general", label: "General" },
   { id: "inventory", label: "Inventory" },
   { id: "shipping", label: "Shipping" },
-  { id: "linked", label: "Linked Products" },
-  { id: "attributes", label: "Attributes" },
-  { id: "advanced", label: "Advanced" },
   { id: "tabs", label: "Product Tabs" },
 ];
 
 const VARIABLE_TABS: { id: DataTab; label: string }[] = [
   { id: "inventory", label: "Inventory" },
   { id: "shipping", label: "Shipping" },
-  { id: "linked", label: "Linked Products" },
   { id: "attributes", label: "Attributes" },
   { id: "variations", label: "Variations" },
-  { id: "advanced", label: "Advanced" },
   { id: "tabs", label: "Product Tabs" },
 ];
+
+/** Only In stock and Out of stock exist; an old "onbackorder" value reads as Out of stock. */
+function readStockStatus(value: unknown, fallback: StockStatus): StockStatus {
+  if (value === "instock") return "instock";
+  if (value === "outofstock" || value === "onbackorder") return "outofstock";
+  return fallback;
+}
 
 const POWER_WORDS = ["best", "exclusive", "proven", "limited", "free", "new", "premium", "ultimate", "guaranteed", "official"];
 const SENTIMENT_WORDS = ["amazing", "beautiful", "perfect", "easy", "elegant", "fresh", "soft", "stunning", "reliable", "powerful", "love"];
@@ -153,30 +151,14 @@ function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function stockFrom(status: StockStatus, quantity: number, trackStock = true) {
-  if (status === "outofstock") return 0;
-  if (!trackStock && status === "instock") return Math.max(1, quantity || 1);
-  if (quantity <= 0) return 0;
-  return quantity;
+/** Shop availability with the shared rule: Track ON -> quantity above 0, Track OFF -> the chosen status. */
+function availability(track: boolean, quantity: number, status: StockStatus): StockStatus {
+  if (track) return quantity > 0 ? "instock" : "outofstock";
+  return status;
 }
 
-function catalogLabel(status: StockStatus, quantity: number) {
-  if (status === "onbackorder" && quantity > 0) return "On backorder";
-  if (status === "instock" && quantity > 0) return "In stock";
-  return "Out of stock";
-}
-
-function applyQuantity(quantity: number, status: StockStatus) {
-  const next = Math.max(0, Math.floor(Number(quantity) || 0));
-  if (next <= 0) return { quantity: 0, stockStatus: "outofstock" as StockStatus };
-  if (status === "outofstock") return { quantity: next, stockStatus: "instock" as StockStatus };
-  return { quantity: next, stockStatus: status };
-}
-
-function applyStatus(status: StockStatus, quantity: number) {
-  if (status === "outofstock") return { quantity: 0, stockStatus: status };
-  if (status === "instock") return { quantity: Math.max(1, quantity), stockStatus: status };
-  return { quantity, stockStatus: status };
+function wholeQuantity(value: unknown) {
+  return Math.max(0, Math.floor(Number(value) || 0));
 }
 
 function parseValues(value: string) {
@@ -199,18 +181,17 @@ function emptyVariation(attributes: Record<string, string> = {}, open = false): 
     saleTo: "",
     scheduleOpen: false,
     trackStock: false,
-    quantity: 1,
+    quantity: 0,
     stockStatus: "instock",
     weight: "",
     length: "",
     width: "",
     height: "",
-    shippingClass: "",
     images: [],
     enabled: true,
-    downloadable: false,
-    virtual: false,
     open,
+    liveSku: "",
+    liveQuantity: null,
   };
 }
 
@@ -228,7 +209,7 @@ function buildVariations(attributes: AttributeItem[], current: VariationItem[]) 
     const values = parseValues(attribute.valuesText);
     rows = rows.flatMap((row) => values.map((value) => ({ ...row, [attribute.name.trim()]: value })));
   });
-  return rows
+  const built = rows
     .filter((row) => Object.keys(row).length)
     .map((attributesMap, index) => {
       const key = variationKey(attributesMap);
@@ -241,6 +222,8 @@ function buildVariations(attributes: AttributeItem[], current: VariationItem[]) 
         name,
       } satisfies VariationItem;
     });
+  const firstOpen = built.findIndex((item) => item.open);
+  return built.map((item, index) => (item.open && index !== firstOpen ? { ...item, open: false } : item));
 }
 
 function TabIcon({ id }: { id: DataTab }) {
@@ -265,14 +248,6 @@ function TabIcon({ id }: { id: DataTab }) {
         <path d="M3 7h11v10H3zM14 10h4l3 3v4h-7z" />
         <circle cx="7" cy="18" r="1.6" />
         <circle cx="18" cy="18" r="1.6" />
-      </svg>
-    );
-  }
-  if (id === "linked") {
-    return (
-      <svg {...common}>
-        <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11 4" />
-        <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L13 20" />
       </svg>
     );
   }
@@ -321,14 +296,18 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   const [scheduleOpen, setScheduleOpen] = useState(Boolean(catalog.saleFrom || catalog.saleTo));
   const [saleFrom, setSaleFrom] = useState(catalog.saleFrom || "");
   const [saleTo, setSaleTo] = useState(catalog.saleTo || "");
-  const [trackStock, setTrackStock] = useState(catalog.trackStock !== false);
-  const [quantity, setQuantity] = useState<number>(Number(initial?.stock ?? initial?.stockQuantity ?? 1));
-  const [stockStatus, setStockStatus] = useState<StockStatus>(catalog.stockStatus || (Number(initial?.stock ?? 1) > 0 ? "instock" : "outofstock"));
-  const [weight, setWeight] = useState(catalog.weight || "0");
+  // New products: Track stock OFF + In stock. Saved products read the live columns.
+  const [trackStock, setTrackStock] = useState<boolean>(Boolean(initial?.trackStock));
+  const [quantity, setQuantity] = useState<number>(wholeQuantity(initial?.stock));
+  // The live quantity when the form loaded or last saved: a save only sends `stock` when it changed.
+  const [savedQuantity, setSavedQuantity] = useState<number | null>(initial ? wholeQuantity(initial.stock) : null);
+  const [stockStatus, setStockStatus] = useState<StockStatus>(readStockStatus(initial?.stockSetting, "instock"));
+  const [weight, setWeight] = useState(catalog.weight && catalog.weight !== "0" ? catalog.weight : "");
   const [length, setLength] = useState(catalog.length || "");
   const [width, setWidth] = useState(catalog.width || "");
   const [height, setHeight] = useState(catalog.height || "");
-  const [shippingClass, setShippingClass] = useState(catalog.shippingClass || "");
+  // Shipping tab: "Delivery charges" (default) or "Free shipping". Never free by default.
+  const [freeShipping, setFreeShipping] = useState<boolean>(Boolean(catalog.freeShipping));
   const [attributes, setAttributes] = useState<AttributeItem[]>(
     (catalog.attributes || []).map((item: AttributeItem) => ({
       ...item,
@@ -338,7 +317,10 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
     })),
   );
   const [variations, setVariations] = useState<VariationItem[]>(
-    (catalog.variations || []).map((item: any) => ({
+    (catalog.variations || []).map((item: any) => {
+      // Stock settings and quantity come from the live variation row (matched by SKU).
+      const live = (initial?.variants || []).find((variant: any) => item.sku && variant.sku === item.sku);
+      return {
       ...emptyVariation(item.attributes || {}),
       key: item.key || variationKey(item.attributes || {}),
       name: item.name || Object.values(item.attributes || {}).join(" / "),
@@ -349,27 +331,25 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       saleFrom: item.saleFrom || "",
       saleTo: item.saleTo || "",
       scheduleOpen: Boolean(item.saleFrom || item.saleTo),
-      trackStock: Boolean(item.trackStock),
-      quantity: Number(item.quantity ?? 1),
-      stockStatus: item.stockStatus || "instock",
+      trackStock: Boolean(live?.trackStock),
+      quantity: wholeQuantity(live?.stock),
+      stockStatus: readStockStatus(live?.stockSetting, "instock"),
       weight: item.weight || "",
       length: item.length || "",
       width: item.width || "",
       height: item.height || "",
-      shippingClass: item.shippingClass || "",
       images: Array.isArray(item.images) ? item.images : item.imageUrl ? [item.imageUrl] : [],
       enabled: item.enabled !== false,
-      downloadable: Boolean(item.downloadable),
-      virtual: Boolean(item.virtual),
       open: false,
-    })),
+      liveSku: live ? String(live.sku) : "",
+      liveQuantity: live ? wholeQuantity(live.stock) : null,
+    };
+    }),
   );
   const [variationImageKey, setVariationImageKey] = useState<string | null>(null);
   const [swatchShape, setSwatchShape] = useState(catalog.swatchShape || "circle");
   const [swatchSize, setSwatchSize] = useState(catalog.swatchSize || "medium");
   const [swatchesEnabled, setSwatchesEnabled] = useState(catalog.swatchesEnabled !== false);
-  const [purchaseNote, setPurchaseNote] = useState(catalog.purchaseNote || "");
-  const [menuOrder, setMenuOrder] = useState(catalog.menuOrder || "0");
   const [bundleEnabled, setBundleEnabled] = useState(Boolean(initial?.bundleEnabled ?? catalog.bundleEnabled ?? true));
   const [deliveryDays, setDeliveryDays] = useState(catalog.deliveryDays || "3");
   const [deliveryNote, setDeliveryNote] = useState(catalog.deliveryNote || "Delivered across Pakistan");
@@ -382,31 +362,20 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   const [addingCategory, setAddingCategory] = useState(false);
   const [mainImage, setMainImage] = useState(initialImages[0] || "");
   const [gallery, setGallery] = useState<string[]>(initialImages.slice(1));
-  const [imageMeta, setImageMeta] = useState<ImageMeta>({ ...EMPTY_IMAGE_META, ...(catalog.imageMeta || {}) });
-  const [imageEditorOpen, setImageEditorOpen] = useState(false);
-  const [brand, setBrand] = useState(catalog.brand || "Hash Deals");
-  const [brandList, setBrandList] = useState<string[]>(() => {
-    const defaults = ["Hash Deals", "Zelvomart", "Generic"];
-    if (catalog.brand && !defaults.includes(catalog.brand)) defaults.push(catalog.brand);
-    return defaults;
+  const [imageMeta, setImageMeta] = useState<ImageMeta>(() => {
+    const saved = catalog.imageMeta || {};
+    return {
+      alt: saved.alt || "",
+      title: saved.title || "",
+      fileName: saved.fileName || "",
+      fileSize: Number(saved.fileSize || 0),
+      width: Number(saved.width || 0),
+      height: Number(saved.height || 0),
+    };
   });
-  const [brandTab, setBrandTab] = useState<"all" | "mostUsed">("all");
-  const [newBrandInput, setNewBrandInput] = useState("");
-  const [showAddBrand, setShowAddBrand] = useState(false);
-  function addBrand() {
-    const trimmed = newBrandInput.trim();
-    if (!trimmed) return;
-    if (!brandList.includes(trimmed)) setBrandList((prev) => [...prev, trimmed]);
-    setBrand(trimmed);
-    setNewBrandInput("");
-    setShowAddBrand(false);
-  }
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
   const [catTab, setCatTab] = useState<"all" | "mostUsed">("all");
   const [showNewCatInput, setShowNewCatInput] = useState(false);
-  const [virtual, setVirtual] = useState(Boolean(catalog.virtual));
-  const [downloadable, setDownloadable] = useState(Boolean(catalog.downloadable));
-  const [taxStatus, setTaxStatus] = useState(catalog.taxStatus || "taxable");
-  const [taxClass, setTaxClass] = useState(catalog.taxClass || "standard");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const toggleCollapse = (id: string) => setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
   const [badge, setBadge] = useState(typeof catalog.badge === "string" ? catalog.badge : "");
@@ -439,6 +408,23 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   }
   const [redirectFallback, setRedirectFallback] = useState(catalog.redirectFallback !== false);
   const [redirectUrl, setRedirectUrl] = useState(typeof catalog.redirectUrl === "string" ? catalog.redirectUrl : "");
+  // Redirect "Old URL": prefilled with this product's URL; can be any old path (e.g. an old WordPress URL).
+  const [redirectFrom, setRedirectFrom] = useState(
+    typeof catalog.redirectFrom === "string" && catalog.redirectFrom ? catalog.redirectFrom : initial?.slug ? `/product/${initial.slug}/` : "",
+  );
+  // Delivery settings for the schema preview (same values the product page uses).
+  const [deliveryPolicy, setDeliveryPolicy] = useState<DeliveryPolicy>(() => resolveDeliveryPolicy(null));
+  useEffect(() => {
+    let cancelled = false;
+    clientApi<Record<string, unknown>>("/api/settings/public?keys=store.delivery")
+      .then((settings) => {
+        if (!cancelled) setDeliveryPolicy(resolveDeliveryPolicy((settings?.["store.delivery"] as any) || null));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [uploadBusy, setUploadBusy] = useState<"main" | "gallery" | "variation" | "">("");
   const [descriptionHtml, setDescriptionHtml] = useState(initial?.descriptionHtml || initial?.description || "");
   const [shortHtml, setShortHtml] = useState(initial?.shortDescription || "");
@@ -446,15 +432,39 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   const [seoTitle, setSeoTitle] = useState(initial?.seoTitle || "");
   const [seoDescription, setSeoDescription] = useState(initial?.seoDescription || "");
   const [canonicalUrl, setCanonicalUrl] = useState(initial?.canonicalUrl || "");
+  // Product video: a YouTube or Vimeo link only (no uploads).
+  const [videoInput, setVideoInput] = useState<string>(initial?.videoUrl || "");
+  const video = useMemo(() => parseVideoUrl(videoInput), [videoInput]);
+  const videoInvalid = Boolean(videoInput.trim()) && !video;
+  const [vimeoThumb, setVimeoThumb] = useState<string>(initial?.videoThumbnail || "");
+  useEffect(() => {
+    // Vimeo has no fixed thumbnail URL: ask its public oEmbed API for the preview.
+    if (video?.provider !== "vimeo") return;
+    let cancelled = false;
+    fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(video.url)}&width=640`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (!cancelled && body?.thumbnail_url) setVimeoThumb(String(body.thumbnail_url));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [video?.provider, video?.url]);
+  const videoThumbnail = video ? video.thumbnailUrl || vimeoThumb || "" : "";
+  // Click-to-play in the admin preview; reset whenever the link changes.
+  const [videoPreviewPlaying, setVideoPreviewPlaying] = useState(false);
+  useEffect(() => setVideoPreviewPlaying(false), [video?.url]);
   const [snippetOpen, setSnippetOpen] = useState(false);
   const [seoTab, setSeoTab] = useState<SeoTab>("general");
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [inlineSnippetOpen, setInlineSnippetOpen] = useState(false);
   const [robotsIndex, setRobotsIndex] = useState<"index" | "noindex">(catalog.robotsIndex || "index");
   const [robotsNoFollow, setRobotsNoFollow] = useState<boolean>(Boolean(catalog.robotsNoFollow));
-  const [socialTitle, setSocialTitle] = useState(catalog.socialTitle || "");
-  const [socialDescription, setSocialDescription] = useState(catalog.socialDescription || "");
-  const [seoOpen, setSeoOpen] = useState({ basic: true, additional: true, title: true, content: true });
+  // Accordions: one section open at a time, all closed by default.
+  const [openSeoGroup, setOpenSeoGroup] = useState<SeoGroupKey | null>(null);
+  const [openProductTab, setOpenProductTab] = useState<ProductTabKey | null>(null);
+  const toggleSeoGroup = (key: SeoGroupKey) => setOpenSeoGroup((current) => (current === key ? null : key));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
@@ -494,15 +504,16 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   }
 
   function changeQuantity(value: number) {
-    const next = applyQuantity(value, stockStatus);
-    setQuantity(next.quantity);
-    setStockStatus(next.stockStatus);
+    setQuantity(wholeQuantity(value));
   }
 
   function changeStockStatus(nextStatus: StockStatus) {
-    const next = applyStatus(nextStatus, quantity);
-    setQuantity(next.quantity);
-    setStockStatus(next.stockStatus);
+    setStockStatus(nextStatus);
+  }
+
+  /** Opens one variation and closes the others; clicking the open one closes it. */
+  function toggleVariation(key: string) {
+    setVariations((current) => current.map((item) => ({ ...item, open: item.key === key ? !item.open : false })));
   }
 
   function updateVariation(key: string, patch: Partial<VariationItem>) {
@@ -510,23 +521,11 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   }
 
   function changeVariationQuantity(key: string, value: number) {
-    setVariations((current) =>
-      current.map((item) => {
-        if (item.key !== key) return item;
-        const next = applyQuantity(value, item.stockStatus);
-        return { ...item, quantity: next.quantity, stockStatus: next.stockStatus };
-      }),
-    );
+    updateVariation(key, { quantity: wholeQuantity(value) });
   }
 
   function changeVariationStatus(key: string, status: StockStatus) {
-    setVariations((current) =>
-      current.map((item) => {
-        if (item.key !== key) return item;
-        const next = applyStatus(status, item.quantity);
-        return { ...item, quantity: next.quantity, stockStatus: next.stockStatus };
-      }),
-    );
+    updateVariation(key, { stockStatus: status });
   }
 
   function updateAttribute(id: string, patch: Partial<AttributeItem>) {
@@ -560,7 +559,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       return;
     }
     const attributesMap = Object.fromEntries(usable.map((item) => [item.name.trim(), ""]));
-    setVariations((current) => [...current, emptyVariation(attributesMap, true)]);
+    setVariations((current) => [...current.map((item) => ({ ...item, open: false })), emptyVariation(attributesMap, true)]);
   }
 
   function regenerateVariations() {
@@ -653,18 +652,43 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       const index = previews.indexOf(src);
       return index >= 0 ? uploaded[index] : src;
     };
+    // Files are named by their SHA-256, so the same image uploaded again has the same URL:
+    // it is skipped instead of being shown twice on the product or the variation.
+    const productImages = new Set([mainImage, ...gallery].filter((src) => src && !previews.includes(src)));
+    const unique = (list: string[], taken: Set<string>) => {
+      const seen = new Set(taken);
+      return list.filter((src) => {
+        if (!src || seen.has(src)) return false;
+        seen.add(src);
+        return true;
+      });
+    };
+    const variationBefore = new Set(
+      imageKey ? (variations.find((item) => item.key === imageKey)?.images || []).filter((src) => !previews.includes(src)) : [],
+    );
+    const taken = target === "variation" ? variationBefore : productImages;
+    const duplicates = uploaded.filter(Boolean).length - unique(uploaded, taken).length;
     if (target === "main") setMainImage((current) => (current === previews[0] ? uploaded[0] || previousMain : current));
-    if (target === "gallery") setGallery((current) => current.map(swap).filter(Boolean));
+    if (target === "gallery") {
+      setGallery((current) => {
+        const main = new Set([mainImage].filter(Boolean));
+        return unique(current.map(swap).filter(Boolean), main);
+      });
+    }
     if (target === "variation" && imageKey) {
       setVariations((current) =>
-        current.map((item) => (item.key === imageKey ? { ...item, images: (item.images || []).map(swap).filter(Boolean) } : item)),
+        current.map((item) => (item.key === imageKey ? { ...item, images: unique((item.images || []).map(swap), new Set()) } : item)),
       );
     }
     previews.forEach((url) => URL.revokeObjectURL(url));
+    const added = uploaded.filter(Boolean).length - duplicates;
+    const skipped = duplicates ? ` ${duplicates} duplicate${duplicates === 1 ? "" : "s"} skipped.` : "";
     if (failure) {
       notifyError(failure);
-    } else if (uploaded.filter(Boolean).length > 0) {
-      notifySuccess(uploaded.filter(Boolean).length === 1 ? "Image uploaded successfully." : `${uploaded.filter(Boolean).length} images uploaded successfully.`);
+    } else if (added > 0) {
+      notifySuccess(`${added === 1 ? "Image uploaded successfully." : `${added} images uploaded successfully.`}${skipped}`);
+    } else if (duplicates) {
+      notifySuccess(`Duplicate skipped: ${duplicates === 1 ? "this image is" : "these images are"} already on the ${target === "variation" ? "variation" : "product"}.`);
     }
     setUploadBusy("");
   }
@@ -765,6 +789,12 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       return;
     }
 
+    if (videoInvalid) {
+      notifyError(VIDEO_URL_ERROR);
+      document.getElementById("product-video-input")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
     const finalSlug = slug.trim() || slugify(title.trim() || "product");
     if (!slug.trim()) setSlug(finalSlug);
 
@@ -773,7 +803,38 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
 
     const description = descriptionHtml;
     const shortDescription = shortHtml;
-    const enabledVariations = variations.filter((item) => item.enabled);
+
+    // Redirect: the destination must differ from the old URL.
+    const redirectTarget = redirectUrl.trim();
+    if (redirectTarget) {
+      const pathOf = (value: string) => {
+        try {
+          const url = new URL(value, "https://zelvomart.com");
+          const path = url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`;
+          return /zelvomart\.com$|localhost$/.test(url.hostname) ? path : url.href;
+        } catch {
+          return value;
+        }
+      };
+      if (pathOf(redirectTarget) === pathOf(redirectFrom.trim() || `/product/${finalSlug}/`)) {
+        notifyError("The redirect destination is the same as the old URL. Enter a different destination.");
+        setSeoTab("advanced");
+        return;
+      }
+    }
+
+    // Give every variation a stable SKU once, so later saves update the same variation by SKU.
+    const usedSkus = new Set(variations.map((item) => item.sku.trim()).filter(Boolean));
+    let skuCounter = 1;
+    const withSkus = variations.map((item) => {
+      if (item.sku.trim()) return { ...item, sku: item.sku.trim() };
+      while (usedSkus.has(`${finalSku}-V${skuCounter}`)) skuCounter += 1;
+      const generated = `${finalSku}-V${skuCounter}`;
+      usedSkus.add(generated);
+      return { ...item, sku: generated };
+    });
+    if (withSkus.some((item, index) => item.sku !== variations[index].sku)) setVariations(withSkus);
+    const enabledVariations = withSkus.filter((item) => item.enabled);
     const variationPrices = enabledVariations.map((item) => Number(item.regularPrice || 0)).filter((value) => value > 0);
     const rawPrice = productType === "variable" ? Math.min(...(variationPrices.length ? variationPrices : [Number(regularPrice || 0)])) : Number(regularPrice || 0);
     const price = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : 0;
@@ -789,22 +850,22 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       }, 100);
       return;
     }
-    const parentStock = stockFrom(stockStatus, quantity, trackStock);
-    const variationStock = enabledVariations.reduce((sum, item) => sum + stockFrom(item.stockStatus, item.quantity, item.trackStock), 0);
-    const stock = productType === "variable" && enabledVariations.length ? variationStock : parentStock;
+    // Saving never overwrites live stock: `stock` is only sent when the admin changed the quantity.
+    const simpleTracked = productType === "simple" && trackStock;
+    const sendProductStock = simpleTracked && (savedQuantity == null || quantity !== savedQuantity);
     const pricedVariations = enabledVariations.filter((item) => Number(item.regularPrice || item.salePrice || 0) > 0);
     const variantPayload =
       productType === "variable"
-        ? pricedVariations.map((item, index) => {
-            const attributes = {
-              ...item.attributes,
-              stockStatus: item.stockStatus,
-            };
-            delete (attributes as { gallery?: string[] }).gallery;
+        ? pricedVariations.map((item) => {
+            const attributes: Record<string, string> = { ...item.attributes };
+            delete (attributes as { gallery?: unknown }).gallery;
+            const sendStock = item.trackStock && (item.liveQuantity == null || item.sku !== item.liveSku || item.quantity !== item.liveQuantity);
             return {
               name: item.name,
-              sku: item.sku.trim() || `${finalSku}-V${index + 1}`,
-              stock: stockFrom(item.stockStatus, item.quantity, item.trackStock),
+              sku: item.sku,
+              trackStock: item.trackStock,
+              stockStatus: item.stockStatus,
+              ...(sendStock ? { stock: item.quantity } : {}),
               priceOverride: Number(item.salePrice || item.regularPrice || price) || null,
               imageUrl: item.images?.find((src) => src && !src.startsWith("blob:")) || null,
               attributes,
@@ -822,12 +883,14 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       categoryId: categoryId || null,
       price,
       salePrice: salePrice ? Number(salePrice) : null,
-      stock,
+      // A variable product's availability comes from its enabled variations; the parent alone never sells.
+      trackStock: productType === "simple" ? trackStock : false,
+      stockStatus: productType === "simple" ? stockStatus : "outofstock",
+      ...(sendProductStock ? { stock: quantity } : {}),
       status: nextStatus,
       featured: tags.includes("best-selling"),
       previousSlug: initial?.slug && initial.slug !== finalSlug ? initial.slug : undefined,
       redirectFallback,
-      redirectUrl: redirectUrl.trim() || null,
       bundleEnabled,
       bundleDiscountPercent: 5,
       shortDescription: shortDescription || null,
@@ -836,49 +899,40 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       seoTitle: seoTitle || null,
       seoDescription: seoDescription || null,
       canonicalUrl: canonicalUrl || null,
+      videoUrl: video?.url || null,
       variants: variantPayload,
       catalogMeta: {
         productType,
-        trackStock,
-        stockStatus,
         weight,
         length,
         width,
         height,
-        shippingClass,
         saleFrom,
         saleTo,
         attributes,
-        variations: variations.map(({ open: _open, scheduleOpen: _scheduleOpen, ...item }) => ({
+        // Stock settings live in the variation rows, not in this JSON.
+        variations: withSkus.map(({ open: _open, scheduleOpen: _scheduleOpen, liveSku: _liveSku, liveQuantity: _liveQuantity, trackStock: _track, quantity: _quantity, stockStatus: _status, ...item }) => ({
           ...item,
           images: (item.images || []).filter((src) => src && !src.startsWith("blob:")),
         })),
         swatchesEnabled,
         swatchShape,
         swatchSize,
-        purchaseNote,
-        menuOrder,
         bundleEnabled,
         bundleDiscountPercent: 5,
         deliveryDays,
         deliveryNote,
         customTabs,
         productTabs,
-        freeShipping: Boolean(catalog.freeShipping),
+        freeShipping,
         focusKeyword,
-        brand: brand.trim(),
-        virtual,
-        downloadable,
-        taxStatus,
-        taxClass,
         badge: badge.trim(),
         tags,
         redirectFallback,
-        redirectUrl: redirectUrl.trim(),
+        redirectFrom: redirectFrom.trim(),
+        redirectUrl: redirectTarget,
         robotsIndex,
         robotsNoFollow,
-        socialTitle: socialTitle.trim(),
-        socialDescription: socialDescription.trim(),
         imageMeta,
       },
     };
@@ -890,6 +944,19 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
         true,
       );
       setStatus(nextStatus);
+      // Show the live stock after saving and use it as the new baseline.
+      if (product) {
+        const liveStock = wholeQuantity(product.stock);
+        setQuantity(liveStock);
+        setSavedQuantity(liveStock);
+        const liveVariants: any[] = Array.isArray(product.variants) ? product.variants : [];
+        setVariations((current) =>
+          current.map((item) => {
+            const live = liveVariants.find((variant) => variant.sku === item.sku);
+            return live ? { ...item, quantity: wholeQuantity(live.stock), liveSku: String(live.sku), liveQuantity: wholeQuantity(live.stock) } : item;
+          }),
+        );
+      }
       const successMsg =
         nextStatus === "PUBLISHED"
           ? "Product published successfully! It is now live in your store."
@@ -911,15 +978,11 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   }
 
   const previewUrl = `https://zelvomart.com/product/${slug || "product-slug"}/`;
-  const stockPreview = catalogLabel(stockStatus, quantity);
+  const stockPreview = availability(trackStock, quantity, stockStatus) === "instock" ? "In stock" : "Out of stock";
   const variationAttributes = attributes.filter((item) => item.forVariations && item.name.trim() && parseValues(item.valuesText).length);
 
-  function openPreview() {
-    const pendingImages = [mainImage, ...gallery, ...variations.flatMap((item) => item.images || [])].some((src) => src.startsWith("blob:"));
-    if (uploadBusy || pendingImages) {
-      setError("Wait for the images to finish uploading, then open the preview.");
-      return;
-    }
+  /** The product as the storefront would receive it; used by the preview and the schema tab. */
+  function buildPreviewProduct(): Product {
     const visibleImages = [mainImage, ...gallery].filter(Boolean);
     const category = categoryOptions.find((item) => item.id === categoryId);
     const enabled = variations.filter((item) => item.enabled);
@@ -927,6 +990,8 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
     const regular = productType === "variable" ? Math.min(...(prices.length ? prices : [Number(regularPrice || 0)])) : Number(regularPrice || 0);
     const sale = salePrice ? Number(salePrice) : null;
     const current = sale && sale > 0 && regular > 0 && sale < regular ? sale : regular || 0;
+    const previewOnSale = Boolean(sale && sale > 0 && regular > sale);
+    const previewDiscount = previewOnSale && sale ? Math.round(((regular - sale) / regular) * 100) : 0;
     const preview: Product = {
       id: initial?.id || "preview",
       slug: slug || "preview",
@@ -937,13 +1002,33 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       price: current,
       regularPrice: regular || current,
       salePrice: sale,
-      onSale: Boolean(sale && sale > 0 && regular > sale),
-      discountPercent: sale && sale > 0 && regular > sale ? Math.round(((regular - sale) / regular) * 100) : 0,
-      stockStatus: stockStatus === "outofstock" ? "outofstock" : "instock",
-      stockQuantity: quantity,
+      onSale: previewOnSale,
+      discountPercent: previewDiscount,
+      stockStatus:
+        productType === "variable" && enabled.length
+          ? enabled.some((item) => availability(item.trackStock, item.quantity, item.stockStatus) === "instock")
+            ? "instock"
+            : "outofstock"
+          : availability(trackStock, quantity, stockStatus),
+      trackStock: productType === "simple" && trackStock,
+      stockQuantity: productType === "simple" && trackStock ? quantity : null,
+      freeShipping,
+      videoUrl: video?.url || null,
+      videoThumbnail: videoThumbnail || null,
+      videoAddedAt: video && initial?.videoUrl && parseVideoUrl(initial.videoUrl)?.url === video.url ? initial?.videoAddedAt : new Date().toISOString(),
+      createdAt: initial?.createdAt,
+      updatedAt: initial?.updatedAt,
+      reviewCount: initial?.reviewCount || 0,
+      averageRating: initial?.averageRating,
       featured: false,
       image: visibleImages[0],
-      images: visibleImages.map((src) => ({ src, alt: title || "Product image" })),
+      images: visibleImages.map((src, index) =>
+        index === 0
+          ? { src, alt: imageMeta.alt || title || "Product image", ...(imageMeta.title ? { title: imageMeta.title } : {}) }
+          : { src, alt: title || "Product image" },
+      ),
+      imageAlt: imageMeta.alt || null,
+      imageTitle: imageMeta.title || null,
       shortDescription: shortHtml,
       description: descriptionHtml,
       permalink: `/product/${slug || "preview"}/`,
@@ -956,24 +1041,22 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
         priceOverride: Number(item.salePrice || item.regularPrice || 0) || null,
         regularPrice: item.regularPrice ? Number(item.regularPrice) : null,
         salePrice: item.salePrice ? Number(item.salePrice) : null,
-        stock: stockFrom(item.stockStatus, item.quantity, item.trackStock),
-        stockStatus: item.stockStatus,
+        stock: item.quantity,
+        trackStock: item.trackStock,
+        stockStatus: availability(item.trackStock, item.quantity, item.stockStatus),
         imageUrl: item.images?.[0] || null,
         images: item.images || [],
         weight: item.weight,
         length: item.length,
         width: item.width,
         height: item.height,
-        shippingClass: item.shippingClass,
-        downloadable: item.downloadable,
-        virtual: item.virtual,
         enabled: item.enabled,
         active: true,
       })),
       bundleEnabled,
       bundleDiscountPercent: 5,
       buyTwoDiscountPercent: 5,
-      badges: badgesFromCatalog({ badge, tags }),
+      badges: badgesFromCatalog({ badge, tags, onSale: previewOnSale, discountPercent: previewDiscount }),
       tags,
       reviews: [],
       seoTitle: seoTitle || title,
@@ -981,6 +1064,11 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       canonicalUrl,
       catalogMeta: {
         productType,
+        weight,
+        length,
+        width,
+        height,
+        freeShipping,
         deliveryDays,
         deliveryNote,
         customTabs,
@@ -992,6 +1080,16 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
         swatchSize,
       },
     };
+    return preview;
+  }
+
+  function openPreview() {
+    const pendingImages = [mainImage, ...gallery, ...variations.flatMap((item) => item.images || [])].some((src) => src.startsWith("blob:"));
+    if (uploadBusy || pendingImages) {
+      setError("Wait for the images to finish uploading, then open the preview.");
+      return;
+    }
+    const preview = buildPreviewProduct();
     sessionStorage.setItem("zelvomart-product-preview", JSON.stringify(preview));
     window.open("/product-preview", "_blank", "noopener");
   }
@@ -1070,14 +1168,6 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                   <option value="variable">Variable product</option>
                 </select>
                 <span className="wp-help-icon" title="Choose whether this is a simple or variable product">?</span>
-                <label className="wp-check-label" style={{ marginLeft: 8 }}>
-                  <input type="checkbox" checked={virtual} onChange={(e) => setVirtual(e.target.checked)} />
-                  <span>Virtual</span>
-                </label>
-                <label className="wp-check-label" style={{ marginLeft: 4 }}>
-                  <input type="checkbox" checked={downloadable} onChange={(e) => setDownloadable(e.target.checked)} />
-                  <span>Downloadable</span>
-                </label>
               </div>
               <span className="wp-metabox-toggle" onClick={() => toggleCollapse("productData")}>
                 {collapsed.productData ? "▾" : "▴"}
@@ -1102,7 +1192,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                   {activeTab === "general" && productType === "simple" ? (
                     <>
                       <div className="wp-form-row">
-                        <label>Regular price (Rs) (ex. tax)</label>
+                        <label>Regular price (Rs)</label>
                         <div>
                           <input
                             id="product-regular-price"
@@ -1116,7 +1206,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                         </div>
                       </div>
                       <div className="wp-form-row">
-                        <label>Sale price (Rs) (ex. tax)</label>
+                        <label>Sale price (Rs)</label>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <input
@@ -1150,36 +1240,11 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                           ) : null}
                         </div>
                       </div>
-                      <div className="wp-form-row">
-                        <label>Tax status</label>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <select value={taxStatus} onChange={(e) => setTaxStatus(e.target.value)}>
-                            <option value="taxable">Taxable</option>
-                            <option value="shipping">Shipping only</option>
-                            <option value="none">None</option>
-                          </select>
-                          <span className="wp-help-icon" title="Define whether or not the product is taxable.">?</span>
-                        </div>
-                      </div>
-                      <div className="wp-form-row">
-                        <label>Tax class</label>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <select value={taxClass} onChange={(e) => setTaxClass(e.target.value)}>
-                            <option value="standard">Standard</option>
-                            <option value="reduced-rate">Reduced rate</option>
-                            <option value="zero-rate">Zero rate</option>
-                          </select>
-                          <span className="wp-help-icon" title="Choose a tax class for this product.">?</span>
-                        </div>
-                      </div>
                     </>
                   ) : null}
 
               {activeTab === "inventory" ? (
                 <>
-                  {productType === "variable" ? (
-                    <p className="pd-note">These stock settings apply to the product. Each variation below can keep its own quantity, and that quantity is what the catalog uses.</p>
-                  ) : null}
                   <Field label="SKU">
                     <input
                       value={sku}
@@ -1190,71 +1255,90 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                       placeholder="ZVM-0001"
                     />
                   </Field>
-                  <Field label="Stock management">
-                    <label className="pd-check">
-                      <input type="checkbox" checked={trackStock} onChange={(event) => setTrackStock(event.target.checked)} />
-                      Track stock quantity for this product
-                    </label>
-                  </Field>
-                  {trackStock ? (
-                    <Field label="Quantity">
-                      <input type="number" min="0" value={quantity} onChange={(event) => changeQuantity(Number(event.target.value))} />
+                  {productType === "variable" ? (
+                    <Field label="Stock">
+                      <p className="pd-note" style={{ margin: 0 }}>
+                        Stock is set on each variation (Variations → Manage stock?). The product shows In stock while at least one enabled variation is in stock.
+                      </p>
                     </Field>
-                  ) : null}
-                  <Field label="Stock status">
-                    <div className="pd-radios">
-                      {[
-                        ["instock", "In stock"],
-                        ["outofstock", "Out of stock"],
-                        ["onbackorder", "On backorder"],
-                      ].map(([value, label]) => (
-                        <label key={value}>
-                          <input type="radio" name="stockStatus" checked={stockStatus === value} onChange={() => changeStockStatus(value as StockStatus)} />
-                          {label}
+                  ) : (
+                    <>
+                      <Field label="Stock management">
+                        <label className="pd-check">
+                          <input type="checkbox" checked={trackStock} onChange={(event) => setTrackStock(event.target.checked)} />
+                          Track stock quantity for this product
                         </label>
-                      ))}
-                    </div>
-                    <p className={`pd-stock-result ${stockPreview === "Out of stock" ? "is-out" : "is-in"}`}>
-                      Catalog will show <strong>{stockPreview}</strong>
-                      {trackStock ? ` · ${quantity} in quantity` : ""}.
-                    </p>
+                        <p className="pd-side-hint">
+                          {trackStock
+                            ? "Each order takes its quantity off. At 0 the product turns Out of stock by itself and cannot be ordered."
+                            : "Orders do not check or reduce a quantity. The product stays In stock until you pick Out of stock."}
+                        </p>
+                      </Field>
+                      {trackStock ? (
+                        <Field label="Quantity">
+                          <input type="number" min="0" value={quantity} onChange={(event) => changeQuantity(Number(event.target.value))} />
+                        </Field>
+                      ) : (
+                        <Field label="Stock status">
+                          <div className="pd-radios">
+                            {[
+                              ["instock", "In stock"],
+                              ["outofstock", "Out of stock"],
+                            ].map(([value, label]) => (
+                              <label key={value}>
+                                <input type="radio" name="stockStatus" checked={stockStatus === value} onChange={() => changeStockStatus(value as StockStatus)} />
+                                {label}
+                              </label>
+                            ))}
+                          </div>
+                        </Field>
+                      )}
+                      <Field label="Shop shows">
+                        <p className={`pd-stock-result ${stockPreview === "Out of stock" ? "is-out" : "is-in"}`}>
+                          <strong>{stockPreview}</strong>
+                          {trackStock ? ` · ${quantity} in stock` : ""}
+                        </p>
+                      </Field>
+                    </>
+                  )}
+                  <Field label="Bundle offer">
+                    <label className="pd-check">
+                      <input type="checkbox" checked={bundleEnabled} onChange={(event) => setBundleEnabled(event.target.checked)} />
+                      Enable buy-2 bundle
+                    </label>
+                    <p className="pd-side-hint">Buy 2 charges the pair price with 5% off: price × 2 × 0.95.</p>
                   </Field>
                 </>
               ) : null}
 
               {activeTab === "shipping" ? (
                 <>
-                  <Field label="Weight (lbs)">
-                    <input type="number" min="0" step="0.01" value={weight} onChange={(event) => setWeight(event.target.value)} />
+                  <Field label="Shipping class">
+                    <select value={freeShipping ? "free" : "charges"} onChange={(event) => setFreeShipping(event.target.value === "free")}>
+                      <option value="charges">Delivery charges</option>
+                      <option value="free">Free shipping</option>
+                    </select>
+                    <p className="pd-side-hint">
+                      {freeShipping
+                        ? "This product ships free."
+                        : `Charged Rs ${deliveryPolicy.flatRate.toLocaleString()} (Settings → Delivery). Orders above Rs ${deliveryPolicy.threshold.toLocaleString()} ship free.`}
+                    </p>
                   </Field>
-                  <Field label="Dimensions (in)">
+                  <Field label="Weight (kg)">
+                    <input type="number" min="0" step="0.01" value={weight} onChange={(event) => setWeight(event.target.value)} placeholder="e.g. 0.5" />
+                  </Field>
+                  <Field label="Dimensions (cm)">
                     <div className="pd-dims">
                       <input value={length} onChange={(event) => setLength(event.target.value)} placeholder="Length" aria-label="Length" />
                       <input value={width} onChange={(event) => setWidth(event.target.value)} placeholder="Width" aria-label="Width" />
                       <input value={height} onChange={(event) => setHeight(event.target.value)} placeholder="Height" aria-label="Height" />
                     </div>
-                  </Field>
-                  <Field label="Shipping class">
-                    <select value={shippingClass} onChange={(event) => setShippingClass(event.target.value)}>
-                      <option value="">No shipping class</option>
-                      <option value="shipping-charges">Shipping Charges</option>
-                    </select>
+                    <p className="pd-side-hint">Shown on the product page under Additional information when filled.</p>
                   </Field>
                 </>
               ) : null}
 
-              {activeTab === "linked" ? (
-                <div className="pd-stack">
-                  <Field label="Upsells">
-                    <input placeholder="Search for a product…" readOnly style={{ background: "#f6f7f7" }} />
-                  </Field>
-                  <Field label="Cross-sells">
-                    <input placeholder="Search for a product…" readOnly style={{ background: "#f6f7f7" }} />
-                  </Field>
-                </div>
-              ) : null}
-
-              {activeTab === "attributes" ? (
+              {activeTab === "attributes" && productType === "variable" ? (
                 <div className="pd-attr">
                   <p className="pd-note">Add details customers can choose, such as Color or Size. Separate each value with a | character.</p>
                   <button
@@ -1327,7 +1411,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                 </div>
               ) : null}
 
-              {activeTab === "variations" ? (
+              {activeTab === "variations" && productType === "variable" ? (
                 <div className="pd-var">
                   <div className="pd-var-tools">
                     <button type="button" className="admin-btn admin-btn-light" disabled={!variationAttributes.length} onClick={regenerateVariations}>
@@ -1352,7 +1436,14 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                       const thumb = variation.images?.[0];
                       return (
                         <article className={`pd-var-card ${variation.open ? "is-open" : ""}`} key={variation.key}>
-                          <div className="pd-var-row">
+                          <div
+                            className="pd-var-row"
+                            onClick={(event) => {
+                              // The dropdowns, image picker, Edit/Close and Remove handle their own clicks.
+                              if ((event.target as HTMLElement).closest("button, select, input, label, a")) return;
+                              toggleVariation(variation.key);
+                            }}
+                          >
                             <button
                               type="button"
                               className="pd-var-thumb"
@@ -1388,9 +1479,15 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                             <div className="pd-var-price-slot">
                               <b>{variation.regularPrice ? `Rs ${variation.regularPrice}` : "No price"}</b>
                               {variation.salePrice ? <small>Sale Rs {variation.salePrice}</small> : null}
+                              {/* What the shop shows: with Manage stock ON, quantity 0 is Out of stock automatically. */}
+                              {availability(variation.trackStock, variation.quantity, variation.stockStatus) === "instock" ? (
+                                <em className="pd-var-stock-tag is-in">In stock{variation.trackStock ? ` · ${variation.quantity}` : ""}</em>
+                              ) : (
+                                <em className="pd-var-stock-tag is-out">Out of stock</em>
+                              )}
                             </div>
                             <div className="pd-var-actions">
-                              <button type="button" className={variation.open ? "is-on" : ""} onClick={() => updateVariation(variation.key, { open: !variation.open })}>
+                              <button type="button" className={variation.open ? "is-on" : ""} aria-expanded={variation.open} onClick={() => toggleVariation(variation.key)}>
                                 {variation.open ? "Close" : "Edit"}
                               </button>
                               <button type="button" className="pd-danger" onClick={() => setVariations((current) => current.filter((item) => item.key !== variation.key))}>
@@ -1456,14 +1553,6 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                                   Enabled
                                 </label>
                                 <label className="pd-check">
-                                  <input type="checkbox" checked={variation.downloadable} onChange={(event) => updateVariation(variation.key, { downloadable: event.target.checked })} />
-                                  Downloadable
-                                </label>
-                                <label className="pd-check">
-                                  <input type="checkbox" checked={variation.virtual} onChange={(event) => updateVariation(variation.key, { virtual: event.target.checked })} />
-                                  Virtual
-                                </label>
-                                <label className="pd-check">
                                   <input type="checkbox" checked={variation.trackStock} onChange={(event) => updateVariation(variation.key, { trackStock: event.target.checked })} />
                                   Manage stock?
                                 </label>
@@ -1499,29 +1588,30 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                                   </label>
                                 </div>
                               ) : null}
-                              <label className="pd-var-stock-status">
-                                Stock status
-                                <select
-                                  value={variation.stockStatus === "outofstock" ? "outofstock" : "instock"}
-                                  onChange={(event) => changeVariationStatus(variation.key, event.target.value as StockStatus)}
-                                >
-                                  <option value="instock">In stock</option>
-                                  <option value="outofstock">Out of stock</option>
-                                </select>
-                              </label>
                               {variation.trackStock ? (
-                                <label>
+                                <label className="pd-var-stock-status">
                                   Quantity
                                   <input type="number" min="0" value={variation.quantity} onChange={(event) => changeVariationQuantity(variation.key, Number(event.target.value))} />
                                 </label>
-                              ) : null}
+                              ) : (
+                                <label className="pd-var-stock-status">
+                                  Stock status
+                                  <select
+                                    value={variation.stockStatus}
+                                    onChange={(event) => changeVariationStatus(variation.key, event.target.value as StockStatus)}
+                                  >
+                                    <option value="instock">In stock</option>
+                                    <option value="outofstock">Out of stock</option>
+                                  </select>
+                                </label>
+                              )}
                               <div className="pd-variation-grid">
                                 <label>
-                                  Weight (lbs)
+                                  Weight (kg)
                                   <input type="number" min="0" step="0.01" value={variation.weight} onChange={(event) => updateVariation(variation.key, { weight: event.target.value })} />
                                 </label>
                                 <label>
-                                  Dimensions (L × W × H)
+                                  Dimensions (L × W × H, cm)
                                   <div className="pd-dims">
                                     <input value={variation.length} onChange={(event) => updateVariation(variation.key, { length: event.target.value })} placeholder="Length" aria-label="Length" />
                                     <input value={variation.width} onChange={(event) => updateVariation(variation.key, { width: event.target.value })} placeholder="Width" aria-label="Width" />
@@ -1529,13 +1619,6 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                                   </div>
                                 </label>
                               </div>
-                              <label>
-                                Shipping class
-                                <select value={variation.shippingClass} onChange={(event) => updateVariation(variation.key, { shippingClass: event.target.value })}>
-                                  <option value="">No shipping class</option>
-                                  <option value="shipping-charges">Shipping Charges</option>
-                                </select>
-                              </label>
                             </div>
                           ) : null}
                         </article>
@@ -1588,24 +1671,6 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                 </>
               ) : null}
 
-              {activeTab === "advanced" ? (
-                <>
-                  <Field label="Purchase note">
-                    <textarea rows={3} value={purchaseNote} onChange={(event) => setPurchaseNote(event.target.value)} placeholder="Optional note sent with the order" />
-                  </Field>
-                  <Field label="Menu order">
-                    <input type="number" value={menuOrder} onChange={(event) => setMenuOrder(event.target.value)} />
-                  </Field>
-                  <Field label="Bundle offer">
-                    <label className="pd-check">
-                      <input type="checkbox" checked={bundleEnabled} onChange={(event) => setBundleEnabled(event.target.checked)} />
-                      Enable buy-2 bundle
-                    </label>
-                    <p className="pd-side-hint">Buy 2 charges the pair price with 5% off: price × 2 × 0.95.</p>
-                  </Field>
-                </>
-              ) : null}
-
               {activeTab === "delivery" ? (
                 <>
                   <Field label="Delivery window (days)">
@@ -1623,12 +1688,23 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                   {PRODUCT_TAB_DEFS.map((tab) => {
                     const current = productTabs[tab.key];
                     const global = globalTabs[tab.key];
+                    const isOpen = openProductTab === tab.key;
                     return (
-                      <div className="pd-subcard" key={tab.key}>
-                        <div className="pd-card-head">
-                          <h2>{global.title}</h2>
-                          <p>{current.override ? "This product shows the custom text below." : "This product currently shows the store-wide text."}</p>
-                        </div>
+                      <div className="rankmath-checklist-group pd-acc" key={tab.key}>
+                        <button
+                          type="button"
+                          className="rankmath-checklist-header"
+                          aria-expanded={isOpen}
+                          onClick={() => setOpenProductTab((open) => (open === tab.key ? null : tab.key))}
+                        >
+                          <span className="rankmath-checklist-title">
+                            <span>{global.title}</span>
+                            <span className={`pd-acc-state${current.override ? " is-custom" : ""}`}>{current.override ? "Custom text" : "Store-wide text"}</span>
+                          </span>
+                          <span style={{ fontSize: 13, color: "var(--adm-text-muted)" }}>{isOpen ? "▴" : "▾"}</span>
+                        </button>
+                        {isOpen ? (
+                        <div className="pd-acc-body">
                         <label className="pd-check">
                           <input
                             type="checkbox"
@@ -1662,6 +1738,8 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                         ) : (
                           <div className="pd-tab-preview" dangerouslySetInnerHTML={{ __html: global.content }} />
                         )}
+                        </div>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -1711,7 +1789,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                 </div>
 
                 <div className="rankmath-tabs">
-                  {(["general", "advanced", "social", "schema"] as SeoTab[]).map((tab) => (
+                  {(["general", "advanced", "schema"] as SeoTab[]).map((tab) => (
                     <button
                       key={tab}
                       type="button"
@@ -1900,7 +1978,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                     </div>
 
                     {/* Rank Math Checklists */}
-                    <SeoGroup title="Basic SEO" meta={seo.groups.basic} open={seoOpen.basic} onToggle={() => setSeoOpen((current) => ({ ...current, basic: !current.basic }))}>
+                    <SeoGroup title="Basic SEO" meta={seo.groups.basic} open={openSeoGroup === "basic"} onToggle={() => toggleSeoGroup("basic")}>
                       <Check ok={seo.checks.keywordInTitle} text="Add Focus Keyword to the SEO title." />
                       <Check ok={seo.checks.keywordInDescription} text="Add Focus Keyword to your SEO meta description." />
                       <Check ok={seo.checks.keywordInUrl} text="Use Focus Keyword in the product URL / permalink." />
@@ -1909,7 +1987,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                       <Check ok={seo.checks.contentLength} text={`Content should be 600–2500 words long (Currently ${seo.words} words).`} />
                     </SeoGroup>
 
-                    <SeoGroup title="Additional SEO" meta={seo.groups.additional} open={seoOpen.additional} onToggle={() => setSeoOpen((current) => ({ ...current, additional: !current.additional }))}>
+                    <SeoGroup title="Additional SEO" meta={seo.groups.additional} open={openSeoGroup === "additional"} onToggle={() => toggleSeoGroup("additional")}>
                       <Check ok={seo.checks.keywordInSubheading} text="Use Focus Keyword in a subheading (H2, H3, or H4)." />
                       <Check ok={seo.checks.imageAlt} text="Use Focus Keyword in product image ALT attribute." />
                       <Check ok={seo.checks.density} text={`Keyword density is ${seo.density.toFixed(2)}% (Optimal: ~1.0%).`} />
@@ -1920,14 +1998,14 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                       <Check ok={seo.checks.hasKeyword} text="Focus Keyword is configured for this product." />
                     </SeoGroup>
 
-                    <SeoGroup title="Title Readability" meta={seo.groups.title} open={seoOpen.title} onToggle={() => setSeoOpen((current) => ({ ...current, title: !current.title }))}>
+                    <SeoGroup title="Title Readability" meta={seo.groups.title} open={openSeoGroup === "title"} onToggle={() => toggleSeoGroup("title")}>
                       <Check ok={seo.checks.keywordNearTitleStart} text="Focus Keyword appears near the beginning of the SEO title." />
                       <Check ok={seo.checks.sentiment} text="Title contains a positive or enticing sentiment word." />
                       <Check ok={seo.checks.power} text="Title contains a high-converting power word." />
                       <Check ok={seo.checks.numberInTitle} text="Title contains a number (e.g. pack count or discount %)." />
                     </SeoGroup>
 
-                    <SeoGroup title="Content Readability" meta={seo.groups.content} open={seoOpen.content} onToggle={() => setSeoOpen((current) => ({ ...current, content: !current.content }))}>
+                    <SeoGroup title="Content Readability" meta={seo.groups.content} open={openSeoGroup === "content"} onToggle={() => toggleSeoGroup("content")}>
                       <Check ok={seo.checks.shortParagraphs} text="Use short, readable paragraphs for better mobile scanning." />
                       <Check ok={seo.checks.richMedia} text="Product has rich media (photos and gallery images)." />
                     </SeoGroup>
@@ -1971,16 +2049,31 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                     </div>
 
                     <div className="wp-form-row">
-                      <label>301 Redirect URL</label>
+                      <label>Redirect: Old URL</label>
+                      <div style={{ width: "100%" }}>
+                        <input
+                          style={{ width: "100%", height: 38, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13 }}
+                          value={redirectFrom}
+                          onChange={(e) => setRedirectFrom(e.target.value)}
+                          placeholder={`/product/${slug || "product-slug"}/`}
+                        />
+                        <small style={{ fontSize: 11, color: "var(--adm-text-muted)", display: "block", marginTop: 4 }}>
+                          The deleted or old page path. Starts as this product&apos;s URL; can be any old path, such as an old WordPress URL.
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="wp-form-row">
+                      <label>Redirect: Destination URL</label>
                       <div style={{ width: "100%" }}>
                         <input
                           style={{ width: "100%", height: 38, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13 }}
                           value={redirectUrl}
                           onChange={(e) => setRedirectUrl(e.target.value)}
-                          placeholder="https://zelvomart.com/product/replacement-item/"
+                          placeholder="/product/replacement-item/"
                         />
                         <small style={{ fontSize: 11, color: "var(--adm-text-muted)", display: "block", marginTop: 4 }}>
-                          If this product is retired or replaced, paste the replacement URL to redirect visitors.
+                          Where visitors of the old URL go (301). Leave empty for no redirect. Saved in Admin → SEO Redirects.
                         </small>
                       </div>
                     </div>
@@ -1995,81 +2088,27 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                   </div>
                 ) : null}
 
-                {/* 3. SOCIAL TAB */}
-                {seoTab === "social" ? (
-                  <div style={{ display: "grid", gap: 20 }}>
-                    <p style={{ margin: 0, fontSize: 13, color: "var(--adm-text-muted)" }}>
-                      Customize how this product appears when shared on WhatsApp, Facebook, LinkedIn, or Twitter.
-                    </p>
-
-                    {/* Social Preview Card */}
-                    <div className="rankmath-social-card">
-                      {mainImage ? (
-                        <img src={mainImage} alt="Social preview" className="rankmath-social-img" />
-                      ) : (
-                        <div className="rankmath-social-img">
-                          <span style={{ color: "var(--adm-text-muted)", fontSize: 13 }}>No product image selected</span>
-                        </div>
-                      )}
-                      <div className="rankmath-social-body">
-                        <div className="rankmath-social-domain">ZELVOMART.COM</div>
-                        <div className="rankmath-social-title">{socialTitle || seoTitle || title || "Product Title"}</div>
-                        <p className="rankmath-social-desc">
-                          {socialDescription || seoDescription || plainText(shortHtml) || "Discover premium products on Zelvomart with fast delivery across Pakistan."}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="wp-form-row">
-                      <label>Social Title</label>
-                      <input
-                        style={{ width: "100%", height: 38, padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13 }}
-                        value={socialTitle}
-                        onChange={(e) => setSocialTitle(e.target.value)}
-                        placeholder={seoTitle || title || "Custom social title"}
-                      />
-                    </div>
-
-                    <div className="wp-form-row">
-                      <label>Social Description</label>
-                      <textarea
-                        rows={3}
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--adm-border)", fontSize: 13, resize: "vertical" }}
-                        value={socialDescription}
-                        onChange={(e) => setSocialDescription(e.target.value)}
-                        placeholder={seoDescription || "Custom social description"}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* 4. SCHEMA TAB */}
+                {/* 3. SCHEMA TAB (read-only, same builder as the live product page) */}
                 {seoTab === "schema" ? (
                   <div style={{ display: "grid", gap: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "var(--adm-text-main)" }}>Product Schema (JSON-LD)</span>
-                      <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "#ecfdf5", color: "#059669", fontWeight: 700 }}>Valid Schema</span>
+                      {initial?.slug && status === "PUBLISHED" ? (
+                        <a
+                          href={`https://search.google.com/test/rich-results?url=${encodeURIComponent(`https://zelvomart.com/product/${initial.slug}/`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ fontSize: 12, fontWeight: 700 }}
+                        >
+                          Test in Google Rich Results →
+                        </a>
+                      ) : null}
                     </div>
+                    <small style={{ fontSize: 11, color: "var(--adm-text-muted)" }}>
+                      Read-only. Built by the same function as the live product page, from the values in this form.
+                    </small>
                     <pre style={{ margin: 0, padding: 14, borderRadius: 10, background: "#0b1a2e", color: "#93c5fd", fontSize: 12, lineHeight: 1.6, overflowX: "auto" }}>
-                      {JSON.stringify(
-                        {
-                          "@context": "https://schema.org",
-                          "@type": "Product",
-                          name: title || "Product Name",
-                          image: mainImage ? [mainImage, ...gallery] : [],
-                          description: seoDescription || plainText(shortHtml) || "",
-                          sku: sku || "ZVM-0001",
-                          offers: {
-                            "@type": "Offer",
-                            price: Number(regularPrice || 0) || 0,
-                            priceCurrency: "PKR",
-                            availability: stockStatus === "instock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-                            url: previewUrl,
-                          },
-                        },
-                        null,
-                        2,
-                      )}
+                      {JSON.stringify(buildProductSchema(buildPreviewProduct(), { baseUrl: "https://zelvomart.com", delivery: deliveryPolicy }), null, 2)}
                     </pre>
                   </div>
                 ) : null}
@@ -2240,6 +2279,57 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             ) : null}
           </div>
 
+          {/* Product video (link only, shown as the last gallery thumbnail on the product page) */}
+          <div className="wp-metabox">
+            <div className="wp-metabox-header" onClick={() => toggleCollapse("video")}>
+              <h3 className="wp-metabox-title">Product video</h3>
+              <span className="wp-metabox-toggle">{collapsed.video ? "▾" : "▴"}</span>
+            </div>
+            {!collapsed.video ? (
+              <div className="wp-metabox-body pd-video-box">
+                {video ? (
+                  videoPreviewPlaying ? (
+                    <div className="pd-video-preview">
+                      <iframe
+                        src={video.embedUrl}
+                        title="Product video preview"
+                        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <button type="button" className="pd-video-preview" onClick={() => setVideoPreviewPlaying(true)} aria-label="Play video preview">
+                      {videoThumbnail ? <img src={videoThumbnail} alt="Video thumbnail" /> : <div className="pd-video-placeholder">{video.provider === "vimeo" ? "Vimeo video" : "Video"}</div>}
+                      <span className="pd-video-play" aria-hidden="true">▶</span>
+                      <small>{video.provider === "youtube" ? "YouTube" : "Vimeo"}</small>
+                    </button>
+                  )
+                ) : null}
+                <input
+                  id="product-video-input"
+                  className={videoInvalid ? "is-invalid" : ""}
+                  value={videoInput}
+                  onChange={(event) => setVideoInput(event.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  aria-invalid={videoInvalid}
+                  aria-describedby="product-video-help"
+                />
+                {videoInvalid ? (
+                  <p className="pd-video-error" role="alert">{VIDEO_URL_ERROR}</p>
+                ) : (
+                  <p className="pd-side-hint" id="product-video-help">
+                    Paste a YouTube (youtube.com/watch, youtu.be, youtube.com/shorts) or Vimeo link. Links only, no uploads. It shows as the last thumbnail on the product page.
+                  </p>
+                )}
+                {videoInput ? (
+                  <button type="button" className="wp-btn-secondary" style={{ color: "#b32d2e", width: "fit-content" }} onClick={() => setVideoInput("")}>
+                    Remove video
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
           {/* 3. Product categories */}
           <div className="wp-metabox">
             <div className="wp-metabox-header" onClick={() => toggleCollapse("categories")}>
@@ -2333,96 +2423,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             ) : null}
           </div>
 
-          {/* 4. Product brands */}
-          <div className="wp-metabox">
-            <div className="wp-metabox-header" onClick={() => toggleCollapse("brands")}>
-              <h3 className="wp-metabox-title">Product brands</h3>
-              <span className="wp-metabox-toggle">{collapsed.brands ? "▾" : "▴"}</span>
-            </div>
-            {!collapsed.brands ? (
-              <div className="wp-metabox-body">
-                <div className="wp-tabs">
-                  <button
-                    type="button"
-                    className={`wp-tab-btn ${brandTab === "all" ? "is-active" : ""}`}
-                    onClick={() => setBrandTab("all")}
-                  >
-                    All Brands
-                  </button>
-                  <button
-                    type="button"
-                    className={`wp-tab-btn ${brandTab === "mostUsed" ? "is-active" : ""}`}
-                    onClick={() => setBrandTab("mostUsed")}
-                  >
-                    Most Used
-                  </button>
-                </div>
-                <div className="wp-scroll-checklist">
-                  {brandList.map((item) => (
-                    <label key={item} className="wp-check-label">
-                      <input
-                        type="checkbox"
-                        checked={brand === item}
-                        onChange={() => setBrand((current: string) => (current === item ? "" : item))}
-                      />
-                      <span>{item}</span>
-                    </label>
-                  ))}
-                </div>
-                {!showAddBrand ? (
-                  <button
-                    type="button"
-                    className="wp-link-action"
-                    onClick={() => setShowAddBrand(true)}
-                  >
-                    + Add New Brand
-                  </button>
-                ) : (
-                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                    <input
-                      value={newBrandInput}
-                      onChange={(e) => setNewBrandInput(e.target.value)}
-                      placeholder="New brand name"
-                      style={{
-                        padding: "4px 8px",
-                        border: "1px solid #8c8f94",
-                        borderRadius: 3,
-                        fontSize: 13,
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addBrand();
-                        }
-                      }}
-                    />
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        type="button"
-                        className="wp-btn-secondary"
-                        onClick={addBrand}
-                        disabled={!newBrandInput.trim()}
-                      >
-                        Add
-                      </button>
-                      <button
-                        type="button"
-                        className="wp-btn-secondary"
-                        onClick={() => {
-                          setShowAddBrand(false);
-                          setNewBrandInput("");
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </div>
-
-          {/* 5. Product tags & badges */}
+          {/* 4. Product tags & badges */}
           <div className="wp-metabox">
             <div className="wp-metabox-header" onClick={() => toggleCollapse("tags")}>
               <h3 className="wp-metabox-title">Product tags &amp; badges</h3>
@@ -2588,16 +2589,9 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
               <small>Leave empty if the image is purely decorative.</small>
             </label>
             <label>
-              Title
+              Image title
               <input value={imageMeta.title} onChange={(event) => setImageMeta((current) => ({ ...current, title: event.target.value }))} />
-            </label>
-            <label>
-              Image caption
-              <textarea rows={2} value={imageMeta.caption} onChange={(event) => setImageMeta((current) => ({ ...current, caption: event.target.value }))} />
-            </label>
-            <label>
-              Description
-              <textarea rows={2} value={imageMeta.description} onChange={(event) => setImageMeta((current) => ({ ...current, description: event.target.value }))} />
+              <small>Shown as a tooltip when shoppers hover the product photo.</small>
             </label>
             <label>
               File URL
@@ -2617,14 +2611,6 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
               >
                 Copy URL to clipboard
               </button>
-              <label className="pd-check">
-                <input
-                  type="checkbox"
-                  checked={imageMeta.excludeFromSitemap}
-                  onChange={(event) => setImageMeta((current) => ({ ...current, excludeFromSitemap: event.target.checked }))}
-                />
-                Exclude this attachment from sitemap
-              </label>
             </div>
             <footer>
               <button type="button" className="admin-btn admin-btn-light" onClick={() => mainImageRef.current?.click()}>Replace image</button>
@@ -2663,7 +2649,7 @@ function SeoGroup({
   const errors = meta.total - meta.passed;
   return (
     <div className="rankmath-checklist-group">
-      <button type="button" className="rankmath-checklist-header" onClick={onToggle}>
+      <button type="button" className="rankmath-checklist-header" aria-expanded={open} onClick={onToggle}>
         <div className="rankmath-checklist-title">
           <span>{title}</span>
           <span className={`rankmath-checklist-badge ${errors ? "has-errors" : "all-passed"}`}>

@@ -21,7 +21,8 @@ export type Product = {
   regularPrice?: number;
   salePrice?: number | null;
   stock?: number;
-  stockQuantity?: number;
+  stockQuantity?: number | null;
+  stockStatus?: string;
   status?: string;
   createdAt?: string;
 };
@@ -141,7 +142,7 @@ export default function ProductTableRow({
       </td>
 
       <td>
-        <StockBadge stock={product.stock} stockQuantity={product.stockQuantity} />
+        <StockBadge stockStatus={product.stockStatus} stockQuantity={product.stockQuantity} />
       </td>
 
       <td>

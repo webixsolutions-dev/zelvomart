@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { permanentRedirect, redirect } from "next/navigation";
 import ProductDetailClient from "@/components/ProductDetailClient";
 import ProductGrid from "@/components/ProductGrid";
 import { getProductBySlug, getProducts } from "@/lib/store";
@@ -8,21 +8,46 @@ import { apiFetch } from "@/lib/api";
 import { getSettings } from "@/lib/settings";
 import { resolveProductTabs } from "@/lib/product-tabs";
 import type { Product } from "@/types/product";
+import { resolveDeliveryPolicy, type DeliverySettings } from "@/lib/shipping";
+import { buildBreadcrumbSchema, buildProductSchema } from "@/lib/product-schema";
 
 export const revalidate = 120;
 
+function ensureSlash(path: string) {
+  const clean = path.replace(/[?#].*$/, "");
+  return clean.endsWith("/") ? clean : `${clean}/`;
+}
+
+/**
+ * The product's own redirect (SEO -> Advanced): only when its "Old URL" is this product's URL.
+ * Any other old path is answered from the Redirect table by the catch-all route.
+ */
 function productRedirectUrl(product: Product | null) {
-  const value = product?.catalogMeta && typeof product.catalogMeta.redirectUrl === "string" ? product.catalogMeta.redirectUrl.trim() : "";
-  return value;
+  const meta = product?.catalogMeta;
+  const destination = meta && typeof meta.redirectUrl === "string" ? meta.redirectUrl.trim() : "";
+  if (!product || !destination) return "";
+  const from = typeof meta?.redirectFrom === "string" && meta.redirectFrom.trim() ? meta.redirectFrom.trim() : `/product/${product.slug}/`;
+  let fromPath = from;
+  try {
+    fromPath = new URL(from, "https://zelvomart.com").pathname;
+  } catch {
+    // keep as typed
+  }
+  return ensureSlash(fromPath) === `/product/${product.slug}/` ? destination : "";
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   const destination = productRedirectUrl(product);
-  if (destination) redirect(destination);
+  if (destination) permanentRedirect(destination);
   if (!product) return {};
+  // SEO -> Advanced robots. Products stay indexable by default.
+  const noindex = product.catalogMeta?.robotsIndex === "noindex";
+  const nofollow = Boolean(product.catalogMeta?.robotsNoFollow);
   return {
+    // Only what was turned off is written: noindex alone gives <meta name="robots" content="noindex">.
+    robots: noindex || nofollow ? { ...(noindex ? { index: false } : {}), ...(nofollow ? { follow: false } : {}) } : undefined,
     title: product.seoTitle || product.name,
     description: product.seoDescription || product.shortDescription || `Buy ${product.name} from Zelvomart with Cash on Delivery across Pakistan.`,
     alternates: { canonical: product.canonicalUrl || `/product/${product.slug}/` },
@@ -50,23 +75,23 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   const destination = productRedirectUrl(product);
-  if (destination) redirect(destination);
+  if (destination) permanentRedirect(destination);
   if (!product) {
-    let destination = "";
+    let row: { destination?: string; permanent?: boolean } | null = null;
     try {
-      const row = await apiFetch<{ destination?: string }>(`/api/redirects/resolve?path=${encodeURIComponent(`/product/${slug}/`)}`, {
+      row = await apiFetch<{ destination?: string; permanent?: boolean }>(`/api/redirects/resolve?path=${encodeURIComponent(`/product/${slug}/`)}`, {
         next: { revalidate: 120, tags: ["redirects"] },
       });
-      destination = row?.destination || "";
     } catch {
-      destination = "";
+      row = null;
     }
-    redirect(destination || "/shop");
+    if (row?.destination && row.permanent) permanentRedirect(row.destination);
+    redirect(row?.destination || "/shop");
   }
 
   const categorySlug = product.categorySlugs[0] || product.categories[0]?.slug;
   const [settings, categoryProducts, featuredProducts, newestProducts] = await Promise.all([
-    getSettings(["store.bundleDefaultDiscountPercent", "store.info", "store.productTabs"]),
+    getSettings(["store.bundleDefaultDiscountPercent", "store.info", "store.productTabs", "store.delivery"]),
     categorySlug ? getProducts({ category: categorySlug, limit: 8 }) : Promise.resolve({ items: [], page: 1, limit: 8, total: 0, totalPages: 1 }),
     getProducts({ featured: true, limit: 8 }),
     getProducts({ limit: 8, sort: "newest" }),
@@ -79,33 +104,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const categoryHref = categorySlug ? `/product-category/${categorySlug}/` : "/shop";
   const base = process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com";
 
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.name,
-    sku: product.sku,
-    image: product.images.map((image) => image.src),
-    description: product.shortDescription || product.name,
-    brand: { "@type": "Brand", name: product.brand || "Zelvomart" },
-    offers: {
-      "@type": "Offer",
-      priceCurrency: "PKR",
-      price: product.price,
-      availability: product.stockStatus === "instock" ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      url: `${base}/product/${product.slug}/`,
-    },
-    ...(product.reviewCount ? { aggregateRating: { "@type": "AggregateRating", ratingValue: product.averageRating, reviewCount: product.reviewCount } } : {}),
-  };
-
-  const breadcrumb = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: base },
-      ...(product.categories[0] ? [{ "@type": "ListItem", position: 2, name: product.categories[0].name, item: `${base}/product-category/${product.categories[0].slug}/` }] : []),
-      { "@type": "ListItem", position: product.categories[0] ? 3 : 2, name: product.name, item: `${base}/product/${product.slug}/` },
-    ],
-  };
+  // Same builder as the admin SEO -> Schema preview.
+  const delivery = resolveDeliveryPolicy((settings["store.delivery"] || null) as DeliverySettings | null);
+  const schema = buildProductSchema(product, { baseUrl: base, delivery });
+  const breadcrumb = buildBreadcrumbSchema(product, base);
 
   return (
     <div className="product-page zpd-page">

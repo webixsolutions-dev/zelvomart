@@ -1,24 +1,20 @@
 "use client";
 
 interface StockBadgeProps {
-  stock?: number;
-  stockQuantity?: number;
+  /** "instock" | "outofstock" from the API (the shared stock rule). */
+  stockStatus?: string;
+  /** Live tracked quantity; null when stock is not tracked. */
+  stockQuantity?: number | null;
 }
 
-export default function StockBadge({ stock, stockQuantity }: StockBadgeProps) {
-  const qty = Number(stock ?? stockQuantity ?? 0);
+export function stockBadgeState(stockStatus?: string, stockQuantity?: number | null) {
+  if (stockStatus === "outofstock") return { variant: "out", label: "Out of stock" };
+  if (stockQuantity != null && stockQuantity <= 5) return { variant: "low", label: `Low stock (${stockQuantity})` };
+  return { variant: "in", label: stockQuantity != null ? `In stock (${stockQuantity})` : "In stock" };
+}
 
-  let variant = "in";
-  let label = "In stock";
-
-  if (qty <= 0) {
-    variant = "out";
-    label = "Out of stock";
-  } else if (qty <= 5) {
-    variant = "low";
-    label = "Low stock";
-  }
-
+export default function StockBadge({ stockStatus, stockQuantity }: StockBadgeProps) {
+  const { variant, label } = stockBadgeState(stockStatus, stockQuantity);
   return (
     <span className={`admin-stock-badge ${variant}`}>
       <span className="admin-badge-dot" aria-hidden="true" />

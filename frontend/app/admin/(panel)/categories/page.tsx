@@ -110,7 +110,7 @@ function CategoryForm({ initial, onSaved }: { initial?: CategoryRow; onSaved: ()
     </form>
   );
 }
-
+// testing it 
 export default function Categories() {
   const { data, loading, error, reload } = useAdminData<CategoryRow[]>("/api/admin/categories", []);
 

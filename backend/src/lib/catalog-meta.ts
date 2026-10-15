@@ -19,9 +19,36 @@ export function productHasFreeShipping(sourceUrl: unknown) {
   return Boolean(readCatalogMeta(sourceUrl)?.freeShipping);
 }
 
+// Fields the product form used to save that nothing reads (orders, shop, feed, schema).
+// trackStock / stockStatus / quantity now live in real Product and Variant columns (lib/stock.ts);
+// shippingClass became the freeShipping flag; the Social SEO tab was removed.
+const DROPPED_META_KEYS = ["virtual", "downloadable", "taxStatus", "taxClass", "purchaseNote", "menuOrder", "brand", "trackStock", "stockStatus", "shippingClass", "socialTitle", "socialDescription"];
+const DROPPED_VARIATION_KEYS = ["virtual", "downloadable", "trackStock", "stockStatus", "quantity", "shippingClass"];
+const DROPPED_IMAGE_META_KEYS = ["caption", "description", "excludeFromSitemap"];
+
+/** Removes the retired product fields before the meta is stored. */
+export function cleanCatalogMeta(meta: Record<string, any>) {
+  const next: Record<string, any> = { ...meta };
+  for (const key of DROPPED_META_KEYS) delete next[key];
+  if (next.imageMeta && typeof next.imageMeta === "object") {
+    const imageMeta = { ...next.imageMeta };
+    for (const key of DROPPED_IMAGE_META_KEYS) delete imageMeta[key];
+    next.imageMeta = imageMeta;
+  }
+  if (Array.isArray(next.variations)) {
+    next.variations = next.variations.map((variation: unknown) => {
+      if (!variation || typeof variation !== "object") return variation;
+      const item: Record<string, any> = { ...(variation as Record<string, any>) };
+      for (const key of DROPPED_VARIATION_KEYS) delete item[key];
+      return item;
+    });
+  }
+  return next;
+}
+
 export function writeCatalogMeta(meta: unknown) {
   if (!meta || typeof meta !== "object") return null;
-  const next: Record<string, any> = { ...(meta as Record<string, any>) };
+  const next = cleanCatalogMeta(meta as Record<string, any>);
   next.freeShipping = Boolean(next.freeShipping);
   if (next.productTabs && typeof next.productTabs === "object") {
     next.productTabs = sanitizeProductTabOverrides(next.productTabs);

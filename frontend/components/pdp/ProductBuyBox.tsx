@@ -66,7 +66,11 @@ export default function ProductBuyBox({
     );
   }, []);
 
-  const maxQuantity = Math.max(1, Math.min(10, variant ? Math.max(variant.stock, 1) : 10));
+  // Tracked stock caps how many can be ordered (pieces = quantity × bundle size); untracked stock does not.
+  const trackedStock = variant
+    ? variant.trackStock ? Number(variant.stock || 0) : null
+    : product.trackStock && product.stockQuantity != null ? Number(product.stockQuantity) : null;
+  const maxQuantity = Math.max(1, Math.min(10, trackedStock == null ? 10 : Math.floor(trackedStock / (bundleSize === 2 ? 2 : 1))));
   // Sale price, saving and percent come from the backend price summary
   const salePercent = pricing.discountPercent;
   const pair = pairOffer(basePrice, discountPercent);

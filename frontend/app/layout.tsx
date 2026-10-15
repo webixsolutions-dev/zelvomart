@@ -73,32 +73,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <link rel="preload" as="image" type="image/webp" href="/images/hero/zelvomart-slider-01.webp" />
-
-        {/* Fix for Next.js 16 + Turbopack negative performance timestamp bug */}
-        <script
-          id="turbopack-timestamp-fix"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                if (typeof window !== 'undefined' && window.performance && window.performance.measure) {
-                  var origMeasure = window.performance.measure.bind(window.performance);
-                  window.performance.measure = function(name, start, end) {
-                    try {
-                      return origMeasure(name, start, end);
-                    } catch (err) {
-                      if (err && err.message && err.message.indexOf('negative time stamp') !== -1) {
-                        return;
-                      }
-                      throw err;
-                    }
-                  };
-                }
-              })();
-            `,
-          }}
-        />
       </head>
       <body className={manrope.variable}>
+        {/* The Turbopack performance.measure fix runs from instrumentation-client.ts (no <script> tag). */}
         <SiteChrome
           header={
             <Suspense fallback={null}>

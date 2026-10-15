@@ -1,13 +1,16 @@
-// Strict structure check for the admin bulk image upload (ZIP or folder).
-// Only the template structure is accepted:
-//   <product SKU>/1.<ext>           the featured (main) image
-//   <product SKU>/<any name>.<ext>  the rest of the product's images
-//   <product SKU>/<variation folder>/<image>   optional, variable products only
-// Anything else is reported as a problem and blocks the upload.
+// Matches bulk-uploaded images (image folder or ZIP files) to products by NAME.
+// The most important rule: an image never lands on the wrong product, so nothing is guessed.
+//
+// Accepted layouts:
+//   <Product title>.zip  ->  1.jpg, 2.jpg ...          one ZIP per product
+//   product-images.zip   ->  <Product title>/1.jpg ...  one folder per product
+//   <Product title>.jpg, <Product title>-1.jpg, <Product title>-front.webp   loose files
+// A SKU or slug works in place of the title. Names are compared exactly after normalising
+// (case, spaces, punctuation and "&" vs "and" are ignored) against the title, then the
+// slug, then the SKU. A name that matches no product, or more than one, is "unassigned"
+// and the owner picks the product by hand.
 
 export const MAX_PRODUCT_IMAGES = 13;
-export const MAX_VARIATION_IMAGES = 8;
-export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 const IMAGE_TYPES: Record<string, string> = {
   jpg: "image/jpeg",
@@ -15,9 +18,8 @@ const IMAGE_TYPES: Record<string, string> = {
   png: "image/png",
   webp: "image/webp",
   gif: "image/gif",
-  avif: "image/avif",
 };
-const IGNORED_EXTENSIONS = new Set(["txt", "md", "csv", "ini", "db"]);
+const IGNORED_EXTENSIONS = new Set(["txt", "md", "csv", "ini", "db", "json", "pdf", "docx", "xlsx"]);
 const IGNORED_NAMES = new Set(["thumbs.db", "desktop.ini"]);
 
 export type BulkVariant = { id: string; sku?: string; name?: string; attributes?: Record<string, unknown> };
@@ -28,29 +30,34 @@ export type BulkProduct = {
   slug?: string;
   sku?: string;
   status?: string;
+  image?: string;
+  imageAlt?: string;
   rawImages?: string[];
   variants?: BulkVariant[];
 };
 /** One file from the ZIP or folder. `path` uses forward slashes; its first segment is the ZIP or folder name. */
 export type SourceFile = { path: string; size: number; load: () => Promise<Blob>; head: () => Promise<Uint8Array> };
+/** Images going to one product, in upload order: the first one is the main image. */
 export type ImageGroup = {
   product: BulkProduct;
   images: SourceFile[];
-  /** The folder has an image named "1": it becomes the product's featured image. */
+  /** What matched: the folder, ZIP or file names, for the preview. */
+  sources: string[];
+  /** The group has an image numbered 1: it becomes the main image, ahead of existing images. */
   hasFeatured: boolean;
-  variantImages: Map<string, { variant: BulkVariant; images: SourceFile[] }>;
 };
-export type ImageProblem = { where: string; message: string };
-export type ImageCheck = { groups: ImageGroup[]; problems: ImageProblem[]; imageCount: number };
+export type UnassignedImage = { file: SourceFile; name: string; reason: string; candidates: BulkProduct[] };
+export type SkippedFile = { path: string; reason: string };
+export type ImageMatch = { groups: ImageGroup[]; unassigned: UnassignedImage[]; skipped: SkippedFile[]; imageCount: number };
 
-export function imageKey(value?: string | null) {
+/** Normalised name: ignores case, accents, spaces, punctuation and "&" vs "and". */
+export function nameKey(value?: string | null) {
   return String(value || "")
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 export function imageExtension(path: string) {
@@ -60,6 +67,14 @@ export function imageExtension(path: string) {
 
 export function imageMime(path: string) {
   return IMAGE_TYPES[imageExtension(path)] || "";
+}
+
+export function productName(product: BulkProduct) {
+  return product.title || product.name || product.sku || "Untitled";
+}
+
+function fileBase(path: string) {
+  return (path.split("/").pop() || "").replace(/\.[^.]+$/, "").trim();
 }
 
 function isIgnored(path: string) {
@@ -74,185 +89,168 @@ function detectFormat(bytes: Uint8Array) {
   if (bytes[0] === 0x89 && at(1, "PNG")) return "png";
   if (at(0, "GIF8")) return "gif";
   if (at(0, "RIFF") && at(8, "WEBP")) return "webp";
-  if (at(4, "ftyp")) return "avif";
   return "";
 }
 
-function variantsFor(product: BulkProduct, key: string) {
-  return (product.variants || []).filter((variant) => {
-    if (imageKey(variant.sku) === key || imageKey(variant.name) === key) return true;
-    return Object.entries(variant.attributes || {}).some(
-      ([name, value]) => name !== "stockStatus" && name !== "gtin" && typeof value === "string" && imageKey(value) === key,
-    );
+type Lookup = (name: string) => { product: BulkProduct | null; ambiguous: BulkProduct[] };
+
+/** Exact normalised match against title, then slug, then SKU. Never fuzzy. */
+function buildLookup(products: BulkProduct[]): Lookup {
+  const indexes = [
+    (product: BulkProduct) => nameKey(product.title || product.name),
+    (product: BulkProduct) => nameKey(product.slug),
+    (product: BulkProduct) => nameKey(product.sku),
+  ].map((keyOf) => {
+    const map = new Map<string, BulkProduct[]>();
+    for (const product of products) {
+      const key = keyOf(product);
+      if (key) map.set(key, [...(map.get(key) || []), product]);
+    }
+    return map;
   });
-}
-
-function variationFolderHint(product: BulkProduct) {
-  const names = (product.variants || []).map((variant) => variant.sku).filter(Boolean) as string[];
-  return names.length > 6 ? `${names.slice(0, 6).join(", ")}…` : names.join(", ");
-}
-
-export async function checkImageStructure(files: SourceFile[], products: BulkProduct[], replaceExisting: boolean): Promise<ImageCheck> {
-  const problems: ImageProblem[] = [];
-  const problem = (where: string, message: string) => {
-    if (!problems.some((entry) => entry.where === where && entry.message === message)) problems.push({ where, message });
+  return (name) => {
+    const key = nameKey(name);
+    if (!key) return { product: null, ambiguous: [] };
+    for (const index of indexes) {
+      const found = index.get(key) || [];
+      if (found.length === 1) return { product: found[0], ambiguous: [] };
+      if (found.length > 1) return { product: null, ambiguous: found };
+    }
+    return { product: null, ambiguous: [] };
   };
+}
 
-  const bySku = new Map<string, BulkProduct[]>();
-  const byOtherName = new Map<string, BulkProduct>();
-  for (const product of products) {
-    const key = imageKey(product.sku);
-    if (key) bySku.set(key, [...(bySku.get(key) || []), product]);
-    for (const other of [imageKey(product.slug), imageKey(product.title || product.name)]) if (other) byOtherName.set(other, product);
-  }
+// Suffixes a loose file may add after "-" or "_": a number or a view word, optionally numbered.
+// Anything else is not stripped, so "Cotton T-Shirt.jpg" can never match a product "Cotton T".
+const VIEW_SUFFIX = /[-_]\s*(\d+|(front|back|rear|side|top|bottom|left|right|main|cover|detail|details|closeup|close|zoom|view|angle|box|pack|package|packaging|open|inside|label|lifestyle|model|alt|extra|full)\d*)$/i;
 
-  const relevant = files.filter((file) => !isIgnored(file.path));
-  const parsed = relevant.map((file) => {
-    const parts = file.path.split("/").filter(Boolean);
-    const name = parts.pop() || "";
-    // A ZIP named after the SKU usually holds a folder with the same name: the innermost match is the product folder.
-    return { file, name, folders: parts, productIndex: parts.map((folder) => bySku.has(imageKey(folder))).lastIndexOf(true) };
-  });
+/** Name candidates of a loose file: "Name.jpg", then "Name" from "Name-1.jpg", "Name-front.webp" or "Name (2).jpg". */
+function fileNameCandidates(base: string) {
+  const names = [base];
+  const stripped = base.replace(/\s*\(\d+\)$/, "").replace(VIEW_SUFFIX, "").trim();
+  if (stripped && stripped !== base) names.push(stripped);
+  return names;
+}
 
-  // Depth at which product folders sit (1 = directly inside the ZIP, 2 = inside one wrapper folder).
-  const matchedDepths = parsed.filter((entry) => entry.productIndex >= 0).map((entry) => entry.productIndex);
-  const wrapper = parsed.length > 0 && parsed.every((entry) => entry.folders.length >= 3 && entry.folders[1] === parsed[0].folders[1]);
-  const productDepth = matchedDepths.length ? Math.min(...matchedDepths) : wrapper ? 2 : 1;
+const isNumbered = (base: string) => /^\d+$/.test(base);
 
+export async function matchImages(files: SourceFile[], products: BulkProduct[]): Promise<ImageMatch> {
+  const lookup = buildLookup(products);
+  const skipped: SkippedFile[] = [];
+  const unassigned: UnassignedImage[] = [];
   const groups = new Map<string, ImageGroup>();
-  const usedNumbers = new Set<string>();
   let imageCount = 0;
 
-  for (const { file, name, folders, productIndex } of parsed) {
-    const extension = imageExtension(name);
+  const assign = (product: BulkProduct, file: SourceFile, source: string) => {
+    let group = groups.get(product.id);
+    if (!group) {
+      group = { product, images: [], sources: [], hasFeatured: false };
+      groups.set(product.id, group);
+    }
+    group.images.push(file);
+    if (!group.sources.includes(source)) group.sources.push(source);
+  };
+
+  for (const file of files) {
+    if (isIgnored(file.path)) continue;
+    const extension = imageExtension(file.path);
     if (extension === "zip") {
-      problem(file.path, "A ZIP inside the ZIP is not allowed. Put the product folders directly in one ZIP.");
+      skipped.push({ path: file.path, reason: "A ZIP inside the ZIP is not opened. Upload each product ZIP directly." });
       continue;
     }
     if (!IMAGE_TYPES[extension]) {
-      problem(file.path, `".${extension || "?"}" is not a supported image. Use JPG, PNG, WEBP, GIF or AVIF.`);
+      skipped.push({ path: file.path, reason: `".${extension || "?"}" is not supported. Use JPG, JPEG, PNG, WEBP or GIF.` });
       continue;
-    }
-    imageCount += 1;
-
-    if (productIndex < 0) {
-      const folder = folders[productDepth];
-      if (!folder) {
-        problem(file.path, "This image is not inside a product folder. Put it in a folder named with the product SKU.");
-        continue;
-      }
-      const where = folders.slice(0, productDepth + 1).join("/");
-      const other = byOtherName.get(imageKey(folder));
-      if (other?.sku) problem(where, `The folder must be named with the product SKU. Rename "${folder}" to "${other.sku}".`);
-      else problem(where, `No product has the SKU "${folder}". Import the product first, or rename the folder to the exact SKU.`);
-      continue;
-    }
-
-    const owners = bySku.get(imageKey(folders[productIndex])) || [];
-    const productFolder = folders.slice(0, productIndex + 1).join("/");
-    if (owners.length > 1) {
-      problem(productFolder, `The folder name matches ${owners.length} products (${owners.map((owner) => owner.sku).join(", ")}). Their SKUs are too similar to tell apart.`);
-      continue;
-    }
-    const product = owners[0];
-    const below = folders.slice(productIndex + 1);
-    let variants: BulkVariant[] = [];
-    if (below.length > 1) {
-      problem(folders.join("/"), `Too many folder levels. Only "${product.sku}/1.jpg" and "${product.sku}/<variation>/1.jpg" are allowed.`);
-      continue;
-    }
-    if (below.length === 1) {
-      const where = `${productFolder}/${below[0]}`;
-      if (!(product.variants || []).length) {
-        problem(where, `"${product.sku}" is a simple product, so it cannot have the sub-folder "${below[0]}". Move the images up into "${product.sku}".`);
-        continue;
-      }
-      variants = variantsFor(product, imageKey(below[0]));
-      if (!variants.length) {
-        problem(where, `"${below[0]}" is not a variation of "${product.sku}". Name the sub-folder with a variation SKU (${variationFolderHint(product)}) or one option value.`);
-        continue;
-      }
-    }
-
-    const base = name.replace(/\.[^.]+$/, "").trim();
-    if (/^\d+$/.test(base)) {
-      const numberKey = `${productFolder}/${below[0] || ""}#${Number(base)}`;
-      if (usedNumbers.has(numberKey)) {
-        problem(file.path, Number(base) === 1 ? "Two images in this folder are named 1. Only one image can be the featured image." : `Two images in this folder have the number ${Number(base)}. Give each image its own number.`);
-        continue;
-      }
-      usedNumbers.add(numberKey);
     }
     if (file.size === 0) {
-      problem(file.path, "This image is empty (0 bytes).");
-      continue;
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      problem(file.path, `This image is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 8 MB per image.`);
+      skipped.push({ path: file.path, reason: "The file is empty (0 bytes)." });
       continue;
     }
     try {
       const format = detectFormat(await file.head());
-      const expected = extension === "jpeg" ? "jpg" : extension;
       if (!format) {
-        problem(file.path, "This file is not a real image or it is damaged. Export it again as JPG, PNG or WEBP.");
-        continue;
-      }
-      if (format !== expected) {
-        problem(file.path, `This file is a ${format.toUpperCase()} image but is named .${extension}. Rename it to .${format}.`);
+        skipped.push({ path: file.path, reason: "Not a real image or the file is damaged. Export it again as JPG, PNG or WEBP." });
         continue;
       }
     } catch (error) {
-      problem(file.path, `This image cannot be read (${error instanceof Error ? error.message : "damaged file"}).`);
+      skipped.push({ path: file.path, reason: `Cannot be read (${error instanceof Error ? error.message : "damaged file"}).` });
       continue;
     }
+    imageCount += 1;
 
-    let group = groups.get(product.id);
-    if (!group) {
-      group = { product, images: [], hasFeatured: false, variantImages: new Map() };
-      groups.set(product.id, group);
+    const parts = file.path.split("/").filter(Boolean);
+    const base = fileBase(parts.pop() || "");
+    // Folders and ZIP names, innermost first: the nearest one named like a product wins.
+    let folderMatch: { product: BulkProduct; index: number } | null = null;
+    let folderAmbiguous: { name: string; products: BulkProduct[] } | null = null;
+    for (let index = parts.length - 1; index >= 0; index -= 1) {
+      const found = lookup(parts[index]);
+      if (found.product) {
+        folderMatch = { product: found.product, index };
+        break;
+      }
+      if (found.ambiguous.length && !folderAmbiguous) folderAmbiguous = { name: parts[index], products: found.ambiguous };
     }
-    if (!variants.length) group.images.push(file);
-    for (const variant of variants) {
-      const entry = group.variantImages.get(variant.id) || { variant, images: [] };
-      entry.images.push(file);
-      group.variantImages.set(variant.id, entry);
-    }
-  }
 
-  // Numbered images first, in number order (1 = featured), then the rest by name.
-  const baseOf = (file: SourceFile) => (file.path.split("/").pop() || "").replace(/\.[^.]+$/, "").trim();
-  const byNumber = (a: SourceFile, b: SourceFile) => {
-    const [x, y] = [baseOf(a), baseOf(b)];
-    const [nx, ny] = [/^\d+$/.test(x), /^\d+$/.test(y)];
-    if (nx && ny) return Number(x) - Number(y);
-    if (nx !== ny) return nx ? -1 : 1;
-    return x.localeCompare(y, undefined, { numeric: true, sensitivity: "base" });
-  };
-  for (const group of groups.values()) {
-    const sku = group.product.sku || "";
-    const existing = replaceExisting ? 0 : (group.product.rawImages || []).length;
-    group.images.sort(byNumber);
-    group.hasFeatured = group.images.some((file) => /^0*1$/.test(baseOf(file)));
-    if (group.images.length && !group.hasFeatured && !existing) {
-      problem(sku, `No featured image. Name one image "1" (for example 1.${imageExtension(group.images[0].path)}) in this folder; it becomes the main product image.`);
-    }
-    if (existing + group.images.length > MAX_PRODUCT_IMAGES) {
-      problem(
-        sku,
-        existing
-          ? `This folder has ${group.images.length} images and the product already has ${existing}. The limit is ${MAX_PRODUCT_IMAGES}. Remove ${existing + group.images.length - MAX_PRODUCT_IMAGES}, or tick "Replace existing images".`
-          : `This folder has ${group.images.length} images. The limit is ${MAX_PRODUCT_IMAGES} per product.`,
-      );
-    }
-    for (const entry of group.variantImages.values()) {
-      entry.images.sort(byNumber);
-      if (entry.images.length > MAX_VARIATION_IMAGES) {
-        problem(`${sku} / ${entry.variant.name || entry.variant.sku}`, `This variation has ${entry.images.length} images. The limit is ${MAX_VARIATION_IMAGES} per variation.`);
+    // The file's own name, unless it is just a number (1.jpg) or a plain photo name inside a product folder.
+    let fileMatch: BulkProduct | null = null;
+    let fileAmbiguous: BulkProduct[] = [];
+    if (!isNumbered(base)) {
+      for (const candidate of fileNameCandidates(base)) {
+        const found = lookup(candidate);
+        if (found.product) {
+          fileMatch = found.product;
+          break;
+        }
+        if (found.ambiguous.length) {
+          fileAmbiguous = found.ambiguous;
+          break;
+        }
       }
     }
+
+    if (folderMatch) {
+      const deeper = parts.slice(folderMatch.index + 1);
+      if (deeper.length) {
+        unassigned.push({ file, name: parts.join("/"), reason: `Inside the sub-folder "${deeper.join("/")}" of "${parts[folderMatch.index]}". Sub-folders are not used; put the images directly in the product folder.`, candidates: [folderMatch.product] });
+        continue;
+      }
+      if (fileMatch && fileMatch.id !== folderMatch.product.id) {
+        unassigned.push({ file, name: base, reason: `The folder is "${productName(folderMatch.product)}" but the file name is "${productName(fileMatch)}".`, candidates: [folderMatch.product, fileMatch] });
+        continue;
+      }
+      assign(folderMatch.product, file, parts[folderMatch.index]);
+      continue;
+    }
+    if (fileMatch) {
+      assign(fileMatch, file, base);
+      continue;
+    }
+    const ambiguous = fileAmbiguous.length ? fileAmbiguous : folderAmbiguous?.products || [];
+    if (ambiguous.length) {
+      unassigned.push({ file, name: fileAmbiguous.length ? base : folderAmbiguous!.name, reason: `Matches ${ambiguous.length} products. Pick the right one.`, candidates: ambiguous });
+      continue;
+    }
+    const where = parts.length ? `${parts[parts.length - 1]}/${base}` : base;
+    unassigned.push({ file, name: where, reason: "No product has this name, slug or SKU.", candidates: [] });
   }
 
-  if (!imageCount && !problems.length) problem("", "No images were found. Add JPG, PNG, WEBP, GIF or AVIF files inside folders named with the product SKU.");
-  return { groups: [...groups.values()], problems, imageCount };
+  return { groups: [...groups.values()], unassigned, skipped, imageCount };
+}
+
+// Numbered images first in number order (1 = main), then the rest by name.
+export function sortImages(images: SourceFile[]) {
+  return [...images].sort((a, b) => {
+    const [x, y] = [fileBase(a.path), fileBase(b.path)];
+    const [nx, ny] = [isNumbered(x), isNumbered(y)];
+    if (nx && ny) return Number(x) - Number(y);
+    if (nx !== ny) return nx ? -1 : 1;
+    const [sx, sy] = [x.match(/[-_ ](\d+)$/), y.match(/[-_ ](\d+)$/)];
+    if (sx && sy && x.slice(0, -sx[0].length) === y.slice(0, -sy[0].length)) return Number(sx[1]) - Number(sy[1]);
+    return x.localeCompare(y, undefined, { numeric: true, sensitivity: "base" }) || a.path.localeCompare(b.path);
+  });
+}
+
+export function hasFeaturedImage(images: SourceFile[]) {
+  return images.some((file) => /^0*1$/.test(fileBase(file.path)));
 }
