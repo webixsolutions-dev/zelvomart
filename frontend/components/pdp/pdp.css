@@ -253,6 +253,22 @@
 .zpd .zpd-thumb:hover { opacity: 1; transform: translateY(-1px); }
 .zpd .zpd-thumb.is-active { opacity: 1; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--zpd-ink); }
 
+/* Product video: thumbnail with a play icon; the player replaces the main image after a click */
+.zpd .zpd-thumb-video { background: #0f172a; opacity: 0.9; }
+.zpd .zpd-thumb-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.28);
+  color: #fff;
+}
+.zpd .zpd-thumb-play svg { width: 26px; height: 26px; padding: 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); box-sizing: content-box; }
+.zpd .zpd-stage-video { position: absolute; inset: 0; z-index: 5; background: #000; }
+.zpd .zpd-stage.is-video { cursor: default; }
+.zpd .zpd-thumb-video-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.zpd .zpd-stage-video iframe { width: 100%; height: 100%; border: 0; display: block; }
+
 @media (min-width: 768px) {
   .zpd .zpd-gallery-frame.has-thumbs { grid-template-columns: 78px minmax(0, 1fr); gap: 14px; }
   .zpd .zpd-thumbs { position: relative; order: -1; }

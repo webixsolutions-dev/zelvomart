@@ -12,20 +12,22 @@ import { createOrder, restoreOrderStock } from './lib/order';
 import { checkoutSchema } from './lib/validators';
 import { getSetting, getSettings, setSetting } from './lib/settings';
 import { postexTrackingUrl } from './lib/postex';
-import { getLocalUploadDir, StorageError, uploadObject } from './lib/storage';
+import { getLocalUploadDir, isCloudStorageConfigured, StorageError, uploadObject } from './lib/storage';
 import { sendMetaServerEvent } from './lib/meta';
 import { fetchMetaAds, getMetaMarketingConfig, testMetaMarketingConnection } from './lib/meta-marketing';
 import { invalidateFrontendCache } from './lib/cache-invalidation';
-import { sanitizeGlobalProductTabs, sanitizeProductTabOverrides } from './lib/catalog-meta';
+import { cleanCatalogMeta, sanitizeGlobalProductTabs, sanitizeProductTabOverrides } from './lib/catalog-meta';
 import { productBadges } from './lib/product-badges';
+import { parseVideoUrl, VIDEO_URL_ERROR } from './lib/product-video';
+import { cleanStockStatus, IN_STOCK_WHERE, canSell, itemStockStatus, productStockStatus, trackedQuantity } from './lib/stock';
 import { BUY_TWO_DISCOUNT_PERCENT, priceSummary, variantPriceSummary } from './lib/pricing';
 import { sendContactTeamEmail } from './lib/email';
 import { consumeRateLimit, requestIp, isLikelyBot } from './lib/rate-limit';
 import { dispatchJobRow } from './lib/jobs';
-import { buildProductWrite, MAX_PRODUCT_IMAGES, MAX_VARIATION_IMAGES, planImport, slugify as importSlugify, templateCsv, validateHeaders } from './lib/product-import';
+import { buildProductWrite, demoteH1, MAX_PRODUCT_IMAGES, MAX_VARIATION_IMAGES, planImport, slugify as importSlugify, templateCsv, titleKey as importTitleKey, validateHeaders } from './lib/product-import';
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
 const port = Number(process.env.PORT || 4000);
 // Without a database URL nothing can work. Answer every request with the missing variable name
 // (never its value) so a misconfigured deployment explains itself instead of crashing.
@@ -97,7 +99,7 @@ function normalizeRedirectDestination(value: unknown): string {
 
 function writeCatalogMeta(meta: unknown) {
   if (!meta || typeof meta !== 'object') return null;
-  const next: Record<string, any> = { ...(meta as Record<string, any>) };
+  const next = cleanCatalogMeta(meta as Record<string, any>);
   if (next.productTabs && typeof next.productTabs === 'object') {
     next.productTabs = sanitizeProductTabOverrides(next.productTabs);
   }
@@ -106,25 +108,95 @@ function writeCatalogMeta(meta: unknown) {
   return JSON.stringify({ zvmCatalog: next });
 }
 
-async function syncProductRedirect(options: { slug: string; previousSlug?: string; status: string; redirectFallback: boolean; redirectUrl?: string }) {
+/** Vimeo has no fixed thumbnail URL; its public oEmbed API returns one. Best effort. */
+async function vimeoThumbnail(url: string) {
+  try {
+    const response = await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}&width=640`, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return '';
+    const body: any = await response.json();
+    return typeof body?.thumbnail_url === 'string' ? body.thumbnail_url : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Product video: a YouTube or Vimeo link only (no uploads). Rejects other links, stores the
+ * normalised link, and keeps the date the link was added (schema uploadDate) plus its thumbnail.
+ */
+async function resolveProductVideo(input: unknown, previousMeta: any, previousUrl: string | null) {
+  const raw = String(input ?? '').trim();
+  if (!raw) return { videoUrl: null as string | null, meta: { videoAddedAt: '', videoThumbnail: '' } };
+  const video = parseVideoUrl(raw);
+  if (!video) throw new Error(VIDEO_URL_ERROR);
+  const unchanged = previousUrl && parseVideoUrl(previousUrl)?.url === video.url;
+  const addedAt = unchanged && previousMeta?.videoAddedAt ? String(previousMeta.videoAddedAt) : new Date().toISOString();
+  let thumbnail = video.thumbnailUrl || (unchanged ? String(previousMeta?.videoThumbnail || '') : '');
+  if (!thumbnail && video.provider === 'vimeo') thumbnail = await vimeoThumbnail(video.url);
+  return { videoUrl: video.url, meta: { videoAddedAt: addedAt, videoThumbnail: thumbnail } };
+}
+
+type CustomRedirect = { source: string; destination: string };
+
+/** "Old URL" field: a path on this site (full URLs of this site are reduced to their path). */
+function normalizeRedirectSource(value: unknown) {
+  const normalized = normalizeRedirectDestination(value);
+  if (!normalized) return '';
+  if (!normalized.startsWith('/')) throw new Error('REDIRECT_OLD_URL_MUST_BE_ON_THIS_SITE');
+  let path = normalized.replace(/[?#].*$/, '') || '/';
+  const last = path.split('/').pop() || '';
+  if (!path.endsWith('/') && !last.includes('.')) path += '/';
+  return path;
+}
+
+/**
+ * The product's redirect: Old URL (defaults to the product's own URL, can be any old path such as
+ * a WordPress URL) -> Destination URL as a 301. Throws when the destination equals the old URL.
+ */
+function customRedirect(meta: any, slug: string): CustomRedirect | null {
+  const destination = normalizeRedirectDestination(meta?.redirectUrl);
+  if (!destination) return null;
+  const source = normalizeRedirectSource(meta?.redirectFrom) || `/product/${slug}/`;
+  if (destination.replace(/[?#].*$/, '') === source) throw new Error('REDIRECT_DESTINATION_SAME_AS_OLD_URL');
+  return { source, destination };
+}
+
+function previousCustomRedirect(meta: any, slug: string): CustomRedirect | null {
+  try {
+    return customRedirect(meta, slug);
+  } catch {
+    return null;
+  }
+}
+
+async function syncProductRedirect(options: { slug: string; previousSlug?: string; status: string; redirectFallback: boolean; custom: CustomRedirect | null; previousCustom?: CustomRedirect | null }) {
   const shop = '/shop';
   const current = `/product/${options.slug}/`;
-  const custom = normalizeRedirectDestination(options.redirectUrl);
+  const { custom, previousCustom } = options;
+  // Drop the row this product wrote last time when its old URL changed or the redirect was cleared.
+  if (previousCustom && previousCustom.source !== custom?.source) {
+    await prisma.redirect.deleteMany({ where: { sourcePath: previousCustom.source, destination: previousCustom.destination } });
+  }
+  // Saved into the same Redirect table Admin -> SEO Redirects uses.
+  if (custom) {
+    await prisma.redirect.upsert({
+      where: { sourcePath: custom.source },
+      update: { destination: custom.destination, permanent: true },
+      create: { sourcePath: custom.source, destination: custom.destination, permanent: true },
+    });
+  }
+  const ownUrlRedirect = custom && custom.source === current ? custom.destination : '';
   if (options.previousSlug && options.previousSlug !== options.slug) {
     const from = `/product/${options.previousSlug}/`;
-    const destination = custom || (options.status === 'PUBLISHED' ? current : shop);
+    const destination = ownUrlRedirect || (options.status === 'PUBLISHED' ? current : shop);
     await prisma.redirect.upsert({
       where: { sourcePath: from },
       update: { destination, permanent: true },
       create: { sourcePath: from, destination, permanent: true },
     });
   }
-  if (custom) {
-    await prisma.redirect.upsert({
-      where: { sourcePath: current },
-      update: { destination: custom, permanent: true },
-      create: { sourcePath: current, destination: custom, permanent: true },
-    });
+  if (ownUrlRedirect) {
+    // The product's own URL already points at the destination (written above).
   } else if (options.status === 'PUBLISHED' || !options.redirectFallback) {
     await prisma.redirect.deleteMany({ where: { sourcePath: current } });
   } else {
@@ -142,6 +214,7 @@ function jsonProduct(row: any) {
   const images = Array.isArray(row.images) ? row.images.filter((x: unknown) => typeof x === 'string') : [];
   const catalog = readCatalogMeta(row.sourceUrl) || {};
   const imageAlt = String(catalog.imageMeta?.alt || row.title || '');
+  const imageTitle = String(catalog.imageMeta?.title || '').trim() || null;
   const reviews = (row.reviews || []).map((review: any) => ({ id: review.id, name: review.name, rating: review.rating, body: review.body, verified: review.verified, createdAt: review.createdAt?.toISOString?.() || review.createdAt }));
   const averageRating = reviews.length ? reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviews.length : undefined;
   return {
@@ -150,14 +223,17 @@ function jsonProduct(row: any) {
     categorySlugs: row.category ? [row.category.slug] : [],
     category: row.category || null,
     ...pricing, salePrice: row.salePrice == null ? null : Number(row.salePrice),
-    stockStatus: row.stock > 0 || (row.variants || []).some((v: any) => v.stock > 0) ? 'instock' : 'outofstock',
-    stockQuantity: row.stock, stock: row.stock, featured: row.featured, averageRating, reviewCount: reviews.length,
-    image: images[0], images: images.map((src: string) => ({ src, alt: imageAlt })), rawImages: images,
-    tags: Array.isArray(catalog.tags) ? catalog.tags : [], brand: catalog.brand || null,
-    badges: productBadges(catalog), freeShipping: Boolean(catalog.freeShipping),
+    // stockStatus = can it be bought (lib/stock.ts); stockSetting = what the admin picked for Track OFF.
+    stockStatus: productStockStatus(row), trackStock: Boolean(row.trackStock), stockSetting: cleanStockStatus(row.stockStatus),
+    stockQuantity: trackedQuantity(row), stock: row.stock, featured: row.featured, averageRating, reviewCount: reviews.length,
+    image: images[0], images: images.map((src: string, index: number) => ({ src, alt: imageAlt, ...(index === 0 && imageTitle ? { title: imageTitle } : {}) })), rawImages: images,
+    imageAlt, imageTitle,
+    tags: Array.isArray(catalog.tags) ? catalog.tags : [],
+    badges: productBadges(catalog, pricing), freeShipping: Boolean(catalog.freeShipping),
     buyTwoDiscountPercent: BUY_TWO_DISCOUNT_PERCENT,
     shortDescription: row.shortDescription, description: row.descriptionHtml, descriptionHtml: row.descriptionHtml,
-    videoUrl: row.videoUrl, permalink: `/product/${row.slug}/`, hasOptions: (row.variants || []).length > 0,
+    videoUrl: row.videoUrl, videoThumbnail: catalog.videoThumbnail || null, videoAddedAt: catalog.videoAddedAt || null,
+    permalink: `/product/${row.slug}/`, hasOptions: (row.variants || []).length > 0,
     variants: (row.variants || []).map((v: any) => {
       const extras = Array.isArray(catalog.variations)
         ? catalog.variations.find((item: any) => (item.sku && item.sku === v.sku) || (item.name && item.name === v.name)) || {}
@@ -175,10 +251,9 @@ function jsonProduct(row: any) {
         length: extras.length || "",
         width: extras.width || "",
         height: extras.height || "",
-        shippingClass: extras.shippingClass || "",
-        downloadable: Boolean(extras.downloadable),
-        virtual: Boolean(extras.virtual),
-        stockStatus: extras.stockStatus || v.attributes?.stockStatus || (Number(v.stock) > 0 ? "instock" : "outofstock"),
+        trackStock: Boolean(v.trackStock),
+        stockStatus: itemStockStatus(v),
+        stockSetting: cleanStockStatus(v.stockStatus),
       };
     }),
     bundleEnabled: row.bundleEnabled, bundleDiscountPercent: BUY_TWO_DISCOUNT_PERCENT, reviews,
@@ -191,10 +266,10 @@ function jsonProduct(row: any) {
 const productInclude = { category: true, variants: { where: { active: true }, orderBy: { createdAt: 'asc' as const } }, reviews: { where: { status: 'APPROVED' as const }, orderBy: { createdAt: 'desc' as const } } };
 
 const productListSelect = {
-  id: true, slug: true, title: true, sku: true, images: true, price: true, salePrice: true, stock: true, featured: true, sourceUrl: true,
+  id: true, slug: true, title: true, sku: true, images: true, price: true, salePrice: true, stock: true, trackStock: true, stockStatus: true, featured: true, sourceUrl: true,
   shortDescription: true, bundleEnabled: true, bundleDiscountPercent: true,
   category: { select: { id: true, name: true, slug: true, description: true, imageUrl: true, seoTitle: true, seoDescription: true } },
-  variants: { where: { active: true }, select: { id: true, sku: true, name: true, stock: true, priceOverride: true, imageUrl: true, attributes: true } },
+  variants: { where: { active: true }, select: { id: true, sku: true, name: true, stock: true, trackStock: true, stockStatus: true, active: true, priceOverride: true, imageUrl: true, attributes: true } },
   reviews: { where: { status: 'APPROVED' as const }, select: { rating: true } },
 } satisfies Prisma.ProductSelect;
 
@@ -205,17 +280,19 @@ function jsonProductSummary(row: any) {
   const reviewCount = Array.isArray(row.reviews) ? row.reviews.length : 0;
   const averageRating = reviewCount ? row.reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviewCount : undefined;
   const hasOptions = Array.isArray(row.variants) && row.variants.length > 0;
-  const variantInStock = hasOptions && row.variants.some((v: any) => Number(v.stock || 0) > 0);
+  const imageAlt = String(catalog.imageMeta?.alt || row.title || '');
+  const imageTitle = String(catalog.imageMeta?.title || '').trim() || null;
   return {
     id: row.id, slug: row.slug, name: row.title, title: row.title, sku: row.sku,
     categories: row.category ? [{ id: row.category.id, name: row.category.name, slug: row.category.slug, description: row.category.description, image: row.category.imageUrl }] : [],
     categorySlugs: row.category ? [row.category.slug] : [],
     ...pricing, salePrice: row.salePrice == null ? null : Number(row.salePrice),
-    stockStatus: row.stock > 0 || variantInStock ? 'instock' : 'outofstock',
-    stockQuantity: row.stock, featured: row.featured, averageRating, reviewCount,
-    image: images[0], images: images[0] ? [{ src: images[0], alt: String(catalog.imageMeta?.alt || row.title || '') }] : [],
-    tags: Array.isArray(catalog.tags) ? catalog.tags : [], brand: catalog.brand || null,
-    badges: productBadges(catalog), freeShipping: Boolean(catalog.freeShipping),
+    stockStatus: productStockStatus(row), trackStock: Boolean(row.trackStock),
+    stockQuantity: trackedQuantity(row), featured: row.featured, averageRating, reviewCount,
+    image: images[0], images: images[0] ? [{ src: images[0], alt: imageAlt, ...(imageTitle ? { title: imageTitle } : {}) }] : [],
+    imageAlt, imageTitle,
+    tags: Array.isArray(catalog.tags) ? catalog.tags : [],
+    badges: productBadges(catalog, pricing), freeShipping: Boolean(catalog.freeShipping),
     buyTwoDiscountPercent: BUY_TWO_DISCOUNT_PERCENT,
     shortDescription: row.shortDescription, description: null, videoUrl: null, permalink: `/product/${row.slug}/`,
     hasOptions, variants: (row.variants || []).map((variant: any) => ({
@@ -227,7 +304,8 @@ function jsonProductSummary(row: any) {
           ? catalog.variations.find((item: any) => (item.sku && item.sku === variant.sku) || (item.name && item.name === variant.name))?.regularPrice
           : null,
       }),
-      stock: Number(variant.stock || 0), imageUrl: variant.imageUrl || null, images: variant.imageUrl ? [variant.imageUrl] : [], active: true,
+      stock: Number(variant.stock || 0), trackStock: Boolean(variant.trackStock), stockStatus: itemStockStatus(variant),
+      imageUrl: variant.imageUrl || null, images: variant.imageUrl ? [variant.imageUrl] : [], active: true,
     })), bundleEnabled: row.bundleEnabled,
     bundleDiscountPercent: BUY_TWO_DISCOUNT_PERCENT, reviews: [],
   };
@@ -327,27 +405,43 @@ async function loadAdminProduct(id: string) {
   return row ? jsonProduct(row) : null;
 }
 
+// The database is far from the server (Supabase ap-southeast-2), so opening a connection can take
+// longer than Prisma's 2s default wait for an interactive transaction ("Unable to start a
+// transaction in the given time"). Give product writes room to start and finish.
+const PRODUCT_TX_OPTIONS = { maxWait: 15_000, timeout: 30_000 };
+
+/**
+ * Updates variations by SKU instead of deleting and recreating them, so variant IDs stay the
+ * same (carts keep working) and live stock is only written when the caller sends `stock`
+ * (the admin changed that quantity). Variations no longer sent are deactivated.
+ */
 async function writeVariants(tx: Prisma.TransactionClient, productId: string, variants: any[]) {
-  await tx.variant.deleteMany({ where: { productId } });
+  const existing = await tx.variant.findMany({ where: { productId }, select: { id: true, sku: true } });
+  const bySku = new Map(existing.map((row) => [row.sku, row]));
   const used = new Set<string>();
   for (const variant of variants) {
     const sku = String(variant?.sku || '').trim();
     const name = String(variant?.name || '').trim();
     if (!sku || !name || used.has(sku)) continue;
     used.add(sku);
-    await tx.variant.create({
-      data: {
-        productId,
-        sku,
-        name,
-        attributes: variant.attributes || {},
-        priceOverride: variant.priceOverride ? new Prisma.Decimal(Number(variant.priceOverride)) : null,
-        stock: Number(variant.stock || 0),
-        imageUrl: variant.imageUrl || null,
-        active: variant.active !== false,
-      },
-    });
+    const fields = {
+      name,
+      attributes: variant.attributes || {},
+      priceOverride: variant.priceOverride ? new Prisma.Decimal(Number(variant.priceOverride)) : null,
+      imageUrl: variant.imageUrl || null,
+      active: variant.active !== false,
+      // Stock settings are only changed when sent (the CSV import does not send them).
+      ...('trackStock' in variant ? { trackStock: Boolean(variant.trackStock) } : {}),
+      ...('stockStatus' in variant ? { stockStatus: cleanStockStatus(variant.stockStatus) } : {}),
+    };
+    const hasStock = variant.stock !== undefined && variant.stock !== null && variant.stock !== '';
+    const stock = Math.max(0, Math.floor(Number(variant.stock) || 0));
+    const row = bySku.get(sku);
+    if (row) await tx.variant.update({ where: { id: row.id }, data: { ...fields, ...(hasStock ? { stock } : {}) } });
+    else await tx.variant.create({ data: { productId, sku, ...fields, stock: hasStock ? stock : 0 } });
   }
+  const gone = existing.filter((row) => !used.has(row.sku)).map((row) => row.id);
+  if (gone.length) await tx.variant.updateMany({ where: { id: { in: gone } }, data: { active: false } });
 }
 
 const META_EVENT_NAMES = new Set(['PageView','ViewContent','Search','AddToCart','InitiateCheckout','Purchase','Contact','Lead']);
@@ -438,10 +532,11 @@ app.get('/api/products', async (req, res) => {
     andFilters.push({ OR: [{ salePrice: { not: null, ...bounds } }, { salePrice: null, price: bounds }] });
   }
   if (availability === 'instock') {
-    andFilters.push({ OR: [{ stock: { gt: 0 } }, { variants: { some: { active: true, stock: { gt: 0 } } } }] });
+    andFilters.push(IN_STOCK_WHERE);
   }
   if (tag === 'discount') {
-    andFilters.push({ OR: [{ sourceUrl: { contains: '"15-off"' } }, { sourceUrl: { contains: '"20-off"' } }, { sourceUrl: { contains: '"30-off"' } }, { salePrice: { not: null } }] });
+    // A product is on Discount only when it has a sale price; the %-off tags alone do not count.
+    andFilters.push({ salePrice: { not: null } });
   } else if (tag === 'best-selling') {
     andFilters.push({ OR: [{ featured: true }, { sourceUrl: { contains: '"best-selling"' } }] });
   } else if (tag) {
@@ -460,17 +555,19 @@ app.get('/api/products/slug/:slug', async (req,res) => { const slug=routeParam(r
 app.get('/api/pages/:slug', async (req,res) => { setPublicCache(res, 900, 3600, ['pages']); const slugs = [routeParam(req, 'slug'), ...String(req.query.fallback || '').split(',').filter(Boolean)]; const page = await prisma.page.findFirst({ where:{ slug:{in:slugs}, published:true } }); if(!page) return res.status(404).json({error:'NOT_FOUND'}); res.json(page); });
 app.get('/api/settings/public', async (req,res) => { setPublicCache(res, 300, 1800, ['settings']); const keys = String(req.query.keys || '').split(',').filter(Boolean); res.json(await getSettings(keys)); });
 app.get('/api/cities', async (_req,res) => { setPublicCache(res, 3600, 86400, ['cities']); res.json(await prisma.city.findMany({ where:{active:true}, orderBy:{name:'asc'} })); });
-app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 86400, ['seo']); const [products,categories,pages] = await Promise.all([prisma.product.findMany({where:{status:'PUBLISHED'},select:{slug:true,updatedAt:true}}),prisma.category.findMany({select:{slug:true,updatedAt:true}}),prisma.page.findMany({where:{published:true},select:{slug:true,updatedAt:true}})]); res.json({products,categories,pages}); });
+app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 86400, ['seo']); const [products,categories,pages] = await Promise.all([prisma.product.findMany({where:{status:'PUBLISHED'},select:{slug:true,updatedAt:true,sourceUrl:true}}).then(rows=>rows.filter(r=>readCatalogMeta(r.sourceUrl)?.robotsIndex!=='noindex').map(({slug,updatedAt})=>({slug,updatedAt}))),prisma.category.findMany({select:{slug:true,updatedAt:true}}),prisma.page.findMany({where:{published:true},select:{slug:true,updatedAt:true}})]); res.json({products,categories,pages}); });
+// Every redirect, for the storefront proxy: it answers old URLs with a real 301 before the page renders.
+app.get('/api/redirects/map', async (_req,res)=>{setPublicCache(res,120,600,['redirects']);const rows=await prisma.redirect.findMany({select:{sourcePath:true,destination:true,permanent:true},take:20000});res.json(rows.map(r=>[r.sourcePath,r.destination,r.permanent?1:0]));});
 app.get('/api/redirects/resolve', async (req,res)=>{setPublicCache(res,3600,86400,['redirects']);const sourcePath=String(req.query.path||'');const row=await prisma.redirect.findUnique({where:{sourcePath}});if(!row)return res.status(404).json({error:'NOT_FOUND'});res.json(row);});
 app.get('/api/feed/meta.xml', async (_req,res)=>{
   setPublicCache(res,900,3600,['products','feed']);
   const products=await prisma.product.findMany({where:{status:'PUBLISHED'},include:{category:true,variants:{where:{active:true}}},orderBy:{updatedAt:'desc'}});
   const base=(process.env.NEXT_PUBLIC_SITE_URL||'https://zelvomart.com').replace(/\/$/,'');
   const x=(v:any)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const itemXml=(input:{id:string;groupId:string;title:string;description:string;stock:number;price:number;salePrice?:number|null;link:string;image?:string;extraImages:string[];productType:string})=>{
+  const itemXml=(input:{id:string;groupId:string;title:string;description:string;available:boolean;price:number;salePrice?:number|null;link:string;image?:string;extraImages:string[];productType:string})=>{
     const regular=Number(input.price).toFixed(2);
     const sale=input.salePrice!=null&&Number(input.salePrice)<Number(input.price)?Number(input.salePrice).toFixed(2):'';
-    return `<item><g:id>${x(input.id)}</g:id><g:item_group_id>${x(input.groupId)}</g:item_group_id><g:title>${x(input.title)}</g:title><g:description>${x(input.description)}</g:description><g:availability>${input.stock>0?'in stock':'out of stock'}</g:availability><g:condition>new</g:condition><g:price>${regular} PKR</g:price>${sale?`<g:sale_price>${sale} PKR</g:sale_price>`:''}<g:link>${x(input.link)}</g:link>${input.image?`<g:image_link>${x(input.image)}</g:image_link>`:''}${input.extraImages.slice(0,10).map(i=>`<g:additional_image_link>${x(i)}</g:additional_image_link>`).join('')}<g:brand>Zelvomart</g:brand><g:product_type>${x(input.productType)}</g:product_type></item>`;
+    return `<item><g:id>${x(input.id)}</g:id><g:item_group_id>${x(input.groupId)}</g:item_group_id><g:title>${x(input.title)}</g:title><g:description>${x(input.description)}</g:description><g:availability>${input.available?'in stock':'out of stock'}</g:availability><g:condition>new</g:condition><g:price>${regular} PKR</g:price>${sale?`<g:sale_price>${sale} PKR</g:sale_price>`:''}<g:link>${x(input.link)}</g:link>${input.image?`<g:image_link>${x(input.image)}</g:image_link>`:''}${input.extraImages.slice(0,10).map(i=>`<g:additional_image_link>${x(i)}</g:additional_image_link>`).join('')}<g:brand>Zelvomart</g:brand><g:product_type>${x(input.productType)}</g:product_type></item>`;
   };
   const items:string[]=[];
   for(const product of products){
@@ -484,7 +581,7 @@ app.get('/api/feed/meta.xml', async (_req,res)=>{
           groupId:product.sku,
           title:variant.name?`${product.title} - ${variant.name}`:product.title,
           description:product.shortDescription||product.title,
-          stock:variant.stock,
+          available:canSell(variant),
           price:hasOverride?Number(variant.priceOverride):Number(product.price),
           salePrice:hasOverride?null:(product.salePrice==null?null:Number(product.salePrice)),
           link,
@@ -499,7 +596,7 @@ app.get('/api/feed/meta.xml', async (_req,res)=>{
         groupId:product.sku,
         title:product.title,
         description:product.shortDescription||product.title,
-        stock:product.stock,
+        available:canSell(product),
         price:Number(product.price),
         salePrice:product.salePrice==null?null:Number(product.salePrice),
         link,
@@ -871,13 +968,17 @@ app.post('/api/admin/products', requireAuth('products.write'), async (req:Authed
     const bundleEnabled=b.bundleEnabled!==false;
     const bundleDiscountPercent=b.bundleDiscountPercent==null||b.bundleDiscountPercent===''?null:Number(b.bundleDiscountPercent);
     const nextStatus=(b.status||'DRAFT') as ProductStatus;
+    const custom=customRedirect(b.catalogMeta, String(b.slug));
+    if (b.catalogMeta) b.catalogMeta.redirectFrom = custom?.source || b.catalogMeta.redirectFrom || '';
+    const video=await resolveProductVideo(b.videoUrl, null, null);
+    b.videoUrl=video.videoUrl; b.catalogMeta={...(b.catalogMeta||{}),...video.meta};
     const row=await prisma.$transaction(async (tx) => {
-      const created=await tx.product.create({data:{title:String(b.title),slug:String(b.slug),sku:String(b.sku),categoryId:b.categoryId||null,price:new Prisma.Decimal(price),salePrice:salePrice==null?null:new Prisma.Decimal(salePrice),costPrice:b.costPrice?new Prisma.Decimal(Number(b.costPrice)):null,stock:Number(b.stock||0),status:nextStatus,featured:Boolean(b.featured),bundleEnabled,bundleDiscountPercent:bundleDiscountPercent==null?null:new Prisma.Decimal(bundleDiscountPercent),shortDescription:b.shortDescription||null,descriptionHtml:b.descriptionHtml||null,images:Array.isArray(b.images)?b.images:[],videoUrl:b.videoUrl||null,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,canonicalUrl:b.canonicalUrl||null,sourceUrl:b.catalogMeta?writeCatalogMeta(b.catalogMeta):null}});
+      const created=await tx.product.create({data:{trackStock:Boolean(b.trackStock),stockStatus:cleanStockStatus(b.stockStatus),title:String(b.title),slug:String(b.slug),sku:String(b.sku),categoryId:b.categoryId||null,price:new Prisma.Decimal(price),salePrice:salePrice==null?null:new Prisma.Decimal(salePrice),costPrice:b.costPrice?new Prisma.Decimal(Number(b.costPrice)):null,stock:Number(b.stock||0),status:nextStatus,featured:Boolean(b.featured),bundleEnabled,bundleDiscountPercent:bundleDiscountPercent==null?null:new Prisma.Decimal(bundleDiscountPercent),shortDescription:b.shortDescription||null,descriptionHtml:b.descriptionHtml?demoteH1(String(b.descriptionHtml)):null,images:Array.isArray(b.images)?b.images:[],videoUrl:b.videoUrl||null,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,canonicalUrl:b.canonicalUrl||null,sourceUrl:b.catalogMeta?writeCatalogMeta(b.catalogMeta):null}});
       if (Array.isArray(b.variants)) await writeVariants(tx, created.id, b.variants);
       return created;
-    });
+    }, PRODUCT_TX_OPTIONS);
     await audit(req,'create','Product',row.id);
-    await syncProductRedirect({ slug: row.slug, status: row.status, redirectFallback: b.catalogMeta?.redirectFallback !== false && b.redirectFallback !== false, redirectUrl: b.catalogMeta?.redirectUrl || b.redirectUrl });
+    await syncProductRedirect({ slug: row.slug, status: row.status, redirectFallback: b.catalogMeta?.redirectFallback !== false && b.redirectFallback !== false, custom });
     await invalidateFrontendCache(await catalogCacheTags(row.slug, row.categoryId));
     res.status(201).json(await loadAdminProduct(row.id));
   } catch(error:any) {
@@ -892,19 +993,31 @@ app.patch('/api/admin/products/:id', requireAuth('products.write'), async (req:A
     const b=req.body||{};
     const nextStatus=(('status' in b ? b.status : current.status) || 'DRAFT') as ProductStatus;
     const data:any={};
+    const previousMeta=readCatalogMeta(current.sourceUrl)||{};
+    const nextSlug=String(b.slug||current.slug);
+    const custom=b.catalogMeta?customRedirect({...previousMeta,...b.catalogMeta},nextSlug):previousCustomRedirect(previousMeta,current.slug);
+    if (b.catalogMeta) b.catalogMeta.redirectFrom = custom?.source || b.catalogMeta.redirectFrom || '';
+    if ('videoUrl' in b) {
+      const video=await resolveProductVideo(b.videoUrl, previousMeta, current.videoUrl);
+      b.videoUrl=video.videoUrl; b.catalogMeta={...(b.catalogMeta||{}),...video.meta};
+    }
+    // `stock` is only sent when the admin changed the quantity, so a save never overwrites live stock.
+    if('trackStock' in b) data.trackStock=Boolean(b.trackStock);
+    if('stockStatus' in b) data.stockStatus=cleanStockStatus(b.stockStatus);
     for(const k of ['title','slug','sku','categoryId','stock','status','featured','bundleEnabled','shortDescription','descriptionHtml','images','videoUrl','seoTitle','seoDescription','canonicalUrl']) if(k in b) data[k]=b[k] === '' ? null : b[k];
+    if(typeof data.descriptionHtml==='string') data.descriptionHtml=demoteH1(data.descriptionHtml);
     if (b.catalogMeta) data.sourceUrl = writeCatalogMeta({ ...(readCatalogMeta(current.sourceUrl) || {}), ...b.catalogMeta });
     for(const k of ['price','salePrice','costPrice','bundleDiscountPercent']) if(k in b) data[k]=b[k]===''||b[k]==null?null:new Prisma.Decimal(Number(b[k]));
-    if('stock'in data)data.stock=Number(data.stock||0);
+    if('stock'in data)data.stock=Math.max(0,Math.floor(Number(data.stock)||0));
     if('status' in b) data.status = nextStatus;
     const row=await prisma.$transaction(async (tx) => {
       const updated=await tx.product.update({where:{id},data});
       if (Array.isArray(b.variants)) await writeVariants(tx, id, b.variants);
       return updated;
-    });
+    }, PRODUCT_TX_OPTIONS);
     await audit(req,'update','Product',row.id);
     const meta = b.catalogMeta || readCatalogMeta(row.sourceUrl) || {};
-    await syncProductRedirect({ slug: row.slug, previousSlug: String(b.previousSlug || current.slug || ''), status: row.status, redirectFallback: meta.redirectFallback !== false, redirectUrl: meta.redirectUrl || b.redirectUrl });
+    await syncProductRedirect({ slug: row.slug, previousSlug: String(b.previousSlug || current.slug || ''), status: row.status, redirectFallback: meta.redirectFallback !== false, custom, previousCustom: previousCustomRedirect(previousMeta, current.slug) });
     const tags = await catalogCacheTags(row.slug, row.categoryId);
     if (current.slug && current.slug !== row.slug) tags.push(`product:${current.slug}`);
     await invalidateFrontendCache(tags);
@@ -938,7 +1051,7 @@ app.post('/api/admin/products/:id/variants', requireAuth('products.write'), asyn
     if(!product)return res.status(404).json({error:'NOT_FOUND'});
 
 
-    const row=await prisma.variant.create({data:{productId:product.id,sku:String(b.sku),name:String(b.name),attributes:b.attributes||{},priceOverride:b.priceOverride?new Prisma.Decimal(Number(b.priceOverride)):null,stock:Number(b.stock||0),imageUrl:b.imageUrl||null,active:b.active!==false}});
+    const row=await prisma.variant.create({data:{productId:product.id,sku:String(b.sku),name:String(b.name),attributes:b.attributes||{},priceOverride:b.priceOverride?new Prisma.Decimal(Number(b.priceOverride)):null,stock:Number(b.stock||0),trackStock:Boolean(b.trackStock),stockStatus:cleanStockStatus(b.stockStatus),imageUrl:b.imageUrl||null,active:b.active!==false}});
     await audit(req,'create','Variant',row.id);await invalidateFrontendCache(['products']);res.status(201).json(row);
   } catch(error:any) { res.status(400).json({error:error?.message||'VARIANT_CREATE_FAILED'}); }
 });
@@ -1405,75 +1518,85 @@ app.post('/api/admin/marketing/meta/test', requireAuth('settings.write'), async 
 
 app.get('/api/admin/abandoned', requireAuth('customers.read'), async (_req,res)=>res.json(await prisma.abandonedCheckout.findMany({orderBy:{createdAt:'desc'},take:500})));
 
-// CSV import. Every new product is saved as a DRAFT; existing SKUs keep their status.
+// CSV import. Create-only: a row whose SKU, slug or title (or a variation SKU) matches an
+// existing product, drafts included, is rejected as "Already exists". New products are DRAFTS.
+// Categories are never created: each row needs one of the store's categories, matched from
+// the CSV cell or chosen in the preview (`categoryByRow`: { [row]: categoryId }).
 // `dryRun: true` validates and reports what would happen without writing anything.
 app.post('/api/admin/products/import', requireAuth('products.write'), async (req:AuthedRequest,res)=>{
   const rows=Array.isArray(req.body?.rows)?req.body.rows:[];
   const dryRun=Boolean(req.body?.dryRun);
-  // The header row must match the template; a changed structure rejects the whole file.
+  const categoryByRow:Record<string,string>=req.body?.categoryByRow&&typeof req.body.categoryByRow==='object'?req.body.categoryByRow:{};
+  const categories=await prisma.category.findMany({orderBy:[{sortOrder:'asc'},{name:'asc'}],select:{id:true,name:true,slug:true}});
+  // Removed or unknown columns are ignored with a warning; only a missing required column rejects the file.
   const headers:string[]=Array.isArray(req.body?.headers)?req.body.headers.map(String):[...new Set<string>(rows.flatMap((r:any)=>Object.keys(r||{})))].filter(k=>k!=='__row');
-  const fileErrors=validateHeaders(headers);
+  const {errors:fileErrors,warnings:fileWarnings}=validateHeaders(headers);
   if(!rows.length) fileErrors.push('The file has no product rows.');
   if(rows.length>5000) fileErrors.push('The file has more than 5,000 rows. Split it into smaller files.');
-  if(fileErrors.length) return res.status(dryRun?200:400).json({error:'INVALID_TEMPLATE',message:fileErrors.join(' '),fileErrors,created:0,updated:0,skipped:0,errors:fileErrors,dryRun,results:[]});
+  if(fileErrors.length) return res.status(dryRun?200:400).json({error:'INVALID_TEMPLATE',message:fileErrors.join(' '),fileErrors,fileWarnings,categories,created:0,exists:0,skipped:0,errors:fileErrors,dryRun,results:[]});
   const planned=planImport(rows, Number(req.body?.firstRow)||2);
-  const categories=await prisma.category.findMany();
-  const categoryByKey=new Map<string,{id:string;slug:string}>();
-  for(const c of categories){categoryByKey.set(c.slug.toLowerCase(),c);categoryByKey.set(c.name.toLowerCase(),c);categoryByKey.set(importSlugify(c.name),c);}
+  const categoryByKey=new Map<string,{id:string;name:string;slug:string}>();
+  for(const c of categories){categoryByKey.set(c.slug.toLowerCase(),c);categoryByKey.set(c.name.trim().toLowerCase(),c);categoryByKey.set(importSlugify(c.name),c);}
+  const categoryById=new Map(categories.map(c=>[c.id,c]));
+  // Everything already in the shop (drafts included), for the "Already exists" check.
+  const [existingProducts,existingVariants]=await Promise.all([
+    prisma.product.findMany({select:{id:true,sku:true,slug:true,title:true}}),
+    prisma.variant.findMany({select:{sku:true,product:{select:{title:true}}}}),
+  ]);
+  const productBySku=new Map(existingProducts.map(p=>[p.sku.toLowerCase(),p]));
+  const productBySlug=new Map(existingProducts.map(p=>[p.slug.toLowerCase(),p]));
+  const productByTitle=new Map(existingProducts.map(p=>[importTitleKey(p.title),p]));
+  const variantBySku=new Map(existingVariants.map(v=>[v.sku.toLowerCase(),v.product.title]));
   const results:any[]=[]; const tags=new Set(['products','featured-products','categories','store']);
   for(const product of planned){
-    const result:any={row:product.row,sku:product.sku,title:product.title,productType:product.productType,variations:product.variations.length,warnings:product.warnings,errors:[...product.errors],action:'error',id:null,status:null,slug:null,category:product.cells.category||product.cells.categorySlug||''};
+    const cellCategory=product.cells.category||'';
+    const matched=cellCategory?(categoryByKey.get(cellCategory.trim().toLowerCase())||categoryByKey.get(importSlugify(cellCategory))):undefined;
+    const chosenId=categoryByRow[String(product.row)];
+    const category=(chosenId?categoryById.get(String(chosenId)):undefined)||matched||null;
+    const warnings=[...product.warnings];
+    // Shown in red under the Category dropdown until one of the store's categories is picked.
+    const categoryError=cellCategory&&!matched?`Category "${cellCategory}" is not one of the store's categories. Choose one from the list.`:'';
+    const result:any={row:product.row,sku:product.sku,title:product.title,productType:product.productType,variations:product.variations.length,warnings,errors:[...product.errors],action:'error',id:null,status:null,slug:product.slug||null,category:cellCategory,categoryId:category?.id||null,categoryError};
     results.push(result);
-    if(result.errors.length) continue;
+    if(result.errors.length){result.errors.push(...product.duplicates);continue;}
+    const exists:string[]=[...product.duplicates];
+    const sku=product.sku.toLowerCase();
+    if(productBySku.has(sku)) exists.push(`SKU "${product.sku}" is used by "${productBySku.get(sku)!.title}".`);
+    else if(variantBySku.has(sku)) exists.push(`SKU "${product.sku}" is used by a variation of "${variantBySku.get(sku)}".`);
+    const bySlug=product.slug?productBySlug.get(product.slug):undefined;
+    if(bySlug) exists.push(`Slug "${product.slug}" is used by "${bySlug.title}".`);
+    const byTitle=productByTitle.get(importTitleKey(product.title));
+    if(byTitle) exists.push(`Title matches "${byTitle.title}" (SKU ${byTitle.sku}).`);
+    for(const variation of product.variations){
+      const key=variation.sku.toLowerCase();
+      const owner=variantBySku.get(key)||productBySku.get(key)?.title;
+      if(owner) exists.push(`Variation SKU "${variation.sku}" is used by "${owner}".`);
+    }
+    if(exists.length){result.action='exists';result.errors=[`Already exists. ${exists.join(' ')}`];continue;}
+    result.status='DRAFT';
+    if(dryRun){result.action='create';continue;}
+    if(!category){result.errors.push('Choose a category for this row.');continue;}
     try{
-      const existing=await prisma.product.findUnique({where:{sku:product.sku},include:{variants:{select:{id:true}}}});
-      const existingMeta=existing?(readCatalogMeta(existing.sourceUrl)||{}):null;
-      if(existing&&product.productType==='simple'&&(existing.variants.length||existingMeta?.productType==='variable')) throw new Error(`sku "${product.sku}" is already a variable product. Use the variable template to update it.`);
-      const clash=await prisma.variant.findFirst({where:{sku:{in:[product.sku,...product.variations.map(v=>v.sku)]},...(existing?{productId:{not:existing.id}}:{})},select:{sku:true}});
-      if(clash) throw new Error(`sku "${clash.sku}" is already used by a variation of another product.`);
-      const write=buildProductWrite(product,existingMeta);
-      let slug=existing?.slug||write.slug||importSlugify(product.sku);
-      if(!existing||(existing.status==='DRAFT'&&write.explicitSlug&&write.slug&&write.slug!==existing.slug)){
-        slug=write.slug||importSlugify(product.sku);
-        const taken=await prisma.product.findUnique({where:{slug},select:{id:true}});
-        if(taken&&taken.id!==existing?.id){
-          if(write.explicitSlug) throw new Error(`slug "${slug}" is already used by another product.`);
-          slug=`${slug}-${importSlugify(product.sku)}`;
-        }
-      }
-      result.slug=slug; result.id=existing?.id||null; result.status=existing?.status||'DRAFT';
-      if(dryRun){result.action=existing?'update':'create';continue;}
-      let categoryId:string|undefined;
-      if(write.category){
-        let category=categoryByKey.get(write.category.slug)||categoryByKey.get(write.category.name.toLowerCase());
-        if(!category){
-          category=await prisma.category.create({data:{name:write.category.name,slug:write.category.slug,...write.category.fields}});
-          await audit(req,'create','Category',category.id,{source:'csv_import'});
-          categoryByKey.set(category.slug.toLowerCase(),category);categoryByKey.set(write.category.name.toLowerCase(),category);
-        } else if(Object.keys(write.category.fields).length){
-          await prisma.category.update({where:{id:category.id},data:write.category.fields});
-        }
-        categoryId=category.id; tags.add(`category:${category.slug}`);
-      }
-      const data:any={...write.columns,slug,sourceUrl:writeCatalogMeta(write.meta)};
-      for(const k of ['price','salePrice','costPrice','bundleDiscountPercent']) if(k in data) data[k]=data[k]==null?null:new Prisma.Decimal(Number(data[k]));
-      if(categoryId) data.categoryId=categoryId;
+      const write=buildProductWrite(product);
+      const data:any={...write.columns,slug:write.slug,sku:product.sku,status:'DRAFT',categoryId:category.id,sourceUrl:writeCatalogMeta(write.meta)};
+      for(const k of ['price','salePrice','bundleDiscountPercent']) if(k in data) data[k]=data[k]==null?null:new Prisma.Decimal(Number(data[k]));
       const row=await prisma.$transaction(async(tx)=>{
-        const saved=existing?await tx.product.update({where:{id:existing.id},data}):await tx.product.create({data:{...data,sku:product.sku,status:'DRAFT'}});
-        if(write.variants) await writeVariants(tx,saved.id,write.variants);
+        const saved=await tx.product.create({data});
+        if(write.variants.length) await writeVariants(tx,saved.id,write.variants);
         return saved;
-      });
-      await syncProductRedirect({slug:row.slug,previousSlug:existing&&existing.slug!==row.slug?existing.slug:undefined,status:row.status,redirectFallback:write.meta.redirectFallback!==false,redirectUrl:String(write.meta.redirectUrl||'')});
-      tags.add(`product:${row.slug}`);
-      result.action=existing?'updated':'created'; result.id=row.id; result.status=row.status;
+      }, PRODUCT_TX_OPTIONS);
+      await syncProductRedirect({slug:row.slug,status:row.status,redirectFallback:true,custom:previousCustomRedirect(write.meta,row.slug),previousCustom:null});
+      tags.add(`product:${row.slug}`); tags.add(`category:${category.slug}`);
+      productBySku.set(sku,row); productBySlug.set(row.slug,row); productByTitle.set(importTitleKey(row.title),row);
+      result.action='created'; result.id=row.id; result.status=row.status; result.slug=row.slug;
     }catch(e:any){
-      result.action='error'; result.errors.push(e?.code==='P2002'?`A product or variation with the same ${(e?.meta?.target||['sku']).join(', ')} already exists.`:(e?.message||'Import failed'));
+      result.action='error'; result.errors.push(e?.code==='P2002'?`Already exists: a product or variation with the same ${(e?.meta?.target||['sku']).join(', ')} is in the shop.`:(e?.message||'Import failed'));
     }
   }
   const count=(action:string)=>results.filter(r=>r.action===action).length;
-  const summary={created:count(dryRun?'create':'created'),updated:count(dryRun?'update':'updated'),skipped:count('error'),errors:results.filter(r=>r.action==='error').map(r=>`Row ${r.row}: ${r.errors.join(' ')}`)};
+  const summary={created:count(dryRun?'create':'created'),exists:count('exists'),skipped:count('error')+count('exists'),errors:results.filter(r=>r.action==='error'||r.action==='exists').map(r=>`Row ${r.row}: ${r.errors.join(' ')}`)};
   if(!dryRun){await audit(req,'csv_import','Product',undefined,{...summary,errors:summary.errors.slice(0,25)}); await invalidateFrontendCache([...tags]);}
-  res.json({...summary,dryRun,results});
+  res.json({...summary,dryRun,fileWarnings,categories,results});
 });
 app.get('/api/admin/product-import/template/:kind', requireAuth('products.write'), (req,res)=>{
   const kind=routeParam(req,'kind').replace(/\.csv$/i,'')==='variable'?'variable':'simple';
@@ -1492,7 +1615,7 @@ app.post('/api/admin/products/bulk-status', requireAuth('products.write'), async
     try{
       if(row.status!==status) await prisma.product.update({where:{id:row.id},data:{status:status as ProductStatus}});
       const meta=readCatalogMeta(row.sourceUrl)||{};
-      await syncProductRedirect({slug:row.slug,status,redirectFallback:meta.redirectFallback!==false,redirectUrl:meta.redirectUrl});
+      await syncProductRedirect({slug:row.slug,status,redirectFallback:meta.redirectFallback!==false,custom:previousCustomRedirect(meta,row.slug),previousCustom:previousCustomRedirect(meta,row.slug)});
       updated.push(row.id); tags.add(`product:${row.slug}`); if(row.category?.slug) tags.add(`category:${row.category.slug}`);
     }catch(e:any){failed.push({id:row.id,title:row.title,error:e?.message||'Update failed'});}
   }
@@ -1529,7 +1652,7 @@ app.post('/api/admin/products/:id/images', requireAuth('products.write'), async 
     await prisma.$transaction(async(tx)=>{
       await tx.product.update({where:{id},data:{images,...(meta&&variantUpdates.length?{sourceUrl:writeCatalogMeta(meta)}:{})}});
       for(const update of variantUpdates) await tx.variant.update({where:{id:update.id},data:{imageUrl:update.imageUrl}});
-    });
+    }, PRODUCT_TX_OPTIONS);
     await audit(req,'bulk_images','Product',id,{images:images.length,variants:variantUpdates.length,mode:replace?'replace':'append'});
     await invalidateFrontendCache(await catalogCacheTags(product.slug,product.categoryId));
     res.json(await loadAdminProduct(id));
@@ -1539,33 +1662,29 @@ app.post('/api/admin/products/:id/images', requireAuth('products.write'), async 
 });
 app.get('/api/admin/products/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.product.findMany({include:{category:true},orderBy:{updatedAt:'desc'}});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['title,slug,sku,category,price,salePrice,costPrice,stock,status,featured,shortDescription,descriptionHtml,imageUrls,videoUrl,seoTitle,seoDescription',...rows.map(p=>[p.title,p.slug,p.sku,p.category?.name||'',p.price,p.salePrice||'',p.costPrice||'',p.stock,p.status,p.featured,p.shortDescription||'',p.descriptionHtml||'',Array.isArray(p.images)?p.images.join('|'):'',p.videoUrl||'',p.seoTitle||'',p.seoDescription||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
 app.get('/api/admin/orders/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.order.findMany({orderBy:{createdAt:'desc'},take:5000});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['orderNumber,date,customer,phone,city,status,total,source',...rows.map(o=>[o.orderNumber,o.createdAt.toISOString(),o.fullName,o.phone,o.city,o.status,o.total,o.source||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
+// Images are converted to WebP in the browser first (frontend/lib/image-convert.ts).
+// Each file is stored in R2 as products/<sha256>.<ext>: the same image uploaded again gets
+// the same URL, so the admin can skip it as a duplicate. There is no local-disk fallback:
+// on Vercel those files disappear after a restart.
+const UPLOAD_EXTENSIONS:Record<string,string>={'image/webp':'webp','image/gif':'gif','image/jpeg':'jpg','image/png':'png','image/avif':'avif'};
 app.post('/api/admin/upload', requireAuth('products.write'), (req,res,next)=>{
   upload.single('file')(req,res,(err:any)=>{
     if(!err) return next();
     const tooLarge=err?.code==='LIMIT_FILE_SIZE';
-    res.status(tooLarge?413:400).json({error:tooLarge?'FILE_TOO_LARGE':'UPLOAD_FAILED',message:tooLarge?'Unable to upload: the image is larger than 8 MB.':`Unable to upload: ${err?.message||'the file could not be read'}.`});
+    res.status(tooLarge?413:400).json({error:tooLarge?'FILE_TOO_LARGE':'UPLOAD_FAILED',message:tooLarge?'Unable to upload: the image is larger than 4 MB after conversion.':`Unable to upload: ${err?.message||'the file could not be read'}.`});
   });
 }, async (req,res)=>{
   if(!req.file) return res.status(400).json({error:'FILE_REQUIRED',message:'Unable to upload: no file was received.'});
-  if(!req.file.mimetype.startsWith('image/')) return res.status(400).json({error:'IMAGE_REQUIRED',message:'Unable to upload: only image files are allowed.'});
+  const ext=UPLOAD_EXTENSIONS[req.file.mimetype];
+  if(!ext) return res.status(400).json({error:'IMAGE_REQUIRED',message:'Unable to upload: only JPG, PNG, WEBP or GIF images are allowed.'});
+  if(!isCloudStorageConfigured()) return res.status(503).json({error:'STORAGE_NOT_CONFIGURED',message:'Unable to upload: image storage (Cloudflare R2) is not configured on the backend. Set S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY and S3_PUBLIC_BASE_URL.'});
   try {
-    const ext=path.extname(req.file.originalname||'').replace(/[^.a-zA-Z0-9]/g,'')||'';
-    const base=path.basename(req.file.originalname||'image',ext).replace(/[^a-zA-Z0-9._-]/g,'-')||'image';
-    const filename = `${Date.now()}-${base}${ext}`;
-    try {
-      const url=await uploadObject(`products/${filename}`,req.file.buffer,req.file.mimetype);
-      return res.json({url});
-    } catch (storageError:any) {
-      console.warn('[upload] Cloud storage upload failed or unconfigured; saving to local storage fallback:', storageError?.message);
-      const fs = await import('node:fs/promises');
-      const uploadDir = path.join(getLocalUploadDir(), 'products');
-      await fs.mkdir(uploadDir, { recursive: true });
-      await fs.writeFile(path.join(uploadDir, filename), req.file.buffer);
-      const localUrl = `/uploads/products/${filename}`;
-      return res.json({ url: localUrl });
-    }
+    const hash=createHash('sha256').update(req.file.buffer).digest('hex');
+    const url=await uploadObject(`products/${hash}.${ext}`,req.file.buffer,req.file.mimetype);
+    res.json({url,hash});
   } catch (error:any) {
-    res.status(500).json({error:'UPLOAD_FAILED',message:`Unable to save image: ${error?.message||'unknown error'}`});
+    const status=error instanceof StorageError&&error.code==='STORAGE_NOT_CONFIGURED'?503:502;
+    res.status(status).json({error:error?.code||'UPLOAD_FAILED',message:error?.message||'Unable to upload: Cloudflare R2 did not accept the image.'});
   }
 });
 

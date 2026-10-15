@@ -2,125 +2,55 @@
 
 Generated from `backend/src/lib/product-import.ts`. Do not edit by hand.
 
+The CSV carries only what is written for a NEW product. Everything else (stock, shipping,
+badge, featured, delivery, tabs, redirects, video, images) is set by hand in the product
+form after import. Blank cells are normal: blank means the default or empty, never an
+error, except in the required columns.
+
 ## simple-products-template.csv
 
 | Column | Required | What goes in it |
 |---|---|---|
-| `type` | yes | simple \| variable \| variation. A variation row belongs to the variable product named in parentSku. |
-| `title` | yes | Product name. Leave blank on variation rows. |
-| `slug` |  | URL slug. Blank = generated from the title. |
-| `sku` | yes | Unique SKU. An existing SKU updates that product; a new SKU creates one. Variation rows: blank = PARENTSKU-V1, -V2... |
-| `category` |  | Category name or slug. Created automatically when it does not exist. |
-| `categorySlug` |  | Category slug. Blank = generated from the category name. |
-| `categoryDescription` |  | Category description. |
-| `categoryImageUrl` |  | Category image URL. |
-| `categorySortOrder` |  | Category sort order (number, lower shows first). |
-| `categorySeoTitle` |  | Category SEO title. |
-| `categorySeoDescription` |  | Category SEO description. |
-| `brand` |  | Brand name. |
-| `regularPrice` | yes | Regular price in Rs, digits only. Variable parents: leave blank, each variation row carries its own price. |
-| `salePrice` |  | Sale price in Rs. Must be lower than regularPrice. |
-| `costPrice` |  | Your cost price in Rs (never shown to customers). |
-| `saleFrom` |  | Sale start date, YYYY-MM-DD. |
-| `saleTo` |  | Sale end date, YYYY-MM-DD. |
-| `trackStock` |  | yes \| no. Default yes. |
-| `stock` |  | Stock quantity. Variable parents: leave blank, the variation quantities are added up. |
-| `stockStatus` |  | instock \| outofstock \| onbackorder. Blank = instock when stock is above 0. |
-| `weight` |  | Weight (lbs). |
-| `length` |  | Length (in). |
-| `width` |  | Width (in). |
-| `height` |  | Height (in). |
-| `shippingClass` |  | Blank or shipping-charges. |
-| `freeShipping` |  | yes \| no. Default no. |
-| `shortDescription` |  | Short description shown beside the price. Plain text or HTML. |
-| `descriptionHtml` |  | Full description in HTML (<p>, <h2>, <ul><li>...). |
-| `imageUrls` |  | Image URLs separated by \|. First one is the main image. Leave blank when you upload images with the image ZIP. |
-| `imageAlt` |  | Alt text for the product image. Blank = product title. |
-| `imageTitle` |  | Image title. |
-| `videoUrl` |  | Product video URL. |
-| `tags` |  | Tags separated by \|. Allowed: customer-favourite \| best-selling \| new-arrival \| 15-off \| 20-off \| 30-off. |
-| `badge` |  | Custom badge text shown on the product image. |
-| `featured` |  | yes \| no. Featured on the homepage. |
-| `bundleEnabled` |  | yes \| no. Buy-two discount. Default yes. |
-| `deliveryDays` |  | Delivery days shown on the product page. Default 3. |
-| `deliveryNote` |  | Delivery note. Default: Delivered across Pakistan. |
-| `purchaseNote` |  | Purchase note. |
-| `menuOrder` |  | Menu order (number). |
-| `focusKeyword` |  | SEO focus keyword. |
-| `seoTitle` |  | SEO title. |
-| `seoDescription` |  | SEO meta description. |
-| `canonicalUrl` |  | Canonical URL. |
-| `redirectFallback` |  | yes \| no. Send visitors to /shop while the product is not posted. Default yes. |
-| `redirectUrl` |  | Custom redirect URL for this product page. |
-| `tabWhyChoose` |  | HTML that replaces the global 'Why Choose Zelvomart' tab for this product. Blank = global tab. |
-| `tabShippingProcess` |  | HTML that replaces the global 'Shipping Process' tab. Blank = global tab. |
-| `tabGeneralFaq` |  | HTML that replaces the global 'General FAQ' tab. Blank = global tab. |
+| `type` | Yes | simple (simple template) or variable (variable template). |
+| `title` | Yes | Product name. |
+| `slug` | No | URL slug. Blank = made from the title. |
+| `sku` | Yes | Unique product code. A SKU, slug or title that already exists in the shop is rejected as "Already exists". |
+| `category` | Yes | One of the store's categories (name or slug). Blank or wrong = choose it from the dropdown in the import preview. |
+| `regularPrice` | Yes | Price in Rs, digits only. Variable products: one price for every variation. |
+| `salePrice` | No | Lower than regularPrice. Any sale price puts the product on the Discount page. |
+| `shortDescription` | No | Two lines of text, then 3-4 points: <p>...</p><ul><li>...</li><li>...</li><li>...</li></ul>. The points show with a tick icon in the buy box. |
+| `descriptionHtml` | No | Full description with headings, paragraphs and lists. Use <h2>-<h6>: the product name is the page's <h1>, so any <h1> is saved as <h2>. |
+| `weight` | No | kg. Shown on the product page when filled. |
+| `length` | No | cm. Shown on the product page when filled. |
+| `width` | No | cm. Shown on the product page when filled. |
+| `height` | No | cm. Shown on the product page when filled. |
+| `imageAlt` | No | One alt text, applied to every image of the product. Blank = product title. |
+| `imageTitle` | No | One image title, applied to every image of the product. |
+| `tags` | No | Separated by \|: customer-favourite, best-selling, new-arrival, 15-off, 20-off, 30-off. Other values are ignored with a warning. |
+| `focusKeyword` | No | SEO focus keyword. |
+| `seoTitle` | No | Meta title, up to 60 characters. |
+| `seoDescription` | No | Meta description, up to 155 characters. |
 
 ## variable-products-template.csv
 
-Same columns as the simple template plus the variation columns. One `variable` row
-describes the product; one `variation` row per option combination follows it.
+A variable product is a single row with `type = variable`. It has every column of the
+simple template plus the option columns below. The import creates every combination of
+the options as a variation, all at the row's `regularPrice` / `salePrice` and In stock,
+with SKUs `<sku>-V1`, `<sku>-V2`...
+
+Example: Color `Black | White` and Size `M | L` gives 4 variations (Black / M, Black / L,
+White / M, White / L).
 
 | Column | Required | What goes in it |
 |---|---|---|
-| `type` | yes | simple \| variable \| variation. A variation row belongs to the variable product named in parentSku. |
-| `parentSku` |  | Variation rows only: the SKU of the variable product this variation belongs to. |
-| `title` | yes | Product name. Leave blank on variation rows. |
-| `slug` |  | URL slug. Blank = generated from the title. |
-| `sku` | yes | Unique SKU. An existing SKU updates that product; a new SKU creates one. Variation rows: blank = PARENTSKU-V1, -V2... |
-| `category` |  | Category name or slug. Created automatically when it does not exist. |
-| `categorySlug` |  | Category slug. Blank = generated from the category name. |
-| `categoryDescription` |  | Category description. |
-| `categoryImageUrl` |  | Category image URL. |
-| `categorySortOrder` |  | Category sort order (number, lower shows first). |
-| `categorySeoTitle` |  | Category SEO title. |
-| `categorySeoDescription` |  | Category SEO description. |
-| `brand` |  | Brand name. |
-| `regularPrice` | yes | Regular price in Rs, digits only. Variable parents: leave blank, each variation row carries its own price. |
-| `salePrice` |  | Sale price in Rs. Must be lower than regularPrice. |
-| `costPrice` |  | Your cost price in Rs (never shown to customers). |
-| `saleFrom` |  | Sale start date, YYYY-MM-DD. |
-| `saleTo` |  | Sale end date, YYYY-MM-DD. |
-| `trackStock` |  | yes \| no. Default yes. |
-| `stock` |  | Stock quantity. Variable parents: leave blank, the variation quantities are added up. |
-| `stockStatus` |  | instock \| outofstock \| onbackorder. Blank = instock when stock is above 0. |
-| `weight` |  | Weight (lbs). |
-| `length` |  | Length (in). |
-| `width` |  | Width (in). |
-| `height` |  | Height (in). |
-| `shippingClass` |  | Blank or shipping-charges. |
-| `freeShipping` |  | yes \| no. Default no. |
-| `shortDescription` |  | Short description shown beside the price. Plain text or HTML. |
-| `descriptionHtml` |  | Full description in HTML (<p>, <h2>, <ul><li>...). |
-| `imageUrls` |  | Image URLs separated by \|. First one is the main image. Leave blank when you upload images with the image ZIP. |
-| `imageAlt` |  | Alt text for the product image. Blank = product title. |
-| `imageTitle` |  | Image title. |
-| `videoUrl` |  | Product video URL. |
-| `tags` |  | Tags separated by \|. Allowed: customer-favourite \| best-selling \| new-arrival \| 15-off \| 20-off \| 30-off. |
-| `badge` |  | Custom badge text shown on the product image. |
-| `featured` |  | yes \| no. Featured on the homepage. |
-| `bundleEnabled` |  | yes \| no. Buy-two discount. Default yes. |
-| `deliveryDays` |  | Delivery days shown on the product page. Default 3. |
-| `deliveryNote` |  | Delivery note. Default: Delivered across Pakistan. |
-| `purchaseNote` |  | Purchase note. |
-| `menuOrder` |  | Menu order (number). |
-| `focusKeyword` |  | SEO focus keyword. |
-| `seoTitle` |  | SEO title. |
-| `seoDescription` |  | SEO meta description. |
-| `canonicalUrl` |  | Canonical URL. |
-| `redirectFallback` |  | yes \| no. Send visitors to /shop while the product is not posted. Default yes. |
-| `redirectUrl` |  | Custom redirect URL for this product page. |
-| `tabWhyChoose` |  | HTML that replaces the global 'Why Choose Zelvomart' tab for this product. Blank = global tab. |
-| `tabShippingProcess` |  | HTML that replaces the global 'Shipping Process' tab. Blank = global tab. |
-| `tabGeneralFaq` |  | HTML that replaces the global 'General FAQ' tab. Blank = global tab. |
-| `attribute1Name` |  | First option name, e.g. Color. Set it on the variable row. |
-| `attribute1Values` |  | Variable row: every value separated by \| (Black \| White). Variation row: the one value of that variation (Black). |
-| `attribute2Name` |  | Second option name, e.g. Size. Optional. |
-| `attribute2Values` |  | Same rule as attribute1Values. |
-| `attribute3Name` |  | Third option name. Optional. |
-| `attribute3Values` |  | Same rule as attribute1Values. |
-| `gtin` |  | Variation rows: GTIN / barcode. |
-| `variationEnabled` |  | Variation rows: yes \| no. Default yes. |
-| `swatchesEnabled` |  | Variable row: yes \| no. Default yes. |
-| `swatchShape` |  | Variable row: circle \| square. Default circle. |
-| `swatchSize` |  | Variable row: small \| medium \| large. Default medium. |
+| `attribute1Name` | Yes | First option name, e.g. Color. |
+| `attribute1Values` | Yes | Its values separated by \|, e.g. Black \| White. |
+| `attribute2Name` | No | Second option, e.g. Size. |
+| `attribute2Values` | No | e.g. S \| M \| L. |
+| `attribute3Name` | No | Third option; rarely used. |
+| `attribute3Values` | No | Values of the third option. |
+
+## Defaults for everything not in the CSV
+
+In stock (Track stock OFF), delivery charges apply (not free), buy-2 bundle on, no brand,
+redirect fallback on, store-wide product tabs, indexable. Swatches on, circle, medium.

@@ -164,10 +164,16 @@ export default function ProductDetailClient({
       if (!merged.includes(src)) merged.push(src);
     }
     if (!merged.length) return product;
+    // Alt text and image title from the admin belong to the main product image only.
+    const mainSrc = existing[0];
     return {
       ...product,
       image: merged[0] || product.image,
-      images: merged.map((src) => ({ src, alt: product.name })),
+      images: merged.map((src) =>
+        src === mainSrc
+          ? { src, alt: product.imageAlt || product.name, ...(product.imageTitle ? { title: product.imageTitle } : {}) }
+          : { src, alt: product.name },
+      ),
     };
   }, [product]);
 

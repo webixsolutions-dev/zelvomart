@@ -48,6 +48,23 @@ function AccordionItem({
   );
 }
 
+function filled(value: unknown) {
+  const text = String(value ?? "").trim();
+  return text && Number(text) !== 0 ? text : "";
+}
+
+/** Weight (kg) and Dimensions (cm), only when filled. A variation's own values win over the product's. */
+function measurementRows(product: any, variant: Variant | null): Array<[string, string]> {
+  const meta = product?.catalogMeta || {};
+  const pick = (key: "weight" | "length" | "width" | "height") => filled(variant?.[key]) || filled(meta[key]);
+  const rows: Array<[string, string]> = [];
+  const weight = pick("weight");
+  if (weight) rows.push(["Weight", `${weight} kg`]);
+  const dims = [pick("length"), pick("width"), pick("height")];
+  if (dims.some(Boolean)) rows.push(["Dimensions", `${dims.map((value) => value || "–").join(" × ")} cm`]);
+  return rows;
+}
+
 export default function ProductTabs({
   product,
   variant,
@@ -92,10 +109,14 @@ export default function ProductTabs({
       ],
       [
         "Availability",
-        inStock
-          ? `${variant?.stock ?? product?.stockQuantity ?? product?.stock ?? 100} in stock`
-          : "Out of stock",
+        // A number only when stock is tracked; otherwise just the status.
+        !inStock
+          ? "Out of stock"
+          : variant
+            ? variant.trackStock ? `${variant.stock} in stock` : "In stock"
+            : product?.trackStock && product?.stockQuantity != null ? `${product.stockQuantity} in stock` : "In stock",
       ],
+      ...measurementRows(product, variant),
       ...(variant?.gtin ? [["GTIN", String(variant.gtin)] as [string, string]] : []),
       ["Payment", "Cash on Delivery (COD) across Pakistan"],
       ["Warranty", "7-Day Check & Replacement Guarantee"],

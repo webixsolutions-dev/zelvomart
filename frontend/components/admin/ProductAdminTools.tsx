@@ -3,17 +3,9 @@
 import Link from "next/link";
 import { ChangeEvent, useRef, useState } from "react";
 import { clearAdminDataCache } from "@/components/admin/useAdminData";
-import { adminFetch, clientApi, uploadAdminImage } from "@/lib/client-api";
-import {
-  checkImageStructure,
-  imageExtension,
-  imageMime,
-  type BulkProduct,
-  type ImageGroup,
-  type ImageProblem,
-  type SourceFile,
-} from "@/lib/bulk-images";
-import { readZip } from "@/lib/zip-reader";
+import { adminFetch, clientApi } from "@/lib/client-api";
+import BulkImageUpload from "@/components/admin/BulkImageUpload";
+import type { BulkProduct } from "@/lib/bulk-images";
 
 type CsvRow = Record<string, string | number>;
 type ImportPhase = "ready" | "saving" | "saved" | "posting" | "posted" | "error";
@@ -24,6 +16,9 @@ type ImportItem = {
   productType: string;
   variations: number;
   category: string;
+  categoryId: string | null;
+  /** The CSV category is not one of the store's categories (shown until one is picked). */
+  categoryError?: string;
   action: string;
   errors: string[];
   warnings: string[];
@@ -32,13 +27,16 @@ type ImportItem = {
   phase: ImportPhase;
   rows: CsvRow[];
 };
-type ImportResponse = { created: number; updated: number; skipped: number; fileErrors?: string[]; results: Array<Omit<ImportItem, "phase" | "rows">> };
-type ImageRow = {
-  group: ImageGroup;
-  state: "ready" | "uploading" | "done" | "error";
-  message: string;
+type ImportCategory = { id: string; name: string; slug: string };
+type ImportResponse = {
+  created: number;
+  exists: number;
+  skipped: number;
+  fileErrors?: string[];
+  fileWarnings?: string[];
+  categories?: ImportCategory[];
+  results: Array<Omit<ImportItem, "phase" | "rows">>;
 };
-
 const IMPORT_CHUNK = 15;
 
 function parseCsv(text: string) {
@@ -168,10 +166,7 @@ export default function ProductAdminTools({
   compact?: boolean;
 }) {
   const csvRef = useRef<HTMLInputElement>(null);
-  const zipRef = useRef<HTMLInputElement>(null);
-  const folderRef = useRef<HTMLInputElement>(null);
   const csvDialogRef = useRef<HTMLDialogElement>(null);
-  const imageDialogRef = useRef<HTMLDialogElement>(null);
 
   const [fileName, setFileName] = useState("");
   const [items, setItems] = useState<ImportItem[]>([]);
@@ -179,16 +174,9 @@ export default function ProductAdminTools({
   const [csvProblems, setCsvProblems] = useState<string[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [csvNote, setCsvNote] = useState("");
+  const [csvWarnings, setCsvWarnings] = useState<string[]>([]);
+  const [categories, setCategories] = useState<ImportCategory[]>([]);
   const [csvBusy, setCsvBusy] = useState(false);
-
-  const [imageRows, setImageRows] = useState<ImageRow[]>([]);
-  const [problems, setProblems] = useState<ImageProblem[]>([]);
-  const [imageFiles, setImageFiles] = useState<SourceFile[]>([]);
-  const [imageSource, setImageSource] = useState("");
-  const [imageError, setImageError] = useState("");
-  const [imageNote, setImageNote] = useState("");
-  const [imageBusy, setImageBusy] = useState(false);
-  const [replaceImages, setReplaceImages] = useState(false);
 
   function refresh() {
     clearAdminDataCache("/api/admin/products");
@@ -207,6 +195,7 @@ export default function ProductAdminTools({
     setItems([]);
     setCsvError("");
     setCsvProblems([]);
+    setCsvWarnings([]);
     setCsvNote("");
     setFileName(file.name);
     setCsvBusy(true);
@@ -219,6 +208,8 @@ export default function ProductAdminTools({
       const groups = groupRows(rows);
       // Dry run: the server checks the header row and every row. Nothing is saved yet.
       const response = await clientApi<ImportResponse>("/api/admin/products/import", { method: "POST", body: JSON.stringify({ headers, rows, dryRun: true }) }, true);
+      setCsvWarnings(response.fileWarnings || []);
+      setCategories(response.categories || []);
       if (response.fileErrors?.length) {
         setCsvError("This file does not follow the template. Fix the points below and import it again. Nothing was saved.");
         setCsvProblems(response.fileErrors);
@@ -228,7 +219,7 @@ export default function ProductAdminTools({
       setItems(
         response.results.map((result) => ({
           ...result,
-          phase: result.action === "error" ? "error" : "ready",
+          phase: result.action === "create" ? "ready" : "error",
           rows: groups.get(result.row) || [],
         })),
       );
@@ -240,13 +231,12 @@ export default function ProductAdminTools({
   }
 
   async function saveDrafts(targets: ImportItem[]) {
-    const ready = targets.filter((item) => item.phase === "ready" && item.rows.length);
+    const ready = targets.filter((item) => item.phase === "ready" && item.rows.length && item.categoryId);
     if (!ready.length || csvBusy) return;
     setCsvBusy(true);
     setCsvError("");
     setCsvNote("");
     let created = 0;
-    let updated = 0;
     let failed = 0;
     try {
       for (let start = 0; start < ready.length; start += IMPORT_CHUNK) {
@@ -256,25 +246,31 @@ export default function ProductAdminTools({
         try {
           const response = await clientApi<ImportResponse>(
             "/api/admin/products/import",
-            { method: "POST", body: JSON.stringify({ headers: csvHeaders, rows: chunk.flatMap((item) => item.rows) }) },
+            {
+              method: "POST",
+              body: JSON.stringify({
+                headers: csvHeaders,
+                rows: chunk.flatMap((item) => item.rows),
+                categoryByRow: Object.fromEntries(chunk.map((item) => [item.row, item.categoryId])),
+              }),
+            },
             true,
           );
           const byRow = new Map(response.results.map((result) => [result.row, result]));
           created += response.created;
-          updated += response.updated;
           failed += response.skipped;
           patchItems(rows, (item) => {
             const result = byRow.get(item.row);
             if (!result) return { phase: "error", errors: ["The server did not return a result for this row."] };
-            if (result.action === "error") return { ...result, phase: "error" };
-            return { ...result, phase: result.status === "PUBLISHED" ? "posted" : "saved" };
+            if (result.action === "error" || result.action === "exists") return { ...result, categoryId: item.categoryId, phase: "error" };
+            return { ...result, categoryId: item.categoryId, phase: result.status === "PUBLISHED" ? "posted" : "saved" };
           });
         } catch (error) {
           failed += chunk.length;
           patchItems(rows, () => ({ phase: "error", errors: [message(error, "Import failed")] }));
         }
       }
-      setCsvNote(`${created} added to drafts, ${updated} updated${failed ? `, ${failed} failed` : ""}.`);
+      setCsvNote(`${created} added to drafts${failed ? `, ${failed} not saved` : ""}.`);
       refresh();
     } finally {
       setCsvBusy(false);
@@ -310,161 +306,15 @@ export default function ProductAdminTools({
     }
   }
 
-  async function prepareImages(files: SourceFile[], label: string, replace: boolean) {
-    setImageBusy(true);
-    setImageError("");
-    setImageNote("");
-    setImageRows([]);
-    setProblems([]);
-    try {
-      if (!products.length) throw new Error("Products are still loading. Wait a moment and choose the file again.");
-      const check = await checkImageStructure(files, products, replace);
-      setImageFiles(files);
-      setImageSource(label);
-      setProblems(check.problems);
-      setImageRows(check.groups.map((group) => ({ group, state: "ready", message: "" })));
-    } catch (error) {
-      setImageFiles([]);
-      setImageError(message(error, "Unable to read the images"));
-    } finally {
-      setImageBusy(false);
-    }
-  }
-
-  async function onZipFiles(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files || []);
-    event.target.value = "";
-    if (!files.length) return;
-    setImageBusy(true);
-    setImageError("");
-    try {
-      const sources: SourceFile[] = [];
-      for (const file of files) {
-        if (!/\.zip$/i.test(file.name)) throw new Error(`"${file.name}" is not a ZIP file. RAR and 7z are not supported; create a normal .zip.`);
-        const entries = await readZip(file);
-        if (!entries.length) throw new Error(`"${file.name}" is empty.`);
-        // The ZIP name counts as the top folder, so a ZIP named after one product SKU also works.
-        const prefix = `${file.name.replace(/\.zip$/i, "")}/`;
-        for (const entry of entries) sources.push({ path: `${prefix}${entry.path}`, size: entry.size, load: entry.blob, head: entry.head });
-      }
-      await prepareImages(sources, files.map((file) => file.name).join(", "), replaceImages);
-    } catch (error) {
-      setImageRows([]);
-      setProblems([]);
-      setImageFiles([]);
-      setImageBusy(false);
-      setImageError(message(error, "Unable to open the ZIP"));
-    }
-  }
-
-  async function onFolder(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files || []);
-    event.target.value = "";
-    if (!files.length) return;
-    const sources: SourceFile[] = files.map((file) => ({
-      path: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
-      size: file.size,
-      load: async () => file,
-      head: async () => new Uint8Array(await file.slice(0, 16).arrayBuffer()),
-    }));
-    await prepareImages(sources, "selected folder", replaceImages);
-  }
-
-  async function uploadImages() {
-    if (imageBusy || problems.length || !imageRows.some((row) => row.state === "ready")) return;
-    setImageBusy(true);
-    setImageError("");
-    let uploadedTotal = 0;
-    let productTotal = 0;
-    let failedTotal = 0;
-    for (const target of imageRows) {
-      if (target.state !== "ready") continue;
-      const { product } = target.group;
-      const update = (patch: Partial<ImageRow>) =>
-        setImageRows((current) => current.map((row) => (row.group.product.id === product.id ? { ...row, ...patch } : row)));
-      update({ state: "uploading", message: "Uploading…" });
-      const cache = new Map<string, string>();
-      const slug = product.slug || "product";
-      let counter = 0;
-      // One failed image stops this product: a half-uploaded gallery is never saved.
-      const send = async (sources: SourceFile[]) => {
-        const urls: string[] = [];
-        for (const source of sources) {
-          let url = cache.get(source.path);
-          if (!url) {
-            counter += 1;
-            const blob = await source.load();
-            url = await uploadAdminImage(new File([blob], `${slug}-${counter}.${imageExtension(source.path)}`, { type: imageMime(source.path) }));
-            cache.set(source.path, url);
-          }
-          urls.push(url);
-        }
-        return urls;
-      };
-      try {
-        const images = await send(target.group.images);
-        const variantImages: Record<string, string[]> = {};
-        for (const [variantId, entry] of target.group.variantImages) variantImages[variantId] = await send(entry.images);
-        const variantCount = Object.keys(variantImages).length;
-        await clientApi(
-          `/api/admin/products/${product.id}/images`,
-          { method: "POST", body: JSON.stringify({ images, variantImages, mode: replaceImages ? "replace" : "append", featuredFirst: target.group.hasFeatured }) },
-          true,
-        );
-        productTotal += 1;
-        uploadedTotal += cache.size;
-        update({
-          state: "done",
-          message: `${images.length} product image${images.length === 1 ? "" : "s"}${variantCount ? `, ${variantCount} variation${variantCount === 1 ? "" : "s"}` : ""} saved`,
-        });
-      } catch (error) {
-        failedTotal += 1;
-        update({ state: "error", message: `${message(error, "Upload failed")} Nothing was saved for this product.` });
-      }
-    }
-    setImageNote(`${uploadedTotal} images saved to ${productTotal} product${productTotal === 1 ? "" : "s"}.`);
-    if (failedTotal) setImageError(`${failedTotal} product${failedTotal === 1 ? "" : "s"} failed. Their images were not saved; fix the problem and upload those folders again.`);
-    setImageBusy(false);
-    refresh();
-  }
-
-  function downloadImageList() {
-    const lines = ["folderName,title,slug,status,currentImages,variationFolders"];
-    for (const product of products) {
-      lines.push(
-        [
-          product.sku,
-          product.title || product.name,
-          product.slug,
-          product.status,
-          (product.rawImages || []).length,
-          (product.variants || []).map((variant) => variant.sku).filter(Boolean).join(" | "),
-        ]
-          .map(csvCell)
-          .join(","),
-      );
-    }
-    saveBlob(new Blob([`${lines.join("\r\n")}\r\n`], { type: "text/csv" }), "zelvomart-image-folders.csv");
-  }
-
   const readyItems = items.filter((item) => item.phase === "ready");
   const savedItems = items.filter((item) => item.phase === "saved");
-  const readyImages = imageRows.filter((row) => row.state === "ready");
+  const existsCount = items.filter((item) => item.action === "exists").length;
+  // The import starts only when every row to be saved has one of the store's categories.
+  const missingCategory = readyItems.filter((item) => !item.categoryId).length;
 
   return (
     <div className={`admin-product-actions${compact ? " compact" : ""}`}>
-      <button
-        type="button"
-        className="admin-btn-outline"
-        onClick={() => imageDialogRef.current?.showModal()}
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="17 8 12 3 7 8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
-        </svg>
-        <span>Upload Image ZIP</span>
-      </button>
+      <BulkImageUpload products={products} onUploaded={refresh} />
       <button
         type="button"
         className="admin-btn-outline"
@@ -483,7 +333,7 @@ export default function ProductAdminTools({
           <div className="admin-modal-head">
             <div>
               <h2>Import Products from CSV</h2>
-              <p>New SKUs are saved as drafts. Existing SKUs are updated and keep their status.</p>
+              <p>New products only, saved as drafts. A row whose SKU, slug or title is already in the shop is skipped as “Already exists”.</p>
             </div>
             <button type="button" className="admin-modal-close" onClick={() => csvDialogRef.current?.close()}>×</button>
           </div>
@@ -501,7 +351,7 @@ export default function ProductAdminTools({
               <span className="admin-import-symbol">CSV</span>
               <div>
                 <b>{fileName || "Choose CSV file"}</b>
-                <p>Simple or variable template. Every row is checked first; nothing is saved until you add it to drafts.</p>
+                <p>Simple or variable template (one row per product). Every row is checked first; nothing is saved until you add it to drafts.</p>
               </div>
               <button type="button" className="admin-btn admin-btn-light">Browse</button>
               <input ref={csvRef} hidden type="file" accept=".csv,text/csv" onChange={onCsvFile} />
@@ -519,6 +369,16 @@ export default function ProductAdminTools({
                 ) : null}
               </div>
             ) : null}
+            {csvWarnings.length ? (
+              <div className="admin-import-message warning">
+                The file was read with these warnings:
+                <ul className="admin-import-problems">
+                  {csvWarnings.map((text) => (
+                    <li key={text}>{text}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {csvNote ? <div className="admin-import-message success">{csvNote}</div> : null}
             {items.length ? (
               <>
@@ -527,7 +387,7 @@ export default function ProductAdminTools({
                     {items.length} product{items.length === 1 ? "" : "s"} in file
                   </b>
                   <span>
-                    {readyItems.length} ready · {savedItems.length} in drafts · {items.filter((item) => item.phase === "posted").length} posted · {items.filter((item) => item.phase === "error").length} with errors
+                    {readyItems.length} ready · {savedItems.length} in drafts · {items.filter((item) => item.phase === "posted").length} posted · {existsCount} already exist · {items.filter((item) => item.phase === "error").length - existsCount} with errors
                   </span>
                 </div>
                 <div className="admin-table-wrap admin-import-preview">
@@ -551,25 +411,51 @@ export default function ProductAdminTools({
                             <small className="admin-import-sub">{item.sku || "No SKU"}</small>
                           </td>
                           <td>{item.productType === "variable" ? `Variable · ${item.variations}` : "Simple"}</td>
-                          <td>{item.category || "—"}</td>
                           <td>
-                            <span className={`admin-import-state ${item.phase}`}>
-                              {item.phase === "ready" ? (item.action === "update" ? "Will update" : "New") : null}
+                            {item.phase === "ready" ? (
+                              <select
+                                className={`admin-import-category${item.categoryId ? "" : " missing"}`}
+                                value={item.categoryId || ""}
+                                disabled={csvBusy}
+                                onChange={(event) => patchItems([item.row], () => ({ categoryId: event.target.value || null }))}
+                              >
+                                <option value="">Choose category…</option>
+                                {categories.map((category) => (
+                                  <option key={category.id} value={category.id}>
+                                    {category.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null}
+                            {item.phase === "ready" && item.categoryError && !item.categoryId ? <small className="admin-import-sub error">{item.categoryError}</small> : null}
+                            {item.phase === "ready" ? null : (
+                              categories.find((category) => category.id === item.categoryId)?.name || item.category || "—"
+                            )}
+                          </td>
+                          <td>
+                            <span className={`admin-import-state ${item.action === "exists" ? "exists" : item.phase}`}>
+                              {item.phase === "ready" ? "New" : null}
                               {item.phase === "saving" ? "Saving…" : null}
                               {item.phase === "saved" ? "In drafts" : null}
                               {item.phase === "posting" ? "Posting…" : null}
                               {item.phase === "posted" ? "Posted" : null}
-                              {item.phase === "error" ? "Error" : null}
+                              {item.phase === "error" ? (item.action === "exists" ? "Already exists" : "Error") : null}
                             </span>
                             {[...item.errors, ...item.warnings].map((text) => (
-                              <small key={text} className={`admin-import-sub${item.errors.includes(text) ? " error" : ""}`}>{text}</small>
+                              <small key={text} className={`admin-import-sub${item.errors.includes(text) ? " error" : " warning"}`}>{text}</small>
                             ))}
                           </td>
                           <td>
                             <div className="admin-import-row-actions">
                               {item.phase === "ready" ? (
-                                <button type="button" className="admin-btn admin-btn-light" disabled={csvBusy} onClick={() => saveDrafts([item])}>
-                                  {item.action === "update" ? "Update" : "Add to draft"}
+                                <button
+                                  type="button"
+                                  className="admin-btn admin-btn-light"
+                                  disabled={csvBusy || !item.categoryId}
+                                  title={item.categoryId ? undefined : "Choose a category first"}
+                                  onClick={() => saveDrafts([item])}
+                                >
+                                  Add to draft
                                 </button>
                               ) : null}
                               {item.phase === "saved" ? (
@@ -596,7 +482,12 @@ export default function ProductAdminTools({
               <button type="button" className="admin-btn admin-btn-light" disabled={!savedItems.length || csvBusy} onClick={() => postProducts(savedItems)}>
                 Post all drafts{savedItems.length ? ` (${savedItems.length})` : ""}
               </button>
-              <button type="button" className="admin-btn admin-btn-primary" disabled={!readyItems.length || csvBusy} onClick={() => saveDrafts(readyItems)}>
+              {missingCategory ? (
+                <span className="admin-import-sub error">
+                  Choose a category on {missingCategory} row{missingCategory === 1 ? "" : "s"} first.
+                </span>
+              ) : null}
+              <button type="button" className="admin-btn admin-btn-primary" disabled={!readyItems.length || missingCategory > 0 || csvBusy} onClick={() => saveDrafts(readyItems)}>
                 {csvBusy && items.some((item) => item.phase === "saving") ? "Saving…" : `Add all to drafts${readyItems.length ? ` (${readyItems.length})` : ""}`}
               </button>
             </div>
@@ -604,118 +495,6 @@ export default function ProductAdminTools({
         </div>
       </dialog>
 
-      <dialog ref={imageDialogRef} className="admin-modal admin-modal-xl">
-        <div className="admin-modal-shell">
-          <div className="admin-modal-head">
-            <div>
-              <h2>Upload Product Images</h2>
-              <p>One folder per product, named with the product SKU. The image named 1 is the featured image.</p>
-            </div>
-            <button type="button" className="admin-modal-close" onClick={() => imageDialogRef.current?.close()}>×</button>
-          </div>
-          <div className="admin-modal-body">
-            <div className="admin-import-templates">
-              <span>Before you start</span>
-              <button type="button" className="admin-btn admin-btn-light" disabled={!products.length} onClick={downloadImageList}>
-                Folder names CSV
-              </button>
-              <label className="admin-import-check">
-                <input type="checkbox" checked={replaceImages} disabled={imageBusy} onChange={(event) => {
-                    setReplaceImages(event.target.checked);
-                    if (imageFiles.length) void prepareImages(imageFiles, imageSource, event.target.checked);
-                  }}
-                />
-                Replace existing images
-              </label>
-            </div>
-            <div className="admin-import-drop" onClick={() => zipRef.current?.click()}>
-              <span className="admin-import-symbol">ZIP</span>
-              <div>
-                <b>{imageSource || "Choose image ZIP"}</b>
-                <p>Only the template structure is accepted: a folder named with the SKU, 1.jpg as the featured image, then the rest of the images. JPG, PNG, WEBP, GIF or AVIF, 8 MB each.</p>
-              </div>
-              <button type="button" className="admin-btn admin-btn-light">Browse</button>
-              <input ref={zipRef} hidden type="file" accept=".zip,application/zip,application/x-zip-compressed" multiple onChange={onZipFiles} />
-            </div>
-            <button type="button" className="admin-import-alt" onClick={() => folderRef.current?.click()}>
-              or choose an unzipped folder
-            </button>
-            <input ref={folderRef} hidden type="file" multiple onChange={onFolder} {...({ webkitdirectory: "", directory: "" } as any)} />
-            {imageBusy && !imageRows.length ? <div className="admin-import-message">Checking every file against the template structure…</div> : null}
-            {imageError ? <div className="admin-import-message error">{imageError}</div> : null}
-            {imageNote ? <div className="admin-import-message success">{imageNote}</div> : null}
-            {problems.length ? (
-              <div className="admin-import-message error">
-                {problems.length} problem{problems.length === 1 ? "" : "s"} found. The files do not follow the template structure, so nothing was uploaded. Fix {problems.length === 1 ? "it" : "them"} and choose the ZIP again.
-                <ul className="admin-import-problems">
-                  {problems.slice(0, 60).map((entry) => (
-                    <li key={`${entry.where}|${entry.message}`}>
-                      {entry.where ? <b>{entry.where}</b> : null}
-                      {entry.message}
-                    </li>
-                  ))}
-                  {problems.length > 60 ? <li>…and {problems.length - 60} more.</li> : null}
-                </ul>
-              </div>
-            ) : null}
-            {imageRows.length ? (
-              <>
-                <div className="admin-import-summary">
-                  <b>
-                    {imageRows.length} product folder{imageRows.length === 1 ? "" : "s"} {problems.length ? "valid" : "ready"}
-                  </b>
-                  <span>{problems.length ? "Upload is blocked until every problem is fixed" : "Structure check passed"}</span>
-                </div>
-                <div className="admin-table-wrap admin-import-preview">
-                  <table className="admin-table">
-                    <thead>
-                      <tr>
-                        <th>Product</th>
-                        <th>Has now</th>
-                        <th>Product images</th>
-                        <th>Variation images</th>
-                        <th>Result</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {imageRows.map((row) => (
-                        <tr key={row.group.product.id}>
-                          <td>
-                            <b>{row.group.product.title || row.group.product.name || "Untitled"}</b>
-                            <small className="admin-import-sub">{row.group.product.sku}</small>
-                          </td>
-                          <td>{(row.group.product.rawImages || []).length}</td>
-                          <td>{row.group.images.length}</td>
-                          <td>
-                            {[...row.group.variantImages.values()].map((entry) => (
-                              <small key={entry.variant.id} className="admin-import-sub">
-                                {entry.variant.name || entry.variant.sku}: {entry.images.length}
-                              </small>
-                            ))}
-                            {!row.group.variantImages.size ? "—" : null}
-                          </td>
-                          <td>
-                            <span className={`admin-import-state ${row.state === "done" ? "posted" : row.state === "uploading" ? "saving" : row.state}`}>
-                              {row.state === "ready" ? "Ready" : row.state === "error" ? "Failed" : row.message}
-                            </span>
-                            {row.state === "error" ? <small className="admin-import-sub error">{row.message}</small> : null}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : null}
-            <div className="admin-modal-footer-actions">
-              <button type="button" className="admin-btn admin-btn-light" onClick={() => imageDialogRef.current?.close()}>Close</button>
-              <button type="button" className="admin-btn admin-btn-primary" disabled={!readyImages.length || imageBusy || problems.length > 0} onClick={uploadImages}>
-                {imageBusy && imageRows.length ? "Uploading…" : `Upload images to ${readyImages.length || ""} product${readyImages.length === 1 ? "" : "s"}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      </dialog>
     </div>
   );
 }

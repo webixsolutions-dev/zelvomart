@@ -3,8 +3,12 @@ import { prisma } from "./db";
 import { getSetting } from "./settings";
 import { productHasFreeShipping } from "./catalog-meta";
 import { BUY_TWO_DISCOUNT_PERCENT, bundleLineTotal, priceSummary, variantPriceSummary } from "./pricing";
-import { quoteDelivery } from "./shipping";
+import { resolveDeliveryPolicy, quoteFromPolicy } from "./shipping";
+import { canSell } from "./stock";
 import { dispatchJobRow } from "./jobs";
+
+// Far-away database: allow time to open a connection and finish (Prisma default wait is 2s).
+const ORDER_TX_OPTIONS = { maxWait: 15_000, timeout: 30_000 };
 
 type CheckoutInput = {
   idempotencyKey: string;
@@ -74,6 +78,8 @@ export async function createOrder(input: CheckoutInput) {
     variantLabel?: string;
     quantity: number;
     stockNeeded: number;
+    /** Track ON: this line reduces (and on cancel/return restores) stock. */
+    tracked: boolean;
     unitPrice: number;
     lineTotal: number;
     bundleDiscount: number;
@@ -89,12 +95,15 @@ export async function createOrder(input: CheckoutInput) {
 
     const variant = item.variantId ? product.variants.find((row) => row.id === item.variantId && row.active) : undefined;
     if (item.variantId && !variant) throw new Error("VARIANT_NOT_AVAILABLE");
+    // A product with variations is bought as one of its variations.
+    if (!variant && product.variants.some((row) => row.active)) throw new Error("VARIANT_REQUIRED");
 
     const base = variantPriceSummary(priceSummary(product.price, product.salePrice), { priceOverride: variant?.priceOverride }).price;
     const offerSize: 1 | 2 = item.bundleSize === 2 && product.bundleEnabled ? 2 : 1;
     const priced = bundleLineTotal(base, item.quantity, offerSize, BUY_TWO_DISCOUNT_PERCENT);
-    const stock = variant ? variant.stock : product.stock;
-    if (stock < priced.pieces) throw new Error("OUT_OF_STOCK");
+    // Track ON: enough quantity. Track OFF: the stock status must be In stock.
+    const stockItem = variant || product;
+    if (!canSell(stockItem, priced.pieces)) throw new Error("OUT_OF_STOCK");
 
     const images = Array.isArray(product.images) ? (product.images as string[]) : [];
     prepared.push({
@@ -105,6 +114,7 @@ export async function createOrder(input: CheckoutInput) {
       variantLabel: variant?.name,
       quantity: priced.pieces,
       stockNeeded: priced.pieces,
+      tracked: Boolean(stockItem.trackStock),
       unitPrice: base,
       lineTotal: priced.total,
       bundleDiscount: priced.saving,
@@ -117,8 +127,9 @@ export async function createOrder(input: CheckoutInput) {
   const bundleSaving = prepared.reduce((sum, item) => sum + item.bundleDiscount, 0);
   const discountedSubtotal = subtotal - bundleSaving;
   const everyItemFree = prepared.length > 0 && prepared.every((item) => item.freeShipping);
-  const deliveryFee = quoteDelivery(discountedSubtotal, everyItemFree, deliveryRule).fee;
-  const codFee = input.paymentMethod === "COD" ? Number(deliveryRule.codFee || 0) : 0;
+  const deliveryPolicy = resolveDeliveryPolicy(deliveryRule);
+  const deliveryFee = quoteFromPolicy(discountedSubtotal, everyItemFree, deliveryPolicy).fee;
+  const codFee = input.paymentMethod === "COD" ? deliveryPolicy.codFee : 0;
   const total = discountedSubtotal + deliveryFee + codFee;
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -163,15 +174,17 @@ export async function createOrder(input: CheckoutInput) {
     });
 
     for (const item of prepared) {
+      // Track OFF: not checked against or reduced from a quantity.
+      if (!item.tracked) continue;
       if (item.variantId) {
         const changed = await tx.variant.updateMany({
-          where: { id: item.variantId, stock: { gte: item.stockNeeded } },
+          where: { id: item.variantId, trackStock: true, stock: { gte: item.stockNeeded } },
           data: { stock: { decrement: item.stockNeeded } },
         });
         if (changed.count !== 1) throw new Error("OUT_OF_STOCK");
       } else {
         const changed = await tx.product.updateMany({
-          where: { id: item.productId, stock: { gte: item.stockNeeded } },
+          where: { id: item.productId, trackStock: true, stock: { gte: item.stockNeeded } },
           data: { stock: { decrement: item.stockNeeded } },
         });
         if (changed.count !== 1) throw new Error("OUT_OF_STOCK");
@@ -235,6 +248,7 @@ export async function createOrder(input: CheckoutInput) {
             lineTotal: decimal(item.lineTotal),
             bundleDiscount: decimal(item.bundleDiscount),
             imageUrl: item.imageUrl,
+            stockReduced: item.tracked,
           })),
         },
         statusHistory: {
@@ -267,7 +281,7 @@ export async function createOrder(input: CheckoutInput) {
     ]);
 
     return { order, jobIds: jobs.map((job) => job.id) };
-  });
+  }, ORDER_TX_OPTIONS);
 
   await Promise.allSettled(result.jobIds.map((id) => dispatchJobRow(id)));
   return result.order;
@@ -277,13 +291,19 @@ export async function restoreOrderStock(orderId: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
   if (!order) return;
 
+  // Only lines that took stock off a tracked item put it back. updateMany: a deleted
+  // variation or product is skipped instead of failing the whole restore.
+  const restock = order.items.filter((item) => item.stockReduced);
+  if (!restock.length) return;
   await prisma.$transaction(async (tx) => {
-    for (const item of order.items) {
+    for (const item of restock) {
       if (item.variantId) {
-        await tx.variant.update({ where: { id: item.variantId }, data: { stock: { increment: item.quantity } } });
+        await tx.variant.updateMany({ where: { id: item.variantId, trackStock: true }, data: { stock: { increment: item.quantity } } });
       } else if (item.productId) {
-        await tx.product.update({ where: { id: item.productId }, data: { stock: { increment: item.quantity } } });
+        await tx.product.updateMany({ where: { id: item.productId, trackStock: true }, data: { stock: { increment: item.quantity } } });
       }
     }
-  });
+    // Put back once only: cancelling, reopening and cancelling the same order again must not add stock twice.
+    await tx.orderItem.updateMany({ where: { id: { in: restock.map((item) => item.id) } }, data: { stockReduced: false } });
+  }, ORDER_TX_OPTIONS);
 }

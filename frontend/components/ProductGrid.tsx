@@ -88,7 +88,8 @@ export default function ProductGrid({
             >
               <Image
                 src={imgSrc}
-                alt={item.name}
+                alt={(typeof item.images?.[0] === "object" && item.images[0]?.alt) || item.name}
+                title={(typeof item.images?.[0] === "object" && item.images[0]?.title) || undefined}
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                 className="object-contain object-center"

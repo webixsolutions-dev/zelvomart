@@ -2278,6 +2278,8 @@ export const ProductScalarFieldEnum = {
   salePrice: 'salePrice',
   costPrice: 'costPrice',
   stock: 'stock',
+  trackStock: 'trackStock',
+  stockStatus: 'stockStatus',
   status: 'status',
   featured: 'featured',
   bundleEnabled: 'bundleEnabled',
@@ -2302,6 +2304,8 @@ export const VariantScalarFieldEnum = {
   attributes: 'attributes',
   priceOverride: 'priceOverride',
   stock: 'stock',
+  trackStock: 'trackStock',
+  stockStatus: 'stockStatus',
   imageUrl: 'imageUrl',
   active: 'active',
   createdAt: 'createdAt',
@@ -2382,7 +2386,8 @@ export const OrderItemScalarFieldEnum = {
   unitPrice: 'unitPrice',
   lineTotal: 'lineTotal',
   bundleDiscount: 'bundleDiscount',
-  imageUrl: 'imageUrl'
+  imageUrl: 'imageUrl',
+  stockReduced: 'stockReduced'
 } as const
 
 export type OrderItemScalarFieldEnum = (typeof OrderItemScalarFieldEnum)[keyof typeof OrderItemScalarFieldEnum]
@@ -2778,6 +2783,13 @@ export type ListDecimalFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaMo
 
 
 /**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+/**
  * Reference to a field of type 'ProductStatus'
  */
 export type EnumProductStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductStatus'>
@@ -2788,13 +2800,6 @@ export type EnumProductStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Pr
  * Reference to a field of type 'ProductStatus[]'
  */
 export type ListEnumProductStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ProductStatus[]'>
-    
-
-
-/**
- * Reference to a field of type 'Boolean'
- */
-export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 

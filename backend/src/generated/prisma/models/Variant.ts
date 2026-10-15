@@ -43,6 +43,8 @@ export type VariantMinAggregateOutputType = {
   name: string | null
   priceOverride: runtime.Decimal | null
   stock: number | null
+  trackStock: boolean | null
+  stockStatus: string | null
   imageUrl: string | null
   active: boolean | null
   createdAt: Date | null
@@ -56,6 +58,8 @@ export type VariantMaxAggregateOutputType = {
   name: string | null
   priceOverride: runtime.Decimal | null
   stock: number | null
+  trackStock: boolean | null
+  stockStatus: string | null
   imageUrl: string | null
   active: boolean | null
   createdAt: Date | null
@@ -70,6 +74,8 @@ export type VariantCountAggregateOutputType = {
   attributes: number
   priceOverride: number
   stock: number
+  trackStock: number
+  stockStatus: number
   imageUrl: number
   active: number
   createdAt: number
@@ -95,6 +101,8 @@ export type VariantMinAggregateInputType = {
   name?: true
   priceOverride?: true
   stock?: true
+  trackStock?: true
+  stockStatus?: true
   imageUrl?: true
   active?: true
   createdAt?: true
@@ -108,6 +116,8 @@ export type VariantMaxAggregateInputType = {
   name?: true
   priceOverride?: true
   stock?: true
+  trackStock?: true
+  stockStatus?: true
   imageUrl?: true
   active?: true
   createdAt?: true
@@ -122,6 +132,8 @@ export type VariantCountAggregateInputType = {
   attributes?: true
   priceOverride?: true
   stock?: true
+  trackStock?: true
+  stockStatus?: true
   imageUrl?: true
   active?: true
   createdAt?: true
@@ -223,6 +235,8 @@ export type VariantGroupByOutputType = {
   attributes: runtime.JsonValue
   priceOverride: runtime.Decimal | null
   stock: number
+  trackStock: boolean
+  stockStatus: string
   imageUrl: string | null
   active: boolean
   createdAt: Date
@@ -260,6 +274,8 @@ export type VariantWhereInput = {
   attributes?: Prisma.JsonFilter<"Variant">
   priceOverride?: Prisma.DecimalNullableFilter<"Variant"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFilter<"Variant"> | number
+  trackStock?: Prisma.BoolFilter<"Variant"> | boolean
+  stockStatus?: Prisma.StringFilter<"Variant"> | string
   imageUrl?: Prisma.StringNullableFilter<"Variant"> | string | null
   active?: Prisma.BoolFilter<"Variant"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Variant"> | Date | string
@@ -275,6 +291,8 @@ export type VariantOrderByWithRelationInput = {
   attributes?: Prisma.SortOrder
   priceOverride?: Prisma.SortOrderInput | Prisma.SortOrder
   stock?: Prisma.SortOrder
+  trackStock?: Prisma.SortOrder
+  stockStatus?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -293,6 +311,8 @@ export type VariantWhereUniqueInput = Prisma.AtLeast<{
   attributes?: Prisma.JsonFilter<"Variant">
   priceOverride?: Prisma.DecimalNullableFilter<"Variant"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFilter<"Variant"> | number
+  trackStock?: Prisma.BoolFilter<"Variant"> | boolean
+  stockStatus?: Prisma.StringFilter<"Variant"> | string
   imageUrl?: Prisma.StringNullableFilter<"Variant"> | string | null
   active?: Prisma.BoolFilter<"Variant"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Variant"> | Date | string
@@ -308,6 +328,8 @@ export type VariantOrderByWithAggregationInput = {
   attributes?: Prisma.SortOrder
   priceOverride?: Prisma.SortOrderInput | Prisma.SortOrder
   stock?: Prisma.SortOrder
+  trackStock?: Prisma.SortOrder
+  stockStatus?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrderInput | Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -330,6 +352,8 @@ export type VariantScalarWhereWithAggregatesInput = {
   attributes?: Prisma.JsonWithAggregatesFilter<"Variant">
   priceOverride?: Prisma.DecimalNullableWithAggregatesFilter<"Variant"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntWithAggregatesFilter<"Variant"> | number
+  trackStock?: Prisma.BoolWithAggregatesFilter<"Variant"> | boolean
+  stockStatus?: Prisma.StringWithAggregatesFilter<"Variant"> | string
   imageUrl?: Prisma.StringNullableWithAggregatesFilter<"Variant"> | string | null
   active?: Prisma.BoolWithAggregatesFilter<"Variant"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Variant"> | Date | string
@@ -343,6 +367,8 @@ export type VariantCreateInput = {
   attributes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: number
+  trackStock?: boolean
+  stockStatus?: string
   imageUrl?: string | null
   active?: boolean
   createdAt?: Date | string
@@ -358,6 +384,8 @@ export type VariantUncheckedCreateInput = {
   attributes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: number
+  trackStock?: boolean
+  stockStatus?: string
   imageUrl?: string | null
   active?: boolean
   createdAt?: Date | string
@@ -371,6 +399,8 @@ export type VariantUpdateInput = {
   attributes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFieldUpdateOperationsInput | number
+  trackStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockStatus?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -386,6 +416,8 @@ export type VariantUncheckedUpdateInput = {
   attributes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFieldUpdateOperationsInput | number
+  trackStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockStatus?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -400,6 +432,8 @@ export type VariantCreateManyInput = {
   attributes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: number
+  trackStock?: boolean
+  stockStatus?: string
   imageUrl?: string | null
   active?: boolean
   createdAt?: Date | string
@@ -413,6 +447,8 @@ export type VariantUpdateManyMutationInput = {
   attributes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFieldUpdateOperationsInput | number
+  trackStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockStatus?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -427,6 +463,8 @@ export type VariantUncheckedUpdateManyInput = {
   attributes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFieldUpdateOperationsInput | number
+  trackStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockStatus?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -451,6 +489,8 @@ export type VariantCountOrderByAggregateInput = {
   attributes?: Prisma.SortOrder
   priceOverride?: Prisma.SortOrder
   stock?: Prisma.SortOrder
+  trackStock?: Prisma.SortOrder
+  stockStatus?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -469,6 +509,8 @@ export type VariantMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   priceOverride?: Prisma.SortOrder
   stock?: Prisma.SortOrder
+  trackStock?: Prisma.SortOrder
+  stockStatus?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -482,6 +524,8 @@ export type VariantMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   priceOverride?: Prisma.SortOrder
   stock?: Prisma.SortOrder
+  trackStock?: Prisma.SortOrder
+  stockStatus?: Prisma.SortOrder
   imageUrl?: Prisma.SortOrder
   active?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -542,6 +586,8 @@ export type VariantCreateWithoutProductInput = {
   attributes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: number
+  trackStock?: boolean
+  stockStatus?: string
   imageUrl?: string | null
   active?: boolean
   createdAt?: Date | string
@@ -555,6 +601,8 @@ export type VariantUncheckedCreateWithoutProductInput = {
   attributes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: number
+  trackStock?: boolean
+  stockStatus?: string
   imageUrl?: string | null
   active?: boolean
   createdAt?: Date | string
@@ -598,6 +646,8 @@ export type VariantScalarWhereInput = {
   attributes?: Prisma.JsonFilter<"Variant">
   priceOverride?: Prisma.DecimalNullableFilter<"Variant"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFilter<"Variant"> | number
+  trackStock?: Prisma.BoolFilter<"Variant"> | boolean
+  stockStatus?: Prisma.StringFilter<"Variant"> | string
   imageUrl?: Prisma.StringNullableFilter<"Variant"> | string | null
   active?: Prisma.BoolFilter<"Variant"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Variant"> | Date | string
@@ -611,6 +661,8 @@ export type VariantCreateManyProductInput = {
   attributes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: number
+  trackStock?: boolean
+  stockStatus?: string
   imageUrl?: string | null
   active?: boolean
   createdAt?: Date | string
@@ -624,6 +676,8 @@ export type VariantUpdateWithoutProductInput = {
   attributes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFieldUpdateOperationsInput | number
+  trackStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockStatus?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -637,6 +691,8 @@ export type VariantUncheckedUpdateWithoutProductInput = {
   attributes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFieldUpdateOperationsInput | number
+  trackStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockStatus?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -650,6 +706,8 @@ export type VariantUncheckedUpdateManyWithoutProductInput = {
   attributes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   priceOverride?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   stock?: Prisma.IntFieldUpdateOperationsInput | number
+  trackStock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  stockStatus?: Prisma.StringFieldUpdateOperationsInput | string
   imageUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -666,6 +724,8 @@ export type VariantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   attributes?: boolean
   priceOverride?: boolean
   stock?: boolean
+  trackStock?: boolean
+  stockStatus?: boolean
   imageUrl?: boolean
   active?: boolean
   createdAt?: boolean
@@ -681,6 +741,8 @@ export type VariantSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   attributes?: boolean
   priceOverride?: boolean
   stock?: boolean
+  trackStock?: boolean
+  stockStatus?: boolean
   imageUrl?: boolean
   active?: boolean
   createdAt?: boolean
@@ -696,6 +758,8 @@ export type VariantSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   attributes?: boolean
   priceOverride?: boolean
   stock?: boolean
+  trackStock?: boolean
+  stockStatus?: boolean
   imageUrl?: boolean
   active?: boolean
   createdAt?: boolean
@@ -711,13 +775,15 @@ export type VariantSelectScalar = {
   attributes?: boolean
   priceOverride?: boolean
   stock?: boolean
+  trackStock?: boolean
+  stockStatus?: boolean
   imageUrl?: boolean
   active?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type VariantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "sku" | "name" | "attributes" | "priceOverride" | "stock" | "imageUrl" | "active" | "createdAt" | "updatedAt", ExtArgs["result"]["variant"]>
+export type VariantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "sku" | "name" | "attributes" | "priceOverride" | "stock" | "trackStock" | "stockStatus" | "imageUrl" | "active" | "createdAt" | "updatedAt", ExtArgs["result"]["variant"]>
 export type VariantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
 }
@@ -741,6 +807,11 @@ export type $VariantPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     attributes: runtime.JsonValue
     priceOverride: runtime.Decimal | null
     stock: number
+    /**
+     * Variation "Manage stock?". Same rule as Product.trackStock.
+     */
+    trackStock: boolean
+    stockStatus: string
     imageUrl: string | null
     active: boolean
     createdAt: Date
@@ -1176,6 +1247,8 @@ export interface VariantFieldRefs {
   readonly attributes: Prisma.FieldRef<"Variant", 'Json'>
   readonly priceOverride: Prisma.FieldRef<"Variant", 'Decimal'>
   readonly stock: Prisma.FieldRef<"Variant", 'Int'>
+  readonly trackStock: Prisma.FieldRef<"Variant", 'Boolean'>
+  readonly stockStatus: Prisma.FieldRef<"Variant", 'String'>
   readonly imageUrl: Prisma.FieldRef<"Variant", 'String'>
   readonly active: Prisma.FieldRef<"Variant", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Variant", 'DateTime'>

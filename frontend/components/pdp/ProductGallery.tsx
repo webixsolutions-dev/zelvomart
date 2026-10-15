@@ -8,6 +8,7 @@ import type { Product } from "@/types/product";
 import { money } from "@/lib/format";
 import { useDeliveryPolicy } from "@/components/DeliveryPolicy";
 import { Icon, isValidImageUrl, type IconName } from "./pdp-icons";
+import { parseVideoUrl } from "@/lib/product-video";
 
 interface ProductGalleryProps {
   product: Product;
@@ -23,6 +24,8 @@ export default function ProductGallery({
   fallbackImage,
 }: ProductGalleryProps) {
   const [lightbox, setLightbox] = useState(false);
+  // The video player (iframe) is only created after the shopper clicks the video thumbnail.
+  const [playing, setPlaying] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
   const touchStartX = useRef<number | null>(null);
@@ -54,13 +57,28 @@ export default function ProductGallery({
     return list.length ? list : [fallbackImage];
   }, [product?.image, product?.images, selectedImage, fallbackImage]);
 
+  // Alt text and title saved for this image in the admin "Edit details" panel.
+  const displayMeta = Array.isArray(product?.images) ? product.images.find((item) => item?.src === displayImage) : undefined;
+  const displayAlt = displayMeta?.alt || product.name || "Product Image";
+  const displayTitle = displayMeta?.title || undefined;
+
+  const video = useMemo(() => {
+    const parsed = parseVideoUrl(product?.videoUrl);
+    return parsed ? { ...parsed, thumbnailUrl: parsed.thumbnailUrl || product?.videoThumbnail || null } : null;
+  }, [product?.videoUrl, product?.videoThumbnail]);
+
   const hasMany = galleryImages.length > 1;
+  const showThumbs = hasMany || Boolean(video);
+  const showImage = (src: string) => {
+    setPlaying(false);
+    setSelectedImage(src);
+  };
   const currentIndex = Math.max(0, galleryImages.indexOf(displayImage));
 
   const moveGallery = (direction: -1 | 1) => {
     if (!hasMany) return;
     const next = (currentIndex + direction + galleryImages.length) % galleryImages.length;
-    setSelectedImage(galleryImages[next]);
+    showImage(galleryImages[next]);
   };
   const moveRef = useRef(moveGallery);
   moveRef.current = moveGallery;
@@ -104,12 +122,12 @@ export default function ProductGallery({
 
   return (
     <div className="zpd-gallery">
-      <div className={`zpd-gallery-frame${hasMany ? " has-thumbs" : ""}`}>
+      <div className={`zpd-gallery-frame${showThumbs ? " has-thumbs" : ""}`}>
         {/* Main stage image */}
         <div
-          className="zpd-stage"
+          className={`zpd-stage${playing ? " is-video" : ""}`}
           onPointerEnter={(e) => {
-            if (e.pointerType === "mouse") setIsZoomed(true);
+            if (e.pointerType === "mouse" && !playing) setIsZoomed(true);
           }}
           onPointerLeave={() => setIsZoomed(false)}
           onMouseMove={handleMouseMove}
@@ -124,7 +142,7 @@ export default function ProductGallery({
           }}
         >
           {/* Top-left pills: Sale! + product badges */}
-          {(product.onSale || badges.length > 0) && (
+          {!playing && (product.onSale || badges.length > 0) && (
             <div className="zpd-badges">
               {product.onSale && <span className="zpd-badge is-sale">Sale!</span>}
               {badges.map((badge) => (
@@ -135,6 +153,18 @@ export default function ProductGallery({
             </div>
           )}
 
+          {playing && video ? (
+            <div className="zpd-stage-video">
+              <iframe
+                src={video.embedUrl}
+                title={`${product.name || "Product"} video`}
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+              />
+            </div>
+          ) : null}
+
+          {!playing ? (
           <button
             type="button"
             className="zpd-stage-btn zpd-zoom-btn"
@@ -143,6 +173,7 @@ export default function ProductGallery({
           >
             <Icon name="expand" />
           </button>
+          ) : null}
 
           {/* Hover zoom surface */}
           <div
@@ -155,7 +186,8 @@ export default function ProductGallery({
           >
             <Image
               src={displayImage}
-              alt={product.name || "Product Image"}
+              alt={displayAlt}
+              title={displayTitle}
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 55vw"
@@ -165,7 +197,7 @@ export default function ProductGallery({
             />
           </div>
 
-          {hasMany && (
+          {hasMany && !playing && (
             <>
               <div className="zpd-stage-arrows">
                 <button type="button" className="zpd-stage-btn" onClick={() => moveGallery(-1)} aria-label="Previous image">
@@ -182,22 +214,40 @@ export default function ProductGallery({
           )}
         </div>
 
-        {/* Thumbnails */}
-        {hasMany && (
+        {/* Thumbnails (the product video, when there is one, is the last one) */}
+        {showThumbs && (
           <div className="zpd-thumbs">
             <div className="zpd-thumbs-track">
               {galleryImages.map((src, index) => (
                 <button
                   key={`${src}-${index}`}
                   type="button"
-                  onClick={() => setSelectedImage(src)}
-                  className={`zpd-thumb${displayImage === src ? " is-active" : ""}`}
+                  onClick={() => showImage(src)}
+                  className={`zpd-thumb${!playing && displayImage === src ? " is-active" : ""}`}
                   aria-label={`Show image ${index + 1}`}
-                  aria-current={displayImage === src}
+                  aria-current={!playing && displayImage === src}
                 >
                   <Image src={src} alt={`Thumbnail ${index + 1}`} fill sizes="72px" onError={onProductImageError} />
                 </button>
               ))}
+              {video ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsZoomed(false);
+                    setPlaying(true);
+                  }}
+                  className={`zpd-thumb zpd-thumb-video${playing ? " is-active" : ""}`}
+                  aria-label="Play product video"
+                  aria-current={playing}
+                >
+                  {/* Plain <img>: a small i.ytimg.com / Vimeo thumbnail; next/image would fail until next.config is reloaded. */}
+                  {video.thumbnailUrl ? <img src={video.thumbnailUrl} alt="Product video" loading="lazy" className="zpd-thumb-video-img" /> : null}
+                  <span className="zpd-thumb-play" aria-hidden="true">
+                    <Icon name="play" />
+                  </span>
+                </button>
+              ) : null}
             </div>
           </div>
         )}
@@ -252,7 +302,7 @@ export default function ProductGallery({
                 </>
               )}
               <div className="zpd-lightbox-img" onClick={(e) => e.stopPropagation()}>
-                <Image src={displayImage} alt={product.name || "Product view"} fill sizes="92vw" onError={onProductImageError} />
+                <Image src={displayImage} alt={displayAlt} title={displayTitle} fill sizes="92vw" onError={onProductImageError} />
               </div>
             </div>,
             document.body

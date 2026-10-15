@@ -28,7 +28,12 @@ export type Variant = {
   regularPrice?: number | null;
   salePrice?: number | null;
   stock: number;
-  stockStatus?: "instock" | "outofstock" | "onbackorder";
+  /** Can this variation be bought (lib/stock.ts on the backend). */
+  stockStatus?: "instock" | "outofstock";
+  /** Variation "Manage stock?": quantity is live and goes down with each order. */
+  trackStock?: boolean;
+  /** The status the admin picked for Manage stock OFF. */
+  stockSetting?: "instock" | "outofstock";
   imageUrl?: string | null;
   images?: string[];
   gtin?: string | null;
@@ -36,9 +41,6 @@ export type Variant = {
   length?: string;
   width?: string;
   height?: string;
-  shippingClass?: string;
-  downloadable?: boolean;
-  virtual?: boolean;
   enabled?: boolean;
   active: boolean;
 };
@@ -65,16 +67,29 @@ export type Product = {
   onSale: boolean;
   discountPercent: number;
   saveAmount?: number;
+  /** Can it be bought: one rule for products and variations (backend lib/stock.ts). */
   stockStatus: "instock" | "outofstock";
-  stockQuantity: number;
+  trackStock?: boolean;
+  /** The status the admin picked for Track stock OFF. */
+  stockSetting?: "instock" | "outofstock";
+  /** Live tracked quantity, or null when stock is not tracked. */
+  stockQuantity: number | null;
   featured: boolean;
   averageRating?: number;
   reviewCount?: number;
   image?: string;
-  images: { src: string; alt?: string }[];
+  images: { src: string; alt?: string; title?: string }[];
+  /** Alt text and title set in the admin "Edit details" panel for the main product image. */
+  imageAlt?: string | null;
+  imageTitle?: string | null;
   shortDescription?: string | null;
   description?: string | null;
+  /** YouTube or Vimeo link (lib/product-video.ts). */
   videoUrl?: string | null;
+  /** Thumbnail shown before the player loads (Vimeo's comes from oEmbed when the link is saved). */
+  videoThumbnail?: string | null;
+  /** When the link was added; the schema's VideoObject uploadDate. */
+  videoAddedAt?: string | null;
   permalink?: string;
   hasOptions: boolean;
   variants: Variant[];
@@ -86,9 +101,10 @@ export type Product = {
   canonicalUrl?: string | null;
   tags?: string[];
   badges?: string[];
-  brand?: string | null;
   freeShipping?: boolean;
   buyTwoDiscountPercent?: number;
+  createdAt?: string;
+  updatedAt?: string;
   catalogMeta?: {
     freeShipping?: boolean;
     productTabs?: Record<string, { override?: boolean; content?: string }>;

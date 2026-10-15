@@ -92,6 +92,10 @@ model Product {
   salePrice             Decimal?      @db.Decimal(12, 2)
   costPrice             Decimal?      @db.Decimal(12, 2)
   stock                 Int           @default(0)
+  /// Track ON: `stock` is the live quantity. Track OFF: `stockStatus` decides (see lib/stock.ts).
+  trackStock            Boolean       @default(false)
+  /// "instock" | "outofstock"; used when trackStock is off.
+  stockStatus           String        @default("instock")
   status                ProductStatus @default(DRAFT)
   featured              Boolean       @default(false)
   bundleEnabled         Boolean       @default(true)
@@ -122,6 +126,9 @@ model Variant {
   attributes    Json
   priceOverride Decimal? @db.Decimal(12, 2)
   stock         Int      @default(0)
+  /// Variation "Manage stock?". Same rule as Product.trackStock.
+  trackStock    Boolean  @default(false)
+  stockStatus   String   @default("instock")
   imageUrl      String?
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -212,6 +219,9 @@ model OrderItem {
   lineTotal          Decimal  @db.Decimal(12, 2)
   bundleDiscount     Decimal  @default(0) @db.Decimal(12, 2)
   imageUrl           String?
+  /// True when this line took stock off a tracked product/variation; only those lines are restocked on cancel/return.
+  /// Defaults to true because orders placed before this column always reduced stock.
+  stockReduced       Boolean  @default(true)
 
   @@index([orderId])
   @@index([sku])

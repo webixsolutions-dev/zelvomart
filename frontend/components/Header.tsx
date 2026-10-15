@@ -1,6 +1,7 @@
 "use client";
 
 import "./Header.css";
+import { useDeliveryPolicy } from "@/components/DeliveryPolicy";
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -215,12 +216,15 @@ function CategoryMenu({
   );
 }
 
-const ANNOUNCEMENTS = [
-  "Quality Checked Before Dispatch",
-  "Order via WhatsApp or Website",
-  "Cash on Delivery Across Pakistan",
-  "Free Delivery on Orders Above Rs 8,000",
-];
+// The free-delivery amount comes from Admin -> Settings -> Delivery.
+function announcements(freeAbove: number) {
+  return [
+    "Quality Checked Before Dispatch",
+    "Order via WhatsApp or Website",
+    "Cash on Delivery Across Pakistan",
+    `Free Delivery on Orders Above Rs ${freeAbove.toLocaleString("en-US")}`,
+  ];
+}
 
 export default function Header({
   categories,
@@ -341,7 +345,8 @@ export default function Header({
     };
   }, [orderedCategories]);
 
-  const announcementGroup = ANNOUNCEMENTS.map((text, index) => (
+  const delivery = useDeliveryPolicy();
+  const announcementGroup = announcements(delivery.threshold).map((text, index) => (
     <span className="zm-ticker-item" key={`${text}-${index}`}>
       {index === 0 ? "✓" : index === 1 ? "💬" : index === 2 ? "🚚" : "📦"}
       <b>{text}</b>

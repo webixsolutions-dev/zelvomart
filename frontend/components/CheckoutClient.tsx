@@ -74,7 +74,7 @@ export default function CheckoutClient({
   );
   const deliveryFee = shippingQuote.fee;
   const shippingGap = amountUntilFreeShipping(subtotal, shippingQuote.threshold);
-  const codFee = Number(delivery.codFee || 0);
+  const codFee = shippingQuote.codFee;
   const total = subtotal + deliveryFee + codFee;
 
   useEffect(() => {

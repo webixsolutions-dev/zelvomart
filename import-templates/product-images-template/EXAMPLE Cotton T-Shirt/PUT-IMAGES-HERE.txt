@@ -1,0 +1,2 @@
+Put the images of this product here. The folder name is the product title.
+Name the main image 1 (1.jpg), then 2, 3 ... No sub-folders.

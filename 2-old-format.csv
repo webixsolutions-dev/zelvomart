@@ -1,0 +1,4 @@
+type,parentSku,title,slug,sku,category,categorySlug,regularPrice,salePrice,costPrice,stock,badge,featured,attribute1Name,attribute1Values,gtin,variationEnabled,swatchShape,myCustomColumn
+variable,,TEST Old Style Shirt,,ZVM-TEST-OLD-1,Fashion Accessories,fashion-accessories,,,300,5,HOT,yes,Color,Red | Blue,,,circle,x
+variation,ZVM-TEST-OLD-1,,,ZVM-TEST-OLD-1-R,,,1000,,,,,,,Red,123,yes,,
+variation,ZVM-TEST-OLD-1,,,ZVM-TEST-OLD-1-B,,,1100,,,,,,,Blue,456,yes,,

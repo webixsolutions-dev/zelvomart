@@ -1,3 +1,5 @@
+import { prepareImageForUpload } from './image-convert';
+
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
 
 const ADMIN_PROXY_PREFIX = '/api/admin-proxy';
@@ -47,7 +49,9 @@ export async function clientApi<T>(path: string, init: RequestInit = {}, auth = 
   return body as T;
 }
 
-export async function uploadAdminImage(file: File): Promise<string> {
+/** Converts the image to WebP in the browser (lib/image-convert.ts), then uploads it to R2. */
+export async function uploadAdminImage(original: File | Blob, name = original instanceof File ? original.name : 'image'): Promise<string> {
+  const file = await prepareImageForUpload(original, name);
   const data = new FormData();
   data.append('file', file);
 
