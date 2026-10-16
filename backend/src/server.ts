@@ -461,6 +461,8 @@ async function maybeCleanupOldSessionReplays() {
   await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } }).catch(() => undefined);
 }
 
+// The backend is an API only; the root just says it is running (the shop is on the frontend).
+app.get('/', (_req, res) => { setNoStore(res); res.json({ ok: true, service: 'zelvomart-backend', health: '/api/health' }); });
 app.get('/api/health', async (_req, res) => { setNoStore(res); try { await prisma.$queryRaw`SELECT 1`; res.json({ ok: true, version: '2.0.0', features: { cro: true, marketing: true, sessionReplays: true, tracking: true, capi: true } }); } catch (e: any) { res.status(503).json({ ok: false, version: '2.0.0', error: e?.message || 'DB_UNAVAILABLE' }); } });
 
 app.post('/api/contact', async (req, res) => {
@@ -1026,10 +1028,10 @@ app.patch('/api/admin/products/:id', requireAuth('products.write'), async (req:A
     res.status(400).json({error:error?.message||'PRODUCT_UPDATE_FAILED'});
   }
 });
-app.delete('/api/admin/products/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => {
-  const id = routeParam(req, 'id');
+/** Removes the product row (variations and reviews cascade) and points its URL at the saved redirect. */
+async function deleteProductRecord(id: string) {
   const existing = await prisma.product.findUnique({ where: { id } });
-  if (!existing) return res.status(404).json({ error: 'NOT_FOUND' });
+  if (!existing) return null;
   const meta = readCatalogMeta(existing.sourceUrl) || {};
   await prisma.product.delete({ where: { id } });
   const destination = normalizeRedirectDestination(meta.redirectUrl) || (meta.redirectFallback !== false ? '/shop' : '');
@@ -1040,6 +1042,13 @@ app.delete('/api/admin/products/:id', requireAuth('products.write'), async (req:
       create: { sourcePath: `/product/${existing.slug}/`, destination, permanent: true },
     });
   }
+  return existing;
+}
+
+app.delete('/api/admin/products/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => {
+  const id = routeParam(req, 'id');
+  const existing = await deleteProductRecord(id);
+  if (!existing) return res.status(404).json({ error: 'NOT_FOUND' });
   await audit(req,'delete','Product',id);
   await invalidateFrontendCache(['products','featured-products','categories','store','redirects', `product:${existing.slug}`]);
   res.json({ ok: true });
@@ -1622,6 +1631,21 @@ app.post('/api/admin/products/bulk-status', requireAuth('products.write'), async
   await audit(req,'bulk_status','Product',undefined,{status,updated:updated.length,failed:failed.length});
   await invalidateFrontendCache([...tags]);
   res.json({status,updated,failed});
+});
+app.post('/api/admin/products/bulk-delete', requireAuth('products.write'), async (req:AuthedRequest,res)=>{
+  const ids=(Array.isArray(req.body?.ids)?req.body.ids:[]).map(String).filter(Boolean).slice(0,200);
+  if(!ids.length) return res.status(400).json({error:'INVALID_REQUEST'});
+  const deleted:string[]=[]; const failed:{id:string;error:string}[]=[]; const tags=new Set(['products','featured-products','categories','store','redirects']);
+  for(const id of ids){
+    try{
+      const row=await deleteProductRecord(id);
+      if(!row){failed.push({id,error:'NOT_FOUND'});continue;}
+      deleted.push(id); tags.add(`product:${row.slug}`);
+    }catch(e:any){failed.push({id,error:e?.message||'Delete failed'});}
+  }
+  await audit(req,'bulk_delete','Product',undefined,{deleted:deleted.length,failed:failed.length});
+  await invalidateFrontendCache([...tags]);
+  res.json({deleted,failed});
 });
 // Attach already-uploaded image URLs to a product and its variations (bulk image ZIP upload).
 app.post('/api/admin/products/:id/images', requireAuth('products.write'), async (req:AuthedRequest,res)=>{

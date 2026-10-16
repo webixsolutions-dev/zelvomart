@@ -102,6 +102,7 @@ const SIMPLE_TABS: { id: DataTab; label: string }[] = [
   { id: "general", label: "General" },
   { id: "inventory", label: "Inventory" },
   { id: "shipping", label: "Shipping" },
+  { id: "attributes", label: "Attributes" },
   { id: "tabs", label: "Product Tabs" },
 ];
 
@@ -500,7 +501,8 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
 
   function chooseType(next: ProductType) {
     setProductType(next);
-    setActiveTab(next === "simple" ? "general" : "inventory");
+    const nextTabs = next === "simple" ? SIMPLE_TABS : VARIABLE_TABS;
+    if (!nextTabs.some((tab) => tab.id === activeTab)) setActiveTab(next === "simple" ? "general" : "inventory");
   }
 
   function changeQuantity(value: number) {
@@ -546,9 +548,13 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
     }
     const closed = ready.map((item) => ({ ...item, name: item.name.trim(), open: false }));
     setAttributes(closed);
-    setVariations((current) => buildVariations(closed, current));
     setError("");
-    setActiveTab("variations");
+    if (productType === "variable") {
+      setVariations((current) => buildVariations(closed, current));
+      setActiveTab("variations");
+      return;
+    }
+    notifySuccess("Attributes added. Save the product to show them on the store page.");
   }
 
   function addManualVariation() {
@@ -1090,7 +1096,17 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       return;
     }
     const preview = buildPreviewProduct();
-    sessionStorage.setItem("zelvomart-product-preview", JSON.stringify(preview));
+    const previewSlug = (slug || slugify(title) || "").trim();
+    if (!previewSlug) {
+      notifyError("Add a product name before opening the preview.");
+      return;
+    }
+    preview.slug = previewSlug;
+    preview.permalink = `/product/${previewSlug}/`;
+    const payload = JSON.stringify({ ...preview, previewAt: Date.now() });
+    // localStorage so the new tab can read it; sessionStorage stays for the same tab.
+    localStorage.setItem("zelvomart-product-preview", payload);
+    sessionStorage.setItem("zelvomart-product-preview", payload);
     window.open("/product-preview", "_blank", "noopener");
   }
 
@@ -1122,7 +1138,15 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                   aria-label="Permalink slug"
                 />
               ) : (
-                <a href={`/product/${slug || "product"}/`} target="_blank" rel="noreferrer">
+                <a
+                  href="/product-preview"
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    openPreview();
+                  }}
+                >
                   {previewUrl}
                 </a>
               )}
@@ -1338,16 +1362,20 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                 </>
               ) : null}
 
-              {activeTab === "attributes" && productType === "variable" ? (
+              {activeTab === "attributes" ? (
                 <div className="pd-attr">
-                  <p className="pd-note">Add details customers can choose, such as Color or Size. Separate each value with a | character.</p>
+                  <p className="pd-note">
+                    {productType === "variable"
+                      ? "Add details customers can choose, such as Color or Size. Separate each value with a | character. Visible attributes show under the bundle options on the product page."
+                      : "Add details for this product, such as Material or Brand. Separate each value with a | character. They show under the bundle options on the product page."}
+                  </p>
                   <button
                     type="button"
                     className="admin-btn admin-btn-light"
                     onClick={() =>
                       setAttributes((current) => [
                         ...current,
-                        { id: uid("attr"), name: "", valuesText: "", visible: true, forVariations: true, open: true },
+                        { id: uid("attr"), name: "", valuesText: "", visible: true, forVariations: productType === "variable", open: true },
                       ])
                     }
                   >
@@ -1391,14 +1419,16 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                             <input type="checkbox" checked={attribute.visible} onChange={(event) => updateAttribute(attribute.id, { visible: event.target.checked })} />
                             Visible on the product page
                           </label>
-                          <label className="pd-check">
-                            <input
-                              type="checkbox"
-                              checked={attribute.forVariations}
-                              onChange={(event) => updateAttribute(attribute.id, { forVariations: event.target.checked })}
-                            />
-                            Used for variations
-                          </label>
+                          {productType === "variable" ? (
+                            <label className="pd-check">
+                              <input
+                                type="checkbox"
+                                checked={attribute.forVariations}
+                                onChange={(event) => updateAttribute(attribute.id, { forVariations: event.target.checked })}
+                              />
+                              Used for variations
+                            </label>
+                          ) : null}
                         </div>
                       ) : (
                         <p className="pd-note">{parseValues(attribute.valuesText).join(" · ") || "Add values, then save."}</p>
@@ -2537,7 +2567,17 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             <div className="pd-snippet pd-snippet-live">
               <span>Preview</span>
               <strong>{seoTitle || title || "Product title"}</strong>
-              <a href={`/product/${slug || "product"}/`} target="_blank" rel="noreferrer">{previewUrl}</a>
+              <a
+                href="/product-preview"
+                target="_blank"
+                rel="noreferrer"
+                onClick={(event) => {
+                  event.preventDefault();
+                  openPreview();
+                }}
+              >
+                {previewUrl}
+              </a>
               <p>{seoDescription || "This is what will appear as the description when this product shows up in the search results."}</p>
               <small>zelvomart</small>
             </div>

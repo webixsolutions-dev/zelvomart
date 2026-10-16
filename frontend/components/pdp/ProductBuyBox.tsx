@@ -27,6 +27,141 @@ interface ProductBuyBoxProps {
   actionRef: React.RefObject<HTMLDivElement | null>;
 }
 
+const HIDDEN_ATTRIBUTE_KEYS = new Set([
+  "stockstatus",
+  "gallery",
+  "gtin",
+  "downloadable",
+  "virtual",
+  "images",
+  "weight",
+  "length",
+  "width",
+  "height",
+]);
+
+type CatalogAttribute = {
+  name?: string;
+  valuesText?: string;
+  visible?: boolean;
+  forVariations?: boolean;
+};
+
+function splitAttributeValues(value: unknown) {
+  const text = String(value || "");
+  const parts = text.includes("|") ? text.split("|") : text.split(",");
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+function selectedAttributeValue(attributes: Record<string, string> | undefined, name: string) {
+  if (!attributes) return "";
+  if (attributes[name]) return String(attributes[name]).trim();
+  const match = Object.entries(attributes).find(([key]) => key.trim().toLowerCase() === name.toLowerCase());
+  return match ? String(match[1] || "").trim() : "";
+}
+
+const NAMED_COLORS: Record<string, string> = {
+  red: "#e11d2e",
+  blue: "#2563eb",
+  black: "#111827",
+  blck: "#111827",
+  white: "#ffffff",
+  green: "#16a34a",
+  yellow: "#facc15",
+  orange: "#f97316",
+  pink: "#ec4899",
+  purple: "#7c3aed",
+  brown: "#8b5a2b",
+  grey: "#6b7280",
+  gray: "#6b7280",
+  navy: "#1e3a8a",
+  beige: "#e8d5b5",
+  cream: "#f5efe6",
+  gold: "#d4a017",
+  silver: "#c0c0c0",
+  maroon: "#7f1d1d",
+  teal: "#0d9488",
+  cyan: "#06b6d4",
+  magenta: "#c026d3",
+  violet: "#7c3aed",
+  indigo: "#4338ca",
+  lime: "#84cc16",
+  olive: "#6b8e23",
+  khaki: "#c3b091",
+  coral: "#ff6f61",
+  rose: "#e11d48",
+  burgundy: "#800020",
+  turquoise: "#40e0d0",
+  lavender: "#c4b5fd",
+  peach: "#ffcba4",
+  mint: "#98f5d0",
+  ivory: "#fffff0",
+  charcoal: "#36454f",
+  tan: "#d2b48c",
+  chocolate: "#7b3f00",
+  sky: "#38bdf8",
+  "sky blue": "#38bdf8",
+  "light blue": "#7dd3fc",
+  "dark blue": "#1e3a8a",
+  "light green": "#86efac",
+  "dark green": "#14532d",
+  "hot pink": "#ff69b4",
+  "rose red": "#c21e56",
+  "off white": "#f8f5f0",
+  "off-white": "#f8f5f0",
+};
+
+function colorCss(value: string) {
+  const raw = value.trim().toLowerCase();
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(raw)) return raw;
+  if (/^(rgb|hsl)a?\(/i.test(raw)) return value.trim();
+  if (NAMED_COLORS[raw]) return NAMED_COLORS[raw];
+  const first = raw.split(/[\s/-]+/)[0];
+  return NAMED_COLORS[first] || "";
+}
+
+type AttributeRow = { name: string; values: string[]; selected: string; forVariations: boolean };
+
+/** Every visible attribute, each value kept separate so colors can render as their own swatches. */
+function productAttributeRows(product: Product, variant: Variant | null): AttributeRow[] {
+  const catalog = Array.isArray(product.catalogMeta?.attributes) ? (product.catalogMeta.attributes as CatalogAttribute[]) : [];
+  const rows: AttributeRow[] = [];
+  const used = new Set<string>();
+  for (const attribute of catalog) {
+    if (attribute?.visible === false) continue;
+    const name = String(attribute?.name || "").trim();
+    if (!name) continue;
+    const selected = selectedAttributeValue(variant?.attributes, name);
+    const values = splitAttributeValues(attribute.valuesText);
+    if (selected && !values.some((value) => value.toLowerCase() === selected.toLowerCase())) values.unshift(selected);
+    if (!values.length) continue;
+    used.add(name.toLowerCase());
+    rows.push({ name, values, selected, forVariations: attribute?.forVariations !== false && (product.variants || []).length > 0 });
+  }
+  for (const [key, value] of Object.entries(variant?.attributes || {})) {
+    const name = key.trim();
+    const text = String(value || "").trim();
+    if (!name || !text || HIDDEN_ATTRIBUTE_KEYS.has(name.toLowerCase()) || used.has(name.toLowerCase())) continue;
+    used.add(name.toLowerCase());
+    rows.push({ name, values: [text], selected: text, forVariations: (product.variants || []).length > 0 });
+  }
+  return rows;
+}
+
+function variantForAttribute(product: Product, variant: Variant | null, name: string, value: string) {
+  const variants = product.variants || [];
+  const current = variant?.attributes || {};
+  const wanted = { ...current, [name]: value };
+  const matches = (item: Variant, strict: boolean) =>
+    Object.entries(wanted).every(([key, entry]) => {
+      if (!entry) return true;
+      const actual = selectedAttributeValue(item.attributes, key);
+      if (!actual) return !strict;
+      return actual.toLowerCase() === entry.toLowerCase();
+    });
+  return variants.find((item) => matches(item, true)) || variants.find((item) => selectedAttributeValue(item.attributes, name).toLowerCase() === value.toLowerCase()) || null;
+}
+
 const CheckMark = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -36,6 +171,7 @@ const CheckMark = () => (
 export default function ProductBuyBox({
   product,
   variant,
+  onSelectVariant,
   bundleSize,
   setBundleSize,
   quantity,
@@ -85,6 +221,7 @@ export default function ProductBuyBox({
   const priceParts = priceText.match(/^(\D+?)\s*(\d[\d,.]*)$/);
   const reviewCount = product.reviewCount || 0;
   const rating = reviewCount && product.averageRating ? product.averageRating : 0;
+  const attributeRows = productAttributeRows(product, variant);
 
   // Safe client-side handler: fixes hydration mismatch by accessing window.location only on user click
   const handleWhatsAppClick = () => {
@@ -207,6 +344,47 @@ export default function ProductBuyBox({
           </div>
         </div>
       )}
+
+      {attributeRows.length > 0 ? (
+        <div className="zpd-attrs">
+          <div className="zpd-block-head">
+            <span className="zpd-block-label">Product details</span>
+          </div>
+          <div className="zpd-attr-list">
+            {attributeRows.map((row) => {
+              const colorAttribute = /colou?r/i.test(row.name) || row.values.every((value) => Boolean(colorCss(value)));
+              return (
+                <div key={row.name}>
+                  <span className="zpd-attr-name">{row.name}</span>
+                  <div className="zpd-attr-values">
+                    {row.values.map((value) => {
+                      const color = colorAttribute ? colorCss(value) : "";
+                      const active = row.selected.toLowerCase() === value.toLowerCase();
+                      const nextVariant = row.forVariations ? variantForAttribute(product, variant, row.name, value) : null;
+                      const className = `zpd-attr-chip${active ? " is-active" : ""}${color ? " is-color" : ""}`;
+                      const body = (
+                        <>
+                          {color ? <i className="zpd-attr-dot" style={{ background: color }} aria-hidden="true" /> : null}
+                          <span>{value}</span>
+                        </>
+                      );
+                      return nextVariant ? (
+                        <button key={value} type="button" className={className} aria-pressed={active} onClick={() => onSelectVariant(nextVariant)}>
+                          {body}
+                        </button>
+                      ) : (
+                        <span key={value} className={className}>
+                          {body}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {/* 5. QUANTITY COUNTER + STOCK + ORDER TOTAL */}
       <div className="zpd-qty-row">

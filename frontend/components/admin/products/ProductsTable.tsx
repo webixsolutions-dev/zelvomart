@@ -8,6 +8,7 @@ interface ProductsTableProps {
   products: Product[];
   emptyMessage?: string;
   onToggleStatus: (ids: string[], status: "PUBLISHED" | "DRAFT", label?: string) => void;
+  onDelete: (ids: string[], label: string) => Promise<boolean>;
   posting: string[];
 }
 
@@ -17,6 +18,7 @@ export default function ProductsTable({
   products,
   emptyMessage = "No products found.",
   onToggleStatus,
+  onDelete,
   posting,
 }: ProductsTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -67,6 +69,18 @@ export default function ProductsTable({
     setSelectedIds([]);
   }
 
+  async function handleBulkDelete() {
+    if (!selectedIds.length) return;
+    const count = selectedIds.length;
+    const removed = await onDelete(selectedIds, count === 1 ? "this product" : `${count} products`);
+    if (removed) setSelectedIds([]);
+  }
+
+  async function handleDeleteOne(id: string, title: string) {
+    const removed = await onDelete([id], `"${title}"`);
+    if (removed) setSelectedIds((current) => current.filter((item) => item !== id));
+  }
+
   return (
     <div className="admin-table-card">
       {/* Bulk Action Bar */}
@@ -100,6 +114,14 @@ export default function ProductsTable({
               onClick={handleBulkDraft}
             >
               Move to Drafts
+            </button>
+            <button
+              type="button"
+              className="admin-btn-bulk-delete"
+              disabled={posting.length > 0}
+              onClick={handleBulkDelete}
+            >
+              {posting.length ? "Deleting…" : "Delete"}
             </button>
           </div>
         </div>
@@ -139,6 +161,7 @@ export default function ProductsTable({
                   selected={selectedIds.includes(product.id)}
                   onSelect={handleSelectOne}
                   onToggleStatus={onToggleStatus}
+                  onDelete={handleDeleteOne}
                   busy={posting.includes(product.id)}
                 />
               ))

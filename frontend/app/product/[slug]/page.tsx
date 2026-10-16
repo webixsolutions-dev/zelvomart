@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { permanentRedirect, redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import ProductDetailClient from "@/components/ProductDetailClient";
+import ProductPreviewScreen from "@/components/ProductPreviewScreen";
 import ProductGrid from "@/components/ProductGrid";
 import { getProductBySlug, getProducts } from "@/lib/store";
 import { apiFetch } from "@/lib/api";
@@ -86,7 +87,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       row = null;
     }
     if (row?.destination && row.permanent) permanentRedirect(row.destination);
-    redirect(row?.destination || "/shop");
+    return <ProductPreviewScreen slug={slug} missingRedirect={row?.destination || "/shop"} />;
   }
 
   const categorySlug = product.categorySlugs[0] || product.categories[0]?.slug;
@@ -118,11 +119,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         <nav className="zpd-breadcrumb" aria-label="Breadcrumb">
           <Link href="/">Home</Link><span>›</span><Link href="/shop">Shop</Link><span>›</span><span>{product.name}</span>
         </nav>
-        <ProductDetailClient
-          product={product}
-          defaultBundleDiscount={defaultDiscount}
-          whatsapp={whatsapp}
-          sections={resolveProductTabs(settings["store.productTabs"], product.catalogMeta)}
+        <ProductPreviewScreen
+          slug={slug}
+          fallback={
+            <ProductDetailClient
+              product={product}
+              defaultBundleDiscount={defaultDiscount}
+              whatsapp={whatsapp}
+              sections={resolveProductTabs(settings["store.productTabs"], product.catalogMeta)}
+            />
+          }
         />
       </div>
 

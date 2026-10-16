@@ -32,6 +32,7 @@ interface ProductTableRowProps {
   selected: boolean;
   onSelect: (id: string, checked: boolean) => void;
   onToggleStatus: (ids: string[], status: "PUBLISHED" | "DRAFT", label?: string) => void;
+  onDelete: (id: string, title: string) => void;
   busy: boolean;
 }
 
@@ -64,6 +65,7 @@ export default function ProductTableRow({
   selected,
   onSelect,
   onToggleStatus,
+  onDelete,
   busy,
 }: ProductTableRowProps) {
   const titleText = product.title || product.name || "Untitled product";
@@ -188,6 +190,7 @@ export default function ProductTableRow({
             status={status}
             productTitle={titleText}
             onToggleStatus={onToggleStatus}
+            onDelete={() => onDelete(product.id, titleText)}
             disabled={busy}
           />
         </div>

@@ -345,3 +345,447 @@
     transition: none !important;
   }
 }
+
+.mock-editorial-grid.zm-editorial-reveal {
+  gap: 18px !important;
+  margin-top: 50px !important;
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial {
+  min-height: 320px !important;
+  padding: 24px !important;
+  border: 1px solid rgba(16, 45, 62, 0.08);
+  border-radius: 22px !important;
+  box-shadow: 0 16px 40px rgba(12, 36, 52, 0.14);
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial::before {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(8, 24, 36, 0.02) 28%, rgba(8, 24, 36, 0.72) 100%) !important;
+  opacity: 1 !important;
+  pointer-events: none;
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial-img img {
+  object-fit: cover !important;
+  transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) !important;
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial:hover .mock-editorial-img img {
+  transform: scale(1.045) !important;
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial > span,
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial > h3,
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial > b {
+  z-index: 2;
+  color: #fff !important;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.28) !important;
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial > span {
+  width: fit-content;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 999px;
+  background: rgba(12, 36, 52, 0.3);
+  backdrop-filter: blur(8px);
+  font-size: 10px !important;
+  letter-spacing: 0.12em;
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial > h3 {
+  font-size: clamp(23px, 2.3vw, 32px) !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.04em;
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial > b {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #123246 !important;
+  text-shadow: none !important;
+  font-size: 12px !important;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.mock-editorial-grid.zm-editorial-reveal .mock-editorial:hover > b {
+  transform: translateX(3px);
+  background: #fff !important;
+}
+
+.zm-how-it-works-vivid {
+  padding: 68px 0 72px !important;
+  background:
+    radial-gradient(580px 260px at 5% 0%, rgba(39, 164, 207, 0.11), transparent 72%),
+    radial-gradient(520px 280px at 100% 100%, rgba(116, 95, 219, 0.1), transparent 72%),
+    linear-gradient(180deg, #f7fbfd 0%, #f5f8fa 100%) !important;
+}
+
+.zm-how-it-works-vivid::before {
+  display: none;
+}
+
+.zm-how-it-works-vivid .zm-how-heading h2 {
+  color: #102d3e !important;
+  letter-spacing: -0.045em;
+}
+
+.zm-how-it-works-vivid .zm-how-heading h2::after {
+  width: 54px;
+  height: 4px;
+  background: #17a6d2;
+}
+
+.zm-how-it-works-vivid .zm-how-heading p {
+  color: #627784 !important;
+}
+
+.zm-how-it-works-vivid .zm-how-grid {
+  gap: 10px;
+}
+
+.zm-how-it-works-vivid .zm-how-step {
+  border-color: rgba(16, 45, 62, 0.08);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(16, 45, 62, 0.07);
+}
+
+.zm-how-it-works-vivid .zm-how-step::before {
+  width: 3px;
+  opacity: 0.8;
+}
+
+.zm-how-it-works-vivid .zm-how-step:hover {
+  box-shadow: 0 18px 34px rgba(16, 45, 62, 0.12);
+}
+
+.zm-how-it-works-vivid .zm-how-icon {
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px rgba(16, 45, 62, 0.06);
+}
+
+.zm-how-it-works-vivid .zm-how-step b {
+  color: #123246;
+  letter-spacing: -0.02em;
+}
+
+.zm-how-it-works-vivid .zm-how-step p {
+  color: #657985;
+}
+
+.mock-faq-section.zm-faq-reveal-section {
+  gap: clamp(32px, 6vw, 84px);
+  padding-top: 76px !important;
+  padding-bottom: 88px !important;
+}
+
+.mock-faq-section.zm-faq-reveal-section .zm-faq-reveal-intro .mock-faq-intro h2 {
+  color: #102d3e;
+  letter-spacing: -0.055em;
+}
+
+.mock-faq-section.zm-faq-reveal-section .zm-faq-reveal-list {
+  min-width: 0;
+}
+
+.mock-home .zm-youtube-shorts {
+  padding-top: 68px !important;
+  padding-bottom: 68px !important;
+}
+
+.mock-home .zm-youtube-shorts .zm-youtube-shorts-head {
+  margin-bottom: 26px;
+}
+
+.mock-home .zm-youtube-short-card {
+  border: 1px solid rgba(16, 45, 62, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(16, 45, 62, 0.1);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.mock-home .zm-youtube-short-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 36px rgba(16, 45, 62, 0.16);
+}
+
+.mock-home .zm-unboxing-section {
+  padding-top: 68px;
+  padding-bottom: 68px;
+}
+
+.mock-home .zm-unboxing-video-wrap {
+  border: 1px solid #e4edf1;
+  border-radius: 24px;
+  box-shadow: 0 18px 42px rgba(16, 45, 62, 0.1);
+}
+
+.mock-home .zm-unboxing-copy h2 {
+  color: #102d3e;
+  letter-spacing: -0.045em;
+}
+
+.mock-home .zm-unboxing-copy li::before {
+  content: "✓";
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e6f6fa;
+  color: #168caf;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.mock-home .zm-whatsapp-banner {
+  border-color: #deecef;
+  border-radius: 22px;
+  background: linear-gradient(110deg, #f5fbfc 0%, #edf8f6 100%);
+  box-shadow: 0 14px 34px rgba(16, 45, 62, 0.07);
+}
+
+.mock-home .zm-whatsapp-banner-inner > a {
+  border: 0;
+  background: #168d69;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(22, 141, 105, 0.18);
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mock-home .zm-whatsapp-banner-inner > a:hover {
+  transform: translateY(-2px);
+  background: #117957;
+  box-shadow: 0 12px 24px rgba(22, 141, 105, 0.24);
+}
+
+.mock-newin-page #new-products {
+  padding-top: 52px !important;
+  padding-bottom: 56px !important;
+}
+
+.mock-newin-page #new-products .mock-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px 28px;
+  margin-bottom: 24px !important;
+}
+
+.mock-newin-page #new-products .mock-section-head h2 {
+  color: #102d3e;
+  letter-spacing: -0.045em;
+}
+
+.mock-newin-page #new-products .mock-filter-chips {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  overflow: visible;
+  scrollbar-width: none;
+}
+
+.mock-newin-page #new-products .mock-filter-chips > * {
+  max-width: 100%;
+  padding: 9px 14px;
+  border: 1px solid #e0e8ed;
+  border-radius: 999px;
+  background: #fff;
+  color: #536a78;
+  font-size: 12px !important;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: normal;
+  box-shadow: 0 3px 10px rgba(16, 45, 62, 0.04);
+}
+
+.mock-newin-page #new-products .mock-filter-chips > *.active {
+  border-color: #123246;
+  background: #123246;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(18, 50, 70, 0.16);
+}
+
+.mock-newin-page #new-products > .grid {
+  gap: 18px !important;
+}
+
+.mock-newin-page #new-products > .grid > article {
+  border-color: #e7edf0;
+  border-radius: 20px;
+  box-shadow: 0 8px 22px rgba(16, 45, 62, 0.055);
+}
+
+.mock-newin-page #new-products > .grid > article:hover {
+  transform: translateY(-3px);
+  border-color: #d5e2e8;
+  box-shadow: 0 16px 32px rgba(16, 45, 62, 0.11);
+}
+
+.mock-newin-page #new-products > .grid > article > a:first-child {
+  background: linear-gradient(145deg, #f7f9fa, #f0f5f7);
+}
+
+.mock-newin-page #new-products > .grid > article > div {
+  gap: 8px;
+  padding: 14px;
+}
+
+.mock-newin-page .mock-listing-count {
+  margin-top: 28px;
+  color: #748692;
+}
+
+.mock-newin-page .mock-whatsapp-strip {
+  margin-top: 12px;
+  margin-bottom: 48px;
+  border: 1px solid #dcebf0;
+  border-radius: 20px;
+  background: linear-gradient(115deg, #f2fbfd, #f8fbfc);
+  box-shadow: 0 12px 30px rgba(16, 45, 62, 0.055);
+}
+
+@media (max-width: 900px) {
+  .mock-editorial-grid.zm-editorial-reveal {
+    gap: 12px !important;
+    margin-top: 36px !important;
+  }
+
+  .mock-editorial-grid.zm-editorial-reveal .mock-editorial {
+    min-height: 270px !important;
+    padding: 18px !important;
+  }
+
+  .mock-faq-section.zm-faq-reveal-section {
+    gap: 30px;
+    padding-top: 52px !important;
+    padding-bottom: 64px !important;
+  }
+
+  .mock-home .zm-youtube-shorts {
+    padding-top: 44px !important;
+    padding-bottom: 44px !important;
+  }
+
+  .mock-home .zm-unboxing-section {
+    padding-top: 44px;
+    padding-bottom: 44px;
+  }
+
+  .mock-newin-page #new-products {
+    padding-top: 36px !important;
+    padding-bottom: 40px !important;
+  }
+
+  .mock-newin-page #new-products > .grid {
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 620px) {
+  .mock-editorial-grid.zm-editorial-reveal {
+    gap: 9px !important;
+    margin-top: 28px !important;
+  }
+
+  .mock-editorial-grid.zm-editorial-reveal .mock-editorial {
+    min-height: 224px !important;
+    padding: 13px !important;
+    border-radius: 16px !important;
+  }
+
+  .mock-editorial-grid.zm-editorial-reveal .mock-editorial > span {
+    padding: 6px 8px;
+    font-size: 9px !important;
+  }
+
+  .mock-editorial-grid.zm-editorial-reveal .mock-editorial > h3 {
+    font-size: 19px !important;
+  }
+
+  .mock-editorial-grid.zm-editorial-reveal .mock-editorial > b {
+    min-height: 34px;
+    padding: 0 11px;
+    font-size: 10px !important;
+  }
+
+  .zm-how-it-works-vivid {
+    padding: 42px 0 !important;
+  }
+
+  .zm-how-it-works-vivid .zm-how-grid {
+    gap: 9px;
+  }
+
+  .zm-how-it-works-vivid .zm-how-step {
+    min-height: 96px;
+    border-radius: 15px;
+  }
+
+  .mock-faq-section.zm-faq-reveal-section {
+    padding-top: 42px !important;
+    padding-bottom: 54px !important;
+  }
+
+  .mock-home .zm-youtube-short-card {
+    border-radius: 13px;
+  }
+
+  .mock-home .zm-unboxing-video-wrap {
+    border-radius: 18px;
+  }
+
+  .mock-home .zm-whatsapp-banner {
+    border-radius: 16px;
+  }
+
+  .mock-newin-page #new-products {
+    padding-top: 30px !important;
+    padding-bottom: 34px !important;
+  }
+
+  .mock-newin-page #new-products .mock-section-head {
+    gap: 14px;
+    margin-bottom: 18px !important;
+  }
+
+  .mock-newin-page #new-products .mock-filter-chips {
+    gap: 7px;
+  }
+
+  .mock-newin-page #new-products .mock-filter-chips > * {
+    padding: 8px 11px;
+    font-size: 11px !important;
+  }
+
+  .mock-newin-page #new-products > .grid {
+    gap: 9px !important;
+  }
+
+  .mock-newin-page #new-products > .grid > article {
+    border-radius: 15px;
+  }
+
+  .mock-newin-page #new-products > .grid > article > div {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .mock-newin-page .mock-whatsapp-strip {
+    margin-bottom: 32px;
+    border-radius: 15px;
+  }
+}
