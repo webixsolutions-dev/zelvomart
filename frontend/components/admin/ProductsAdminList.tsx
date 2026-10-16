@@ -88,6 +88,37 @@ export default function ProductsAdminList({
     }
   }
 
+  async function deleteProducts(ids: string[], label: string) {
+    if (!ids.length || posting.length) return false;
+    if (
+      !confirm(
+        `Delete ${label}? This removes ${ids.length === 1 ? "the product" : "these products"} from the shop and the database. This cannot be undone.`,
+      )
+    )
+      return false;
+    setPosting(ids);
+    setPostMessage("");
+    try {
+      const response = await clientApi<{ deleted: string[]; failed: { id: string; error: string }[] }>(
+        "/api/admin/products/bulk-delete",
+        { method: "POST", body: JSON.stringify({ ids }) },
+        true,
+      );
+      const failed = response.failed.map((entry) => entry.error).join(" ");
+      setPostMessage(
+        `${response.deleted.length} deleted from the database.${failed ? ` Not deleted — ${failed}` : ""}`,
+      );
+      clearAdminDataCache("/api/admin/products");
+      await reload();
+      return response.deleted.length > 0;
+    } catch (requestError) {
+      setPostMessage(requestError instanceof Error ? requestError.message.replace(/_/g, " ") : "Delete failed");
+      return false;
+    } finally {
+      setPosting([]);
+    }
+  }
+
   const scopedProducts = useMemo(() => {
     const added = (product: Product) => addedDate(product.createdAt)?.getTime() ?? 0;
     return products
@@ -222,6 +253,7 @@ export default function ProductsAdminList({
         products={rows}
         emptyMessage={emptyMessage}
         onToggleStatus={setProductStatus}
+        onDelete={deleteProducts}
         posting={posting}
       />
     </div>

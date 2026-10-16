@@ -1436,6 +1436,13 @@
   background: #f1f5f9;
   color: var(--adm-primary);
 }
+.admin-dropdown-menu-item.is-danger {
+  color: #b42318;
+}
+.admin-dropdown-menu-item.is-danger:hover {
+  background: #fef2f2;
+  color: #912018;
+}
 
 /* Bulk Selection Action Bar */
 .admin-bulk-bar {
@@ -1494,6 +1501,27 @@
 }
 .admin-btn-bulk-draft:hover {
   background: rgba(255, 255, 255, 0.25);
+}
+
+.admin-btn-bulk-delete {
+  padding: 6px 14px;
+  border-radius: var(--adm-radius-sm);
+  background: #b42318;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 650;
+  border: none;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+.admin-btn-bulk-delete:hover {
+  background: #912018;
+}
+.admin-btn-bulk-delete:disabled,
+.admin-btn-bulk-publish:disabled,
+.admin-btn-bulk-draft:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Table Footer / Pagination */

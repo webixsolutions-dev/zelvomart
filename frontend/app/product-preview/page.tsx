@@ -15,7 +15,7 @@ export default function ProductPreviewPage() {
   useEffect(() => {
     let preview: Product | null = null;
     try {
-      const raw = sessionStorage.getItem("zelvomart-product-preview");
+      const raw = localStorage.getItem("zelvomart-product-preview") || sessionStorage.getItem("zelvomart-product-preview");
       preview = raw ? (JSON.parse(raw) as Product) : null;
     } catch {
       preview = null;
@@ -44,13 +44,6 @@ export default function ProductPreviewPage() {
 
   return (
     <div className="product-page">
-      <div className="pd-preview-banner">
-        <div>
-          <strong>Product preview</strong>
-          <span>Name, price, images, description, stock and variations from the editor.</span>
-        </div>
-        <Link href="/admin/products">Back to products</Link>
-      </div>
       <div className="site-shell max-w-[1240px] mx-auto px-4 md:px-6">
         <ProductDetailClient product={product} sections={sections} />
       </div>
