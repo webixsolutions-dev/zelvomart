@@ -8,6 +8,8 @@ interface ProductStatusTabsProps {
     published: number;
     draft: number;
     unpublished: number;
+    lowStock:number;
+    outOfStock:number;
   };
 }
 
@@ -18,9 +20,11 @@ export default function ProductStatusTabs({
 }: ProductStatusTabsProps) {
   const tabs = [
     { id: "all", label: "All Products", count: counts.all },
-    { id: "PUBLISHED", label: "Published", count: counts.published },
+    { id: "PUBLISHED", label: "Active", count: counts.published },
     { id: "DRAFT", label: "Draft", count: counts.draft },
-    { id: "UNPUBLISHED", label: "Unpublished", count: counts.unpublished },
+    { id: "LOW_STOCK", label: "Low Stock", count: counts.lowStock },
+    { id: "OUT_OF_STOCK", label: "Out of Stock", count: counts.outOfStock },
+    { id: "ARCHIVED", label: "Archived", count: counts.unpublished },
   ];
 
   return (

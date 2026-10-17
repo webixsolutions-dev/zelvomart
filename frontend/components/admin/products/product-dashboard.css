@@ -1,0 +1,77 @@
+.pd-dashboard .od-title { margin-bottom: 16px; }
+.pd-dashboard .od-stats { margin-bottom: 14px; }
+.pd-dashboard .od-stat { min-width: 0; }
+.pd-dashboard .od-title p { max-width: 700px; }
+.pd-table-panel { overflow: visible; }
+.pd-table-heading { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:16px 16px 0; }
+.pd-table-heading h2 { font-size:17px; font-weight:800; margin:0; }
+.pd-table-heading label { display:flex; align-items:center; gap:8px; color:#8492a8; font-size:11px; }
+.pd-dashboard .admin-products-toolbar { padding:12px 16px; margin:0; border:0; background:transparent; box-shadow:none; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.pd-dashboard .admin-products-toolbar-filters { flex:1; gap:8px; flex-wrap:wrap; }
+.pd-dashboard .admin-search-box { background:#fff; border:1px solid #e1e8f2; border-radius:7px; min-width:240px; height:38px; box-shadow:none; }
+.pd-dashboard .admin-search-box:focus-within { border-color:#388bfa; }
+.pd-dashboard .admin-search-box-input { border:0!important; outline:0!important; box-shadow:none!important; background:transparent; padding-left:32px; font-size:11px; min-width:0; }
+.pd-dashboard .admin-custom-select-trigger { min-height:38px; padding:7px 12px; background:white; border-radius:7px; border:1px solid #e1e8f2; box-shadow:none; }
+.pd-dashboard .admin-custom-select-kicker { display:none; }
+.pd-dashboard .admin-custom-select-val { font-size:11px; }
+.pd-dashboard .admin-custom-select-menu { z-index:30; }
+.pd-dashboard .admin-btn-navy { background:#0877ff; border-color:#0877ff; border-radius:6px; min-height:38px; font-size:11px; padding:8px 12px; box-shadow:none; }
+.pd-dashboard .admin-products-tabs-bar { margin:0 16px; padding:0; gap:0; border-bottom:1px solid #dfe5ed; display:flex; overflow:auto; background:transparent; }
+.pd-dashboard .admin-products-tab-btn { padding:13px 15px; font-size:11px; border:0; border-bottom:2px solid transparent; border-radius:0; white-space:nowrap; background:transparent; color:#67758b; }
+.pd-dashboard .admin-products-tab-btn.active { color:#0877ff; border-bottom-color:#0877ff; background:transparent; }
+.pd-dashboard .admin-tab-count { background:#f0f4f9; color:#8492a8; font-size:9px; padding:2px 5px; border-radius:8px; }
+.pd-clear { margin:8px 16px; border:0; background:none; color:#0877ff; font-size:11px; }
+.pd-dashboard .admin-table-card { border:0; border-radius:0 0 11px 11px; box-shadow:none; margin:0; }
+.pd-dashboard .admin-table-container { margin:12px 14px 0; overflow:auto; }
+.pd-dashboard .admin-modern-table { width:100%; min-width:1000px; border-collapse:collapse; }
+.pd-dashboard .admin-modern-table thead { background:#f3f7fc; }
+.pd-dashboard .admin-modern-table th { background:#f3f7fc; font-size:10px; color:#7c8da7; padding:10px 8px; font-weight:700; text-transform:none; letter-spacing:0; }
+.pd-dashboard .admin-modern-table td { padding:9px 8px; border-bottom:1px solid #edf2f8; height:58px; }
+.pd-dashboard .admin-product-thumb,.pd-dashboard .admin-product-thumb-placeholder { width:34px; height:34px; border-radius:5px; object-fit:contain; }
+.pd-dashboard .admin-product-title-link { font-size:11px; font-weight:700; color:#14243e; }
+.pd-dashboard .admin-product-subtitle,.pd-dashboard .admin-added-time { font-size:9px; color:#8492a9; }
+.pd-dashboard .admin-price-current { font-size:11px; font-weight:700; }
+.pd-dashboard .admin-price-original { font-size:9px; }
+.pd-dashboard .admin-sku-text,.pd-dashboard .admin-added-date { font-size:10px; }
+.pd-dashboard .admin-category-pill { background:transparent; padding:0; font-size:10px; color:#52617c; }
+.pd-dashboard .admin-stock-badge,.pd-dashboard .admin-product-status-badge { font-size:10px; padding:4px 7px; border-radius:5px; }
+.pd-dashboard .admin-btn-draft,.pd-dashboard .admin-btn-publish { font-size:10px; padding:5px 8px; }
+.pd-dashboard .admin-table-footer { padding:10px 16px 14px; }
+.pd-page-size { display:flex; align-items:center; min-height:58px; padding:12px 16px; font-size:11px; color:#8492a8; }
+.pd-page-size label { display:flex; gap:8px; align-items:center; }
+.pd-page-size select { min-height:32px; padding:6px 30px 6px 10px; border-radius:6px; line-height:18px; background-position:right 9px center; }
+.pd-insights h3 { display:flex; align-items:center; gap:4px; }
+.pd-insights h3>a { margin-left:auto; color:#0877ff; font-size:9px; font-weight:500; }
+.pd-legend-item { display:flex; align-items:center; gap:6px; font-size:9px; color:#667b99; padding:7px 0; white-space:nowrap; }
+.pd-legend-item i { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.pd-legend-item b { margin-left:auto; }
+.pd-legend-item span { min-width:34px; text-align:right; }
+.pd-category { margin-bottom:14px; }
+.pd-category>span { display:flex; gap:8px; align-items:center; font-size:10px; margin-bottom:6px; }
+.pd-category b { margin-left:auto; }
+.pd-category small { width:34px; text-align:right; color:#8492a8; }
+.pd-activity { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.pd-activity b { display:block; text-transform:capitalize; font-size:10px; }
+.pd-activity small,.pd-activity a { display:block; color:#8492a8; font-size:9px; }
+.pd-activity a { color:#187bff; }
+@media(max-width:650px) { .pd-dashboard .admin-products-toolbar-filters,.pd-dashboard .admin-products-toolbar-actions { width:100%; flex-wrap:wrap; } .pd-dashboard .admin-search-box { width:100%; min-width:0; } .pd-dashboard .admin-custom-select-wrapper { flex:1; min-width:120px; } .pd-dashboard .admin-products-toolbar-actions { justify-content:flex-start; } .pd-dashboard .admin-products-tab-btn { padding-inline:12px; } }
+.pd-toolbar { display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between; align-items:center; padding:12px 16px; }
+.pd-filters { display:flex; flex:1 1 500px; align-items:center; }
+.pd-filters input { flex:1; min-width:200px; }
+.pd-filters select { max-width:200px; font-size:11px; }
+.pd-toolbar-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.pd-toolbar-actions .od-button { display:inline-flex; align-items:center; justify-content:center; min-height:36px; white-space:nowrap; font-size:11px; }
+.pd-dashboard .admin-products-tabs-bar { overflow-y:hidden; height:auto; min-height:0; max-height:none; align-items:stretch; }
+.pd-dashboard .admin-products-tab-btn { flex-shrink:0; }
+@media(max-width:650px) { .pd-filters { flex-basis:100%; width:100%; } .pd-filters input { flex-basis:100%; min-width:0; } .pd-filters select { flex:1; min-width:0; max-width:100%; } .pd-toolbar-actions { width:100%; } }
+.pd-dashboard .admin-status-indicator { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; padding:4px 7px; border-radius:5px; }
+.pd-dashboard .admin-status-indicator.published { color:#00a56a; background:#ddf9ec; }
+.pd-dashboard .admin-status-indicator.draft { color:#0877ff; background:#eaf3ff; }
+.pd-dashboard .admin-status-indicator.archived { color:#78849a; background:#eff3f7; }
+.pd-dashboard .admin-status-indicator .admin-badge-dot { background:currentColor; width:6px; height:6px; border-radius:50%; }
+/* Keep page size, result count, and navigation in one balanced footer. */
+.pd-dashboard .admin-table-footer { padding:14px 16px; gap:12px; border-radius:0 0 11px 11px; }
+.pd-footer-info { display:flex; align-items:center; flex-wrap:wrap; gap:18px; }
+.pd-dashboard .pd-footer-info .pd-page-size { display:flex; align-items:center; gap:8px; padding:0; margin:0; min-height:32px; white-space:nowrap; }
+.pd-dashboard .pd-footer-info .admin-table-count-text { font-size:11px; line-height:18px; }
+@media(max-width:650px) { .pd-footer-info { gap:10px 16px; } .pd-dashboard .admin-table-footer { align-items:center; } }

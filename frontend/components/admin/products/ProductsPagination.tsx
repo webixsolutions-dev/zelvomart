@@ -1,23 +1,27 @@
 "use client";
 
 interface ProductsPaginationProps {
+  itemLabel?: string;
   currentPage: number;
   totalPages: number;
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
+  onPageSizeChange:(size:number)=>void;
 }
 
 export default function ProductsPagination({
+  itemLabel="products",
   currentPage,
   totalPages,
   totalItems,
   itemsPerPage,
   onPageChange,
+  onPageSizeChange,
 }: ProductsPaginationProps) {
-  if (totalItems === 0) return null;
 
-  const start = (currentPage - 1) * itemsPerPage + 1;
+
+  const start = totalItems ? (currentPage - 1) * itemsPerPage + 1 : 0;
   const end = Math.min(currentPage * itemsPerPage, totalItems);
 
   // Generate page numbers
@@ -35,11 +39,14 @@ export default function ProductsPagination({
 
   return (
     <div className="admin-table-footer">
+      <div className="pd-footer-info">
+        <label className="pd-page-size">Rows per page <select aria-label={`${itemLabel[0].toUpperCase()+itemLabel.slice(1)} per page`} value={itemsPerPage} onChange={e=>onPageSizeChange(Number(e.target.value))}>{[10,25,50,100].map(size=><option key={size} value={size}>{size}</option>)}</select></label>
       <div className="admin-table-count-text">
-        Showing <b>{start}</b> to <b>{end}</b> of <b>{totalItems}</b> product{totalItems === 1 ? "" : "s"}
+        Showing <b>{start}</b> to <b>{end}</b> of <b>{totalItems}</b> {totalItems===1?itemLabel.replace(/s$/,''):itemLabel}
+      </div>
       </div>
 
-      {totalPages > 1 && (
+      {(
         <div className="admin-pagination-controls" aria-label="Pagination Navigation">
           <button
             type="button"

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { prefetchAdminData } from "./useAdminData";
 
 function Icon({ children }: { children: ReactNode }) {
@@ -201,7 +201,7 @@ const groups = [
   {
     label: "Management",
     links: [
-      ["/admin/settings", "Settings", icons.settings],
+
       ["/admin/users", "Users & Roles", icons.users],
       ["/admin/reports", "Reports", icons.reports],
       ["/admin/marketing", "Meta & Attribution", icons.marketing],
@@ -268,6 +268,37 @@ export default function AdminNav({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    let frame = 0;
+    let speed = 0;
+    let previousTime = 0;
+    function stop() { cancelAnimationFrame(frame); frame = 0; speed = 0; previousTime = 0; }
+    function step(time: number) {
+      if (!nav || !speed) return;
+      if (previousTime) {
+        const previousScroll = nav.scrollTop;
+        nav.scrollTop += speed * Math.min(time - previousTime, 32) / 16;
+        if (nav.scrollTop === previousScroll) { stop(); return; }
+      }
+      previousTime = time;
+      frame = requestAnimationFrame(step);
+    }
+    function move(event: PointerEvent) {
+      if (!nav || event.pointerType !== "mouse" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const bounds = nav.getBoundingClientRect();
+      const y = event.clientY - bounds.top;
+      speed = y < 28 ? -3 * (1 - y / 28) : y > bounds.height - 28 ? 3 * (1 - (bounds.height - y) / 28) : 0;
+      if (!speed) { stop(); return; }
+      if (!frame) frame = requestAnimationFrame(step);
+    }
+    nav.addEventListener("pointermove", move);
+    nav.addEventListener("pointerleave", stop);
+    window.addEventListener("blur", stop);
+    return () => { stop(); nav.removeEventListener("pointermove", move); nav.removeEventListener("pointerleave", stop); window.removeEventListener("blur", stop); };
+  }, []);
   const allowed = (href: string) => {
     if (role === "OWNER") return true;
     if (role === "ORDER_AGENT") return ["/admin", "/admin/orders", "/admin/customers"].includes(href);
@@ -295,7 +326,7 @@ export default function AdminNav({
   };
 
   return (
-    <nav className="admin-nav" aria-label="Admin sidebar">
+    <nav ref={navRef} className="admin-nav" aria-label="Admin sidebar" tabIndex={0}>
       {groups.map((group) => {
         const visibleLinks = group.links.filter(([href]) => allowed(href));
         if (!visibleLinks.length) return null;
@@ -303,6 +334,7 @@ export default function AdminNav({
         return (
           <div className="admin-nav-group" key={group.label}>
             <div className="admin-nav-label">{group.label}</div>
+            <div className="admin-nav-group-links">
             {visibleLinks.map(([href, label, icon]) => (
               <NavItem
                 key={href}
@@ -313,6 +345,7 @@ export default function AdminNav({
                 onNavigate={onNavigate}
               />
             ))}
+            </div>
           </div>
         );
       })}

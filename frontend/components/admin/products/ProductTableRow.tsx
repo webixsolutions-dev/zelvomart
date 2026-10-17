@@ -25,6 +25,9 @@ export type Product = {
   stockStatus?: string;
   status?: string;
   createdAt?: string;
+  updatedAt?: string;
+  variants?: {id:string}[];
+  sales?: number;
 };
 
 interface ProductTableRowProps {
@@ -75,19 +78,11 @@ export default function ProductTableRow({
   const image = product.image || product.rawImages?.[0];
   const status = String(product.status || "DRAFT").toUpperCase();
   const isPublished = status === "PUBLISHED";
-  const added = parseDate(product.createdAt);
+  const added = parseDate(product.updatedAt || product.createdAt);
   const categoryName = product.category?.name || "Uncategorized";
   const categoryVariant = getCategoryVariant(categoryName);
 
-  let finalImage = image;
-  if (!finalImage) {
-    const lower = titleText.toLowerCase();
-    if (lower.includes("shirt") || lower.includes("tee")) {
-      finalImage = "/images/admin/sample-white-tshirt.png";
-    } else if (lower.includes("lipstick") || lower.includes("lipstic")) {
-      finalImage = "/images/admin/sample-matte-lipstick.png";
-    }
-  }
+  const finalImage = image;
 
   return (
     <tr className="admin-product-row">
@@ -147,6 +142,7 @@ export default function ProductTableRow({
         <StockBadge stockStatus={product.stockStatus} stockQuantity={product.stockQuantity} />
       </td>
 
+      <td><span className="admin-sku-text">{(product.sales||0).toLocaleString()}</span></td>
       <td>
         {added ? (
           <div className="admin-added-cell">

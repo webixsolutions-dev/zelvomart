@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 import { useAdminData,AdminError } from '@/components/admin/useAdminData';
 import { money } from '@/lib/format';
 
@@ -45,7 +47,7 @@ export default function Reports(){
     </section>
 
     <div className="admin-table-wrap" style={{marginTop:18}}>
-      <table className="admin-table"><thead><tr><th>Product</th><th>SKU</th><th>Views</th><th>Add to cart</th><th>View → cart</th><th>Orders</th><th>Order rate</th><th>Revenue</th></tr></thead><tbody>{(data.products||[]).map((p:any)=><tr key={p.sku}><td>{p.title}</td><td>{p.sku}</td><td>{p.views||0}</td><td>{p.carts||0}</td><td>{Number(p.viewToCart||0).toFixed(1)}%</td><td>{p.orders||0}</td><td>{Number(p.orderRate||0).toFixed(1)}%</td><td>{money(p.revenue)}</td></tr>)}</tbody></table>
+      <AdminTable scrollLabel="Reports" className="admin-table"><thead><tr><th>Product</th><th>SKU</th><th>Views</th><th>Add to cart</th><th>View → cart</th><th>Orders</th><th>Order rate</th><th>Revenue</th></tr></thead><tbody>{(data.products||[]).map((p:any)=><tr key={p.sku}><td>{p.title}</td><td>{p.sku}</td><td>{p.views||0}</td><td>{p.carts||0}</td><td>{Number(p.viewToCart||0).toFixed(1)}%</td><td>{p.orders||0}</td><td>{Number(p.orderRate||0).toFixed(1)}%</td><td>{money(p.revenue)}</td></tr>)}</tbody></AdminTable>
     </div>
   </>;
 }

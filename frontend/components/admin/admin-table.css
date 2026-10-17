@@ -1,0 +1,126 @@
+/* Shared tokens keep all admin tables consistent while allowing page-specific columns. */
+.admin-data-table-scroll {
+  --table-header-bg: #f3f7fc;
+  --table-border: #edf2f8;
+  --table-muted: #7c8da7;
+  --table-text: #41516c;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #c5d2e4 #f5f8fc;
+  border-radius: 6px;
+}
+.admin-data-table-scroll:focus-visible { outline: 2px solid #388bfa; outline-offset: 2px; }
+.admin-data-table-scroll > table.admin-data-table {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: auto;
+  text-align: left;
+  font-size: 11px;
+  color: var(--table-text);
+  background: #fff;
+}
+.admin-data-table-scroll > .admin-data-table > thead > tr > th {
+  background: var(--table-header-bg);
+  color: var(--table-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--table-border);
+  white-space: nowrap;
+  text-align: left;
+  vertical-align: middle;
+}
+.admin-data-table-scroll > .admin-data-table > tbody > tr > td {
+  padding: 11px 12px;
+  height: auto;
+  border-bottom: 1px solid var(--table-border);
+  color: var(--table-text);
+  vertical-align: middle;
+  line-height: 1.5;
+}
+.admin-data-table-scroll > .admin-data-table > tbody > tr:hover { background: #f8fbff; }
+.admin-data-table-scroll > .admin-data-table > tbody > tr:last-child > td { border-bottom: 0; }
+.admin-data-table-scroll .admin-data-table input[type=checkbox] { width: 15px; height: 15px; accent-color: #0877ff; vertical-align: middle; cursor: pointer; }
+.admin-data-table-scroll .admin-data-table :is(button,a,select,input):focus-visible { outline: 2px solid #388bfa; outline-offset: 2px; }
+.admin-data-table-scroll > .admin-data-table :is(th,td) { overflow-wrap: anywhere; }
+/* Wide operational tables retain readable columns and scroll inside the page. */
+.admin-data-table-scroll > table.admin-modern-table { min-width: 1060px; }
+.admin-data-table-scroll > table.od-table { min-width: 1040px; }
+.admin-data-table-scroll > .admin-data-table td:has(> :is(button,select,.admin-actions-cell)) { white-space: nowrap; }
+.admin-table-wrap:has(> .admin-data-table-scroll),
+.admin-table-container:has(> .admin-data-table-scroll),
+.od-table-scroll:has(> .admin-data-table-scroll),
+.dashboard-table-scroll:has(> .admin-data-table-scroll) { min-width: 0; max-width: 100%; overflow: visible; }
+.admin-table-container:has(> .admin-data-table-scroll) { padding-bottom: 0; }
+.admin-data-table-scroll:has(.admin-btn-more) { padding-bottom: 70px; }
+.admin-main,.admin-main > * { min-width: 0; }
+@media (max-width: 760px) {
+  .admin-data-table-scroll > table.admin-data-table { width: max-content; min-width: 100%; max-width: none; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr > td { max-width: 280px; min-width: 90px; padding: 10px; }
+  .admin-data-table-scroll > .admin-data-table > thead > tr > th { padding: 10px; }
+  .admin-data-table-scroll > .admin-data-table :is(th,td):first-child:has(input[type=checkbox]) { min-width: 36px; width: 36px; }
+  .admin-data-table-scroll > .admin-data-table td[colspan] { white-space: normal; }
+}
+@media print {
+  .admin-data-table-scroll { overflow: visible; max-width: none; padding: 0; }
+  .admin-data-table-scroll > table.admin-data-table { min-width: 0; width: 100%; }
+}
+
+/* Configurable columns and content-first responsive rows. */
+.admin-data-table-shell { width:100%; max-width:100%; min-width:0; position:relative; }
+.admin-table-options { display:flex; justify-content:flex-end; padding:8px 0; }
+.admin-column-chooser { position:relative; z-index:15; font-size:11px; color:#52617c; }
+.admin-column-chooser summary { display:flex; align-items:center; gap:8px; list-style:none; cursor:pointer; border:1px solid #e1e8f2; border-radius:6px; padding:7px 10px; background:white; }
+.admin-column-chooser summary::-webkit-details-marker { display:none; }
+.admin-column-chooser summary span { color:#8492a9; font-size:10px; }
+.admin-column-menu { position:absolute; top:calc(100% + 5px); right:0; width:230px; max-height:360px; overflow:auto; padding:12px; border:1px solid #e1e8f2; background:white; border-radius:9px; box-shadow:0 8px 24px #14243e18; }
+.admin-column-menu strong { display:block; margin-bottom:8px; font-size:12px; }
+.admin-column-menu label { display:flex; align-items:center; gap:9px; padding:6px 0; cursor:pointer; }
+.admin-column-menu input { accent-color:#0877ff; }
+.admin-column-menu small { margin-left:auto; color:#9aa6b8; font-size:9px; }
+.admin-column-menu button { margin-top:8px; padding:7px 9px; width:100%; color:#0877ff; background:#edf5ff; border:0; border-radius:5px; cursor:pointer; }
+.admin-data-table-scroll > table.admin-data-table { min-width:0; width:100%; table-layout:fixed; }
+.admin-data-table-scroll > .admin-data-table :is(th,td)[data-column-hidden=true] { display:none!important; }
+.admin-data-table-scroll > .admin-data-table > thead > tr > th { white-space:normal; overflow-wrap:anywhere; }
+.admin-data-table-scroll > .admin-data-table > tbody > tr > td { min-width:0; white-space:normal; overflow-wrap:anywhere; }
+.admin-data-table-scroll .admin-data-table td :is(.admin-product-info-cell,.od-customer>div) { min-width:0; }
+.admin-data-table-scroll .admin-data-table td :is(.admin-product-title-link,.admin-product-subtitle,.admin-sku-text) { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; white-space:normal; overflow-wrap:anywhere; }
+.admin-data-table-scroll .admin-data-table td .admin-actions-cell { display:flex; flex-wrap:wrap; gap:5px; justify-content:flex-end; }
+.admin-data-table-scroll .admin-data-table td :is(input,select,textarea) { max-width:100%; }
+.admin-data-table-scroll .admin-data-table td:has(> :is(button,select,.admin-actions-cell)) { white-space:normal; }
+.admin-table-wrap:has(> .admin-data-table-shell),.admin-table-container:has(> .admin-data-table-shell),.od-table-scroll:has(> .admin-data-table-shell),.dashboard-table-scroll:has(> .admin-data-table-shell) { min-width:0; max-width:100%; overflow:visible; }
+.admin-table-container:has(> .admin-data-table-shell) { padding-bottom:0; }
+.admin-data-table-scroll:has(.admin-btn-more) { padding-bottom:10px; }
+@media(max-width:1000px) {
+  .admin-data-table-shell .admin-data-table-scroll { overflow:visible; padding-bottom:0; }
+  .admin-data-table-scroll > table.admin-data-table { display:block; table-layout:auto; min-width:0; width:100%; max-width:100%; }
+  .admin-data-table-scroll > .admin-data-table > thead { position:absolute; width:1px; height:1px; clip-path:inset(50%); overflow:hidden; }
+  .admin-data-table-scroll > .admin-data-table > tbody { display:grid; gap:12px; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 14px; padding:12px; border:1px solid #e1e8f2; border-radius:9px; background:white; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr > td { display:block; min-width:0!important; max-width:100%; width:auto!important; height:auto; padding:8px 0!important; border-bottom:1px solid #edf2f8; white-space:normal; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr > td::before { content:attr(data-column-label); display:block; color:#8492a9; font-size:10px; font-weight:600; margin-bottom:4px; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr > td[data-column-kind=selection] { grid-column:1/-1; padding:0 0 6px!important; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr > td[data-column-kind=selection]::before { display:none; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr > td[data-column-kind=actions] { grid-column:1/-1; border-bottom:0; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr[data-table-spanning=true] { display:block; }
+  .admin-data-table-scroll > .admin-data-table > tbody > tr[data-table-spanning=true] > td::before { display:none; }
+  .admin-data-table-scroll .admin-data-table .admin-dropdown-menu { z-index:30; }
+}
+@media print { .admin-table-options { display:none; } }
+.admin-main :is(.admin-table-container,.admin-table-wrap,.od-table-scroll,.dashboard-table-scroll):has(> .admin-data-table-shell) { overflow:visible; }
+@media(max-width:1000px) {
+  .admin-data-table-scroll .admin-data-table td :is(.admin-product-title-link,.admin-product-subtitle,.admin-sku-text) { display:block; -webkit-line-clamp:unset; overflow:visible; }
+}
+.admin-main .admin-table-container:has(> .admin-data-table-shell) { width:auto; }
+.admin-data-table-scroll .admin-data-table td :is(.admin-category-pill,.admin-added-cell,.admin-price-cell,.admin-product-info-cell) { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.admin-data-table-scroll .admin-data-table td .admin-category-pill { display:inline-block; }
+.admin-data-table-scroll .admin-data-table td :is(.admin-stock-badge,.admin-status-indicator) { max-width:100%; white-space:normal; flex-wrap:wrap; }

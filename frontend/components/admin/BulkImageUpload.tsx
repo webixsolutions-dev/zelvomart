@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { clientApi, uploadAdminImage } from "@/lib/client-api";
@@ -346,7 +348,7 @@ export default function BulkImageUpload({ products, onUploaded }: { products: Bu
                 </div>
                 {rows.length ? (
                   <div className="admin-table-wrap admin-import-preview">
-                    <table className="admin-table">
+                    <AdminTable scrollLabel="Image upload preview" className="admin-table">
                       <thead>
                         <tr>
                           <th>File or folder</th>
@@ -414,7 +416,7 @@ export default function BulkImageUpload({ products, onUploaded }: { products: Bu
                           );
                         })}
                       </tbody>
-                    </table>
+                    </AdminTable>
                   </div>
                 ) : null}
 
@@ -423,7 +425,7 @@ export default function BulkImageUpload({ products, onUploaded }: { products: Bu
                     <h3>Unassigned ({unassignedLeft})</h3>
                     <p>These files were not matched to exactly one product. Pick the product by hand, or leave them unassigned to skip them.</p>
                     <div className="admin-table-wrap admin-import-preview">
-                      <table className="admin-table">
+                      <AdminTable scrollLabel="Image upload preview" className="admin-table">
                         <tbody>
                           {match.unassigned.map((item) => (
                             <tr key={item.file.path}>
@@ -464,7 +466,7 @@ export default function BulkImageUpload({ products, onUploaded }: { products: Bu
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                      </AdminTable>
                     </div>
                   </div>
                 ) : null}

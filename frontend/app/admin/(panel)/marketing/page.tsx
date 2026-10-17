@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 
 import { useState } from "react";
 import { useAdminData, AdminError, AdminLoading } from "@/components/admin/useAdminData";
@@ -40,9 +42,9 @@ export default function MarketingPage(){
           {message?<div className="admin-inline-note">{message}</div>:null}
         </form>
       </section>
-      <section className="admin-section-card"><div className="admin-section-head"><div><h2>Source mix</h2><p>Orders grouped from first/last-touch UTM attribution.</p></div></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Source</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>{data.sources.map(row=><tr key={row.source}><td style={{textTransform:'capitalize'}}>{row.source}</td><td>{row.orders}</td><td>{money(row.revenue)}</td></tr>)}{!data.sources.length?<tr><td colSpan={3}>No attributed orders yet.</td></tr>:null}</tbody></table></div></section>
+      <section className="admin-section-card"><div className="admin-section-head"><div><h2>Source mix</h2><p>Orders grouped from first/last-touch UTM attribution.</p></div></div><div className="admin-table-wrap"><AdminTable scrollLabel="Marketing" className="admin-table"><thead><tr><th>Source</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>{data.sources.map(row=><tr key={row.source}><td style={{textTransform:'capitalize'}}>{row.source}</td><td>{row.orders}</td><td>{money(row.revenue)}</td></tr>)}{!data.sources.length?<tr><td colSpan={3}>No attributed orders yet.</td></tr>:null}</tbody></AdminTable></div></section>
     </div>
-    <section className="admin-section-card" style={{marginTop:18}}><div className="admin-section-head"><div><h2>Recent attribution</h2><p>Campaign and ad parameters saved with orders.</p></div></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order</th><th>Source</th><th>Campaign</th><th>Ad / content</th><th>Total</th></tr></thead><tbody>{data.recent.map(row=><tr key={row.id}><td>{row.orderNumber}</td><td>{row.source}{row.medium?` / ${row.medium}`:''}</td><td>{row.campaign||row.campaignId||'—'}</td><td>{row.content||row.adId||'—'}</td><td>{money(row.total)}</td></tr>)}</tbody></table></div></section>
+    <section className="admin-section-card" style={{marginTop:18}}><div className="admin-section-head"><div><h2>Recent attribution</h2><p>Campaign and ad parameters saved with orders.</p></div></div><div className="admin-table-wrap"><AdminTable scrollLabel="Marketing" className="admin-table"><thead><tr><th>Order</th><th>Source</th><th>Campaign</th><th>Ad / content</th><th>Total</th></tr></thead><tbody>{data.recent.map(row=><tr key={row.id}><td>{row.orderNumber}</td><td>{row.source}{row.medium?` / ${row.medium}`:''}</td><td>{row.campaign||row.campaignId||'—'}</td><td>{row.content||row.adId||'—'}</td><td>{money(row.total)}</td></tr>)}</tbody></AdminTable></div></section>
     {data.meta?.error?<div className="admin-card" style={{marginTop:18}}><h2>Meta API notice</h2><p>{data.meta.error}</p></div>:null}
   </>;
 }

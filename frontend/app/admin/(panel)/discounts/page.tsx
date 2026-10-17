@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 
 import Link from "next/link";
 import { AdminError, AdminLoading, useAdminData } from "@/components/admin/useAdminData";
@@ -35,7 +37,7 @@ export default function DiscountsAdminPage() {
         <Link className="admin-btn admin-btn-light" href="/discount">View store page</Link>
       </div>
       <div className="admin-table-wrap">
-        <table className="admin-table">
+        <AdminTable scrollLabel="Discounts" className="admin-table">
           <thead>
             <tr><th>Product</th><th>Offer</th><th>Status</th></tr>
           </thead>
@@ -54,7 +56,7 @@ export default function DiscountsAdminPage() {
             })}
             {!products.length ? <tr><td colSpan={3}>No discount products yet. Add a 15%, 20% or 30% off tag on a product.</td></tr> : null}
           </tbody>
-        </table>
+        </AdminTable>
       </div>
     </>
   );

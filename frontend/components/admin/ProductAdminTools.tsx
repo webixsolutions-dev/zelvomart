@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 
 import Link from "next/link";
 import { ChangeEvent, useRef, useState } from "react";
@@ -391,7 +393,7 @@ export default function ProductAdminTools({
                   </span>
                 </div>
                 <div className="admin-table-wrap admin-import-preview">
-                  <table className="admin-table">
+                  <AdminTable scrollLabel="Product import preview" className="admin-table">
                     <thead>
                       <tr>
                         <th>Row</th>
@@ -473,7 +475,7 @@ export default function ProductAdminTools({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </AdminTable>
                 </div>
               </>
             ) : null}

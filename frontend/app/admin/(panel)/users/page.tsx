@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 import AdminModal from '@/components/admin/AdminModal';
 import { clientApi } from '@/lib/client-api';
 import { useAdminData,AdminLoading,AdminError } from '@/components/admin/useAdminData';
@@ -26,6 +28,6 @@ export default function Users(){
   async function toggle(u:any){await clientApi(`/api/admin/users/${u.id}`,{method:'PATCH',body:JSON.stringify({active:!u.active})},true);reload()}
   return <>
     <div className="admin-title"><div><h1>Users & Roles</h1><p>Manage Owner, Manager, Order Agent and Marketer accounts. Sign-in uses email and password with a secure server session.</p></div><AdminModal trigger={<>＋ Add Staff User</>} title="Add Staff User"><UserForm onSaved={reload}/></AdminModal></div>
-    <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>{data.map(u=><tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td>{String(u.role).replace(/_/g,' ')}</td><td>{u.active?'Active':'Disabled'}</td><td><div className="admin-row-actions"><button className="admin-btn admin-btn-light" onClick={()=>toggle(u)}>{u.active?'Disable':'Enable'}</button></div></td></tr>)}</tbody></table></div>
+    <div className="admin-table-wrap"><AdminTable scrollLabel="Users" className="admin-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>{data.map(u=><tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td>{String(u.role).replace(/_/g,' ')}</td><td>{u.active?'Active':'Disabled'}</td><td><div className="admin-row-actions"><button className="admin-btn admin-btn-light" onClick={()=>toggle(u)}>{u.active?'Disable':'Enable'}</button></div></td></tr>)}</tbody></AdminTable></div>
   </>;
 }

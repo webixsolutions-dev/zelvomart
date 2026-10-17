@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 
 import { useEffect, useState } from "react";
 import AdminModal from "@/components/admin/AdminModal";
@@ -141,7 +143,7 @@ export default function Categories() {
         </AdminModal>
       </div>
       <div className="admin-table-wrap">
-        <table className="admin-table">
+        <AdminTable scrollLabel="Categories" className="admin-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -171,7 +173,7 @@ export default function Categories() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </AdminTable>
       </div>
     </>
   );

@@ -18,7 +18,7 @@ export default function ProductStatusBadge({ status }: ProductStatusBadgeProps) 
   return (
     <span className={`admin-status-indicator ${modifierClass}`}>
       <span className="admin-badge-dot" aria-hidden="true" />
-      <span>{normStatus.replace(/_/g, " ")}</span>
+      <span>{isPublished?"Active":isDraft?"Draft":"Archived"}</span>
     </span>
   );
 }

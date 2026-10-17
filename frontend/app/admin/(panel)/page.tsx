@@ -1,5 +1,54 @@
 "use client";
-import Link from 'next/link';
-import { money } from '@/lib/format';
-import { useAdminData,AdminError } from '@/components/admin/useAdminData';
-export default function Dashboard(){const {data,error}=useAdminData<any>('/api/admin/dashboard',{ordersToday:0,ordersYesterday:0,revenueToday:0,revenueYesterday:0,delivered:0,failedJobs:0,customers:0,products:0,acceptedPurchases:0,trackingCoverage:100,teamEmails:0,emailCoverage:100,events:{},recent:[]});if(error)return <AdminError message={error||'Unable to load dashboard'}/>;const events=data.events||{};return <><div className="admin-title"><div><span className="admin-eyebrow">OVERVIEW</span><h1>Dashboard</h1><p>Everything you need to manage today&apos;s Zelvomart operations.</p></div><div className="admin-head-actions"><Link href="/admin/products" className="admin-btn admin-btn-light">Manage products</Link><Link href="/admin/orders" className="admin-btn admin-btn-primary">View all orders</Link></div></div><div className="admin-kpis"><div className="admin-stat-card"><small>Orders today</small><strong>{data.ordersToday}</strong><p>{data.ordersYesterday} yesterday</p></div><div className="admin-stat-card"><small>Revenue today</small><strong>{money(data.revenueToday)}</strong><p>{money(data.revenueYesterday)} yesterday</p></div><div className="admin-stat-card"><small>Delivered</small><strong>{data.delivered}</strong><p>Completed today</p></div><div className="admin-stat-card"><small>Failed jobs</small><strong>{data.failedJobs}</strong><p>Needs attention</p></div></div><div className="admin-mini-grid"><Link href="/admin/customers" className="admin-mini-card"><span>Customers</span><b>{data.customers}</b><small>View records →</small></Link><Link href="/admin/products" className="admin-mini-card"><span>Live products</span><b>{data.products}</b><small>Manage catalog →</small></Link><Link href="/admin/tracking" className="admin-mini-card"><span>Product views</span><b>{events.ViewContent||0}</b><small>Tracking health →</small></Link><Link href="/admin/orders" className="admin-mini-card"><span>Purchases</span><b>{events.Purchase||0}</b><small>View orders →</small></Link><Link href="/admin/tracking" className="admin-mini-card"><span>Meta Purchase coverage</span><b>{Number(data.trackingCoverage||0).toFixed(1)}%</b><small>{data.acceptedPurchases||0} accepted server events →</small></Link><Link href="/admin/jobs" className="admin-mini-card"><span>Order email coverage</span><b>{Number(data.emailCoverage||0).toFixed(1)}%</b><small>{data.teamEmails||0} team emails sent →</small></Link></div><section className="admin-section-card"><div className="admin-section-head"><div><h2>Recent orders</h2><p>Latest orders from the backend database.</p></div></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>City</th><th>Status</th><th>Total</th></tr></thead><tbody>{(data.recent||[]).map((o:any)=><tr key={o.id}><td><Link className="admin-order-link" href={`/admin/orders/${o.id}`}>{o.orderNumber}</Link></td><td>{new Date(o.createdAt).toLocaleString('en-PK')}</td><td>{o.fullName}</td><td>{o.city}</td><td>{String(o.status).replace(/_/g,' ')}</td><td>{money(o.total)}</td></tr>)}</tbody></table></div></section></>}
+import AdminTable from '@/components/admin/AdminTable';
+
+
+import Link from "next/link";
+import { money } from "@/lib/format";
+import { useAdminData, AdminError } from "@/components/admin/useAdminData";
+import { DashboardIcon, MetricCard } from "@/components/admin/DashboardMetrics";
+import DashboardInsights from "@/components/admin/DashboardInsights";
+
+type Order = { id: string; orderNumber: string; createdAt: string; fullName: string; city: string; status: string; total: number };
+type DashboardData = {
+  ordersToday: number; ordersYesterday: number; revenueToday: number; revenueYesterday: number;
+  delivered: number; failedJobs: number; customers: number; products: number;
+  acceptedPurchases: number; trackingCoverage: number; teamEmails: number; emailCoverage: number;
+  events: Record<string, number>; recent: Order[];
+};
+
+export default function Dashboard() {
+  const { data, error, loading, reload } = useAdminData<DashboardData | null>("/api/admin/dashboard", null);
+  const events = data?.events || {};
+  return (
+    <div className="dashboard-overview" aria-busy={loading}>
+      <div className="dashboard-heading">
+        <div><span className="dashboard-eyebrow">OVERVIEW</span><h1>Dashboard</h1><p>Everything you need to manage today&apos;s Zelvomart operations.</p></div>
+        <div className="dashboard-actions">
+          <Link href="/admin/products" className="dashboard-button"><DashboardIcon name="box" />Manage products</Link>
+          <Link href="/admin/orders" className="dashboard-button primary"><DashboardIcon name="arrow" />View all orders</Link>
+        </div>
+      </div>
+      {error ? <div role="alert"><AdminError message={error} /><button className="dashboard-button" onClick={() => void reload()}>Try again</button></div> : <>
+        <div className="dashboard-metrics">
+          <MetricCard label="Orders today" value={data?.ordersToday} icon="cart" color="blue" detail={data ? `${data.ordersYesterday} yesterday` : undefined} />
+          <MetricCard label="Revenue today" value={data ? money(data.revenueToday) : undefined} icon="revenue" color="green" detail={data ? `${money(data.revenueYesterday)} yesterday` : undefined} />
+          <MetricCard label="Delivered" value={data?.delivered} icon="truck" color="purple" detail="Completed today" />
+          <MetricCard label="Failed jobs" value={data?.failedJobs} icon="briefcase" color="orange" detail="Needs attention" />
+          <MetricCard label="Customers" value={data?.customers} icon="user" color="blue" href="/admin/customers" detail="View records" />
+          <MetricCard label="Live products" value={data?.products} icon="box" color="purple" href="/admin/products" detail="Manage catalog" />
+          <MetricCard label="Product views" value={data ? events.ViewContent || 0 : undefined} icon="eye" color="teal" href="/admin/tracking" detail="Tracking health" />
+          <MetricCard label="Purchases" value={data ? events.Purchase || 0 : undefined} icon="cart" color="pink" href="/admin/orders" detail="View orders" />
+        </div>
+        <DashboardInsights data={data} />
+        <section className="dashboard-orders" aria-labelledby="recent-orders-heading">
+          <div className="dashboard-orders-heading"><div><h2 id="recent-orders-heading">Recent orders</h2><p>Latest orders from the backend database.</p></div><Link href="/admin/orders">View all orders <span aria-hidden="true">→</span></Link></div>
+          <div className="dashboard-table-scroll"><AdminTable scrollLabel="Recent orders" className="dashboard-table"><thead><tr>{["Order", "Date", "Customer", "City", "Status", "Total"].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead>
+            <tbody>{!data ? <tr><td colSpan={6}><div className="dashboard-empty" role="status">Loading recent orders…</div></td></tr> : data.recent?.length ? data.recent.map(order => <tr key={order.id}>
+              <td><Link className="admin-order-link" href={`/admin/orders/${order.id}`}>{order.orderNumber}</Link></td><td>{new Date(order.createdAt).toLocaleString("en-PK")}</td><td>{order.fullName}</td><td>{order.city}</td><td><span className="dashboard-status">{String(order.status).replace(/_/g, " ")}</span></td><td>{money(order.total)}</td>
+            </tr>) : <tr><td colSpan={6}><div className="dashboard-empty"><DashboardIcon name="document" /><strong>No recent orders</strong><p>Orders will appear here once customers start placing them.</p></div></td></tr>}</tbody>
+          </AdminTable></div>
+        </section>
+      </>}
+    </div>
+  );
+}

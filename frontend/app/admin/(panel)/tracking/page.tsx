@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 
 import { useAdminData, AdminError } from "@/components/admin/useAdminData";
 
@@ -390,7 +392,7 @@ export default function Tracking() {
             </div>
           </div>
           <div className="admin-table-wrap">
-            <table className="admin-table">
+            <AdminTable scrollLabel="Tracking" className="admin-table">
               <thead>
                 <tr>
                   <th>Time</th>
@@ -433,7 +435,7 @@ export default function Tracking() {
                   </tr>
                 ) : null}
               </tbody>
-            </table>
+            </AdminTable>
           </div>
         </section>
       </div>

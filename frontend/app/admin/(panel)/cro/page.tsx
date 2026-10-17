@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 
 import { useAdminData, AdminError } from "@/components/admin/useAdminData";
 import { money } from "@/lib/format";
@@ -43,7 +45,7 @@ export default function CroPage(){
 
     <div className="admin-cro-grid">
       <section className="admin-section-card"><div className="admin-section-head"><div><h2>CRO opportunities</h2><p>Prioritized actions generated from the funnel.</p></div></div><div className="admin-opportunity-list">{(data.opportunities||[]).map((item,index)=><article className={`admin-opportunity ${item.level||'low'}`} key={`${item.title}-${index}`}><span>{String(index+1).padStart(2,'0')}</span><div><b>{item.title}</b><p>{item.detail}</p></div><em>{item.level}</em></article>)}{!data.opportunities?.length?<p className="admin-empty-copy">More traffic is needed before CRO recommendations can be generated.</p>:null}</div></section>
-      <section className="admin-section-card"><div className="admin-section-head"><div><h2>Traffic source mix</h2><p>Orders and revenue by attributed source.</p></div></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Source</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>{(data.sources||[]).map(row=><tr key={row.source}><td style={{textTransform:'capitalize'}}>{row.source}</td><td>{row.orders}</td><td>{money(row.revenue)}</td></tr>)}{!data.sources?.length?<tr><td colSpan={3}>No attributed orders yet.</td></tr>:null}</tbody></table></div></section>
+      <section className="admin-section-card"><div className="admin-section-head"><div><h2>Traffic source mix</h2><p>Orders and revenue by attributed source.</p></div></div><div className="admin-table-wrap"><AdminTable scrollLabel="Cro" className="admin-table"><thead><tr><th>Source</th><th>Orders</th><th>Revenue</th></tr></thead><tbody>{(data.sources||[]).map(row=><tr key={row.source}><td style={{textTransform:'capitalize'}}>{row.source}</td><td>{row.orders}</td><td>{money(row.revenue)}</td></tr>)}{!data.sources?.length?<tr><td colSpan={3}>No attributed orders yet.</td></tr>:null}</tbody></AdminTable></div></section>
     </div>
   </>;
 }

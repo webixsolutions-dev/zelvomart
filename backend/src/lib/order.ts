@@ -11,6 +11,7 @@ import { dispatchJobRow } from "./jobs";
 const ORDER_TX_OPTIONS = { maxWait: 15_000, timeout: 30_000 };
 
 type CheckoutInput = {
+  staffCreated?: boolean;
   idempotencyKey: string;
   fullName: string;
   phone: string;
@@ -225,6 +226,7 @@ export async function createOrder(input: CheckoutInput) {
         codFee: decimal(codFee),
         total: decimal(total),
         source: sourceName,
+        staffCreated: input.staffCreated === true,
         firstTouch: (source.firstTouch as any) || null,
         lastTouch: (source.lastTouch as any) || source as any,
         fbp: input.fbp,

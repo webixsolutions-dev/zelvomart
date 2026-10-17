@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import AdminNav from "./AdminNav";
+import AdminNotifications from "./AdminNotifications";
 import { clientApi, logoutAdminSession } from "@/lib/client-api";
 import { clearAdminDataCache, prefetchAdminData } from "./useAdminData";
 import { ToastContainer } from "react-toastify";
@@ -15,11 +16,59 @@ type User = { id: string; name: string; email: string; role: string };
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const sectionName = pathname.split("/")[2]?.replace(/-/g, " ") || "Dashboard";
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [topbarMenuOpen, setTopbarMenuOpen] = useState(false);
-  const topbarMenuRef = useRef<HTMLDivElement>(null);
+
+  const sidebarRef = useRef<HTMLElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+
+      }
+    }
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusable = () => Array.from(sidebarRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') || []).filter(element => element.getClientRects().length > 0);
+    const elements = focusable();
+    elements?.[0]?.focus();
+    function trapFocus(event: KeyboardEvent) {
+      if (event.key !== "Tab" || !elements?.length) return;
+      const visible = focusable();
+      const first = visible[0];
+      const last = visible[visible.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+    window.addEventListener("keydown", trapFocus);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", trapFocus);
+      previousFocus?.focus();
+    };
+  }, [mobileOpen]);
 
   useEffect(() => {
     let active = true;
@@ -47,17 +96,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       router.replace("/admin/reports");
     }
   }, [user, pathname, router]);
-
-  // Close menus on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (topbarMenuRef.current && !topbarMenuRef.current.contains(event.target as Node)) {
-        setTopbarMenuOpen(false);
-      }
-    }
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => window.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -115,7 +153,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       )}
 
       {/* Desktop & Mobile Sidebar */}
-      <aside className={`admin-sidebar${mobileOpen ? " mobile-open" : ""}`}>
+      <aside ref={sidebarRef} id="admin-navigation" aria-label="Admin navigation" className={`admin-sidebar${mobileOpen ? " mobile-open" : ""}`}>
         {/* Brand Header */}
         <div className="admin-sidebar-header">
           <Link href="/admin" className="admin-sidebar-brand" aria-label="Zelvomart admin home">
@@ -125,31 +163,25 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               width={140}
               height={50}
               className="admin-brand-logo-image"
-              style={{ objectFit: "contain", height: "38px", width: "auto" }}
+
               priority
             />
+            <span className="admin-brand-role-label"><strong>Administration</strong><small>{user.role.replace(/_/g, " ").toLowerCase()} workspace</small></span>
+
+
           </Link>
+          <button type="button" className="admin-drawer-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}>×</button>
         </div>
 
         {/* Navigation Groups */}
         <AdminNav role={user.role} onNavigate={() => setMobileOpen(false)} />
 
-        {/* Bottom Sign Out Button */}
-        <div className="admin-sidebar-foot">
-          <button
-            type="button"
-            className="admin-sidebar-signout-btn"
-            title="Sign out of admin session"
-            onClick={signOut}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="admin-nav-svg">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            <span>Sign out</span>
-          </button>
-        </div>
+        <section className="admin-my-account" aria-labelledby="admin-my-account-label">
+          <h2 id="admin-my-account-label">My account</h2>
+          <div className="admin-my-account-profile"><span className="admin-my-account-avatar">{initials}</span><div><strong title={user.name || "Admin"}>{user.name || "Admin"}</strong><small className="admin-my-account-email" title={user.email}>{user.email}</small></div></div>
+          {user.role === "OWNER" && <Link href="/admin/settings" className={`admin-account-link${pathname.startsWith("/admin/settings") ? " active" : ""}`} aria-current={pathname.startsWith("/admin/settings") ? "page" : undefined} onClick={() => setMobileOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z" /></svg><span>Settings</span></Link>}
+          <button type="button" className="admin-account-link admin-account-logout" onClick={signOut}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H4v18h5M10 12h11m-5-5 5 5-5 5" /></svg><span>Log out</span></button>
+        </section>
       </aside>
 
       {/* Main Workspace */}
@@ -160,7 +192,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <button
             type="button"
             className="admin-mobile-toggle"
-            aria-label="Open navigation menu"
+            aria-label="Open navigation menu" aria-expanded={mobileOpen} aria-controls="admin-navigation"
             onClick={() => setMobileOpen(true)}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -170,8 +202,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </svg>
           </button>
 
+          <div className="admin-topbar-context"><span>Workspace</span><span aria-hidden="true">/</span><strong>{sectionName}</strong></div>
           {/* Topbar Search Pill */}
-          <div className="admin-topbar-search">
+          <form className="admin-topbar-search" action="/admin/products" role="search">
             <span className="admin-topbar-search-icon" aria-hidden="true">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8" />
@@ -179,111 +212,24 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               </svg>
             </span>
             <input
+              ref={searchRef}
               type="text"
               className="admin-topbar-search-input"
               placeholder="Search products, categories, SKU..."
-              aria-label="Search dashboard"
+              name="q" aria-label="Search products, categories, or SKU"
             />
-          </div>
-
-          {/* Topbar Right Actions */}
-          <div className="admin-topbar-right">
-            {/* Notification bell with count badge */}
-            <button type="button" className="admin-icon-btn" aria-label="Notifications (3 unread)">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              <span className="admin-badge-count">3</span>
-            </button>
-
-            {/* Theme / sun toggle */}
-            <button type="button" className="admin-icon-btn" aria-label="Toggle theme">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" />
-                <line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" />
-                <line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            </button>
-
-            {/* User pill with dropdown */}
-            <div className="relative" ref={topbarMenuRef}>
-              <div
-                className="admin-topbar-user"
-                role="button"
-                tabIndex={0}
-                aria-expanded={topbarMenuOpen}
-                onClick={() => setTopbarMenuOpen((prev) => !prev)}
-                onKeyDown={(e) => e.key === "Enter" && setTopbarMenuOpen((prev) => !prev)}
-              >
-                <span className="admin-topbar-user-avatar">{initials}</span>
-                <span className="admin-topbar-user-name">Admin</span>
-                <span className="admin-topbar-user-chevron">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </span>
-              </div>
-
-              {topbarMenuOpen && (
-                <div className="admin-user-menu" style={{ top: "calc(100% + 8px)", bottom: "auto" }} role="menu">
-                  <div style={{ padding: "6px 10px", borderBottom: "1px solid #edf2f7", marginBottom: 4 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#0b1a2e" }}>{user.name || "Admin"}</div>
-                    <div style={{ fontSize: 10, color: "#64748b" }}>{user.email}</div>
-                  </div>
-                  <Link
-                    href="/"
-                    target="_blank"
-                    className="admin-user-menu-item"
-                    role="menuitem"
-                    onClick={() => setTopbarMenuOpen(false)}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <polyline points="15 3 21 3 21 9" />
-                      <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                    <span>View Storefront</span>
-                  </Link>
-                  <Link
-                    href="/admin/settings"
-                    className="admin-user-menu-item"
-                    role="menuitem"
-                    onClick={() => setTopbarMenuOpen(false)}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1H21v4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
-                    </svg>
-                    <span>Settings</span>
-                  </Link>
-                  <button
-                    type="button"
-                    className="admin-user-menu-item danger"
-                    role="menuitem"
-                    onClick={signOut}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                      <polyline points="16 17 21 12 16 7" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
-                    </svg>
-                    <span>Sign out</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+            <kbd className="admin-search-shortcut" aria-hidden="true">⌘/Ctrl K</kbd>
+          </form>
+          <AdminNotifications role={user.role} />
+          <Link href="/" target="_blank" rel="noopener noreferrer" className="admin-topbar-store" aria-label="View storefront (opens in a new tab)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M4 10v10h16V10M3 10l2-7h14l2 7ZM9 20v-6h6v6" /></svg><span>View storefront</span><span aria-hidden="true">↗</span></Link>
         </header>
 
         {/* Content area */}
         <main className="admin-main">{children}</main>
+        <footer className="admin-workspace-footer">
+          <span>© {new Date().getUTCFullYear()} <strong>Zelvomart.</strong> All rights reserved.</span>
+          <Link href="/contact-us" target="_blank" rel="noopener noreferrer" className="admin-footer-support">Help &amp; support <span aria-hidden="true">→</span></Link>
+        </footer>
         <ToastContainer
           position="top-right"
           autoClose={4000}

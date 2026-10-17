@@ -1,6 +1,9 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
 
-import { useMemo, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from '@/app/admin/(panel)/orders/OrderSkeletons';
 import ProductTableRow, { Product } from "./ProductTableRow";
 import ProductsPagination from "./ProductsPagination";
 
@@ -10,9 +13,10 @@ interface ProductsTableProps {
   onToggleStatus: (ids: string[], status: "PUBLISHED" | "DRAFT", label?: string) => void;
   onDelete: (ids: string[], label: string) => Promise<boolean>;
   posting: string[];
+  loading?:boolean;
 }
 
-const ITEMS_PER_PAGE = 10;
+
 
 export default function ProductsTable({
   products,
@@ -20,10 +24,14 @@ export default function ProductsTable({
   onToggleStatus,
   onDelete,
   posting,
+  loading=false,
 }: ProductsTableProps) {
+  const [pageSize,setPageSize]=useState(10);
+  const ITEMS_PER_PAGE=pageSize;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
+  useEffect(()=>{setSelectedIds(ids=>ids.filter(id=>products.some(p=>p.id===id)))},[products]);
   // Pagination calculation
   const totalItems = products.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
@@ -32,7 +40,7 @@ export default function ProductsTable({
   const paginatedProducts = useMemo(() => {
     const start = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
     return products.slice(start, start + ITEMS_PER_PAGE);
-  }, [products, safeCurrentPage]);
+  }, [products, safeCurrentPage,pageSize]);
 
   // Select all visible logic
   const allVisibleSelected =
@@ -128,8 +136,8 @@ export default function ProductsTable({
       )}
 
       {/* Table Container */}
-      <div className="admin-table-container">
-        <table className="admin-modern-table">
+      <div className="admin-table-container" aria-busy={loading}>
+        <AdminTable scrollLabel="Products" className="admin-modern-table">
           <thead>
             <tr>
               <th style={{ width: 44, paddingLeft: 18 }}>
@@ -137,6 +145,7 @@ export default function ProductsTable({
                   type="checkbox"
                   className="admin-custom-checkbox"
                   checked={allVisibleSelected}
+                  disabled={loading}
                   aria-label="Select all visible products"
                   onChange={(e) => handleSelectAll(e.target.checked)}
                 />
@@ -147,13 +156,14 @@ export default function ProductsTable({
               <th>SKU</th>
               <th>Price</th>
               <th>Stock</th>
-              <th>Added</th>
+              <th>Sales</th>
+              <th>Updated</th>
               <th>Status</th>
               <th style={{ textAlign: "right", paddingRight: 20 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedProducts.length > 0 ? (
+            {loading ? Array.from({length:pageSize},(_,index)=><tr key={index} aria-hidden="true">{Array.from({length:11},(_,col)=><td key={col}><Skeleton width={col===2?120:col===0?14:65} height={col===1?30:12}/></td>)}</tr>) : paginatedProducts.length > 0 ? (
               paginatedProducts.map((product) => (
                 <ProductTableRow
                   key={product.id}
@@ -167,7 +177,7 @@ export default function ProductsTable({
               ))
             ) : (
               <tr>
-                <td colSpan={10}>
+                <td colSpan={11}>
                   <div className="admin-empty-state">
                     <div className="admin-empty-state-icon">
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
@@ -182,8 +192,10 @@ export default function ProductsTable({
               </tr>
             )}
           </tbody>
-        </table>
+        </AdminTable>
       </div>
+
+      {loading&&<span className="od-sr-only" role="status">Loading products…</span>}
 
       {/* Pagination Footer */}
       <ProductsPagination
@@ -191,6 +203,7 @@ export default function ProductsTable({
         totalPages={totalPages}
         totalItems={totalItems}
         itemsPerPage={ITEMS_PER_PAGE}
+        onPageSizeChange={size=>{setPageSize(size);setCurrentPage(1);setSelectedIds([])}}
         onPageChange={(page) => setCurrentPage(page)}
       />
     </div>

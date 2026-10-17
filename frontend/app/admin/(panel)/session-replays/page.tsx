@@ -1,4 +1,6 @@
 "use client";
+import AdminTable from '@/components/admin/AdminTable';
+
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -53,7 +55,7 @@ export default function SessionReplaysPage(){
       <p className="replay-privacy-note">Recorder never runs inside the admin panel. Passwords, checkout inputs, phone, email and address fields are masked before replay events are sent.</p>
     </div>
 
-    <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Visitor / source</th><th>Started</th><th>Journey</th><th>Landing page</th><th>Outcome</th><th></th></tr></thead><tbody>
+    <div className="admin-table-wrap"><AdminTable scrollLabel="Session replays" className="admin-table"><thead><tr><th>Visitor / source</th><th>Started</th><th>Journey</th><th>Landing page</th><th>Outcome</th><th></th></tr></thead><tbody>
       {data.items.map(row=><tr key={row.id}>
         <td><b>#{row.visitorId.slice(0,8)}</b><div className="replay-source"><span>{sourceLabel(row.source)}</span>{row.campaign?<small>{row.campaign}</small>:null}</div></td>
         <td>{new Date(row.startedAt).toLocaleString()}<small className="admin-cell-sub">{row.device||"device unknown"}</small></td>
@@ -63,6 +65,6 @@ export default function SessionReplaysPage(){
         <td><Link href={`/admin/session-replays/${row.id}`} className="admin-btn admin-btn-primary">▶ Watch</Link></td>
       </tr>)}
       {!data.items.length?<tr><td colSpan={6}>No session replays match these filters yet.</td></tr>:null}
-    </tbody></table></div>
+    </tbody></AdminTable></div>
   </>;
 }

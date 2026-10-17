@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useAdminData, AdminError, clearAdminDataCache } from "@/components/admin/useAdminData";
-import { clientApi } from "@/lib/client-api";
-import ProductsHeader from "./products/ProductsHeader";
+import { useEffect, useMemo, useState } from "react";
+import { AdminError, clearAdminDataCache } from "@/components/admin/useAdminData";
+import { adminFetch, clientApi } from "@/lib/client-api";
+import {ProductSummary, ProductInsights, type ProductInsightsData} from './products/ProductDashboard';
+import {useOrderData} from '@/app/admin/(panel)/orders/useOrderData';
+import '@/app/admin/(panel)/orders/orders.css';
+import './products/product-dashboard.css';
 import ProductToolbar from "./products/ProductToolbar";
 import ProductStatusTabs from "./products/ProductStatusTabs";
 import ProductsTable from "./products/ProductsTable";
@@ -52,13 +55,23 @@ export default function ProductsAdminList({
   description,
   emptyMessage,
 }: ProductsAdminListProps) {
-  const { data: products, error, reload } = useAdminData<Product[]>("/api/admin/products", []);
-  const { data: categories } = useAdminData<Category[]>("/api/admin/categories", []);
+  const { data: productData, loading:productsLoading, error, reload } = useOrderData<Product[]>("/api/admin/products");
+  const products=useMemo(()=>productData||[],[productData]);
+  const {data:insights,loading:insightsLoading,error:insightsError,reload:reloadInsights}=useOrderData<ProductInsightsData>('/api/admin/products/insights');
+  const {data:categoryData,loading:categoriesLoading,reload:reloadCategories}=useOrderData<Category[]>('/api/admin/categories');
+  const categories=useMemo(()=>categoryData||[],[categoryData]);
+  async function refreshAll(){await Promise.all([reload(),reloadInsights(),reloadCategories()])}
+  const [sort,setSort]=useState('newest');
   const [query, setQuery] = useState("");
+  useEffect(() => { setQuery(new URLSearchParams(window.location.search).get("q") || ""); }, []);
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeStatus, setActiveStatus] = useState("all");
   const [posting, setPosting] = useState<string[]>([]);
   const [postMessage, setPostMessage] = useState("");
+
+  async function exportProducts(){
+    try{const response=await adminFetch('/api/admin/products/export.csv');if(!response.ok)throw new Error('Export failed. Check your export permission.');const url=URL.createObjectURL(await response.blob());const anchor=document.createElement('a');anchor.href=url;anchor.download='zelvomart-products.csv';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(error){setPostMessage(error instanceof Error?error.message:'Export failed')}
+  }
 
   async function setProductStatus(ids: string[], status: "PUBLISHED" | "DRAFT", label = "") {
     if (!ids.length || posting.length) return;
@@ -80,7 +93,7 @@ export default function ProductsAdminList({
       const failed = response.failed.map((entry) => `${entry.title}: ${entry.error}`).join(" ");
       setPostMessage(`${response.updated.length} ${done}.${failed ? ` Not changed — ${failed}` : ""}`);
       clearAdminDataCache("/api/admin/products");
-      await reload();
+      await refreshAll();
     } catch (requestError) {
       setPostMessage(requestError instanceof Error ? requestError.message.replace(/_/g, " ") : "Update failed");
     } finally {
@@ -109,7 +122,7 @@ export default function ProductsAdminList({
         `${response.deleted.length} deleted from the database.${failed ? ` Not deleted — ${failed}` : ""}`,
       );
       clearAdminDataCache("/api/admin/products");
-      await reload();
+      await refreshAll();
       return response.deleted.length > 0;
     } catch (requestError) {
       setPostMessage(requestError instanceof Error ? requestError.message.replace(/_/g, " ") : "Delete failed");
@@ -132,7 +145,7 @@ export default function ProductsAdminList({
     ).filter(Boolean) as Category[];
     const used = new Set(ordered.map((category) => category.id));
     const remaining = categories.filter((category) => !used.has(category.id));
-    return [...ordered, ...remaining].slice(0, 10);
+    return [...ordered, ...remaining];
   }, [categories]);
 
   const counts = useMemo(() => {
@@ -152,15 +165,17 @@ export default function ProductsAdminList({
         product.category?.id === activeCategory ||
         product.categoryId === activeCategory;
       if (!categoryMatch) return false;
-      if (activeStatus !== "all" && productStatus(product) !== activeStatus) return false;
+      if(activeStatus==='LOW_STOCK'&&stockBadgeState(product.stockStatus,product.stockQuantity).variant!=='low')return false;
+      if(activeStatus==='OUT_OF_STOCK'&&stockBadgeState(product.stockStatus,product.stockQuantity).variant!=='out')return false;
+      if (!['all','LOW_STOCK','OUT_OF_STOCK'].includes(activeStatus) && productStatus(product) !== activeStatus) return false;
       if (!needle) return true;
       return `${product.title || product.name || ""} ${product.slug || ""} ${product.sku || ""} ${
         product.category?.name || ""
       }`
         .toLowerCase()
         .includes(needle);
-    });
-  }, [scopedProducts, query, activeCategory, activeStatus]);
+    }).map(p=>({...p,sales:insights?.sales[p.id]||0})).sort((a,b)=>sort==='highest'?Number(b.price||0)-Number(a.price||0):sort==='lowest'?Number(a.price||0)-Number(b.price||0):sort==='sales'?(b.sales||0)-(a.sales||0):sort==='title'?String(a.title||a.name).localeCompare(String(b.title||b.name)):new Date(b.updatedAt||b.createdAt||0).getTime()-new Date(a.updatedAt||a.createdAt||0).getTime());
+  }, [scopedProducts, query, activeCategory, activeStatus,sort,insights]);
 
   const statusCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -195,19 +210,13 @@ export default function ProductsAdminList({
   if (error) return <AdminError message={error} />;
 
   return (
-    <div className="admin-products-dashboard-view">
-      {/* Products Header with Title & Stats Cards */}
-      <ProductsHeader
-        title={title}
-        description={description}
-        total={stats.total}
-        inStock={stats.inStock}
-        lowStock={stats.lowStock}
-        outOfStock={stats.outOfStock}
-      />
-
+    <div className="od-dashboard pd-dashboard admin-products-dashboard-view">
+      <ProductSummary title={title} description={description} products={scopedProducts} categories={categories} loading={productsLoading||categoriesLoading} onRefresh={()=>void refreshAll()}/>
+      <section className="od-panel pd-table-panel">
+      <div className="pd-table-heading"><h2>All Products {productsLoading?'':`(${rows.length.toLocaleString()})`}</h2><label>Sort by <select aria-label="Sort products" value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Recently updated</option><option value="title">Product name</option><option value="highest">Highest price</option><option value="lowest">Lowest price</option><option value="sales">Best selling</option></select></label></div>
       {/* Toolbar with Search, Category & Status Filters, and Actions */}
       <ProductToolbar
+        onExport={exportProducts}
         query={query}
         onQueryChange={setQuery}
         activeCategory={activeCategory}
@@ -221,7 +230,7 @@ export default function ProductsAdminList({
         draftCount={statusCounts.get("DRAFT") || 0}
         mode={mode}
         products={products}
-        onReload={reload}
+        onReload={refreshAll}
         onPostAllDrafts={() => setProductStatus(rows.map((p) => p.id), "PUBLISHED")}
         postingCount={posting.length}
         rowsCount={rows.length}
@@ -236,11 +245,14 @@ export default function ProductsAdminList({
             all: scopedProducts.length,
             published: statusCounts.get("PUBLISHED") || 0,
             draft: statusCounts.get("DRAFT") || 0,
-            unpublished: statusCounts.get("UNPUBLISHED") || statusCounts.get("ARCHIVED") || 0,
+            unpublished: statusCounts.get("ARCHIVED") || 0,
+            lowStock:stats.lowStock,
+            outOfStock:stats.outOfStock,
           }}
         />
       )}
 
+      {(query||activeCategory!=='all'||activeStatus!=='all'||sort!=='newest')&&<button className="pd-clear" onClick={()=>{setQuery('');setActiveCategory('all');setActiveStatus('all');setSort('newest')}}>Clear filters</button>}
       {/* Feedback Message */}
       {postMessage && (
         <div className="admin-import-message success mb-4" role="status">
@@ -250,12 +262,17 @@ export default function ProductsAdminList({
 
       {/* Products Table Card */}
       <ProductsTable
+        key={`${query}|${activeCategory}|${activeStatus}|${sort}`}
+        loading={productsLoading}
         products={rows}
         emptyMessage={emptyMessage}
         onToggleStatus={setProductStatus}
         onDelete={deleteProducts}
         posting={posting}
       />
+      </section>
+      <ProductInsights products={scopedProducts} categories={categories} data={insights} loading={productsLoading||categoriesLoading||insightsLoading} error={insightsError}/>
+      <p className="od-footnote">Sales exclude cancelled and returned orders. Low stock follows the existing tracked-stock threshold of 5. Category performance is measured by units sold.</p>
     </div>
   );
 }

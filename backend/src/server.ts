@@ -10,6 +10,7 @@ import { prisma } from './lib/db';
 import { signAdminToken, requireAuth, type AuthedRequest } from './lib/auth';
 import { createOrder, restoreOrderStock } from './lib/order';
 import { checkoutSchema } from './lib/validators';
+import { normalizePakistanPhone } from './lib/phone';
 import { getSetting, getSettings, setSetting } from './lib/settings';
 import { postexTrackingUrl } from './lib/postex';
 import { getLocalUploadDir, isCloudStorageConfigured, StorageError, uploadObject } from './lib/storage';
@@ -960,7 +961,15 @@ app.get('/api/admin/dashboard', requireAuth('orders.read'), async (_req,res) => 
   res.json({ordersToday:todayOrders.length,revenueToday:todayOrders.reduce((s,o)=>s+Number(o.total),0),ordersYesterday:yesterdayOrders.length,revenueYesterday:yesterdayOrders.reduce((s,o)=>s+Number(o.total),0),delivered:todayOrders.filter(o=>o.status==='DELIVERED').length,failedJobs,products,customers,acceptedPurchases,trackingCoverage:realOrders?Math.round(acceptedPurchases/realOrders*1000)/10:100,teamEmails,emailCoverage:todayOrders.length?Math.round(teamEmails/todayOrders.length*1000)/10:100,events:Object.fromEntries(events.map(e=>[e.eventName,e._count._all])),recent:recent.map(o=>({...o,total:Number(o.total)}))});
 });
 
-app.get('/api/admin/products', requireAuth('products.write'), async (req,res) => { const q=String(req.query.q||''); const status=String(req.query.status||''); const categoryId=String(req.query.categoryId||''); const where:Prisma.ProductWhereInput={...(q?{OR:[{title:{contains:q,mode:'insensitive'}},{sku:{contains:q,mode:'insensitive'}}]}:{}),...(status?{status:status as ProductStatus}:{}),...(categoryId?{categoryId}:{})}; const rows=await prisma.product.findMany({where,include:{category:true,variants:true,reviews:true},orderBy:{updatedAt:'desc'},take:1000}); res.json(rows.map(jsonProduct)); });
+app.get('/api/admin/products/insights', requireAuth('products.write'), async (_req,res)=>{
+  const [sales,activity]=await Promise.all([
+    prisma.orderItem.groupBy({by:['productId'],where:{productId:{not:null},order:{status:{notIn:['CANCELLED','RETURNED']}}},_sum:{quantity:true}}),
+    prisma.auditLog.findMany({where:{entity:{in:['Product','Variant']}},orderBy:{createdAt:'desc'},take:6}),
+  ]);
+  res.json({sales:Object.fromEntries(sales.filter(s=>s.productId).map(s=>[s.productId,s._sum.quantity||0])),activity});
+});
+app.get('/api/admin/products/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.product.findMany({include:{category:true},orderBy:{updatedAt:'desc'}});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['title,slug,sku,category,price,salePrice,costPrice,stock,status,featured,shortDescription,descriptionHtml,imageUrls,videoUrl,seoTitle,seoDescription',...rows.map(p=>[p.title,p.slug,p.sku,p.category?.name||'',p.price,p.salePrice||'',p.costPrice||'',p.stock,p.status,p.featured,p.shortDescription||'',p.descriptionHtml||'',Array.isArray(p.images)?p.images.join('|'):'',p.videoUrl||'',p.seoTitle||'',p.seoDescription||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
+app.get('/api/admin/products', requireAuth('products.write'), async (req,res) => { const q=String(req.query.q||''); const status=String(req.query.status||''); const categoryId=String(req.query.categoryId||''); const where:Prisma.ProductWhereInput={...(q?{OR:[{title:{contains:q,mode:'insensitive'}},{sku:{contains:q,mode:'insensitive'}}]}:{}),...(status?{status:status as ProductStatus}:{}),...(categoryId?{categoryId}:{})}; const rows=await prisma.product.findMany({where,include:{category:true,variants:true,reviews:true},orderBy:{updatedAt:'desc'}}); res.json(rows.map(jsonProduct)); });
 app.get('/api/admin/products/:id', requireAuth('products.write'), async (req,res) => { const row=await prisma.product.findUnique({where:{id:routeParam(req, 'id')},include:{category:true,variants:true,reviews:true}}); if(!row)return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row)); });
 app.post('/api/admin/products', requireAuth('products.write'), async (req:AuthedRequest,res) => {
   try {
@@ -1071,13 +1080,87 @@ app.post('/api/admin/categories', requireAuth('products.write'), async (req:Auth
 app.patch('/api/admin/categories/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => { const b=req.body; const row=await prisma.category.update({where:{id:routeParam(req, 'id')},data:{name:b.name,slug:b.slug,sortOrder:b.sortOrder==null?undefined:Number(b.sortOrder),imageUrl:b.imageUrl===undefined?undefined:(b.imageUrl||null),description:b.description===undefined?undefined:(b.description||null),seoTitle:b.seoTitle===undefined?undefined:(b.seoTitle||null),seoDescription:b.seoDescription===undefined?undefined:(b.seoDescription||null)}});await audit(req,'update','Category',row.id);await invalidateFrontendCache(['categories','products','store']);res.json(row);});
 app.delete('/api/admin/categories/:id', requireAuth('products.write'), async (req:AuthedRequest,res)=>{await prisma.category.delete({where:{id:routeParam(req, 'id')}});await audit(req,'delete','Category',routeParam(req, 'id'));await invalidateFrontendCache(['categories','products','store']);res.json({ok:true});});
 
+function orderFilters(query: Record<string, unknown>): Prisma.OrderWhereInput {
+  const text = (key: string) => String(query[key] || '').trim();
+  const q = text('q'), status = text('status');
+  const groups: Record<string, OrderStatus[]> = {Pending:['NEW','ON_HOLD'],Processing:['CONFIRMED'],Shipped:['BOOKED','IN_TRANSIT'],Delivered:['DELIVERED','SETTLED'],Cancelled:['CANCELLED'],Returned:['RETURNED']};
+  const date = (key: string, end = false) => {
+    const value = text(key);
+    if (!value) return undefined;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('INVALID_DATE');
+    const parsed = new Date(`${value}T${end ? '23:59:59.999' : '00:00:00'}+05:00`);
+    if (Number.isNaN(parsed.getTime())) throw new Error('INVALID_DATE');
+    return parsed;
+  };
+  const gte = date('from'), lte = date('to', true);
+  if (gte && lte && gte > lte) throw new Error('INVALID_DATE_RANGE');
+  if (status && !Object.values(OrderStatus).includes(status as OrderStatus)) throw new Error('INVALID_STATUS');
+  return {
+    ...(status ? {status: status as OrderStatus} : groups[text('group')] ? {status:{in:groups[text('group')]}} : {}),
+    ...(text('city') ? {city:{contains:text('city'),mode:'insensitive'}} : {}),
+    ...(text('source') ? {source:{contains:text('source'),mode:'insensitive'}} : {}),
+    ...(gte || lte ? {createdAt:{gte,lte}} : {}),
+    ...(q ? {OR:[{orderNumber:{contains:q,mode:'insensitive'}},{fullName:{contains:q,mode:'insensitive'}},{email:{contains:q,mode:'insensitive'}},{phone:{contains:q}},{customer:{phone:{contains:q}}},{items:{some:{title:{contains:q,mode:'insensitive'}}}}]} : {}),
+  };
+}
+
+// Static routes must precede /orders/:id.
+app.get('/api/admin/orders/export.csv', requireAuth('orders.export'), async (req,res)=>{
+  let where: Prisma.OrderWhereInput;
+  try { where=orderFilters(req.query); } catch(error:any) { return res.status(400).json({error:error.message}); }
+  const rows=await prisma.order.findMany({where,orderBy:{createdAt:'desc'}});
+  const esc=(v:unknown)=>`"${String(v??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')}"`;
+  const csv=['orderNumber,date,customer,phone,email,city,status,paymentMethod,total,source,tracking',...rows.map(o=>[o.orderNumber,o.createdAt.toISOString(),o.fullName,o.phone,o.email,o.city,o.status,o.paymentMethod,o.total,o.source,o.postexTracking].map(esc).join(','))].join('\r\n');
+  res.attachment('zelvomart-orders.csv').type('text/csv').send('\uFEFF'+csv);
+});
+app.get('/api/admin/orders/dashboard', requireAuth('orders.read'), async (req,res)=>{
+  let where: Prisma.OrderWhereInput;
+  try { where=orderFilters({...req.query,status:'',group:''}); } catch(error:any) { return res.status(400).json({error:error.message}); }
+  // Compare the selected period with the preceding equal-length period in Pakistan time.
+  const now=new Date(Date.now()+5*3600000);
+  const start=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1)-5*3600000);
+  const range=where.createdAt as Prisma.DateTimeFilter | undefined;
+  const currentEnd=range?.lte instanceof Date?range.lte:new Date(Math.max(Date.now(),range?.gte instanceof Date?range.gte.getTime()+86400000-1:0));
+  const currentStart=range?.gte instanceof Date?range.gte:(start>currentEnd?new Date(currentEnd.getTime()-30*86400000):start);
+  const duration=currentEnd.getTime()-currentStart.getTime()+1;
+  const comparisonBase={...where,createdAt:undefined};
+  const [counts,current,previous,activity,products]=await Promise.all([
+    prisma.order.groupBy({by:['status'],where,_count:{_all:true}}),
+    prisma.order.groupBy({by:['status'],where:{...comparisonBase,createdAt:{gte:currentStart,lte:currentEnd}},_count:{_all:true}}),
+    prisma.order.groupBy({by:['status'],where:{...comparisonBase,createdAt:{gte:new Date(currentStart.getTime()-duration),lt:currentStart}},_count:{_all:true}}),
+    prisma.orderStatusHistory.findMany({where:{order:where},include:{order:{select:{id:true,orderNumber:true,fullName:true}}},orderBy:{createdAt:'desc'},take:6}),
+    prisma.orderItem.groupBy({by:['sku','title','imageUrl'],where:{order:{...where,status:{notIn:['CANCELLED','RETURNED']}}},_sum:{quantity:true},orderBy:{_sum:{quantity:'desc'}},take:5}),
+  ]);
+  const map=(rows:typeof counts)=>Object.fromEntries(rows.map(r=>[r.status,r._count._all]));
+  res.json({counts:map(counts),current:map(current),previous:map(previous),comparison:{from:currentStart,to:currentEnd},activity,products:products.map(p=>({sku:p.sku,title:p.title,imageUrl:p.imageUrl,quantity:p._sum.quantity||0}))});
+});
+app.get('/api/admin/orders/catalog', requireAuth('orders.write'), async (req,res)=>{
+  const search=String(req.query.search||'').trim();
+  const items=await prisma.product.findMany({where:{status:'PUBLISHED',...(search?{OR:[{title:{contains:search,mode:'insensitive' as const}},{sku:{contains:search,mode:'insensitive' as const}}]}:{})},select:productListSelect,take:10,orderBy:{title:'asc'}});
+  res.json({items:items.map(jsonProductSummary)});
+});
+app.post('/api/admin/orders', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{
+  const parsed=checkoutSchema.safeParse(req.body);
+  if(!parsed.success)return res.status(400).json({error:'VALIDATION_ERROR',issues:parsed.error.flatten()});
+  try {
+    const order=await createOrder({...parsed.data,staffCreated:true,email:parsed.data.email||undefined,source:{utm_source:'admin'}});
+    await audit(req,'create','Order',order.id);await invalidateFrontendCache(['products']);
+    res.status(201).json({id:order.id,orderNumber:order.orderNumber});
+  } catch(error:any) {res.status(400).json({error:error.message||'ORDER_CREATE_FAILED'});}
+});
 app.get('/api/admin/orders', requireAuth('orders.read'), async (req,res)=>{
-  const q=String(req.query.q||'');const status=String(req.query.status||'');const city=String(req.query.city||'');const source=String(req.query.source||'');
-  const fromRaw=String(req.query.from||'');const toRaw=String(req.query.to||'');
-  const from=fromRaw?new Date(`${fromRaw}T00:00:00`):null;const to=toRaw?new Date(`${toRaw}T23:59:59.999`):null;
-  const createdAt=(from&&!Number.isNaN(from.getTime()))||(to&&!Number.isNaN(to.getTime()))?{...(from&&!Number.isNaN(from.getTime())?{gte:from}:{}),...(to&&!Number.isNaN(to.getTime())?{lte:to}:{})}:undefined;
-  const where:Prisma.OrderWhereInput={...(status?{status:status as OrderStatus}:{}),...(city?{city:{contains:city,mode:'insensitive'}}:{}),...(source?{source:{contains:source,mode:'insensitive'}}:{}),...(createdAt?{createdAt}:{}),...(q?{OR:[{orderNumber:{contains:q,mode:'insensitive'}},{fullName:{contains:q,mode:'insensitive'}},{phone:{contains:q}}]}:{})};
-  const rows=await prisma.order.findMany({where,orderBy:{createdAt:'desc'},take:1000});res.json(rows.map(r=>({...r,total:Number(r.total)})));
+  let where: Prisma.OrderWhereInput;
+  try {where=orderFilters(req.query);} catch(error:any) {return res.status(400).json({error:error.message});}
+  const paginated=req.query.page!==undefined;
+  const page=Math.max(1,Math.floor(Number(req.query.page)||1));
+  const limit=Math.min(100,Math.max(1,Math.floor(Number(req.query.limit)||10)));
+  const sorts: Record<string,Prisma.OrderOrderByWithRelationInput>={newest:{createdAt:'desc'},oldest:{createdAt:'asc'},highest:{total:'desc'},lowest:{total:'asc'}};
+  const [rows,total]=await Promise.all([
+    prisma.order.findMany({where,include:{items:true},orderBy:[sorts[String(req.query.sort)]||sorts.newest,{id:'asc'}],skip:paginated?(page-1)*limit:0,take:paginated?limit:1000}),
+    prisma.order.count({where}),
+  ]);
+  const items=rows.map(r=>({...r,total:Number(r.total)}));
+  res.json(paginated?{items,total,page,totalPages:Math.max(1,Math.ceil(total/limit))}:items);
 });
 app.patch('/api/admin/orders/bulk-status', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{
   const ids=Array.isArray(req.body.ids)?req.body.ids.map(String).slice(0,100):[];const next=String(req.body.status) as OrderStatus;
@@ -1132,7 +1215,29 @@ app.patch('/api/admin/orders/:id/tracking', requireAuth('orders.write'), async (
   res.json({ok:true,trackingUrl:tracking?postexTrackingUrl(tracking):null});
 });
 
-app.get('/api/admin/customers', requireAuth('customers.read'), async (_req,res)=>{const rows=await prisma.customer.findMany({include:{orders:{select:{total:true,status:true}}},orderBy:{updatedAt:'desc'},take:1000});res.json(rows.map(c=>({...c,totalSpent:c.orders.reduce((s,o)=>s+Number(o.total),0),orderCount:c.orders.length})));});
+app.get('/api/admin/customers', requireAuth('customers.read'), async (_req,res)=>{
+  const rows=await prisma.customer.findMany({include:{orders:{select:{id:true,orderNumber:true,total:true,status:true,city:true,createdAt:true},orderBy:{createdAt:'desc'}}},orderBy:{updatedAt:'desc'}});
+  res.json(rows.map(c=>({...c,orders:c.orders.map(o=>({...o,total:Number(o.total)})),totalSpent:c.orders.filter(o=>['DELIVERED','SETTLED'].includes(o.status)).reduce((sum,o)=>sum+Number(o.total),0),orderCount:c.orders.length,city:c.orders[0]?.city||null,lastOrder:c.orders[0]?.createdAt||null})));
+});
+function customerInput(body:any){
+  if(!body||typeof body!=='object'||typeof body.name!=='string'||typeof body.phone!=='string'||(body.email!=null&&typeof body.email!=='string')||(body.notes!=null&&typeof body.notes!=='string'))return null;
+  const name=String(body.name||'').trim(),phone=normalizePakistanPhone(String(body.phone||'')),email=String(body.email||'').trim(),notes=String(body.notes||'').trim();
+  if(name.length<2||name.length>100||!phone||email.length>254||(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))||notes.length>2000)return null;
+  return {name,phone:phone!,email:email||null,notes:notes||null};
+}
+app.post('/api/admin/customers', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{
+  const data=customerInput(req.body);if(!data)return res.status(400).json({error:'Enter a name, valid Pakistani mobile number, and valid optional email.'});
+  try{const row=await prisma.customer.create({data});await audit(req,'create','Customer',row.id);res.status(201).json({id:row.id});}catch(error:any){if(error.code==='P2002')return res.status(409).json({error:'A customer with this phone number already exists.'});throw error;}
+});
+app.patch('/api/admin/customers/bulk-blocklist', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{
+  if(!req.body||!Array.isArray(req.body.ids)||req.body.ids.length>100)return res.status(400).json({error:'INVALID_BULK_UPDATE'});
+  const ids:string[]=Array.isArray(req.body.ids)?[...new Set<string>(req.body.ids.map(String))].slice(0,100):[];if(!ids.length||typeof req.body.blocklisted!=='boolean')return res.status(400).json({error:'INVALID_BULK_UPDATE'});
+  const result=await prisma.customer.updateMany({where:{id:{in:ids}},data:{blocklisted:req.body.blocklisted}});await audit(req,'bulk_blocklist','Customer',undefined,{ids,blocklisted:req.body.blocklisted});res.json({updated:result.count});
+});
+app.patch('/api/admin/customers/:id', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{
+  const data=customerInput(req.body);if(!data)return res.status(400).json({error:'Enter a name, valid Pakistani mobile number, and valid optional email.'});
+  try{const row=await prisma.customer.update({where:{id:routeParam(req,'id')},data});await audit(req,'update','Customer',row.id);res.json({id:row.id});}catch(error:any){if(error.code==='P2002')return res.status(409).json({error:'A customer with this phone number already exists.'});if(error.code==='P2025')return res.status(404).json({error:'Customer not found.'});throw error;}
+});
 app.patch('/api/admin/customers/:id/blocklist', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{const current=await prisma.customer.findUnique({where:{id:routeParam(req, 'id')}});if(!current)return res.status(404).json({error:'NOT_FOUND'});const row=await prisma.customer.update({where:{id:routeParam(req, 'id')},data:{blocklisted:!current.blocklisted}});await audit(req,'toggle_blocklist','Customer',row.id,{blocklisted:row.blocklisted});res.json(row);});
 
 app.get('/api/admin/pages', requireAuth('content.write'), async (_req,res)=>res.json(await prisma.page.findMany({orderBy:{slug:'asc'}})));
@@ -1684,8 +1789,6 @@ app.post('/api/admin/products/:id/images', requireAuth('products.write'), async 
     res.status(400).json({error:error?.message||'PRODUCT_IMAGES_FAILED'});
   }
 });
-app.get('/api/admin/products/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.product.findMany({include:{category:true},orderBy:{updatedAt:'desc'}});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['title,slug,sku,category,price,salePrice,costPrice,stock,status,featured,shortDescription,descriptionHtml,imageUrls,videoUrl,seoTitle,seoDescription',...rows.map(p=>[p.title,p.slug,p.sku,p.category?.name||'',p.price,p.salePrice||'',p.costPrice||'',p.stock,p.status,p.featured,p.shortDescription||'',p.descriptionHtml||'',Array.isArray(p.images)?p.images.join('|'):'',p.videoUrl||'',p.seoTitle||'',p.seoDescription||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
-app.get('/api/admin/orders/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.order.findMany({orderBy:{createdAt:'desc'},take:5000});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['orderNumber,date,customer,phone,city,status,total,source',...rows.map(o=>[o.orderNumber,o.createdAt.toISOString(),o.fullName,o.phone,o.city,o.status,o.total,o.source||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
 // Images are converted to WebP in the browser first (frontend/lib/image-convert.ts).
 // Each file is stored in R2 as products/<sha256>.<ext>: the same image uploaded again gets
 // the same URL, so the admin can skip it as a duplicate. There is no local-disk fallback:
