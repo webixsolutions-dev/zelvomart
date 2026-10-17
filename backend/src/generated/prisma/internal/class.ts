@@ -23,12 +23,12 @@ const config: runtime.GetPrismaClientConfig = {
       "value": "prisma-client"
     },
     "output": {
-      "value": "D:\\zelvomart\\zelvomart\\backend\\src\\generated\\prisma",
+      "value": "C:\\Users\\Kashif Nazim\\Desktop\\zelvomart\\zelvomart\\backend\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
-      "engineType": "client",
-      "moduleFormat": "cjs"
+      "moduleFormat": "cjs",
+      "engineType": "client"
     },
     "binaryTargets": [
       {
@@ -38,7 +38,7 @@ const config: runtime.GetPrismaClientConfig = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\zelvomart\\zelvomart\\backend\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\Kashif Nazim\\Desktop\\zelvomart\\zelvomart\\backend\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativePath": "../../../prisma",
