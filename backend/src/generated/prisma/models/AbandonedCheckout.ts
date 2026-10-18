@@ -31,6 +31,10 @@ export type AbandonedCheckoutMinAggregateOutputType = {
   email: string | null
   city: string | null
   address: string | null
+  restoreToken: string | null
+  emailSentAt: Date | null
+  followedUpBy: string | null
+  lostAt: Date | null
   followedUpAt: Date | null
   convertedAt: Date | null
   createdAt: Date | null
@@ -44,6 +48,10 @@ export type AbandonedCheckoutMaxAggregateOutputType = {
   email: string | null
   city: string | null
   address: string | null
+  restoreToken: string | null
+  emailSentAt: Date | null
+  followedUpBy: string | null
+  lostAt: Date | null
   followedUpAt: Date | null
   convertedAt: Date | null
   createdAt: Date | null
@@ -59,6 +67,10 @@ export type AbandonedCheckoutCountAggregateOutputType = {
   address: number
   cart: number
   source: number
+  restoreToken: number
+  emailSentAt: number
+  followedUpBy: number
+  lostAt: number
   followedUpAt: number
   convertedAt: number
   createdAt: number
@@ -74,6 +86,10 @@ export type AbandonedCheckoutMinAggregateInputType = {
   email?: true
   city?: true
   address?: true
+  restoreToken?: true
+  emailSentAt?: true
+  followedUpBy?: true
+  lostAt?: true
   followedUpAt?: true
   convertedAt?: true
   createdAt?: true
@@ -87,6 +103,10 @@ export type AbandonedCheckoutMaxAggregateInputType = {
   email?: true
   city?: true
   address?: true
+  restoreToken?: true
+  emailSentAt?: true
+  followedUpBy?: true
+  lostAt?: true
   followedUpAt?: true
   convertedAt?: true
   createdAt?: true
@@ -102,6 +122,10 @@ export type AbandonedCheckoutCountAggregateInputType = {
   address?: true
   cart?: true
   source?: true
+  restoreToken?: true
+  emailSentAt?: true
+  followedUpBy?: true
+  lostAt?: true
   followedUpAt?: true
   convertedAt?: true
   createdAt?: true
@@ -183,13 +207,17 @@ export type AbandonedCheckoutGroupByArgs<ExtArgs extends runtime.Types.Extension
 
 export type AbandonedCheckoutGroupByOutputType = {
   id: string
-  phone: string
+  phone: string | null
   fullName: string | null
   email: string | null
   city: string | null
   address: string | null
   cart: runtime.JsonValue
   source: runtime.JsonValue | null
+  restoreToken: string | null
+  emailSentAt: Date | null
+  followedUpBy: string | null
+  lostAt: Date | null
   followedUpAt: Date | null
   convertedAt: Date | null
   createdAt: Date
@@ -219,13 +247,17 @@ export type AbandonedCheckoutWhereInput = {
   OR?: Prisma.AbandonedCheckoutWhereInput[]
   NOT?: Prisma.AbandonedCheckoutWhereInput | Prisma.AbandonedCheckoutWhereInput[]
   id?: Prisma.StringFilter<"AbandonedCheckout"> | string
-  phone?: Prisma.StringFilter<"AbandonedCheckout"> | string
+  phone?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   fullName?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   email?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   city?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   address?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   cart?: Prisma.JsonFilter<"AbandonedCheckout">
   source?: Prisma.JsonNullableFilter<"AbandonedCheckout">
+  restoreToken?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
+  emailSentAt?: Prisma.DateTimeNullableFilter<"AbandonedCheckout"> | Date | string | null
+  followedUpBy?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
+  lostAt?: Prisma.DateTimeNullableFilter<"AbandonedCheckout"> | Date | string | null
   followedUpAt?: Prisma.DateTimeNullableFilter<"AbandonedCheckout"> | Date | string | null
   convertedAt?: Prisma.DateTimeNullableFilter<"AbandonedCheckout"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"AbandonedCheckout"> | Date | string
@@ -234,13 +266,17 @@ export type AbandonedCheckoutWhereInput = {
 
 export type AbandonedCheckoutOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  phone?: Prisma.SortOrder
+  phone?: Prisma.SortOrderInput | Prisma.SortOrder
   fullName?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   city?: Prisma.SortOrderInput | Prisma.SortOrder
   address?: Prisma.SortOrderInput | Prisma.SortOrder
   cart?: Prisma.SortOrder
   source?: Prisma.SortOrderInput | Prisma.SortOrder
+  restoreToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  emailSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  followedUpBy?: Prisma.SortOrderInput | Prisma.SortOrder
+  lostAt?: Prisma.SortOrderInput | Prisma.SortOrder
   followedUpAt?: Prisma.SortOrderInput | Prisma.SortOrder
   convertedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -249,31 +285,39 @@ export type AbandonedCheckoutOrderByWithRelationInput = {
 
 export type AbandonedCheckoutWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  restoreToken?: string
   AND?: Prisma.AbandonedCheckoutWhereInput | Prisma.AbandonedCheckoutWhereInput[]
   OR?: Prisma.AbandonedCheckoutWhereInput[]
   NOT?: Prisma.AbandonedCheckoutWhereInput | Prisma.AbandonedCheckoutWhereInput[]
-  phone?: Prisma.StringFilter<"AbandonedCheckout"> | string
+  phone?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   fullName?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   email?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   city?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   address?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
   cart?: Prisma.JsonFilter<"AbandonedCheckout">
   source?: Prisma.JsonNullableFilter<"AbandonedCheckout">
+  emailSentAt?: Prisma.DateTimeNullableFilter<"AbandonedCheckout"> | Date | string | null
+  followedUpBy?: Prisma.StringNullableFilter<"AbandonedCheckout"> | string | null
+  lostAt?: Prisma.DateTimeNullableFilter<"AbandonedCheckout"> | Date | string | null
   followedUpAt?: Prisma.DateTimeNullableFilter<"AbandonedCheckout"> | Date | string | null
   convertedAt?: Prisma.DateTimeNullableFilter<"AbandonedCheckout"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"AbandonedCheckout"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AbandonedCheckout"> | Date | string
-}, "id">
+}, "id" | "restoreToken">
 
 export type AbandonedCheckoutOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  phone?: Prisma.SortOrder
+  phone?: Prisma.SortOrderInput | Prisma.SortOrder
   fullName?: Prisma.SortOrderInput | Prisma.SortOrder
   email?: Prisma.SortOrderInput | Prisma.SortOrder
   city?: Prisma.SortOrderInput | Prisma.SortOrder
   address?: Prisma.SortOrderInput | Prisma.SortOrder
   cart?: Prisma.SortOrder
   source?: Prisma.SortOrderInput | Prisma.SortOrder
+  restoreToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  emailSentAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  followedUpBy?: Prisma.SortOrderInput | Prisma.SortOrder
+  lostAt?: Prisma.SortOrderInput | Prisma.SortOrder
   followedUpAt?: Prisma.SortOrderInput | Prisma.SortOrder
   convertedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -288,13 +332,17 @@ export type AbandonedCheckoutScalarWhereWithAggregatesInput = {
   OR?: Prisma.AbandonedCheckoutScalarWhereWithAggregatesInput[]
   NOT?: Prisma.AbandonedCheckoutScalarWhereWithAggregatesInput | Prisma.AbandonedCheckoutScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"AbandonedCheckout"> | string
-  phone?: Prisma.StringWithAggregatesFilter<"AbandonedCheckout"> | string
+  phone?: Prisma.StringNullableWithAggregatesFilter<"AbandonedCheckout"> | string | null
   fullName?: Prisma.StringNullableWithAggregatesFilter<"AbandonedCheckout"> | string | null
   email?: Prisma.StringNullableWithAggregatesFilter<"AbandonedCheckout"> | string | null
   city?: Prisma.StringNullableWithAggregatesFilter<"AbandonedCheckout"> | string | null
   address?: Prisma.StringNullableWithAggregatesFilter<"AbandonedCheckout"> | string | null
   cart?: Prisma.JsonWithAggregatesFilter<"AbandonedCheckout">
   source?: Prisma.JsonNullableWithAggregatesFilter<"AbandonedCheckout">
+  restoreToken?: Prisma.StringNullableWithAggregatesFilter<"AbandonedCheckout"> | string | null
+  emailSentAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AbandonedCheckout"> | Date | string | null
+  followedUpBy?: Prisma.StringNullableWithAggregatesFilter<"AbandonedCheckout"> | string | null
+  lostAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AbandonedCheckout"> | Date | string | null
   followedUpAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AbandonedCheckout"> | Date | string | null
   convertedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AbandonedCheckout"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"AbandonedCheckout"> | Date | string
@@ -303,13 +351,17 @@ export type AbandonedCheckoutScalarWhereWithAggregatesInput = {
 
 export type AbandonedCheckoutCreateInput = {
   id?: string
-  phone: string
+  phone?: string | null
   fullName?: string | null
   email?: string | null
   city?: string | null
   address?: string | null
   cart: Prisma.JsonNullValueInput | runtime.InputJsonValue
   source?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  restoreToken?: string | null
+  emailSentAt?: Date | string | null
+  followedUpBy?: string | null
+  lostAt?: Date | string | null
   followedUpAt?: Date | string | null
   convertedAt?: Date | string | null
   createdAt?: Date | string
@@ -318,13 +370,17 @@ export type AbandonedCheckoutCreateInput = {
 
 export type AbandonedCheckoutUncheckedCreateInput = {
   id?: string
-  phone: string
+  phone?: string | null
   fullName?: string | null
   email?: string | null
   city?: string | null
   address?: string | null
   cart: Prisma.JsonNullValueInput | runtime.InputJsonValue
   source?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  restoreToken?: string | null
+  emailSentAt?: Date | string | null
+  followedUpBy?: string | null
+  lostAt?: Date | string | null
   followedUpAt?: Date | string | null
   convertedAt?: Date | string | null
   createdAt?: Date | string
@@ -333,13 +389,17 @@ export type AbandonedCheckoutUncheckedCreateInput = {
 
 export type AbandonedCheckoutUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cart?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   source?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  restoreToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  followedUpBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lostAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   followedUpAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   convertedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -348,13 +408,17 @@ export type AbandonedCheckoutUpdateInput = {
 
 export type AbandonedCheckoutUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cart?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   source?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  restoreToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  followedUpBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lostAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   followedUpAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   convertedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -363,13 +427,17 @@ export type AbandonedCheckoutUncheckedUpdateInput = {
 
 export type AbandonedCheckoutCreateManyInput = {
   id?: string
-  phone: string
+  phone?: string | null
   fullName?: string | null
   email?: string | null
   city?: string | null
   address?: string | null
   cart: Prisma.JsonNullValueInput | runtime.InputJsonValue
   source?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  restoreToken?: string | null
+  emailSentAt?: Date | string | null
+  followedUpBy?: string | null
+  lostAt?: Date | string | null
   followedUpAt?: Date | string | null
   convertedAt?: Date | string | null
   createdAt?: Date | string
@@ -378,13 +446,17 @@ export type AbandonedCheckoutCreateManyInput = {
 
 export type AbandonedCheckoutUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cart?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   source?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  restoreToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  followedUpBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lostAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   followedUpAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   convertedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -393,13 +465,17 @@ export type AbandonedCheckoutUpdateManyMutationInput = {
 
 export type AbandonedCheckoutUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fullName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   city?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   address?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   cart?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   source?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  restoreToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  emailSentAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  followedUpBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lostAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   followedUpAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   convertedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -415,6 +491,10 @@ export type AbandonedCheckoutCountOrderByAggregateInput = {
   address?: Prisma.SortOrder
   cart?: Prisma.SortOrder
   source?: Prisma.SortOrder
+  restoreToken?: Prisma.SortOrder
+  emailSentAt?: Prisma.SortOrder
+  followedUpBy?: Prisma.SortOrder
+  lostAt?: Prisma.SortOrder
   followedUpAt?: Prisma.SortOrder
   convertedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -428,6 +508,10 @@ export type AbandonedCheckoutMaxOrderByAggregateInput = {
   email?: Prisma.SortOrder
   city?: Prisma.SortOrder
   address?: Prisma.SortOrder
+  restoreToken?: Prisma.SortOrder
+  emailSentAt?: Prisma.SortOrder
+  followedUpBy?: Prisma.SortOrder
+  lostAt?: Prisma.SortOrder
   followedUpAt?: Prisma.SortOrder
   convertedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -441,6 +525,10 @@ export type AbandonedCheckoutMinOrderByAggregateInput = {
   email?: Prisma.SortOrder
   city?: Prisma.SortOrder
   address?: Prisma.SortOrder
+  restoreToken?: Prisma.SortOrder
+  emailSentAt?: Prisma.SortOrder
+  followedUpBy?: Prisma.SortOrder
+  lostAt?: Prisma.SortOrder
   followedUpAt?: Prisma.SortOrder
   convertedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -458,6 +546,10 @@ export type AbandonedCheckoutSelect<ExtArgs extends runtime.Types.Extensions.Int
   address?: boolean
   cart?: boolean
   source?: boolean
+  restoreToken?: boolean
+  emailSentAt?: boolean
+  followedUpBy?: boolean
+  lostAt?: boolean
   followedUpAt?: boolean
   convertedAt?: boolean
   createdAt?: boolean
@@ -473,6 +565,10 @@ export type AbandonedCheckoutSelectCreateManyAndReturn<ExtArgs extends runtime.T
   address?: boolean
   cart?: boolean
   source?: boolean
+  restoreToken?: boolean
+  emailSentAt?: boolean
+  followedUpBy?: boolean
+  lostAt?: boolean
   followedUpAt?: boolean
   convertedAt?: boolean
   createdAt?: boolean
@@ -488,6 +584,10 @@ export type AbandonedCheckoutSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   address?: boolean
   cart?: boolean
   source?: boolean
+  restoreToken?: boolean
+  emailSentAt?: boolean
+  followedUpBy?: boolean
+  lostAt?: boolean
   followedUpAt?: boolean
   convertedAt?: boolean
   createdAt?: boolean
@@ -503,26 +603,34 @@ export type AbandonedCheckoutSelectScalar = {
   address?: boolean
   cart?: boolean
   source?: boolean
+  restoreToken?: boolean
+  emailSentAt?: boolean
+  followedUpBy?: boolean
+  lostAt?: boolean
   followedUpAt?: boolean
   convertedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AbandonedCheckoutOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "fullName" | "email" | "city" | "address" | "cart" | "source" | "followedUpAt" | "convertedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["abandonedCheckout"]>
+export type AbandonedCheckoutOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "phone" | "fullName" | "email" | "city" | "address" | "cart" | "source" | "restoreToken" | "emailSentAt" | "followedUpBy" | "lostAt" | "followedUpAt" | "convertedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["abandonedCheckout"]>
 
 export type $AbandonedCheckoutPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "AbandonedCheckout"
   objects: {}
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    phone: string
+    phone: string | null
     fullName: string | null
     email: string | null
     city: string | null
     address: string | null
     cart: runtime.JsonValue
     source: runtime.JsonValue | null
+    restoreToken: string | null
+    emailSentAt: Date | null
+    followedUpBy: string | null
+    lostAt: Date | null
     followedUpAt: Date | null
     convertedAt: Date | null
     createdAt: Date
@@ -958,6 +1066,10 @@ export interface AbandonedCheckoutFieldRefs {
   readonly address: Prisma.FieldRef<"AbandonedCheckout", 'String'>
   readonly cart: Prisma.FieldRef<"AbandonedCheckout", 'Json'>
   readonly source: Prisma.FieldRef<"AbandonedCheckout", 'Json'>
+  readonly restoreToken: Prisma.FieldRef<"AbandonedCheckout", 'String'>
+  readonly emailSentAt: Prisma.FieldRef<"AbandonedCheckout", 'DateTime'>
+  readonly followedUpBy: Prisma.FieldRef<"AbandonedCheckout", 'String'>
+  readonly lostAt: Prisma.FieldRef<"AbandonedCheckout", 'DateTime'>
   readonly followedUpAt: Prisma.FieldRef<"AbandonedCheckout", 'DateTime'>
   readonly convertedAt: Prisma.FieldRef<"AbandonedCheckout", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"AbandonedCheckout", 'DateTime'>

@@ -1,4 +1,7 @@
 "use client";
+import {privateSafeUrl} from "./url-privacy";
+import {staffDevice} from "./tracking-policy";
+import {replayIdle} from './replay-timing';
 
 const SESSION_KEY = "zm_replay_session_id";
 const VISITOR_KEY = "zm_replay_visitor_id";
@@ -6,6 +9,9 @@ const SEQUENCE_KEY = "zm_replay_sequence";
 const STARTED_AT_KEY = "zm_replay_started_at";
 const LANDING_URL_KEY = "zm_replay_landing_url";
 const OPT_OUT_KEY = "zm_session_replay_opt_out";
+const ACTIVITY_KEY = "zm_replay_last_activity";
+let activityWrittenAt=0;
+export function touchReplayActivity(){try{const now=Date.now();if(now-activityWrittenAt<1000&&sessionStorage.getItem(ACTIVITY_KEY))return;sessionStorage.setItem(ACTIVITY_KEY,String(now));activityWrittenAt=now}catch{}}
 
 function getOrCreate(storage: Storage, key: string) {
   const existing = storage.getItem(key);
@@ -23,13 +29,16 @@ function getOrCreate(storage: Storage, key: string) {
 export function getReplaySessionId() {
   if (typeof window === "undefined") return undefined;
   try {
-    const existing = window.sessionStorage.getItem(SESSION_KEY);
-    if (existing) return existing;
+    let existing = window.sessionStorage.getItem(SESSION_KEY);
+    const last=Number(window.sessionStorage.getItem(ACTIVITY_KEY));
+    if(existing&&last>0&&replayIdle(last)){resetReplaySession();existing=null;}
+    if (existing){if(!(last>0))touchReplayActivity();return existing;}
     const value = crypto.randomUUID();
     window.sessionStorage.setItem(SESSION_KEY, value);
     window.sessionStorage.setItem(SEQUENCE_KEY, "0");
     window.sessionStorage.setItem(STARTED_AT_KEY, new Date().toISOString());
-    window.sessionStorage.setItem(LANDING_URL_KEY, window.location.href);
+    window.sessionStorage.setItem(LANDING_URL_KEY, privateSafeUrl(window.location.href));
+    touchReplayActivity();
     return value;
   } catch {
     return undefined;
@@ -59,11 +68,11 @@ export function getReplayLandingUrl() {
   try {
     const existing = window.sessionStorage.getItem(LANDING_URL_KEY);
     if (existing) return existing;
-    const value = window.location.href;
+    const value = privateSafeUrl(window.location.href);
     window.sessionStorage.setItem(LANDING_URL_KEY, value);
     return value;
   } catch {
-    return window.location.href;
+    return privateSafeUrl(window.location.href);
   }
 }
 
@@ -72,11 +81,13 @@ export function getReplayLandingUrl() {
  * This prevents a reload from reusing sequence 0 and overwriting the earlier page.
  * Gaps are harmless if the browser closes before a claimed chunk is delivered.
  */
-export function claimReplaySequence() {
+export function claimReplaySequence(sessionId=getReplaySessionId()) {
   if (typeof window === "undefined") return 0;
   try {
-    const current = Math.max(0, Number(window.sessionStorage.getItem(SEQUENCE_KEY) || "0") || 0);
-    window.sessionStorage.setItem(SEQUENCE_KEY, String(current + 1));
+    const sequenceKey=`${SEQUENCE_KEY}:${sessionId}`;
+    const legacy=window.sessionStorage.getItem(SESSION_KEY)===sessionId?window.sessionStorage.getItem(SEQUENCE_KEY):null;
+    const current = Math.max(0, Number(window.sessionStorage.getItem(sequenceKey) || legacy || "0") || 0);
+    window.sessionStorage.setItem(sequenceKey, String(current + 1));
     return current;
   } catch {
     return Math.floor(performance.now());
@@ -84,7 +95,7 @@ export function claimReplaySequence() {
 }
 
 export function sessionReplayEnabled() {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined"||staffDevice()) return false;
   if (process.env.NEXT_PUBLIC_SESSION_REPLAY_ENABLED === "false") return false;
   try {
     if (window.localStorage.getItem(OPT_OUT_KEY) === "1") return false;
@@ -94,7 +105,7 @@ export function sessionReplayEnabled() {
 }
 
 export function setSessionReplayOptOut(optOut: boolean) {
-  try { window.localStorage.setItem(OPT_OUT_KEY, optOut ? "1" : "0"); } catch {}
+  try { window.localStorage.setItem(OPT_OUT_KEY, optOut ? "1" : "0");window.dispatchEvent(new Event("zelvo:replay-preference")); } catch {}
 }
 
 /** Ask the active replay recorder to upload its latest buffered events now. */
@@ -102,3 +113,5 @@ export function requestReplayFlush() {
   if (typeof window === "undefined") return;
   try { window.dispatchEvent(new Event("zelvo:replay-flush")); } catch {}
 }
+
+export function resetReplaySession(){try{for(const key of [SESSION_KEY,STARTED_AT_KEY,LANDING_URL_KEY,ACTIVITY_KEY])sessionStorage.removeItem(key)}catch{}}

@@ -1,3 +1,4 @@
+import {friendlyError,notifyError} from './app-errors';
 import { prepareImageForUpload } from './image-convert';
 
 export const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').replace(/\/$/, '');
@@ -40,12 +41,14 @@ export async function clientApi<T>(path: string, init: RequestInit = {}, auth = 
   const headers = new Headers(init.headers || {});
   if (!(init.body instanceof FormData) && !headers.has('content-type')) headers.set('content-type', 'application/json');
 
-  const response = auth
+  let response:Response;
+  try{response = auth
     ? await adminFetch(path, { ...init, headers })
-    : await fetch(`${API_BASE}${path}`, { ...init, headers });
+    : await fetch(`${API_BASE}${path}`, { ...init, headers });}
+  catch(error){if(init.signal?.aborted||error instanceof Error&&error.name==='AbortError')throw error;notifyError(error);throw new Error(friendlyError(error));}
 
   const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(body?.error || body?.message || `API_${response.status}`);
+  if (!response.ok) {const reason=body?.message||body?.error||'';notifyError(reason,response.status);throw new Error(friendlyError(reason,response.status));}
   return body as T;
 }
 

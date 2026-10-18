@@ -30,7 +30,7 @@ function productRedirectUrl(product: Product | null) {
   const from = typeof meta?.redirectFrom === "string" && meta.redirectFrom.trim() ? meta.redirectFrom.trim() : `/product/${product.slug}/`;
   let fromPath = from;
   try {
-    fromPath = new URL(from, "https://zelvomart.com").pathname;
+    fromPath = new URL(from, "https://zelvomart.vercel.app").pathname;
   } catch {
     // keep as typed
   }
@@ -103,7 +103,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const info = (settings["store.info"] || { whatsapp: "923002026711" }) as { whatsapp?: string };
   const whatsapp = String(info.whatsapp || "923002026711").replace(/[^0-9]/g, "");
   const categoryHref = categorySlug ? `/product-category/${categorySlug}/` : "/shop";
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app";
 
   // Same builder as the admin SEO -> Schema preview.
   const delivery = resolveDeliveryPolicy((settings["store.delivery"] || null) as DeliverySettings | null);

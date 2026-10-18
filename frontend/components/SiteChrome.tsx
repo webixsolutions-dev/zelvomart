@@ -16,7 +16,6 @@ export default function SiteChrome({
   tracking,
   metaPixel,
   tiktokPixel,
-  clarity,
   organizationJson,
   delivery,
 }: {
@@ -28,7 +27,6 @@ export default function SiteChrome({
   tracking: ReactNode;
   metaPixel: ReactNode;
   tiktokPixel?: ReactNode;
-  clarity: ReactNode;
   organizationJson: string;
   delivery?: DeliverySettings | null;
 }) {
@@ -45,7 +43,6 @@ export default function SiteChrome({
       <>
         <Fragment key="meta-pixel">{metaPixel}</Fragment>
         <Fragment key="tiktok-pixel">{tiktokPixel}</Fragment>
-        <Fragment key="clarity">{clarity}</Fragment>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
         <DeliveryPolicyProvider value={delivery}>
         <CartProvider>
@@ -61,7 +58,6 @@ export default function SiteChrome({
     <>
       <Fragment key="meta-pixel">{metaPixel}</Fragment>
       <Fragment key="tiktok-pixel">{tiktokPixel}</Fragment>
-      <Fragment key="clarity">{clarity}</Fragment>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: organizationJson }}

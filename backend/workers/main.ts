@@ -1,12 +1,13 @@
+import {trackingHealth} from "../src/lib/tracking-health";
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
-import { dispatchJobRow, getBoss } from "../src/lib/jobs";
+import { dispatchJobRow, getBoss, jobResultStatus } from "../src/lib/jobs";
 import { sendCustomerOrderEmail, sendCustomerStatusEmail, sendFailureAlert, sendOrderTeamEmail } from "../src/lib/email";
 import { sendMetaServerEvent } from "../src/lib/meta";
 import { sendTikTokServerEvent } from "../src/lib/tiktok";
 import { Resend } from "resend";
 import { money } from "../src/lib/format";
-import { getSetting } from "../src/lib/settings";
+import { setSetting, getSetting } from "../src/lib/settings";
 
 async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>) {
   if (jobLogId) {
@@ -21,7 +22,7 @@ async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>)
     if (jobLogId) {
       await prisma.job.update({
         where: { id: jobLogId },
-        data: { status: "SUCCEEDED", finishedAt: new Date() },
+        data: { status: jobResultStatus(result), error:result&&typeof result==="object"&&"skipped" in result?String(result.skipped):null,finishedAt: new Date() },
       });
     }
     return result;
@@ -40,6 +41,10 @@ async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>)
 
 async function main() {
   const boss = await getBoss();
+  for(const name of ['order-team-email','customer-order-email','customer-status-email','meta-event','meta-purchase','tiktok-event','tiktok-purchase','daily-summary','tracking-health-check','abandoned-checkout-scan','rate-limit-cleanup','session-replay-retention-cleanup','job-recovery'])await boss.createQueue(name);
+  const heartbeat=()=>setSetting('worker.heartbeat',{at:new Date().toISOString(),pid:process.pid}).catch(error=>console.error('Worker heartbeat failed',error));
+  await heartbeat();setInterval(()=>void heartbeat(),30000);
+
 
   await boss.work("order-team-email", async ([job]) => {
     const data = job.data as any;
@@ -66,6 +71,8 @@ async function main() {
       ip: data.ip || undefined,
       fbp: data.fbp || undefined,
       fbc: data.fbc || undefined,
+      eventTime:data.eventTime,
+      externalId:data.visitorId||undefined,
       customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
     }));
   });
@@ -77,14 +84,14 @@ async function main() {
         where: { id: data.orderId },
         include: { items: true },
       });
-      if (!order || order.test || order.staffCreated) return;
+      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return {skipped:"ORDER_EXCLUDED"};
 
       const names = order.fullName.trim().split(/\s+/);
-      await sendMetaServerEvent({
-        eventName: "Purchase",
-        eventId: order.orderNumber,
+      return sendMetaServerEvent({
+        eventName: data.eventName || "Purchase",
+        eventId: data.eventName?`${order.orderNumber}:${data.eventName}`:order.orderNumber,
         orderId: order.id,
-        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/checkout/success/${order.orderNumber}`,
+        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL||"https://zelvomart.vercel.app"}/checkout/success/${order.orderNumber}`,
         fbp: order.fbp || undefined,
         fbc: order.fbc || undefined,
         ip: order.clientIp || undefined,
@@ -95,7 +102,7 @@ async function main() {
         lastName: names.slice(1).join(" ") || undefined,
         city: order.city,
         postcode: order.postcode || undefined,
-        externalId: order.customerId || undefined,
+        externalId: order.visitorId || order.customerId || undefined,
         customData: {
           content_ids: order.items.map((item) => item.sku),
           contents: order.items.map((item) => ({
@@ -121,6 +128,9 @@ async function main() {
       userAgent: data.userAgent || undefined,
       ip: data.ip || undefined,
       ttp: data.ttp || undefined,
+      ttclid:data.ttclid||undefined,
+      eventTime:data.eventTime,
+      externalId:data.visitorId||undefined,
       customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
     }));
   });
@@ -132,18 +142,20 @@ async function main() {
         where: { id: data.orderId },
         include: { items: true },
       });
-      if (!order || order.test || order.staffCreated) return;
+      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return {skipped:"ORDER_EXCLUDED"};
 
-      await sendTikTokServerEvent({
-        eventName: "Purchase",
-        eventId: order.orderNumber,
+      return sendTikTokServerEvent({
+        eventName: data.eventName || "Purchase",
+        eventId: data.eventName?`${order.orderNumber}:${data.eventName}`:order.orderNumber,
         orderId: order.id,
-        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/checkout/success/${order.orderNumber}`,
+        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL||"https://zelvomart.vercel.app"}/checkout/success/${order.orderNumber}`,
         ip: order.clientIp || undefined,
         userAgent: order.clientUserAgent || undefined,
+        ttp:order.ttp||undefined,
+        ttclid:order.ttclid||undefined,
         phone: order.phone,
         email: order.email || undefined,
-        externalId: order.customerId || undefined,
+        externalId: order.visitorId || order.customerId || undefined,
         customData: {
           content_type: "product",
           contents: order.items.map((item) => ({
@@ -219,12 +231,13 @@ async function main() {
         (process.env.ORDER_ALERT_RECIPIENTS || "zelvomart@gmail.com").split(",").map((x) => x.trim()).filter(Boolean),
       );
 
+      const health=await trackingHealth();
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
         from: process.env.EMAIL_FROM || "Zelvomart Orders <orders@zelvomart.com>",
         to: recipients,
         subject: `Zelvomart daily summary • ${start.toISOString().slice(0, 10)}`,
-        html: `<h2>Daily summary</h2>
+        html: `<h2>Daily summary</h2><p>Tracking health: ${health.healthy?"Healthy":"ACTION REQUIRED"}</p><ul>${health.issues.map(issue=>`<li>${issue}</li>`).join("")}</ul>
           <p>Orders: <b>${orders.length}</b> • Revenue: <b>${money(revenue)}</b> • Meta Purchase accepted: <b>${accepted}</b> • Failed jobs: <b>${failedJobs}</b></p>
           <h3>Funnel</h3><p>PageView ${eventMap.get("PageView")||0} → ViewContent ${eventMap.get("ViewContent")||0} → AddToCart ${eventMap.get("AddToCart")||0} → InitiateCheckout ${eventMap.get("InitiateCheckout")||0} → Orders ${orders.length}</p>
           <h3>By source</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Source</th><th>Orders</th><th>Revenue</th></tr>${sourceRows||"<tr><td colspan=3>No orders</td></tr>"}</table>
@@ -237,47 +250,9 @@ async function main() {
   await boss.work("tracking-health-check", async ([job]) => {
     const data = job.data as any;
     return withJobLog(data.jobLogId, async () => {
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const orders = await prisma.order.count({ where: { createdAt: { gte: since }, test: false, staffCreated: false } });
-      const accepted = await prisma.eventLog.count({
-        where: { eventName: "Purchase", channel: "server", accepted: true, createdAt: { gte: since } },
-      });
-      const issues: string[] = [];
-      if (orders !== accepted) {
-        const recentOrders = await prisma.order.findMany({
-          where: { createdAt: { gte: since }, test: false, staffCreated: false },
-          select: { orderNumber: true },
-          orderBy: { createdAt: "asc" },
-        });
-        const acceptedRows = await prisma.eventLog.findMany({
-          where: { eventName: "Purchase", channel: "server", accepted: true, createdAt: { gte: since } },
-          select: { eventId: true },
-        });
-        const acceptedIds = new Set(acceptedRows.map((row) => row.eventId));
-        const missing = recentOrders.map((row) => row.orderNumber).filter((id) => !acceptedIds.has(id));
-        issues.push(`Website orders in last 24h: ${orders}; accepted server Purchase events: ${accepted}. Missing/failed order IDs: ${missing.join(", ") || "none resolved"}`);
-      }
+      const health=await trackingHealth();
+      if(health.issues.length)await sendFailureAlert('Zelvomart tracking health alert',health.issues.join('\n'));
 
-      const eventNames = ["PageView", "ViewContent", "Search", "AddToCart", "InitiateCheckout", "Purchase", "Contact"];
-      const dayMs = 24 * 60 * 60 * 1000;
-      for (const eventName of eventNames) {
-        const lastDay = await prisma.eventLog.count({ where: { eventName, createdAt: { gte: since } } });
-        const eightDaysAgo = new Date(Date.now() - 8 * dayMs);
-        const sevenDayCount = await prisma.eventLog.count({ where: { eventName, createdAt: { gte: eightDaysAgo, lt: since } } });
-        const dailyAverage = sevenDayCount / 7;
-        if (dailyAverage >= 4 && lastDay < dailyAverage / 2) {
-          issues.push(`${eventName} volume ${lastDay} is below half of its recent daily average (${dailyAverage.toFixed(1)}).`);
-        }
-      }
-
-      const metaErrors = await prisma.eventLog.count({
-        where: { channel: "server", createdAt: { gte: since }, OR: [{ accepted: false }, { error: { not: null } }] },
-      });
-      if (metaErrors) issues.push(`Meta/server event errors in last 24h: ${metaErrors}`);
-
-      if (issues.length) {
-        await sendFailureAlert("Zelvomart tracking health alert", issues.join("\n"));
-      }
     });
   });
 
@@ -330,7 +305,7 @@ async function main() {
   });
 
   await boss.schedule("daily-summary", "0 4 * * *", {}); // 9:00 Pakistan time
-  await boss.schedule("tracking-health-check", "15 4 * * *", {});
+  await boss.schedule("tracking-health-check", "*/15 * * * *", {});
   await boss.schedule("abandoned-checkout-scan", "*/15 * * * *", {});
   await boss.schedule("job-recovery", "*/5 * * * *", {});
   await boss.schedule("rate-limit-cleanup", "30 3 * * *", {});

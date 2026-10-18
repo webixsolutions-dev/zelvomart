@@ -28,11 +28,17 @@ export type AggregateSessionReplayChunk = {
 
 export type SessionReplayChunkAvgAggregateOutputType = {
   sequence: number | null
+  byteSize: number | null
+  firstTimestamp: number | null
+  lastTimestamp: number | null
   eventCount: number | null
 }
 
 export type SessionReplayChunkSumAggregateOutputType = {
   sequence: number | null
+  byteSize: number | null
+  firstTimestamp: number | null
+  lastTimestamp: number | null
   eventCount: number | null
 }
 
@@ -40,7 +46,12 @@ export type SessionReplayChunkMinAggregateOutputType = {
   id: string | null
   sessionId: string | null
   sequence: number | null
+  storageKey: string | null
+  byteSize: number | null
+  firstTimestamp: number | null
+  lastTimestamp: number | null
   eventCount: number | null
+  hasSnapshot: boolean | null
   createdAt: Date | null
 }
 
@@ -48,7 +59,12 @@ export type SessionReplayChunkMaxAggregateOutputType = {
   id: string | null
   sessionId: string | null
   sequence: number | null
+  storageKey: string | null
+  byteSize: number | null
+  firstTimestamp: number | null
+  lastTimestamp: number | null
   eventCount: number | null
+  hasSnapshot: boolean | null
   createdAt: Date | null
 }
 
@@ -56,8 +72,13 @@ export type SessionReplayChunkCountAggregateOutputType = {
   id: number
   sessionId: number
   sequence: number
+  storageKey: number
+  byteSize: number
+  firstTimestamp: number
+  lastTimestamp: number
   events: number
   eventCount: number
+  hasSnapshot: number
   createdAt: number
   _all: number
 }
@@ -65,11 +86,17 @@ export type SessionReplayChunkCountAggregateOutputType = {
 
 export type SessionReplayChunkAvgAggregateInputType = {
   sequence?: true
+  byteSize?: true
+  firstTimestamp?: true
+  lastTimestamp?: true
   eventCount?: true
 }
 
 export type SessionReplayChunkSumAggregateInputType = {
   sequence?: true
+  byteSize?: true
+  firstTimestamp?: true
+  lastTimestamp?: true
   eventCount?: true
 }
 
@@ -77,7 +104,12 @@ export type SessionReplayChunkMinAggregateInputType = {
   id?: true
   sessionId?: true
   sequence?: true
+  storageKey?: true
+  byteSize?: true
+  firstTimestamp?: true
+  lastTimestamp?: true
   eventCount?: true
+  hasSnapshot?: true
   createdAt?: true
 }
 
@@ -85,7 +117,12 @@ export type SessionReplayChunkMaxAggregateInputType = {
   id?: true
   sessionId?: true
   sequence?: true
+  storageKey?: true
+  byteSize?: true
+  firstTimestamp?: true
+  lastTimestamp?: true
   eventCount?: true
+  hasSnapshot?: true
   createdAt?: true
 }
 
@@ -93,8 +130,13 @@ export type SessionReplayChunkCountAggregateInputType = {
   id?: true
   sessionId?: true
   sequence?: true
+  storageKey?: true
+  byteSize?: true
+  firstTimestamp?: true
+  lastTimestamp?: true
   events?: true
   eventCount?: true
+  hasSnapshot?: true
   createdAt?: true
   _all?: true
 }
@@ -189,8 +231,13 @@ export type SessionReplayChunkGroupByOutputType = {
   id: string
   sessionId: string
   sequence: number
+  storageKey: string | null
+  byteSize: number | null
+  firstTimestamp: number | null
+  lastTimestamp: number | null
   events: runtime.JsonValue
   eventCount: number
+  hasSnapshot: boolean
   createdAt: Date
   _count: SessionReplayChunkCountAggregateOutputType | null
   _avg: SessionReplayChunkAvgAggregateOutputType | null
@@ -221,8 +268,13 @@ export type SessionReplayChunkWhereInput = {
   id?: Prisma.StringFilter<"SessionReplayChunk"> | string
   sessionId?: Prisma.StringFilter<"SessionReplayChunk"> | string
   sequence?: Prisma.IntFilter<"SessionReplayChunk"> | number
+  storageKey?: Prisma.StringNullableFilter<"SessionReplayChunk"> | string | null
+  byteSize?: Prisma.IntNullableFilter<"SessionReplayChunk"> | number | null
+  firstTimestamp?: Prisma.FloatNullableFilter<"SessionReplayChunk"> | number | null
+  lastTimestamp?: Prisma.FloatNullableFilter<"SessionReplayChunk"> | number | null
   events?: Prisma.JsonFilter<"SessionReplayChunk">
   eventCount?: Prisma.IntFilter<"SessionReplayChunk"> | number
+  hasSnapshot?: Prisma.BoolFilter<"SessionReplayChunk"> | boolean
   createdAt?: Prisma.DateTimeFilter<"SessionReplayChunk"> | Date | string
   session?: Prisma.XOR<Prisma.SessionReplayScalarRelationFilter, Prisma.SessionReplayWhereInput>
 }
@@ -231,8 +283,13 @@ export type SessionReplayChunkOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
+  storageKey?: Prisma.SortOrderInput | Prisma.SortOrder
+  byteSize?: Prisma.SortOrderInput | Prisma.SortOrder
+  firstTimestamp?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastTimestamp?: Prisma.SortOrderInput | Prisma.SortOrder
   events?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   session?: Prisma.SessionReplayOrderByWithRelationInput
 }
@@ -245,8 +302,13 @@ export type SessionReplayChunkWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.SessionReplayChunkWhereInput | Prisma.SessionReplayChunkWhereInput[]
   sessionId?: Prisma.StringFilter<"SessionReplayChunk"> | string
   sequence?: Prisma.IntFilter<"SessionReplayChunk"> | number
+  storageKey?: Prisma.StringNullableFilter<"SessionReplayChunk"> | string | null
+  byteSize?: Prisma.IntNullableFilter<"SessionReplayChunk"> | number | null
+  firstTimestamp?: Prisma.FloatNullableFilter<"SessionReplayChunk"> | number | null
+  lastTimestamp?: Prisma.FloatNullableFilter<"SessionReplayChunk"> | number | null
   events?: Prisma.JsonFilter<"SessionReplayChunk">
   eventCount?: Prisma.IntFilter<"SessionReplayChunk"> | number
+  hasSnapshot?: Prisma.BoolFilter<"SessionReplayChunk"> | boolean
   createdAt?: Prisma.DateTimeFilter<"SessionReplayChunk"> | Date | string
   session?: Prisma.XOR<Prisma.SessionReplayScalarRelationFilter, Prisma.SessionReplayWhereInput>
 }, "id" | "sessionId_sequence">
@@ -255,8 +317,13 @@ export type SessionReplayChunkOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
+  storageKey?: Prisma.SortOrderInput | Prisma.SortOrder
+  byteSize?: Prisma.SortOrderInput | Prisma.SortOrder
+  firstTimestamp?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastTimestamp?: Prisma.SortOrderInput | Prisma.SortOrder
   events?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.SessionReplayChunkCountOrderByAggregateInput
   _avg?: Prisma.SessionReplayChunkAvgOrderByAggregateInput
@@ -272,16 +339,26 @@ export type SessionReplayChunkScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"SessionReplayChunk"> | string
   sessionId?: Prisma.StringWithAggregatesFilter<"SessionReplayChunk"> | string
   sequence?: Prisma.IntWithAggregatesFilter<"SessionReplayChunk"> | number
+  storageKey?: Prisma.StringNullableWithAggregatesFilter<"SessionReplayChunk"> | string | null
+  byteSize?: Prisma.IntNullableWithAggregatesFilter<"SessionReplayChunk"> | number | null
+  firstTimestamp?: Prisma.FloatNullableWithAggregatesFilter<"SessionReplayChunk"> | number | null
+  lastTimestamp?: Prisma.FloatNullableWithAggregatesFilter<"SessionReplayChunk"> | number | null
   events?: Prisma.JsonWithAggregatesFilter<"SessionReplayChunk">
   eventCount?: Prisma.IntWithAggregatesFilter<"SessionReplayChunk"> | number
+  hasSnapshot?: Prisma.BoolWithAggregatesFilter<"SessionReplayChunk"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SessionReplayChunk"> | Date | string
 }
 
 export type SessionReplayChunkCreateInput = {
   id?: string
   sequence: number
-  events: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  storageKey?: string | null
+  byteSize?: number | null
+  firstTimestamp?: number | null
+  lastTimestamp?: number | null
+  events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount: number
+  hasSnapshot?: boolean
   createdAt?: Date | string
   session: Prisma.SessionReplayCreateNestedOneWithoutChunksInput
 }
@@ -290,16 +367,26 @@ export type SessionReplayChunkUncheckedCreateInput = {
   id?: string
   sessionId: string
   sequence: number
-  events: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  storageKey?: string | null
+  byteSize?: number | null
+  firstTimestamp?: number | null
+  lastTimestamp?: number | null
+  events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount: number
+  hasSnapshot?: boolean
   createdAt?: Date | string
 }
 
 export type SessionReplayChunkUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  firstTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   session?: Prisma.SessionReplayUpdateOneRequiredWithoutChunksNestedInput
 }
@@ -308,8 +395,13 @@ export type SessionReplayChunkUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  firstTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -317,16 +409,26 @@ export type SessionReplayChunkCreateManyInput = {
   id?: string
   sessionId: string
   sequence: number
-  events: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  storageKey?: string | null
+  byteSize?: number | null
+  firstTimestamp?: number | null
+  lastTimestamp?: number | null
+  events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount: number
+  hasSnapshot?: boolean
   createdAt?: Date | string
 }
 
 export type SessionReplayChunkUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  firstTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -334,8 +436,13 @@ export type SessionReplayChunkUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  firstTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -358,13 +465,21 @@ export type SessionReplayChunkCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
+  storageKey?: Prisma.SortOrder
+  byteSize?: Prisma.SortOrder
+  firstTimestamp?: Prisma.SortOrder
+  lastTimestamp?: Prisma.SortOrder
   events?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type SessionReplayChunkAvgOrderByAggregateInput = {
   sequence?: Prisma.SortOrder
+  byteSize?: Prisma.SortOrder
+  firstTimestamp?: Prisma.SortOrder
+  lastTimestamp?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
 }
 
@@ -372,7 +487,12 @@ export type SessionReplayChunkMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
+  storageKey?: Prisma.SortOrder
+  byteSize?: Prisma.SortOrder
+  firstTimestamp?: Prisma.SortOrder
+  lastTimestamp?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -380,12 +500,20 @@ export type SessionReplayChunkMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   sessionId?: Prisma.SortOrder
   sequence?: Prisma.SortOrder
+  storageKey?: Prisma.SortOrder
+  byteSize?: Prisma.SortOrder
+  firstTimestamp?: Prisma.SortOrder
+  lastTimestamp?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
 export type SessionReplayChunkSumOrderByAggregateInput = {
   sequence?: Prisma.SortOrder
+  byteSize?: Prisma.SortOrder
+  firstTimestamp?: Prisma.SortOrder
+  lastTimestamp?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
 }
 
@@ -431,19 +559,45 @@ export type SessionReplayChunkUncheckedUpdateManyWithoutSessionNestedInput = {
   deleteMany?: Prisma.SessionReplayChunkScalarWhereInput | Prisma.SessionReplayChunkScalarWhereInput[]
 }
 
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
+export type NullableFloatFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type SessionReplayChunkCreateWithoutSessionInput = {
   id?: string
   sequence: number
-  events: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  storageKey?: string | null
+  byteSize?: number | null
+  firstTimestamp?: number | null
+  lastTimestamp?: number | null
+  events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount: number
+  hasSnapshot?: boolean
   createdAt?: Date | string
 }
 
 export type SessionReplayChunkUncheckedCreateWithoutSessionInput = {
   id?: string
   sequence: number
-  events: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  storageKey?: string | null
+  byteSize?: number | null
+  firstTimestamp?: number | null
+  lastTimestamp?: number | null
+  events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount: number
+  hasSnapshot?: boolean
   createdAt?: Date | string
 }
 
@@ -480,40 +634,65 @@ export type SessionReplayChunkScalarWhereInput = {
   id?: Prisma.StringFilter<"SessionReplayChunk"> | string
   sessionId?: Prisma.StringFilter<"SessionReplayChunk"> | string
   sequence?: Prisma.IntFilter<"SessionReplayChunk"> | number
+  storageKey?: Prisma.StringNullableFilter<"SessionReplayChunk"> | string | null
+  byteSize?: Prisma.IntNullableFilter<"SessionReplayChunk"> | number | null
+  firstTimestamp?: Prisma.FloatNullableFilter<"SessionReplayChunk"> | number | null
+  lastTimestamp?: Prisma.FloatNullableFilter<"SessionReplayChunk"> | number | null
   events?: Prisma.JsonFilter<"SessionReplayChunk">
   eventCount?: Prisma.IntFilter<"SessionReplayChunk"> | number
+  hasSnapshot?: Prisma.BoolFilter<"SessionReplayChunk"> | boolean
   createdAt?: Prisma.DateTimeFilter<"SessionReplayChunk"> | Date | string
 }
 
 export type SessionReplayChunkCreateManySessionInput = {
   id?: string
   sequence: number
-  events: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  storageKey?: string | null
+  byteSize?: number | null
+  firstTimestamp?: number | null
+  lastTimestamp?: number | null
+  events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount: number
+  hasSnapshot?: boolean
   createdAt?: Date | string
 }
 
 export type SessionReplayChunkUpdateWithoutSessionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  firstTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SessionReplayChunkUncheckedUpdateWithoutSessionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  firstTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SessionReplayChunkUncheckedUpdateManyWithoutSessionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   sequence?: Prisma.IntFieldUpdateOperationsInput | number
+  storageKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  byteSize?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  firstTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastTimestamp?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   events?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -523,8 +702,13 @@ export type SessionReplayChunkSelect<ExtArgs extends runtime.Types.Extensions.In
   id?: boolean
   sessionId?: boolean
   sequence?: boolean
+  storageKey?: boolean
+  byteSize?: boolean
+  firstTimestamp?: boolean
+  lastTimestamp?: boolean
   events?: boolean
   eventCount?: boolean
+  hasSnapshot?: boolean
   createdAt?: boolean
   session?: boolean | Prisma.SessionReplayDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["sessionReplayChunk"]>
@@ -533,8 +717,13 @@ export type SessionReplayChunkSelectCreateManyAndReturn<ExtArgs extends runtime.
   id?: boolean
   sessionId?: boolean
   sequence?: boolean
+  storageKey?: boolean
+  byteSize?: boolean
+  firstTimestamp?: boolean
+  lastTimestamp?: boolean
   events?: boolean
   eventCount?: boolean
+  hasSnapshot?: boolean
   createdAt?: boolean
   session?: boolean | Prisma.SessionReplayDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["sessionReplayChunk"]>
@@ -543,8 +732,13 @@ export type SessionReplayChunkSelectUpdateManyAndReturn<ExtArgs extends runtime.
   id?: boolean
   sessionId?: boolean
   sequence?: boolean
+  storageKey?: boolean
+  byteSize?: boolean
+  firstTimestamp?: boolean
+  lastTimestamp?: boolean
   events?: boolean
   eventCount?: boolean
+  hasSnapshot?: boolean
   createdAt?: boolean
   session?: boolean | Prisma.SessionReplayDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["sessionReplayChunk"]>
@@ -553,12 +747,17 @@ export type SessionReplayChunkSelectScalar = {
   id?: boolean
   sessionId?: boolean
   sequence?: boolean
+  storageKey?: boolean
+  byteSize?: boolean
+  firstTimestamp?: boolean
+  lastTimestamp?: boolean
   events?: boolean
   eventCount?: boolean
+  hasSnapshot?: boolean
   createdAt?: boolean
 }
 
-export type SessionReplayChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "sequence" | "events" | "eventCount" | "createdAt", ExtArgs["result"]["sessionReplayChunk"]>
+export type SessionReplayChunkOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "sessionId" | "sequence" | "storageKey" | "byteSize" | "firstTimestamp" | "lastTimestamp" | "events" | "eventCount" | "hasSnapshot" | "createdAt", ExtArgs["result"]["sessionReplayChunk"]>
 export type SessionReplayChunkInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   session?: boolean | Prisma.SessionReplayDefaultArgs<ExtArgs>
 }
@@ -578,8 +777,13 @@ export type $SessionReplayChunkPayload<ExtArgs extends runtime.Types.Extensions.
     id: string
     sessionId: string
     sequence: number
+    storageKey: string | null
+    byteSize: number | null
+    firstTimestamp: number | null
+    lastTimestamp: number | null
     events: runtime.JsonValue
     eventCount: number
+    hasSnapshot: boolean
     createdAt: Date
   }, ExtArgs["result"]["sessionReplayChunk"]>
   composites: {}
@@ -1008,8 +1212,13 @@ export interface SessionReplayChunkFieldRefs {
   readonly id: Prisma.FieldRef<"SessionReplayChunk", 'String'>
   readonly sessionId: Prisma.FieldRef<"SessionReplayChunk", 'String'>
   readonly sequence: Prisma.FieldRef<"SessionReplayChunk", 'Int'>
+  readonly storageKey: Prisma.FieldRef<"SessionReplayChunk", 'String'>
+  readonly byteSize: Prisma.FieldRef<"SessionReplayChunk", 'Int'>
+  readonly firstTimestamp: Prisma.FieldRef<"SessionReplayChunk", 'Float'>
+  readonly lastTimestamp: Prisma.FieldRef<"SessionReplayChunk", 'Float'>
   readonly events: Prisma.FieldRef<"SessionReplayChunk", 'Json'>
   readonly eventCount: Prisma.FieldRef<"SessionReplayChunk", 'Int'>
+  readonly hasSnapshot: Prisma.FieldRef<"SessionReplayChunk", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"SessionReplayChunk", 'DateTime'>
 }
     

@@ -71,6 +71,7 @@ export default function ProductDetailClient({
   const [selectedImage, setSelectedImage] = useState<string>(() =>
     getInitialProductImage(product, fallbackImage)
   );
+  const viewedProduct=useRef<string|null>(null);
   const [variant, setVariant] = useState<Variant | null>(() => getInitialVariant(product));
   const [bundleSize, setBundleSize] = useState<1 | 2>(1);
   const [quantity, setQuantity] = useState<number>(1);
@@ -81,7 +82,10 @@ export default function ProductDetailClient({
   useEffect(() => {
     if (product) {
       setSelectedImage(getInitialProductImage(product, fallbackImage));
-      setVariant(getInitialVariant(product));
+      const requested=new URLSearchParams(window.location.search).get('variant');
+      const matched=product.variants?.find(v=>v.sku===requested);
+      setVariant(matched||getInitialVariant(product));
+      if(matched?.imageUrl)setSelectedImage(matched.imageUrl);
     }
   }, [product?.id, fallbackImage]);
 
@@ -100,16 +104,16 @@ export default function ProductDetailClient({
 
   // Analytics tracking
   useEffect(() => {
-    if (!product) return;
+    if (!product||viewedProduct.current===product.id) return;
+    viewedProduct.current=product.id;
     trackStoreEvent(
       "ViewContent",
       {
-        content_ids: [variant?.sku || product.sku],
-        content_type: "product",
+        content_ids: [product.sku],
+        content_type: product.variants?.length?"product_group":"product",
         value: basePrice,
         currency: "PKR",
-      },
-      { clarityEvent: "view_product" }
+      }
     ).catch(() => undefined);
   }, [product?.id, basePrice, product?.sku, variant?.sku]);
 
@@ -216,8 +220,7 @@ export default function ProductDetailClient({
         ],
         value: bundleTotal * quantity,
         currency: "PKR",
-      },
-      { clarityEvent: goCheckout ? "buy_now" : "add_to_cart" }
+      }
     );
 
     if (goCheckout) {

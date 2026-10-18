@@ -1,70 +1,53 @@
 "use client";
+import ReplayStatCards from '@/components/admin/ReplayStatCards';
 import AdminTable from '@/components/admin/AdminTable';
-
-
-import Link from "next/link";
-import { useMemo, useState } from "react";
-import { AdminError, useAdminData } from "@/components/admin/useAdminData";
-import { money } from "@/lib/format";
-
-type ReplayRow = {
-  id:string; visitorId:string; source:string; campaign?:string|null; landingUrl:string; lastUrl:string;
-  device?:string|null; status:string; startedAt:string; lastSeenAt:string; endedAt?:string|null;
-  eventCount:number; chunkCount:number; pageViews:number; durationMs:number;
-  order?:{id:string;orderNumber:string;total:number;createdAt:string}|null;
-};
-type ReplayList = { total:number; items:ReplayRow[]; stats:{last30:number;ordered30:number;sources:Record<string,number>} };
-
-function duration(ms:number){
-  const seconds=Math.max(0,Math.round((ms||0)/1000));
-  const minutes=Math.floor(seconds/60);
-  return minutes?`${minutes}m ${seconds%60}s`:`${seconds}s`;
-}
-function sourceLabel(value:string){ return value==='direct'?'Direct':value.charAt(0).toUpperCase()+value.slice(1); }
-
-export default function SessionReplaysPage(){
-  const [source,setSource]=useState("all");
-  const [outcome,setOutcome]=useState("all");
-  const [q,setQ]=useState("");
-  const query=useMemo(()=>{
-    const params=new URLSearchParams();
-    if(source!=="all") params.set("source",source);
-    if(outcome!=="all") params.set("outcome",outcome);
-    if(q.trim()) params.set("q",q.trim());
-    return `/api/admin/session-replays${params.toString()?`?${params}`:""}`;
-  },[source,outcome,q]);
-  const {data,error}=useAdminData<ReplayList>(query,{total:0,items:[],stats:{last30:0,ordered30:0,sources:{}}});
-  if(error) return <AdminError message={error}/>;
-  const metaCount=(data.stats.sources.facebook||0)+(data.stats.sources.instagram||0);
-
-  return <>
-    <div className="admin-title"><div><h1>Session Replays</h1><p>Watch privacy-masked customer journeys and connect drop-offs with traffic source and orders.</p></div></div>
-    <div className="admin-kpis">
-      <div className="admin-card"><small>Recorded sessions</small><strong>{data.total}</strong><span>latest stored sessions</span></div>
-      <div className="admin-card"><small>Orders with replay</small><strong>{data.stats.ordered30}</strong><span>last 30 days</span></div>
-      <div className="admin-card"><small>Meta traffic</small><strong>{metaCount}</strong><span>Facebook + Instagram sessions</span></div>
-      <div className="admin-card"><small>Privacy</small><strong>Masked</strong><span>all form inputs are hidden</span></div>
-    </div>
-
-    <div className="admin-card replay-filter-card">
-      <div className="replay-filters">
-        <input className="admin-input" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search landing page, campaign or visitor…" />
-        <select className="admin-select" value={source} onChange={e=>setSource(e.target.value)}><option value="all">All sources</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="google">Google</option><option value="tiktok">TikTok</option><option value="direct">Direct</option></select>
-        <select className="admin-select" value={outcome} onChange={e=>setOutcome(e.target.value)}><option value="all">All outcomes</option><option value="ordered">Placed order</option><option value="no-order">No order</option></select>
-      </div>
-      <p className="replay-privacy-note">Recorder never runs inside the admin panel. Passwords, checkout inputs, phone, email and address fields are masked before replay events are sent.</p>
-    </div>
-
-    <div className="admin-table-wrap"><AdminTable scrollLabel="Session replays" className="admin-table"><thead><tr><th>Visitor / source</th><th>Started</th><th>Journey</th><th>Landing page</th><th>Outcome</th><th></th></tr></thead><tbody>
-      {data.items.map(row=><tr key={row.id}>
-        <td><b>#{row.visitorId.slice(0,8)}</b><div className="replay-source"><span>{sourceLabel(row.source)}</span>{row.campaign?<small>{row.campaign}</small>:null}</div></td>
-        <td>{new Date(row.startedAt).toLocaleString()}<small className="admin-cell-sub">{row.device||"device unknown"}</small></td>
-        <td><b>{duration(row.durationMs)}</b><small className="admin-cell-sub">{row.pageViews} pages · {row.eventCount} events</small></td>
-        <td><span className="replay-url" title={row.landingUrl}>{row.landingUrl.replace(/^https?:\/\/[^/]+/,'')||'/'}</span></td>
-        <td>{row.order?<><b>{row.order.orderNumber}</b><small className="admin-cell-sub">{money(row.order.total)}</small></>:<span className="replay-no-order">No order</span>}</td>
-        <td><Link href={`/admin/session-replays/${row.id}`} className="admin-btn admin-btn-primary">▶ Watch</Link></td>
-      </tr>)}
-      {!data.items.length?<tr><td colSpan={6}>No session replays match these filters yet.</td></tr>:null}
-    </tbody></AdminTable></div>
-  </>;
+import Link from 'next/link';
+import {useEffect,useMemo,useState} from 'react';
+import {useSearchParams} from 'next/navigation';
+import {useOrderData} from '../orders/useOrderData';
+import {Skeleton} from '../orders/OrderSkeletons';
+import {setSessionReplayOptOut} from '@/lib/session-replay-client';
+import {SITE_ORIGIN} from '@/lib/site-url';
+import '../orders/orders.css';
+import './replays.css';
+type Replay={lastSeenAt:string;eventCount:number;viewport?:string;referrer?:string;orderDestination?:string;order?:{orderNumber:string};id:string;visitorId:string;source:string;campaign?:string;landingUrl:string;device?:string;startedAt:string;durationMs:number;pageViews:number;reachedCart:boolean;reachedCheckout:boolean;ordered:boolean};
+type List={total:number;items:Replay[];page:number;totalPages:number;stats:{ordered30:number}};
+const duration=(ms:number)=>`${Math.floor(ms/60000)}m ${Math.floor(ms/1000)%60}s`;
+const pagePath=(url:string)=>{try{return new URL(url||'/',SITE_ORIGIN).pathname}catch{return url||'/'}};
+export default function Replays(){
+ const search=useSearchParams();
+ const [outcome,setOutcome]=useState('cart-no-order'),[source,setSource]=useState(''),[q,setQ]=useState(''),[campaign,setCampaign]=useState(''),[device,setDevice]=useState(''),[product,setProduct]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[minDuration,setMinDuration]=useState(10),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10),[excluded,setExcluded]=useState(false),[sort,setSort]=useState('newest');
+ useEffect(()=>{setExcluded(localStorage.getItem('zm_session_replay_opt_out')==='1');for(const [key,setter]of [['outcome',setOutcome],['from',setFrom],['to',setTo]] as const){const value=search.get(key);if(value)setter(value)}},[search]);
+ useEffect(()=>setPage(1),[outcome,source,q,campaign,device,product,from,to,minDuration,pageSize,sort]);
+ const path=useMemo(()=>{
+  const params=new URLSearchParams({outcome,sort,page:String(page),limit:String(pageSize),minDuration:String(minDuration)});
+  for(const [key,value]of Object.entries({q,source,campaign,device,product,from,to,visitor:search.get('visitor')||''}))if(value)params.set(key,value);
+  return `/api/admin/session-replays?${params}`;
+ },[outcome,page,pageSize,minDuration,q,source,campaign,device,product,from,to,search,sort]);
+ const {data,loading,error,reload}=useOrderData<List>(path);
+ useEffect(()=>{if(outcome!=='live')return;const timer=setInterval(()=>void reload(),5000);return()=>clearInterval(timer)},[outcome,reload]);
+ return <div className="od-dashboard replay-list">
+  <div className="admin-title"><div><h1>Session Replays</h1><p>Watch customer journeys and find where shoppers drop off.</p></div><label><input type="checkbox" checked={excluded} onChange={e=>{setExcluded(e.target.checked);setSessionReplayOptOut(e.target.checked)}}/> Exclude this device</label></div>
+  <ReplayStatCards loading={loading&&!data} items={[{label:'Matching recordings',value:data?.total||0,description:'With selected filters'},{label:'Orders with recordings',value:data?.stats?.ordered30||0,description:'Selected date range'},{label:'Privacy protection',value:'Masked',description:'Personal inputs hidden'}]}/>
+  <section className="od-panel">
+   <div className="od-tabs" role="tablist" aria-label="Replay outcome">{[['all','All recordings'],['live','Live now'],['cart-no-order','Cart abandoned'],['checkout-no-order','Checkout abandoned'],['ordered','Ordered'],['visitor-no-product','No product viewed'],['product-no-cart','Product, no cart'],['cart-no-checkout','Cart, no checkout']].map(([value,label])=><button key={value} className={outcome===value?'active':''} role="tab" aria-selected={outcome===value} onClick={()=>setOutcome(value)}>{label}</button>)}</div>
+   <div className="replay-filter-heading"><b>Filter recordings</b><div><label>Sort by <select aria-label="Sort recordings" value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="duration">Longest duration</option></select></label>{(q||source||campaign||device||product||from||to||minDuration!==10||search.get('visitor'))&&<button className="admin-btn admin-btn-light" onClick={()=>{setQ('');setSource('');setCampaign('');setDevice('');setProduct('');setFrom('');setTo('');setMinDuration(10);if(search.get('visitor'))window.location.assign('/admin/session-replays')}}>Clear filters</button>}</div></div><div className="od-filters">
+    <input aria-label="Search sessions" value={q} onChange={e=>setQ(e.target.value)} placeholder="Search page or visitor…"/>
+    <select aria-label="Replay source" value={source} onChange={e=>setSource(e.target.value)}><option value="">All sources</option>{['facebook','instagram','tiktok','google','direct'].map(value=><option key={value}>{value}</option>)}</select>
+    <input aria-label="Campaign" placeholder="Campaign" value={campaign} onChange={e=>setCampaign(e.target.value)}/>
+    <select aria-label="Device" value={device} onChange={e=>setDevice(e.target.value)}><option value="">All devices</option><option value="mobile">Mobile</option><option value="desktop">Desktop</option></select>
+    <input aria-label="Product page" placeholder="Product page / slug" value={product} onChange={e=>setProduct(e.target.value)}/>
+    <label>From<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>To<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
+    <label>Min. seconds<input type="number" min={10} max={86400} value={minDuration} onChange={e=>setMinDuration(Math.max(10,Number(e.target.value)))}/></label>
+   </div>
+   {error&&<div className="replay-filter-heading"><span>Recordings could not be loaded.</span><button className="admin-btn admin-btn-light" onClick={()=>void reload()}>Try again</button></div>}
+   <AdminTable scrollLabel="Session replays" className="admin-table"><thead><tr>{['Started','Visitor / source','Device','Landing page','Pages','Duration','Furthest step','Outcome','Campaign','Order destination','Viewport','Events','Last activity','Order','Watch'].map(value=><th key={value}>{value}</th>)}</tr></thead><tbody>
+    {loading?Array.from({length:pageSize},(_,i)=><tr key={i}>{Array.from({length:15},(_,j)=><td key={j}><Skeleton width={65}/></td>)}</tr>):data?.items?.map(row=><tr key={row.id}>
+     <td>{new Date(row.startedAt).toLocaleString('en-PK',{timeZone:'Asia/Karachi'})}</td><td><b>#{row.visitorId.slice(0,8)}</b><small>{row.source} {row.campaign||''}</small></td><td>{row.device==='mobile'?'Mobile':row.device==='desktop'?'Desktop':'Unknown'}</td><td title={row.landingUrl}>{pagePath(row.landingUrl)}</td><td>{row.pageViews}</td><td>{duration(row.durationMs)}</td><td>{row.ordered?'Purchase':row.reachedCheckout?'Checkout':row.reachedCart?'Add to cart':'Browse'}</td><td>{row.ordered?'Ordered':'No order'}</td><td>{row.campaign||'—'}</td><td title="Shipping city supplied with the linked order; not visitor geolocation">{row.orderDestination||'Unknown'}</td><td>{row.viewport||'—'}</td><td>{row.eventCount??'—'}</td><td>{row.lastSeenAt?new Date(row.lastSeenAt).toLocaleString('en-PK',{timeZone:'Asia/Karachi'}):'—'}</td><td>{row.order?.orderNumber||'—'}</td><td><Link className="admin-btn admin-btn-primary" href={`/admin/session-replays/${row.id}${outcome==='live'?'?live=1':''}`}>{outcome==='live'?'● Live':'▷ Watch'}</Link></td>
+    </tr>)}
+   </tbody></AdminTable>
+   {!loading&&!data?.items?.length&&!error&&<p className="od-empty">No playable recordings match these filters.</p>}
+   <footer className="od-pagination"><div className="replay-page-size"><label>Rows per page<select aria-label="Recordings per page" value={pageSize} onChange={e=>setPageSize(Number(e.target.value))}>{[10,25,50].map(size=><option key={size}>{size}</option>)}</select></label><span>{data?.total||0} recordings</span></div><div><button disabled={loading||page<=1} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {page} of {data?.totalPages||1}</span><button disabled={loading||page>=(data?.totalPages||1)} onClick={()=>setPage(p=>p+1)}>Next</button></div></footer>
+  </section><p className="od-footnote">Recordings show the visitor’s screen and scroll position. Only sessions with a snapshot and at least 10 seconds of activity appear. Personal inputs are masked. Order destination is the shipping city supplied with a linked order, not visitor geolocation. Unknown means no location was supplied.</p>
+ </div>;
 }

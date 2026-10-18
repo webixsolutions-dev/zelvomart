@@ -87,6 +87,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (ready) writeCartCookie(items);
   }, [items, ready]);
 
+  useEffect(()=>{if(!ready||!items.length)return;const timer=setTimeout(()=>{void fetch('/api/account/cart',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({cart:items.map(i=>({productId:i.productId,variantId:i.variantId,quantity:i.quantity,bundleSize:i.bundleSize})),source:{page:location.pathname}})}).catch(()=>undefined)},1800);return()=>clearTimeout(timer)},[items,ready]);
+  useEffect(()=>{const token=new URLSearchParams(location.search).get('restore');if(!token||location.pathname!=='/cart')return;const controller=new AbortController();void fetch('/api/store-proxy/api/recovery/restore/'+encodeURIComponent(token),{signal:controller.signal}).then(async r=>{const data=await r.json();if(!r.ok)throw new Error(data.error);if(controller.signal.aborted)return;setItems(data.items);writeCartCookie(data.items);setReady(true);const coupon=new URLSearchParams(location.search).get('coupon');if(coupon)sessionStorage.setItem('zm_checkout_coupon',coupon);location.assign('/checkout'+(coupon?'?coupon='+encodeURIComponent(coupon):''));}).catch(()=>undefined);return()=>controller.abort()},[]);
+
   const addItem = useCallback((item: CartItem) => {
     setItems((current) => {
       const index = current.findIndex(

@@ -1,3 +1,4 @@
+import {tiktokProperties} from "./tracking-payload";
 import { prisma } from "./db";
 import { sha256 } from "./security";
 import { getSetting } from "./settings";
@@ -10,6 +11,7 @@ export type TikTokServerEvent = {
   userAgent?: string;
   ip?: string;
   ttp?: string;
+  ttclid?:string;
   phone?: string;
   email?: string;
   externalId?: string;
@@ -23,10 +25,26 @@ const TIKTOK_EVENT_MAP: Record<string, string> = {
   Search: "Search",
   AddToCart: "AddToCart",
   InitiateCheckout: "InitiateCheckout",
-  Purchase: "CompletePayment",
+  Purchase: "Purchase",
   Contact: "Contact",
-  Lead: "SubmitForm",
+  Lead: "Lead",
 };
+
+export function tiktokUserData(event:TikTokServerEvent){
+  const userData: Record<string, unknown> = {
+    ip: event.ip || undefined,
+    user_agent: event.userAgent || undefined,
+    ttp: event.ttp || undefined,
+    ttclid:event.ttclid||undefined,
+    phone: event.phone ? sha256(`+${event.phone.replace(/\D/g, "")}`) : undefined,
+    email: event.email ? sha256(event.email.trim().toLowerCase()) : undefined,
+    external_id: event.externalId ? sha256(event.externalId) : undefined,
+  };
+
+  Object.keys(userData).forEach((key) => userData[key] === undefined && delete userData[key]);
+
+  return userData;
+}
 
 export async function sendTikTokServerEvent(event: TikTokServerEvent) {
   const isEventsApiEnabled = await getSetting<boolean | string>("tracking.tiktokEventsApiEnabled", true);
@@ -52,19 +70,10 @@ export async function sendTikTokServerEvent(event: TikTokServerEvent) {
 
   const ttEvent = TIKTOK_EVENT_MAP[event.eventName] || event.eventName;
 
-  const userData: Record<string, unknown> = {
-    ip: event.ip || undefined,
-    user_agent: event.userAgent || undefined,
-    ttp: event.ttp || undefined,
-    phone: event.phone ? sha256(event.phone.replace(/\D/g, "")) : undefined,
-    email: event.email ? sha256(event.email) : undefined,
-    external_id: event.externalId ? sha256(event.externalId) : undefined,
-  };
-
-  Object.keys(userData).forEach((key) => userData[key] === undefined && delete userData[key]);
+  const userData=tiktokUserData(event);
 
   const properties: Record<string, unknown> = {
-    ...(event.customData || {}),
+    ...tiktokProperties(event.customData || {}),
   };
 
   const payload: Record<string, unknown> = {
@@ -101,6 +110,7 @@ export async function sendTikTokServerEvent(event: TikTokServerEvent) {
         "access-token": token,
       },
       body: JSON.stringify(payload),
+      signal:AbortSignal.timeout(15000),
     });
     body = await response.json().catch(() => ({ status: response.status }));
   } catch (error) {
@@ -120,7 +130,7 @@ export async function sendTikTokServerEvent(event: TikTokServerEvent) {
     throw error;
   }
 
-  const isAccepted = response.ok && (body?.code === 0 || body?.message === "OK");
+  const isAccepted = response.ok && (body?.code === 0);
 
   await prisma.eventLog.create({
     data: {

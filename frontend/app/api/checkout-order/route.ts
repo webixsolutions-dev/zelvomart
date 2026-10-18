@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "origin":request.nextUrl.origin,
         "user-agent": request.headers.get("user-agent") || "",
         "x-forwarded-for": request.headers.get("x-forwarded-for") || "",
         "x-real-ip": request.headers.get("x-real-ip") || "",

@@ -1,5 +1,2 @@
-"use client";
-import AdminTable from '@/components/admin/AdminTable';
-
-import { useAdminData,AdminLoading,AdminError } from '@/components/admin/useAdminData';
-export default function Abandoned(){const {data,loading,error}=useAdminData<any[]>('/api/admin/abandoned',[]);if(loading)return <AdminLoading/>;if(error)return <AdminError message={error}/>;return <><div className="admin-title"><div><h1>Abandoned Checkouts</h1><p>Saved checkout leads with a valid phone number.</p></div></div><div className="admin-table-wrap"><AdminTable scrollLabel="Abandoned" className="admin-table"><thead><tr><th>Time</th><th>Customer</th><th>Phone</th><th>City</th><th>Follow-up</th></tr></thead><tbody>{data.map(r=><tr key={r.id}><td>{new Date(r.createdAt).toLocaleString('en-PK')}</td><td>{r.fullName||'—'}</td><td>{r.phone}</td><td>{r.city||'—'}</td><td><a className="admin-btn admin-btn-light" target="_blank" href={`https://wa.me/${String(r.phone).replace(/\D/g,'')}?text=${encodeURIComponent(`Hi ${r.fullName||''}, you started an order on Zelvomart. Would you like help completing it?`)}`}>WhatsApp</a></td></tr>)}</tbody></AdminTable></div></>}
+import {redirect} from "next/navigation";
+export default function Abandoned(){redirect("/admin/customers?tab=abandoned");}

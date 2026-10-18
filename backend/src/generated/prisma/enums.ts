@@ -74,6 +74,7 @@ export const JobStatus = {
   QUEUED: 'QUEUED',
   RUNNING: 'RUNNING',
   SUCCEEDED: 'SUCCEEDED',
+  SKIPPED: 'SKIPPED',
   FAILED: 'FAILED'
 } as const
 

@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {ReplaySkeleton} from './ReplayStatCards';
+import {REPLAY_SKIP_IDLE_MS,REPLAY_VISIBILITY_RULES,replayStartOffset,replayActivityOffsets,replaySkipTarget} from '@/lib/replay-timing';
 
 type ReplayController = {
   play: (offset?: number) => void;
+  addEvent?:(event:any)=>void;
+  startLive?:(timestamp?:number)=>void;
   pause: (offset?: number) => void;
   setConfig?: (config: Record<string, unknown>) => void;
   getCurrentTime?: () => number;
@@ -21,15 +25,27 @@ function formatTime(ms: number) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
+export default function SessionReplayPlayer({ events,loading=false,live=false,waiting=false,seekTo }: { events: unknown[];loading?:boolean;live?:boolean;waiting?:boolean;seekTo?:number }) {
+  const shell=useRef<HTMLDivElement>(null);
+  const stage=useRef<HTMLDivElement>(null);
+  const appended=useRef(new WeakSet<object>());
+  const latest=useRef<unknown[]>(events);
+  const [skipInactive,setSkipInactive]=useState(true);
   const mount = useRef<HTMLDivElement>(null);
   const player = useRef<ReplayController | null>(null);
   const timer = useRef<number | null>(null);
   const [ready, setReady] = useState(false);
+  const [playerVersion,setPlayerVersion]=useState(0);
+  const [fullscreen,setFullscreen]=useState(false);
+  const [expanded,setExpanded]=useState(false);
+  useEffect(()=>{const update=()=>setFullscreen(document.fullscreenElement===shell.current);const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setExpanded(false)};document.addEventListener('fullscreenchange',update);window.addEventListener('keydown',escape);return()=>{document.removeEventListener('fullscreenchange',update);window.removeEventListener('keydown',escape)}},[]);
   const [failed, setFailed] = useState("");
   const [playing, setPlaying] = useState(false);
   const [currentMs, setCurrentMs] = useState(0);
   const [speed, setSpeed] = useState(1);
+  const [livePaused,setLivePaused]=useState(false);
+  const pausedOffset=useRef(0);
+  const autoStarted=useRef(false);
 
   const replayEvents = useMemo(() => {
     return (events as ReplayEvent[])
@@ -37,12 +53,16 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
       .slice()
       .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
   }, [events]);
+  latest.current=replayEvents;
+  const activityOffsets=useMemo(()=>replayActivityOffsets(replayEvents),[replayEvents]);
 
   const hasFullSnapshot = replayEvents.some((event) => Number(event.type) === 2);
+  const startOffset=replayStartOffset(replayEvents);
   const durationMs = useMemo(() => {
     if (replayEvents.length < 2) return 0;
     return Math.max(0, Number(replayEvents[replayEvents.length - 1]?.timestamp) - Number(replayEvents[0]?.timestamp));
   }, [replayEvents]);
+  const durationRef=useRef(durationMs);durationRef.current=durationMs;
 
   useEffect(() => {
     let cancelled = false;
@@ -63,19 +83,26 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
       .then(({ Replayer }) => {
         if (cancelled || !mount.current) return;
         try {
-          const replayer = new Replayer(replayEvents as any[], {
+          const replayer = new Replayer(latest.current as any[], {
             root: mount.current,
+            liveMode:live&&!livePaused,
+            // Delayed live batches must update the iframe immediately, including
+            // events older than the live buffer that rrweb casts synchronously.
+            useVirtualDom:!(live&&!livePaused),
             showWarning: false,
             mouseTail: true,
+            insertStyleRules:REPLAY_VISIBILITY_RULES,
             skipInactive: true,
+            inactivePeriodThreshold:REPLAY_SKIP_IDLE_MS,
           }) as unknown as ReplayController;
 
           player.current = replayer;
-          replayer.setConfig?.({ speed: 1 });
+          appended.current=new WeakSet(latest.current as object[]);
+          replayer.setConfig?.({ speed,skipInactive });
 
           // Rebuild the first full snapshot immediately. Without this the raw
           // Replayer can appear as an empty canvas until playback advances.
-          replayer.pause(0);
+          if(live&&!livePaused){replayer.pause(durationRef.current+1);replayer.startLive?.(Date.now()-10000);setPlaying(true);}else{const offset=livePaused?pausedOffset.current:replayStartOffset(latest.current as ReplayEvent[]);replayer.pause(offset);setCurrentMs(offset);}
 
           const meta = replayer.getMetaData?.();
           const metaDuration = Number(meta?.totalTime || 0);
@@ -86,7 +113,7 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
 
           replayer.on?.("finish", () => {
             setPlaying(false);
-            setCurrentMs(durationMs);
+            setCurrentMs(durationRef.current);
           });
           replayer.on?.("pause", () => setPlaying(false));
           replayer.on?.("start", () => setPlaying(true));
@@ -94,11 +121,12 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
           // Some browser/layout combinations need one paint before the iframe
           // becomes visible. Re-seeking to zero after that paint is harmless.
           window.requestAnimationFrame(() => {
-            if (!cancelled) {
-              try { replayer.pause(0); } catch {}
+            if (!cancelled && !autoStarted.current && (!live||livePaused)) {
+              try { replayer.pause(livePaused?pausedOffset.current:replayStartOffset(latest.current as ReplayEvent[])); } catch {}
             }
           });
           setReady(true);
+          setPlayerVersion(n=>n+1);
         } catch (error) {
           setFailed(error instanceof Error ? error.message : "Replay could not be prepared.");
         }
@@ -115,7 +143,7 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
       } catch {}
       player.current = null;
     };
-  }, [replayEvents, hasFullSnapshot, durationMs]);
+  }, [hasFullSnapshot,replayEvents.length>=2,live,livePaused]);
 
   useEffect(() => {
     if (!playing) {
@@ -125,24 +153,28 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
     }
     timer.current = window.setInterval(() => {
       const value = Number(player.current?.getCurrentTime?.() ?? currentMs);
+      if(skipInactive&&!live){const target=replaySkipTarget(activityOffsets,value);if(target!==null){player.current?.pause(target);player.current?.play(target);setCurrentMs(target);return;}}
       if (Number.isFinite(value)) setCurrentMs(Math.min(durationMs, Math.max(0, value)));
     }, 200);
     return () => {
       if (timer.current) window.clearInterval(timer.current);
       timer.current = null;
     };
-  }, [playing, durationMs]);
+  }, [playing, durationMs,skipInactive,live,activityOffsets]);
 
-  if (events.length < 2) {
-    return <div className="admin-card">This session does not have enough recorded events to replay yet.</div>;
-  }
+  useEffect(()=>{if(!ready||!player.current)return;try{for(const event of replayEvents){if(appended.current.has(event))continue;player.current.addEvent?.(event);appended.current.add(event);}}catch{setFailed('A recording update could not be applied. Retry this recording.')}},[replayEvents,ready]);
+  useEffect(()=>{if(!ready||loading||live||autoStarted.current||!player.current)return;try{player.current.play(startOffset);setCurrentMs(startOffset);autoStarted.current=true;setPlaying(true);}catch{setFailed('Automatic playback could not start. Please select Play.')}},[ready,loading,live,startOffset]);
+  useEffect(()=>{if(!ready)return;const fit=()=>{const wrapper=mount.current?.querySelector<HTMLElement>('.replayer-wrapper'),frame=mount.current?.querySelector<HTMLIFrameElement>('iframe'),container=stage.current;if(!wrapper||!frame||!container)return;const width=Number(frame.getAttribute('width'))||frame.offsetWidth||1280,height=Number(frame.getAttribute('height'))||frame.offsetHeight||720;const mobile=width<768;const margin=mobile?32:0;const scale=Math.max(0.001,Math.min((container.clientWidth-margin)/width,(container.clientHeight-margin)/height));wrapper.style.outline=mobile?'10px solid #17243a':'none';wrapper.style.borderRadius=mobile?'22px':'0';wrapper.style.overflow='hidden';wrapper.style.width=`${width}px`;wrapper.style.height=`${height}px`;wrapper.style.position='absolute';wrapper.style.transformOrigin='top left';wrapper.style.transform=`scale(${scale})`;wrapper.style.left=`${(container.clientWidth-width*scale)/2}px`;wrapper.style.top=`${(container.clientHeight-height*scale)/2}px`;};const observer=new ResizeObserver(fit);if(stage.current)observer.observe(stage.current);player.current?.on?.('resize',fit);fit();return()=>observer.disconnect()},[ready,playerVersion]);
+  useEffect(()=>{if(seekTo===undefined||!ready||!player.current)return;const value=Math.max(0,Math.min(durationMs,seekTo));if(live&&!livePaused){pausedOffset.current=value;setLivePaused(true);}else player.current.pause(value);setCurrentMs(value);setPlaying(false)},[seekTo,ready]);
+
+  if(events.length<2||!hasFullSnapshot){return loading||waiting?<div className="replay-loading-shell" role="status" aria-label={waiting?'Waiting for visitor activity':'Loading recording'} aria-busy="true"><ReplaySkeleton className="replay-loading-bar"/><ReplaySkeleton className="replay-loading-screen"/><ReplaySkeleton className="replay-loading-controls"/></div>:<div className="admin-card" role="status">This recording has no page snapshot and cannot be played.</div>}
 
   const play = () => {
     if (!ready || !player.current) return;
-    const startAt = currentMs >= durationMs - 100 ? 0 : currentMs;
+    const startAt = currentMs >= durationMs - 100 ? startOffset : Math.max(startOffset,currentMs);
     if (startAt === 0) setCurrentMs(0);
     try {
-      player.current.play(startAt);
+      if(live){setLivePaused(false);return;}else player.current.play(startAt);
       setPlaying(true);
     } catch (error) {
       setFailed(error instanceof Error ? error.message : "Replay could not start.");
@@ -151,6 +183,7 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
 
   const pause = () => {
     try {
+      if(live){pausedOffset.current=Number(player.current?.getCurrentTime?.()??currentMs);setLivePaused(true);setPlaying(false);return;}
       player.current?.pause();
       const value = Number(player.current?.getCurrentTime?.() ?? currentMs);
       if (Number.isFinite(value)) setCurrentMs(Math.min(durationMs, Math.max(0, value)));
@@ -161,8 +194,8 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
   const restart = () => {
     if (!player.current) return;
     try {
-      player.current.pause(0);
-      setCurrentMs(0);
+      player.current.pause(startOffset);
+      setCurrentMs(startOffset);
       setPlaying(false);
     } catch {}
   };
@@ -184,28 +217,30 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
   };
 
   return (
-    <div className="replay-player-shell replay-player-modern">
+    <div ref={shell} className={`replay-player-shell replay-player-modern${expanded?' replay-expanded':''}`}>
       <div className="replay-player-toolbar">
         <div className="replay-player-heading">
-          <span className="replay-live-dot" aria-hidden="true" />
+          <span className={live&&!livePaused?'replay-live-dot':'replay-recorded-dot'} aria-hidden="true" />
           <div>
-            <b>Customer session</b>
-            <span>{replayEvents.length} replay events · form values masked · {hasFullSnapshot ? "snapshot ready" : "snapshot missing"}</span>
+            <b>{live?'Live session':'Session recording'}</b>
+            <span>Full visitor viewport · private inputs masked</span>
           </div>
         </div>
         <div className="replay-player-actions">
-          <button className="admin-btn admin-btn-light" disabled={!ready} onClick={restart}>↺ Restart</button>
+          <button className="admin-btn admin-btn-light" onClick={()=>{if(document.fullscreenElement){void document.exitFullscreen();return;}if(expanded){setExpanded(false);return;}if(shell.current?.requestFullscreen)void shell.current.requestFullscreen().catch(()=>setExpanded(true));else setExpanded(true);}}>{fullscreen||expanded?'Exit fullscreen':'⛶ Fullscreen'}</button>
+          <button className="admin-btn admin-btn-light" disabled={!ready||live} onClick={restart}>↺ Restart</button>
           <button className="admin-btn admin-btn-light" disabled={!ready || !playing} onClick={pause}>Ⅱ Pause</button>
           <button className="admin-btn admin-btn-primary" disabled={!ready || playing} onClick={play}>▶ Play</button>
         </div>
       </div>
 
-      <div className="replay-player-stage">
+      <div ref={stage} className="replay-player-stage">
         {failed ? <div className="replay-player-error"><b>Replay unavailable</b><span>{failed}</span></div> : null}
-        {!failed && !ready ? <div className="replay-player-loading"><span className="admin-spinner" /> Preparing session…</div> : null}
+        {!failed && !ready ? <div className="replay-player-loading" role="status" aria-label="Preparing recording"><ReplaySkeleton className="replay-loading-screen"/></div> : null}
         <div ref={mount} className="replay-player-mount" />
       </div>
 
+      <label className="replay-inactive"><input type="checkbox" checked={skipInactive} onChange={e=>{setSkipInactive(e.target.checked);player.current?.setConfig?.({skipInactive:e.target.checked})}}/> Skip inactive time <span>Gaps over 10 seconds{live?' · Live view':''}</span></label>
       <div className="replay-player-controls">
         <button className="replay-round-button" onClick={playing ? pause : play} disabled={!ready} aria-label={playing ? "Pause replay" : "Play replay"}>{playing ? "Ⅱ" : "▶"}</button>
         <span className="replay-time">{formatTime(currentMs)}</span>
@@ -216,7 +251,7 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
           max={Math.max(durationMs, 1)}
           step={100}
           value={Math.min(currentMs, Math.max(durationMs, 1))}
-          disabled={!ready}
+          disabled={!ready||live}
           onChange={(event) => seek(Number(event.target.value))}
         />
         <span className="replay-time">{formatTime(durationMs)}</span>
@@ -226,6 +261,7 @@ export default function SessionReplayPlayer({ events }: { events: unknown[] }) {
           <option value={1.5}>1.5×</option>
           <option value={2}>2×</option>
           <option value={4}>4×</option>
+          <option value={8}>8×</option>
         </select>
       </div>
     </div>

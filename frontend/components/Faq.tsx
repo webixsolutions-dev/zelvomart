@@ -1,5 +1,6 @@
 "use client";
 
+import {useDeliveryPolicy} from "./DeliveryPolicy";
 import { useState } from "react";
 import { ChevronDown } from "@/components/Icons";
 
@@ -18,7 +19,9 @@ const faqs = [
 
 export default function Faq() {
   const [open, setOpen] = useState<number | null>(null);
-  const columns = [faqs.slice(0, 5), faqs.slice(5)];
+  const delivery=useDeliveryPolicy();
+  const all=[...faqs,['How much is delivery?',`Delivery costs Rs ${delivery.flatRate.toLocaleString('en-US')}. Delivery is free at Rs ${delivery.threshold.toLocaleString('en-US')} or more, before coupons.`]];
+  const columns = [all.slice(0, 5), all.slice(5)];
   return (
     <section className="section faq-wrap">
       <div className="site-shell">

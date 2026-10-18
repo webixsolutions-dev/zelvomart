@@ -1,0 +1,10 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-session-replays",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "replays/"},
+      "Expiration": {"Days": 14}
+    }
+  ]
+}

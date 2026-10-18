@@ -25,9 +25,11 @@ export const checkoutSchema = z
     source: z.record(z.string(), z.unknown()).optional(),
     fbp: z.string().optional(),
     fbc: z.string().optional(),
-    clarityId: z.string().optional(),
+    ttp:z.string().max(500).optional(),
+    ttclid:z.string().max(500).optional(),
+    visitorId:z.string().uuid().optional(),
     replaySessionId: z.string().uuid().optional(),
-    experiments: z.record(z.string(), z.string()).optional(),
+    couponCode: z.string().trim().max(40).optional(),
   })
   .transform((value, ctx) => {
     const phone = normalizePakistanPhone(value.phone);
@@ -35,5 +37,5 @@ export const checkoutSchema = z
       ctx.addIssue({ code: "custom", path: ["phone"], message: "Enter a valid Pakistani mobile number." });
       return z.NEVER;
     }
-    return { ...value, phone };
+    return { ...value, phone, email:value.email?.toLowerCase() };
   });

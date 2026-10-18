@@ -1,4 +1,5 @@
 "use client";
+import {useDeliveryPolicy} from "./DeliveryPolicy";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,7 +8,7 @@ import { bundleLineTotal, BUY_TWO_DISCOUNT_PERCENT } from "@/lib/bundle-price";
 import { money } from "@/lib/format";
 import { amountUntilFreeShipping, quoteDelivery } from "@/lib/shipping";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
-import { getReplaySessionId, requestReplayFlush } from "@/lib/session-replay-client";
+import { getReplaySessionId,getReplayVisitorId, requestReplayFlush } from "@/lib/session-replay-client";
 
 const SESSION_KEY = "zm_checkout_form";
 const IDEMPOTENCY_KEY = "zm_checkout_idempotency";
@@ -67,15 +68,19 @@ export default function CheckoutClient({
   const abandonTimer = useRef<number | null>(null);
   const checkoutTracked = useRef(false);
 
+  const liveDelivery=useDeliveryPolicy();
   const everyFree = items.length > 0 && items.every((item) => item.freeShipping);
   const shippingQuote = useMemo(
-    () => quoteDelivery(subtotal, everyFree, delivery),
-    [delivery, everyFree, subtotal],
+    () => quoteDelivery(subtotal, everyFree, {flatRate:liveDelivery.flatRate,freeAbove:liveDelivery.threshold}),
+    [liveDelivery, everyFree, subtotal],
   );
   const deliveryFee = shippingQuote.fee;
   const shippingGap = amountUntilFreeShipping(subtotal, shippingQuote.threshold);
-  const codFee = shippingQuote.codFee;
-  const total = subtotal + deliveryFee + codFee;
+  const [coupon,setCoupon]=useState<{code:string;discount:number}|null>(null),[couponText,setCouponText]=useState(''),[couponOpen,setCouponOpen]=useState(false),[couponBusy,setCouponBusy]=useState(false);
+  const total = Math.max(0,subtotal-(coupon?.discount||0)) + deliveryFee;
+  const couponCart=JSON.stringify(items.map(item=>({productId:item.productId,variantId:item.variantId,quantity:item.quantity,bundleSize:item.bundleSize})));
+  async function applyCoupon(code=couponText){setCouponBusy(true);try{const response=await fetch('/api/store-proxy/api/checkout/coupon',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code,cart:JSON.parse(couponCart)})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Invalid coupon');setCoupon(data);sessionStorage.setItem('zm_checkout_coupon',data.code||'');}catch{setCoupon(null);}finally{setCouponBusy(false);}}
+  useEffect(()=>{setCoupon(null);const code=new URLSearchParams(location.search).get('coupon')||sessionStorage.getItem('zm_checkout_coupon');if(code&&items.length){setCouponText(code);setCouponOpen(true);void applyCoupon(code);}},[couponCart]);
 
   useEffect(() => {
     setOpen(false);
@@ -103,12 +108,11 @@ export default function CheckoutClient({
       num_items: items.reduce((sum, item) => sum + item.quantity * item.bundleSize, 0),
       value: total,
       currency: "PKR",
-    }, { clarityEvent: "begin_checkout" }).catch(() => undefined);
-    try { window.clarity?.("upgrade", "checkout"); } catch {}
+    }).catch(() => undefined);
   }, [items, ready, total]);
 
   useEffect(() => {
-    if (!ready || !items.length || normalizedPhone(fields.phone).length < 10) return;
+    if (!ready || !items.length || (normalizedPhone(fields.phone).length < 10&&!/^\S+@\S+\.\S+$/.test(fields.email.trim()))) return;
     if (abandonTimer.current) window.clearTimeout(abandonTimer.current);
     abandonTimer.current = window.setTimeout(() => {
       fetch("/api/store-proxy/api/checkout/abandoned", {
@@ -121,7 +125,7 @@ export default function CheckoutClient({
           city: fields.city,
           address: fields.address,
           cart: items.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, bundleSize: item.bundleSize })),
-          source: { firstTouch: parseJsonCookie("zm_first_touch"), lastTouch: parseJsonCookie("zm_last_touch") },
+          source: { replaySessionId:getReplaySessionId(),firstTouch: parseJsonCookie("zm_first_touch"), lastTouch: parseJsonCookie("zm_last_touch") },
         }),
       }).catch(() => undefined);
     }, 1600);
@@ -141,12 +145,9 @@ export default function CheckoutClient({
     if (fields.email && !/^\S+@\S+\.\S+$/.test(fields.email.trim())) next.email = "Enter a valid email.";
     if (!fields.city.trim()) next.city = "City is required.";
     if (fields.address.trim().length < 6) next.address = "Complete delivery address is required.";
-    if (required.postcode && !fields.postcode.trim()) next.postcode = "Postcode is required.";
-    if (fields.postcode && fields.postcode.trim().length < 3) next.postcode = "Enter a valid postcode.";
     if (required.orderNotes && !fields.orderNotes.trim()) next.orderNotes = "Order notes are required.";
     if (required.terms && !fields.terms) next.terms = "Please accept the terms.";
     setErrors(next);
-    Object.keys(next).forEach((field) => { try { window.clarity?.("event", `checkout_error_${field}`); } catch {} });
     if (Object.keys(next).length) {
       const first = Object.keys(next)[0];
       document.querySelector<HTMLElement>(`[data-checkout-field="${first}"] input, [data-checkout-field="${first}"] textarea`)?.focus();
@@ -161,7 +162,6 @@ export default function CheckoutClient({
     setServerError("");
     requestReplayFlush();
     try {
-      try { window.clarity?.("event", "place_order_tap"); } catch {}
       const idempotencyKey = sessionStorage.getItem(IDEMPOTENCY_KEY) || crypto.randomUUID();
       sessionStorage.setItem(IDEMPOTENCY_KEY, idempotencyKey);
 
@@ -170,12 +170,12 @@ export default function CheckoutClient({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           idempotencyKey,
+          couponCode:coupon?.code,
           fullName: fields.fullName,
           phone: fields.phone,
           email: fields.email,
           city: fields.city,
           address: fields.address,
-          postcode: fields.postcode,
           orderNotes: fields.orderNotes,
           terms: fields.terms,
           paymentMethod: "COD",
@@ -184,15 +184,16 @@ export default function CheckoutClient({
           source: { firstTouch: parseJsonCookie("zm_first_touch"), lastTouch: parseJsonCookie("zm_last_touch"), ...(parseJsonCookie("zm_last_touch") || {}) },
           fbp: readCookie("_fbp"),
           fbc: readCookie("_fbc"),
-          clarityId: readCookie("_clck"),
+          ttp:readCookie("_ttp"),
+          ttclid:readCookie("ttclid"),
+          visitorId:getReplayVisitorId(),
           replaySessionId: getReplaySessionId(),
-          experiments: parseJsonCookie("zm_experiments"),
+
         }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not place order");
 
-      try { window.clarity?.("event", "order_placed"); window.clarity?.("identify", data.orderNumber); } catch {}
       setConfirmedOrder(String(data.orderNumber || ""));
       setRedirecting(true);
       requestReplayFlush();
@@ -248,17 +249,17 @@ export default function CheckoutClient({
             <div className="mock-checkout-fields">
               <div className="field" data-checkout-field="fullName">
                 <label htmlFor="checkout-full-name">Full name *</label>
-                <input id="checkout-full-name" data-clarity-mask="true" autoComplete="name" placeholder="Your full name" value={fields.fullName} onChange={(e) => update("fullName", e.target.value)} />
+                <input id="checkout-full-name" data-replay-mask="true" autoComplete="name" placeholder="Your full name" value={fields.fullName} onChange={(e) => update("fullName", e.target.value)} />
                 {errors.fullName ? <span className="field-error">{errors.fullName}</span> : null}
               </div>
               <div className="field" data-checkout-field="phone">
                 <label htmlFor="checkout-phone">Phone number *</label>
-                <input id="checkout-phone" data-clarity-mask="true" autoComplete="tel" inputMode="tel" placeholder="03XX-XXXXXXX" value={fields.phone} onChange={(e) => update("phone", e.target.value)} />
+                <input id="checkout-phone" data-replay-mask="true" autoComplete="tel" inputMode="tel" placeholder="03XX-XXXXXXX" value={fields.phone} onChange={(e) => update("phone", e.target.value)} />
                 {errors.phone ? <span className="field-error">{errors.phone}</span> : null}
               </div>
               <div className="field full" data-checkout-field="email">
                 <label htmlFor="checkout-email">Email address {required.email ? "*" : "(optional)"}</label>
-                <input id="checkout-email" data-clarity-mask="true" autoComplete="email" type="email" placeholder="you@example.com" value={fields.email} onChange={(e) => update("email", e.target.value)} />
+                <input id="checkout-email" data-replay-mask="true" autoComplete="email" type="email" placeholder="you@example.com" value={fields.email} onChange={(e) => update("email", e.target.value)} />
                 {errors.email ? <span className="field-error">{errors.email}</span> : null}
               </div>
             </div>
@@ -271,17 +272,17 @@ export default function CheckoutClient({
                 <label htmlFor="checkout-city">City *</label>
                 <input id="checkout-city" list="pakistan-cities" autoComplete="address-level2" placeholder="Search your city" value={fields.city} onChange={(e) => update("city", e.target.value)} />
                 <datalist id="pakistan-cities">{cities.map((city) => <option key={city.name} value={city.name} />)}</datalist>
-                {selectedCity ? <small className="mock-step-success">✓ Estimated delivery: {selectedCity.deliveryMinDays}–{selectedCity.deliveryMaxDays} working days</small> : null}
+                <small className="mock-step-success">✓ Estimated delivery: {selectedCity?.deliveryMinDays??2}–{selectedCity?.deliveryMaxDays??7} working days</small>
                 {errors.city ? <span className="field-error">{errors.city}</span> : null}
               </div>
               <div className="field" data-checkout-field="postcode">
                 <label htmlFor="checkout-postcode">Postcode {required.postcode ? "*" : "(optional)"}</label>
-                <input id="checkout-postcode" data-clarity-mask="true" autoComplete="postal-code" inputMode="numeric" placeholder="e.g. 54000" value={fields.postcode} onChange={(e) => update("postcode", e.target.value)} />
+                <input id="checkout-postcode" data-replay-mask="true" autoComplete="postal-code" inputMode="numeric" placeholder="e.g. 54000" value={fields.postcode} onChange={(e) => update("postcode", e.target.value)} />
                 {errors.postcode ? <span className="field-error">{errors.postcode}</span> : null}
               </div>
               <div className="field full" data-checkout-field="address">
                 <label htmlFor="checkout-address">Full delivery address *</label>
-                <textarea id="checkout-address" data-clarity-mask="true" autoComplete="street-address" rows={4} placeholder="House / flat, street, area, nearby landmark…" value={fields.address} onChange={(e) => update("address", e.target.value)} />
+                <textarea id="checkout-address" data-replay-mask="true" autoComplete="street-address" rows={4} placeholder="House / flat, street, area, nearby landmark…" value={fields.address} onChange={(e) => update("address", e.target.value)} />
                 {errors.address ? <span className="field-error">{errors.address}</span> : null}
               </div>
               <div className="field full" data-checkout-field="orderNotes">
@@ -317,6 +318,8 @@ export default function CheckoutClient({
           <h2>Your order</h2>
           {items.map((item) => <div className="mock-checkout-line" key={`${item.productId}-${item.variantId || "base"}-${item.bundleSize}`}><span>{item.name}<small>Qty {item.quantity * item.bundleSize}</small></span><b>{money(bundleLineTotal(item.price, item.quantity, item.bundleSize, BUY_TWO_DISCOUNT_PERCENT).total)}</b></div>)}
           <hr />
+          <div style={{display:'block'}}><button type="button" className="admin-btn admin-btn-light" onClick={()=>setCouponOpen(v=>!v)}>Have a coupon code?</button>{couponOpen&&<div style={{display:'flex',gap:8,marginTop:10}}><input aria-label="Coupon code" value={couponText} onChange={e=>setCouponText(e.target.value)} maxLength={40}/><button type="button" className="admin-btn admin-btn-primary" disabled={couponBusy||!couponText.trim()} onClick={()=>void applyCoupon()}>{couponBusy?'Applying…':'Apply'}</button></div>}{coupon&&<p>{coupon.code} applied <button type="button" onClick={()=>{setCoupon(null);sessionStorage.removeItem('zm_checkout_coupon')}}>Remove</button></p>}</div>
+          {coupon&&<div className="saving"><span>Coupon {coupon.code}</span><b>-{money(coupon.discount)}</b></div>}
           <div><span>Items</span><b>{money(subtotal)}</b></div>
           {bundleSaving > 0 ? <div className="saving"><span>Bundle saving</span><b>-{money(bundleSaving)}</b></div> : null}
           <div><span>Delivery</span><b>{deliveryFee ? money(deliveryFee) : "Free"}</b></div>
@@ -327,7 +330,6 @@ export default function CheckoutClient({
                 ? `Free shipping because this order is above ${money(shippingQuote.threshold)}.`
                 : "Free shipping is included for the products in this order."}
           </p>
-          {codFee ? <div><span>COD fee</span><b>{money(codFee)}</b></div> : null}
           <div className="total"><span>Total</span><b>{money(total)}</b></div>
           <div className="mock-pay-arrival">✓ Pay cash when your parcel arrives</div>
           <button type="submit" className="mock-place-order" disabled={submitting || (required.terms && !fields.terms)}>{submitting ? <><span className="mock-order-button-spinner" /> Confirming…</> : "Place order →"}</button>

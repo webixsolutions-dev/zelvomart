@@ -72,7 +72,10 @@ export const ModelName = {
   City: 'City',
   RateLimitBucket: 'RateLimitBucket',
   Sequence: 'Sequence',
-  Redirect: 'Redirect'
+  Redirect: 'Redirect',
+  Coupon: 'Coupon',
+  OrderNote: 'OrderNote',
+  RecoveryUnsubscribe: 'RecoveryUnsubscribe'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -190,11 +193,16 @@ export const OrderScalarFieldEnum = {
   subtotal: 'subtotal',
   bundleSaving: 'bundleSaving',
   deliveryFee: 'deliveryFee',
+  couponCode: 'couponCode',
+  couponDiscount: 'couponDiscount',
   codFee: 'codFee',
   total: 'total',
   source: 'source',
   firstTouch: 'firstTouch',
   lastTouch: 'lastTouch',
+  ttp: 'ttp',
+  ttclid: 'ttclid',
+  visitorId: 'visitorId',
   fbp: 'fbp',
   fbc: 'fbc',
   clarityId: 'clarityId',
@@ -282,6 +290,11 @@ export const SessionReplayScalarFieldEnum = {
   startedAt: 'startedAt',
   lastSeenAt: 'lastSeenAt',
   endedAt: 'endedAt',
+  reachedCart: 'reachedCart',
+  reachedCheckout: 'reachedCheckout',
+  ordered: 'ordered',
+  hasSnapshot: 'hasSnapshot',
+  durationMs: 'durationMs',
   eventCount: 'eventCount',
   chunkCount: 'chunkCount',
   pageViews: 'pageViews',
@@ -297,8 +310,13 @@ export const SessionReplayChunkScalarFieldEnum = {
   id: 'id',
   sessionId: 'sessionId',
   sequence: 'sequence',
+  storageKey: 'storageKey',
+  byteSize: 'byteSize',
+  firstTimestamp: 'firstTimestamp',
+  lastTimestamp: 'lastTimestamp',
   events: 'events',
   eventCount: 'eventCount',
+  hasSnapshot: 'hasSnapshot',
   createdAt: 'createdAt'
 } as const
 
@@ -447,6 +465,10 @@ export const AbandonedCheckoutScalarFieldEnum = {
   address: 'address',
   cart: 'cart',
   source: 'source',
+  restoreToken: 'restoreToken',
+  emailSentAt: 'emailSentAt',
+  followedUpBy: 'followedUpBy',
+  lostAt: 'lostAt',
   followedUpAt: 'followedUpAt',
   convertedAt: 'convertedAt',
   createdAt: 'createdAt',
@@ -499,6 +521,41 @@ export const RedirectScalarFieldEnum = {
 } as const
 
 export type RedirectScalarFieldEnum = (typeof RedirectScalarFieldEnum)[keyof typeof RedirectScalarFieldEnum]
+
+
+export const CouponScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  type: 'type',
+  amount: 'amount',
+  expiresAt: 'expiresAt',
+  active: 'active',
+  usedCount: 'usedCount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CouponScalarFieldEnum = (typeof CouponScalarFieldEnum)[keyof typeof CouponScalarFieldEnum]
+
+
+export const OrderNoteScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  body: 'body',
+  authorId: 'authorId',
+  authorName: 'authorName',
+  createdAt: 'createdAt'
+} as const
+
+export type OrderNoteScalarFieldEnum = (typeof OrderNoteScalarFieldEnum)[keyof typeof OrderNoteScalarFieldEnum]
+
+
+export const RecoveryUnsubscribeScalarFieldEnum = {
+  email: 'email',
+  createdAt: 'createdAt'
+} as const
+
+export type RecoveryUnsubscribeScalarFieldEnum = (typeof RecoveryUnsubscribeScalarFieldEnum)[keyof typeof RecoveryUnsubscribeScalarFieldEnum]
 
 
 export const SortOrder = {

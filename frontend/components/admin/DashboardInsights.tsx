@@ -10,6 +10,7 @@ function Comparison({ label, today, yesterday, currency = false }: { label: stri
 }
 
 function Coverage({ label, value, count, href, color }: { label: string; value: number; count: string; href: string; color: string }) {
+  if(value===null)return <Link className="dashboard-health-item" href={href}><div><span>{label}</span><strong>No orders yet</strong><small>{count}</small></div></Link>;
   const percent = Number(value || 0);
   return <Link className="dashboard-health-item" href={href}><svg className="dashboard-health-ring" viewBox="0 0 44 44" role="img" aria-label={`${label}: ${percent.toFixed(1)} percent`}><circle cx="22" cy="22" r="18" fill="none" stroke="#edf2fa" strokeWidth="4" /><circle cx="22" cy="22" r="18" fill="none" stroke={color} strokeWidth="4" strokeDasharray={`${Math.min(100, Math.max(0, percent)) * 1.131} 113.1`} transform="rotate(-90 22 22)" strokeLinecap="round" /></svg><div><span>{label}</span><strong>{percent.toFixed(1)}%</strong><small>{count}</small></div><span aria-hidden="true">↗</span></Link>;
 }

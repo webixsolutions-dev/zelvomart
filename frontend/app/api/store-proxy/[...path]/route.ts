@@ -7,7 +7,8 @@ const SAFE_PREFIXES = [
   "/api/reviews",
   "/api/orders/",
   "/api/checkout/",
-  "/api/experiments/",
+  "/api/recovery/",
+  "/api/settings/delivery",
 ];
 
 function backendCandidates(request: NextRequest): string[] {
@@ -51,7 +52,7 @@ async function forward(
   // If no backend is reachable or configured
   if (!candidates.length) {
     if (isSessionReplay) {
-      return Response.json({ success: true, acknowledged: true }, { status: 200 });
+      return Response.json({ error: 'REPLAY_BACKEND_UNAVAILABLE' }, { status: 503 });
     }
     if (isExperiment) {
       return Response.json({ active: [], experiments: [] }, { status: 200 });
@@ -143,7 +144,7 @@ async function forward(
         }
 
         if (isSessionReplay) {
-          return Response.json({ success: true, acknowledged: true }, { status: 200 });
+          return Response.json({ error: 'REPLAY_BACKEND_UNAVAILABLE' }, { status: 503 });
         }
         if (isExperiment) {
           return Response.json({ active: [], experiments: [] }, { status: 200 });
@@ -167,7 +168,7 @@ async function forward(
 
   // Graceful fallback if all backend candidates are completely down/unreachable
   if (isSessionReplay) {
-    return Response.json({ success: true, acknowledged: true }, { status: 200 });
+    return Response.json({ error: 'REPLAY_BACKEND_UNAVAILABLE' }, { status: 503 });
   }
   if (isExperiment) {
     return Response.json({ active: [], experiments: [] }, { status: 200 });

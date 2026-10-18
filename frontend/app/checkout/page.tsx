@@ -9,8 +9,8 @@ export const metadata = { title: "Checkout" };
 export default async function CheckoutPage() {
   const [cities, required, delivery, info] = await Promise.all([
     apiFetch<Array<{ name: string; deliveryMinDays: number; deliveryMaxDays: number }>>("/api/cities", { next: { revalidate: 3600, tags: ["cities"] } }).catch(() => []),
-    getSetting<Record<string, boolean>>("checkout.requiredFields", { fullName: true, phone: true, email: true, city: true, address: true, postcode: true, terms: true }),
-    getSetting<any>("store.delivery", { mode: "FREE", flatRate: 0, freeAbove: 0, codFee: 0 }),
+    Promise.resolve({fullName:true,phone:true,email:false,city:true,address:true,postcode:false,orderNotes:false,terms:true}),
+    getSetting<any>("store.delivery", { mode: "FREE", flatRate: 0, freeAbove: 0 }),
     getSetting<{ phone?: string; whatsapp?: string }>("store.info", { phone: "0300-2026711", whatsapp: "923002026711" }),
   ]);
   const phone = String(info.phone || "0300-2026711");

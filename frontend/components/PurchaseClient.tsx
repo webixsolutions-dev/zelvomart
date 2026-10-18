@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 import { trackStoreEvent } from "@/lib/client-tracking";
 
-export default function PurchaseClient({ orderNumber, total, skus, quantities, prices }: { orderNumber: string; total: number; skus: string[]; quantities: number[]; prices: number[] }) {
+export default function PurchaseClient({ suppressed=false, orderNumber, total, skus, quantities, prices }: { suppressed?:boolean; orderNumber: string; total: number; skus: string[]; quantities: number[]; prices: number[] }) {
   useEffect(() => {
+    if(suppressed)return;
     const key = `zm_purchase_fired_${orderNumber}`;
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, "1");

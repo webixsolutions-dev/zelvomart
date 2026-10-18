@@ -1,0 +1,3 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {customerAuthFetch,STORE_SESSION_COOKIE} from '@/lib/account-server';
+export async function POST(request:NextRequest){const token=request.cookies.get(STORE_SESSION_COOKIE)?.value;if(!token)return NextResponse.json({ok:true});if(request.headers.get('origin')&&request.headers.get('origin')!==request.nextUrl.origin)return NextResponse.json({error:'FORBIDDEN'},{status:403});try{const data=await request.json();const response=await customerAuthFetch('/api/checkout/abandoned',{method:'POST',body:JSON.stringify(data)},token);return NextResponse.json(await response.json(),{status:response.status});}catch{return NextResponse.json({error:'Unable to save cart'},{status:503});}}

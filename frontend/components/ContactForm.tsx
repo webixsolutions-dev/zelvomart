@@ -44,7 +44,7 @@ export default function ContactForm({ whatsapp }: { whatsapp: string }) {
       trackStoreEvent("Lead", {
         content_name: "contact_form",
         form_name: "Contact Us",
-      }, { clarityEvent: "contact_form_submit" }).catch(() => undefined);
+      }).catch(() => undefined);
     } catch (error) {
       setState("error");
       setMessage(error instanceof Error ? error.message : "Unable to send your message right now.");

@@ -1,4 +1,5 @@
 "use client";
+import {notifyError} from '@/lib/app-errors';
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClipboardEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
@@ -16,7 +17,7 @@ type Props = {
 };
 
 function showEditorError(message: string) {
-  window.alert(message);
+  notifyError(message);
 }
 
 function normalizeLeadingBareUrlLink(html: string): string {

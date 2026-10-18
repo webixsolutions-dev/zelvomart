@@ -1,3 +1,4 @@
+import {validateCoupon,couponCode} from './coupons';
 import { Prisma, type OrderStatus } from "../generated/prisma/client";
 import { prisma } from "./db";
 import { getSetting } from "./settings";
@@ -8,10 +9,11 @@ import { canSell } from "./stock";
 import { dispatchJobRow } from "./jobs";
 
 // Far-away database: allow time to open a connection and finish (Prisma default wait is 2s).
-const ORDER_TX_OPTIONS = { maxWait: 15_000, timeout: 30_000 };
+const ORDER_TX_OPTIONS = { maxWait: 15_000, timeout: 90_000 };
 
 type CheckoutInput = {
   staffCreated?: boolean;
+  trackingAllowed?:boolean;
   idempotencyKey: string;
   fullName: string;
   phone: string;
@@ -26,43 +28,30 @@ type CheckoutInput = {
   source?: Record<string, unknown>;
   fbp?: string;
   fbc?: string;
-  clarityId?: string;
+  ttp?:string;
+  ttclid?:string;
+  visitorId?:string;
   replaySessionId?: string;
   clientIp?: string;
   clientUserAgent?: string;
-  experiments?: Record<string, string>;
+  couponCode?: string;
 };
 
 function decimal(value: number) {
   return new Prisma.Decimal(value.toFixed(2));
 }
 
-export async function createOrder(input: CheckoutInput) {
+export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:boolean}={}) {
   const existing = await prisma.order.findUnique({
     where: { idempotencyKey: input.idempotencyKey },
     include: { items: true },
   });
   if (existing) return existing;
 
-  const [deliveryRule, requiredFields, paymentMethods] = await Promise.all([
-    getSetting<any>("store.delivery", { mode: "FREE", flatRate: 0, freeAbove: 0, codFee: 0 }),
-    getSetting<Record<string, boolean>>("checkout.requiredFields", {
-      fullName: true,
-      phone: true,
-      email: true,
-      city: true,
-      address: true,
-      postcode: true,
-      terms: true,
-    }),
-    getSetting<string[]>("payments.methods", ["COD"]),
-  ]);
-
-  if (!paymentMethods.includes(input.paymentMethod)) throw new Error("PAYMENT_METHOD_DISABLED");
-  if (requiredFields.email && !input.email) throw new Error("EMAIL_REQUIRED");
-  if (requiredFields.postcode && !input.postcode) throw new Error("POSTCODE_REQUIRED");
-  if (requiredFields.orderNotes && !input.orderNotes) throw new Error("ORDER_NOTES_REQUIRED");
-  if (requiredFields.terms && !input.terms) throw new Error("TERMS_REQUIRED");
+  const [deliveryRule,paymentMethods]=await Promise.all([getSetting<any>('store.delivery',{}),getSetting<string[]>('payments.methods',['COD'])]);
+  if(!paymentMethods.includes(input.paymentMethod))throw new Error('PAYMENT_METHOD_DISABLED');
+  if(!input.fullName.trim()||!input.phone||!input.city.trim()||!input.address.trim())throw new Error('REQUIRED_FIELDS');
+  if(!input.terms&&!input.staffCreated)throw new Error('TERMS_REQUIRED');
 
   const productIds = [...new Set(input.cart.map((item) => item.productId))];
   const products = await prisma.product.findMany({
@@ -130,26 +119,15 @@ export async function createOrder(input: CheckoutInput) {
   const everyItemFree = prepared.length > 0 && prepared.every((item) => item.freeShipping);
   const deliveryPolicy = resolveDeliveryPolicy(deliveryRule);
   const deliveryFee = quoteFromPolicy(discountedSubtotal, everyItemFree, deliveryPolicy).fee;
-  const codFee = input.paymentMethod === "COD" ? deliveryPolicy.codFee : 0;
-  const total = discountedSubtotal + deliveryFee + codFee;
+  const total = discountedSubtotal + deliveryFee;
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const recent = await prisma.order.findMany({
     where: { phone: input.phone, createdAt: { gte: since } },
-    include: { items: true },
-    take: 20,
+    select: {id:true},
+    take: 1,
   });
-  const signature = prepared
-    .map((item) => `${item.sku}:${item.quantity}`)
-    .sort()
-    .join("|");
-  const possibleDuplicate = recent.some(
-    (order) =>
-      order.items
-        .map((item) => `${item.sku}:${item.quantity}`)
-        .sort()
-        .join("|") === signature,
-  );
+  const possibleDuplicate = recent.length > 0;
 
   const existingCustomer = await prisma.customer.findUnique({ where: { phone: input.phone } });
   const blocklisted = Boolean(existingCustomer?.blocklisted);
@@ -204,6 +182,8 @@ export async function createOrder(input: CheckoutInput) {
       if (value.includes("tiktok")) return "tiktok";
       return value || "direct";
     })();
+    if(input.couponCode)await tx.$queryRaw`SELECT "id" FROM "Coupon" WHERE "code"=${couponCode(input.couponCode)} FOR UPDATE`;
+    const coupon=await validateCoupon(input.couponCode,discountedSubtotal,tx);
     const order = await tx.order.create({
       data: {
         orderNumber,
@@ -223,19 +203,24 @@ export async function createOrder(input: CheckoutInput) {
         subtotal: decimal(subtotal),
         bundleSaving: decimal(bundleSaving),
         deliveryFee: decimal(deliveryFee),
-        codFee: decimal(codFee),
-        total: decimal(total),
+        codFee: decimal(0),
+        total: decimal(total-coupon.discount),
+        couponCode:coupon.code,
+        couponDiscount:decimal(coupon.discount),
         source: sourceName,
         staffCreated: input.staffCreated === true,
+        test:input.trackingAllowed===false,
         firstTouch: (source.firstTouch as any) || null,
         lastTouch: (source.lastTouch as any) || source as any,
         fbp: input.fbp,
         fbc: input.fbc,
-        clarityId: input.clarityId,
+        ttp:input.ttp,
+        ttclid:input.ttclid,
+        visitorId:input.visitorId,
         replaySessionId: input.replaySessionId || null,
         clientIp: input.clientIp || null,
         clientUserAgent: input.clientUserAgent || null,
-        experiments: input.experiments as any,
+
         possibleDuplicate,
         blocklistedAtOrder: blocklisted,
         items: {
@@ -263,18 +248,20 @@ export async function createOrder(input: CheckoutInput) {
       include: { items: true },
     });
 
+    if(coupon.code)await tx.coupon.update({where:{code:coupon.code},data:{usedCount:{increment:1}}});
     const phoneTail = input.phone.replace(/\D/g, "").slice(-10);
     if (phoneTail) {
       await tx.abandonedCheckout.updateMany({
-        where: { phone: { endsWith: phoneTail }, convertedAt: null },
+        where: { OR:[{phone:{endsWith:phoneTail}},...(input.email?[{email:input.email.trim().toLowerCase()}]:[])], convertedAt: null },
         data: { convertedAt: new Date() },
       });
     }
 
+    if(order.replaySessionId)await tx.sessionReplay.updateMany({where:{id:order.replaySessionId},data:{ordered:true,reachedCheckout:true}});
     const jobs = await Promise.all([
       tx.job.create({ data: { name: "order-team-email", orderId: order.id, payload: { orderId: order.id } } }),
       tx.job.create({ data: { name: "customer-order-email", orderId: order.id, payload: { orderId: order.id } } }),
-      ...(order.test || order.staffCreated
+      ...(order.test || order.staffCreated || order.blocklistedAtOrder
         ? []
         : [
             tx.job.create({ data: { name: "meta-purchase", orderId: order.id, payload: { orderId: order.id } } }),
@@ -285,7 +272,7 @@ export async function createOrder(input: CheckoutInput) {
     return { order, jobIds: jobs.map((job) => job.id) };
   }, ORDER_TX_OPTIONS);
 
-  await Promise.allSettled(result.jobIds.map((id) => dispatchJobRow(id)));
+  if(options.dispatchJobs!==false)await Promise.allSettled(result.jobIds.map((id) => dispatchJobRow(id)));
   return result.order;
 }
 
@@ -308,4 +295,38 @@ export async function restoreOrderStock(orderId: string) {
     // Put back once only: cancelling, reopening and cancelling the same order again must not add stock twice.
     await tx.orderItem.updateMany({ where: { id: { in: restock.map((item) => item.id) } }, data: { stockReduced: false } });
   }, ORDER_TX_OPTIONS);
+}
+
+/** Status changes share the edit lock, so cancellation cannot race item edits. */
+export async function transitionOrder(orderId:string,next:OrderStatus,userId?:string,note?:string,tracking?:string|null){
+ return prisma.$transaction(async tx=>{
+  await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${orderId}))`;
+  const order=await tx.order.findUniqueOrThrow({where:{id:orderId},include:{items:true}});
+  const closed=(status:string)=>['CANCELLED','RETURNED'].includes(status);
+  if(!closed(order.status)&&closed(next)){
+   for(const item of [...order.items].sort((a,b)=>(a.variantId||a.productId||'').localeCompare(b.variantId||b.productId||''))){
+    if(!item.stockReduced)continue;
+    if(item.variantId)await tx.variant.updateMany({where:{id:item.variantId},data:{stock:{increment:item.quantity}}});
+    else if(item.productId)await tx.product.updateMany({where:{id:item.productId},data:{stock:{increment:item.quantity}}});
+   }
+   await tx.orderItem.updateMany({where:{orderId},data:{stockReduced:false}});
+  }else if(closed(order.status)&&!closed(next)){
+   for(const item of [...order.items].sort((a,b)=>(a.variantId||a.productId||'').localeCompare(b.variantId||b.productId||''))){
+    if(item.stockReduced)continue;
+    const stock=item.variantId?await tx.variant.findUnique({where:{id:item.variantId}}):item.productId?await tx.product.findUnique({where:{id:item.productId}}):null;
+    if(!stock||!canSell(stock,item.quantity))throw new Error('This order cannot be reopened because an item is unavailable.');
+    if(!stock.trackStock)continue;
+    const where={id:stock.id,stock:{gte:item.quantity},trackStock:true};
+    const changed=item.variantId?await tx.variant.updateMany({where,data:{stock:{decrement:item.quantity}}}):await tx.product.updateMany({where,data:{stock:{decrement:item.quantity}}});
+    if(changed.count!==1)throw new Error('Not enough stock to reopen this order.');
+    await tx.orderItem.update({where:{id:item.id},data:{stockReduced:true}});
+   }
+  }
+  await tx.order.update({where:{id:orderId},data:{status:next,...(tracking!==undefined?{postexTracking:tracking}:{})}});
+  if(order.status!==next){
+   if(next==='RETURNED'&&order.customerId){const prior=await tx.orderStatusHistory.count({where:{orderId,to:'RETURNED'}});if(!prior)await tx.customer.update({where:{id:order.customerId},data:{refusalCount:{increment:1}}});}
+   await tx.orderStatusHistory.create({data:{orderId,from:order.status,to:next,userId,note:note||null}});
+  }
+  return order;
+ },ORDER_TX_OPTIONS);
 }

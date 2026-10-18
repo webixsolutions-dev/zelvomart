@@ -5,7 +5,7 @@ let boss: PgBoss | null = null;
 
 export async function getBoss() {
   if (!boss) {
-    boss = new PgBoss({ connectionString: process.env.DATABASE_URL! });
+    boss = new PgBoss({ connectionString: process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL! });
     boss.on("error", (error) => console.error("pg-boss", error));
     await boss.start();
   }
@@ -18,6 +18,7 @@ export async function dispatchJobRow(jobId: string) {
 
   const queue = await getBoss();
   const payload = row.payload && typeof row.payload === "object" ? (row.payload as Record<string, unknown>) : {};
+  await queue.createQueue(row.name);
   const externalId = await queue.send(
     row.name,
     { ...payload, jobLogId: row.id, orderId: row.orderId },
@@ -38,3 +39,5 @@ export async function enqueueJob(name: string, payload: Record<string, unknown>,
   await dispatchJobRow(row.id);
   return row;
 }
+
+export function jobResultStatus(result:unknown){return result&&typeof result==='object'&&'skipped' in result?'SKIPPED' as const:'SUCCEEDED' as const}

@@ -73,7 +73,6 @@ export default function ProductGrid({
           trackStoreEvent(
             "AddToCart",
             { content_ids: [sku], contents: [{ id: sku, quantity: 1, item_price: price }], value: price, currency: "PKR" },
-            { clarityEvent: "add_to_cart" },
           ).catch(() => undefined);
         };
 

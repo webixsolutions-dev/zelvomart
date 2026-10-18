@@ -103,3 +103,5 @@
 .od-dashboard .od-stat .od-change { display: flex; align-items: center; gap: 4px; font-weight: 700; line-height: 15px; }
 .od-change svg { flex-shrink: 0; }
 .od-dashboard .od-stat .od-neutral { color: #8291aa; font-size: 11px; }
+
+.order-quick-overlay{position:fixed;inset:0;background:#10203966;z-index:5000;display:flex;justify-content:flex-end}.order-quick-drawer{width:min(100%,460px);padding:25px;background:#fff;overflow-y:auto;box-shadow:-8px 0 35px #10203922}.order-quick-drawer p{margin:16px 0;font-size:13px;line-height:1.7}.order-quick-drawer h2{margin-top:20px}.od-table tbody tr{cursor:pointer}

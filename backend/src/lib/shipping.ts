@@ -6,13 +6,11 @@ export type DeliverySettings = {
   mode?: string;
   flatRate?: number | null;
   freeAbove?: number | null;
-  codFee?: number | null;
 };
 
 export type DeliveryPolicy = {
   flatRate: number;
   threshold: number;
-  codFee: number;
 };
 
 function positive(value: unknown) {
@@ -29,13 +27,12 @@ export function resolveDeliveryPolicy(rule?: DeliverySettings | null): DeliveryP
   return {
     flatRate: positive(rule?.flatRate) || DEFAULT_DELIVERY_CHARGE,
     threshold: positive(rule?.freeAbove) || FREE_SHIPPING_ABOVE,
-    codFee: positive(rule?.codFee),
   };
 }
 
 /** Free when the order total is above the free-above amount, or every item has free shipping turned on. */
 export function quoteFromPolicy(subtotal: number, everyItemFreeShipping: boolean, policy: DeliveryPolicy) {
-  const qualifiesByTotal = subtotal > policy.threshold;
+  const qualifiesByTotal = subtotal >= policy.threshold;
   const fee = qualifiesByTotal || everyItemFreeShipping ? 0 : policy.flatRate;
   return { ...policy, fee, qualifiesByTotal, everyItemFreeShipping };
 }
@@ -45,6 +42,6 @@ export function quoteDelivery(subtotal: number, everyItemFreeShipping: boolean, 
 }
 
 export function amountUntilFreeShipping(subtotal: number, threshold: number) {
-  if (subtotal > threshold) return 0;
-  return Math.max(1, Math.ceil(threshold - subtotal + 0.01));
+  if (subtotal >= threshold) return 0;
+  return Math.max(0, Math.ceil(threshold - subtotal));
 }

@@ -8,8 +8,8 @@ import AdminNav from "./AdminNav";
 import AdminNotifications from "./AdminNotifications";
 import { clientApi, logoutAdminSession } from "@/lib/client-api";
 import { clearAdminDataCache, prefetchAdminData } from "./useAdminData";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+
+
 
 type User = { id: string; name: string; email: string; role: string };
 
@@ -230,19 +230,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <span>© {new Date().getUTCFullYear()} <strong>Zelvomart.</strong> All rights reserved.</span>
           <Link href="/contact-us" target="_blank" rel="noopener noreferrer" className="admin-footer-support">Help &amp; support <span aria-hidden="true">→</span></Link>
         </footer>
-        <ToastContainer
-          position="top-right"
-          autoClose={4000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-          style={{ zIndex: 999999 }}
-        />
+
       </div>
     </div>
   );

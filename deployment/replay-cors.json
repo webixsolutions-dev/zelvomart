@@ -1,0 +1,23 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://zelvomart.vercel.app",
+      "https://zelvomart.com",
+      "https://www.zelvomart.com",
+      "http://localhost:3000"
+    ],
+    "AllowedMethods": [
+      "GET",
+      "HEAD"
+    ],
+    "AllowedHeaders": [
+      "*"
+    ],
+    "ExposeHeaders": [
+      "Content-Length",
+      "Content-Type",
+      "Content-Encoding"
+    ],
+    "MaxAgeSeconds": 3600
+  }
+]

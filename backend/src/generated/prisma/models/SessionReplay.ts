@@ -27,12 +27,14 @@ export type AggregateSessionReplay = {
 }
 
 export type SessionReplayAvgAggregateOutputType = {
+  durationMs: number | null
   eventCount: number | null
   chunkCount: number | null
   pageViews: number | null
 }
 
 export type SessionReplaySumAggregateOutputType = {
+  durationMs: number | null
   eventCount: number | null
   chunkCount: number | null
   pageViews: number | null
@@ -53,6 +55,11 @@ export type SessionReplayMinAggregateOutputType = {
   startedAt: Date | null
   lastSeenAt: Date | null
   endedAt: Date | null
+  reachedCart: boolean | null
+  reachedCheckout: boolean | null
+  ordered: boolean | null
+  hasSnapshot: boolean | null
+  durationMs: number | null
   eventCount: number | null
   chunkCount: number | null
   pageViews: number | null
@@ -75,6 +82,11 @@ export type SessionReplayMaxAggregateOutputType = {
   startedAt: Date | null
   lastSeenAt: Date | null
   endedAt: Date | null
+  reachedCart: boolean | null
+  reachedCheckout: boolean | null
+  ordered: boolean | null
+  hasSnapshot: boolean | null
+  durationMs: number | null
   eventCount: number | null
   chunkCount: number | null
   pageViews: number | null
@@ -97,6 +109,11 @@ export type SessionReplayCountAggregateOutputType = {
   startedAt: number
   lastSeenAt: number
   endedAt: number
+  reachedCart: number
+  reachedCheckout: number
+  ordered: number
+  hasSnapshot: number
+  durationMs: number
   eventCount: number
   chunkCount: number
   pageViews: number
@@ -108,12 +125,14 @@ export type SessionReplayCountAggregateOutputType = {
 
 
 export type SessionReplayAvgAggregateInputType = {
+  durationMs?: true
   eventCount?: true
   chunkCount?: true
   pageViews?: true
 }
 
 export type SessionReplaySumAggregateInputType = {
+  durationMs?: true
   eventCount?: true
   chunkCount?: true
   pageViews?: true
@@ -134,6 +153,11 @@ export type SessionReplayMinAggregateInputType = {
   startedAt?: true
   lastSeenAt?: true
   endedAt?: true
+  reachedCart?: true
+  reachedCheckout?: true
+  ordered?: true
+  hasSnapshot?: true
+  durationMs?: true
   eventCount?: true
   chunkCount?: true
   pageViews?: true
@@ -156,6 +180,11 @@ export type SessionReplayMaxAggregateInputType = {
   startedAt?: true
   lastSeenAt?: true
   endedAt?: true
+  reachedCart?: true
+  reachedCheckout?: true
+  ordered?: true
+  hasSnapshot?: true
+  durationMs?: true
   eventCount?: true
   chunkCount?: true
   pageViews?: true
@@ -178,6 +207,11 @@ export type SessionReplayCountAggregateInputType = {
   startedAt?: true
   lastSeenAt?: true
   endedAt?: true
+  reachedCart?: true
+  reachedCheckout?: true
+  ordered?: true
+  hasSnapshot?: true
+  durationMs?: true
   eventCount?: true
   chunkCount?: true
   pageViews?: true
@@ -288,6 +322,11 @@ export type SessionReplayGroupByOutputType = {
   startedAt: Date
   lastSeenAt: Date
   endedAt: Date | null
+  reachedCart: boolean
+  reachedCheckout: boolean
+  ordered: boolean
+  hasSnapshot: boolean
+  durationMs: number
   eventCount: number
   chunkCount: number
   pageViews: number
@@ -334,6 +373,11 @@ export type SessionReplayWhereInput = {
   startedAt?: Prisma.DateTimeFilter<"SessionReplay"> | Date | string
   lastSeenAt?: Prisma.DateTimeFilter<"SessionReplay"> | Date | string
   endedAt?: Prisma.DateTimeNullableFilter<"SessionReplay"> | Date | string | null
+  reachedCart?: Prisma.BoolFilter<"SessionReplay"> | boolean
+  reachedCheckout?: Prisma.BoolFilter<"SessionReplay"> | boolean
+  ordered?: Prisma.BoolFilter<"SessionReplay"> | boolean
+  hasSnapshot?: Prisma.BoolFilter<"SessionReplay"> | boolean
+  durationMs?: Prisma.IntFilter<"SessionReplay"> | number
   eventCount?: Prisma.IntFilter<"SessionReplay"> | number
   chunkCount?: Prisma.IntFilter<"SessionReplay"> | number
   pageViews?: Prisma.IntFilter<"SessionReplay"> | number
@@ -358,6 +402,11 @@ export type SessionReplayOrderByWithRelationInput = {
   startedAt?: Prisma.SortOrder
   lastSeenAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  reachedCart?: Prisma.SortOrder
+  reachedCheckout?: Prisma.SortOrder
+  ordered?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
+  durationMs?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
   chunkCount?: Prisma.SortOrder
   pageViews?: Prisma.SortOrder
@@ -385,6 +434,11 @@ export type SessionReplayWhereUniqueInput = Prisma.AtLeast<{
   startedAt?: Prisma.DateTimeFilter<"SessionReplay"> | Date | string
   lastSeenAt?: Prisma.DateTimeFilter<"SessionReplay"> | Date | string
   endedAt?: Prisma.DateTimeNullableFilter<"SessionReplay"> | Date | string | null
+  reachedCart?: Prisma.BoolFilter<"SessionReplay"> | boolean
+  reachedCheckout?: Prisma.BoolFilter<"SessionReplay"> | boolean
+  ordered?: Prisma.BoolFilter<"SessionReplay"> | boolean
+  hasSnapshot?: Prisma.BoolFilter<"SessionReplay"> | boolean
+  durationMs?: Prisma.IntFilter<"SessionReplay"> | number
   eventCount?: Prisma.IntFilter<"SessionReplay"> | number
   chunkCount?: Prisma.IntFilter<"SessionReplay"> | number
   pageViews?: Prisma.IntFilter<"SessionReplay"> | number
@@ -409,6 +463,11 @@ export type SessionReplayOrderByWithAggregationInput = {
   startedAt?: Prisma.SortOrder
   lastSeenAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  reachedCart?: Prisma.SortOrder
+  reachedCheckout?: Prisma.SortOrder
+  ordered?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
+  durationMs?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
   chunkCount?: Prisma.SortOrder
   pageViews?: Prisma.SortOrder
@@ -440,6 +499,11 @@ export type SessionReplayScalarWhereWithAggregatesInput = {
   startedAt?: Prisma.DateTimeWithAggregatesFilter<"SessionReplay"> | Date | string
   lastSeenAt?: Prisma.DateTimeWithAggregatesFilter<"SessionReplay"> | Date | string
   endedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"SessionReplay"> | Date | string | null
+  reachedCart?: Prisma.BoolWithAggregatesFilter<"SessionReplay"> | boolean
+  reachedCheckout?: Prisma.BoolWithAggregatesFilter<"SessionReplay"> | boolean
+  ordered?: Prisma.BoolWithAggregatesFilter<"SessionReplay"> | boolean
+  hasSnapshot?: Prisma.BoolWithAggregatesFilter<"SessionReplay"> | boolean
+  durationMs?: Prisma.IntWithAggregatesFilter<"SessionReplay"> | number
   eventCount?: Prisma.IntWithAggregatesFilter<"SessionReplay"> | number
   chunkCount?: Prisma.IntWithAggregatesFilter<"SessionReplay"> | number
   pageViews?: Prisma.IntWithAggregatesFilter<"SessionReplay"> | number
@@ -463,6 +527,11 @@ export type SessionReplayCreateInput = {
   startedAt: Date | string
   lastSeenAt: Date | string
   endedAt?: Date | string | null
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: number
   eventCount?: number
   chunkCount?: number
   pageViews?: number
@@ -487,6 +556,11 @@ export type SessionReplayUncheckedCreateInput = {
   startedAt: Date | string
   lastSeenAt: Date | string
   endedAt?: Date | string | null
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: number
   eventCount?: number
   chunkCount?: number
   pageViews?: number
@@ -511,6 +585,11 @@ export type SessionReplayUpdateInput = {
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reachedCart?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  reachedCheckout?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  ordered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
   chunkCount?: Prisma.IntFieldUpdateOperationsInput | number
   pageViews?: Prisma.IntFieldUpdateOperationsInput | number
@@ -535,6 +614,11 @@ export type SessionReplayUncheckedUpdateInput = {
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reachedCart?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  reachedCheckout?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  ordered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
   chunkCount?: Prisma.IntFieldUpdateOperationsInput | number
   pageViews?: Prisma.IntFieldUpdateOperationsInput | number
@@ -559,6 +643,11 @@ export type SessionReplayCreateManyInput = {
   startedAt: Date | string
   lastSeenAt: Date | string
   endedAt?: Date | string | null
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: number
   eventCount?: number
   chunkCount?: number
   pageViews?: number
@@ -582,6 +671,11 @@ export type SessionReplayUpdateManyMutationInput = {
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reachedCart?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  reachedCheckout?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  ordered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
   chunkCount?: Prisma.IntFieldUpdateOperationsInput | number
   pageViews?: Prisma.IntFieldUpdateOperationsInput | number
@@ -605,6 +699,11 @@ export type SessionReplayUncheckedUpdateManyInput = {
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reachedCart?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  reachedCheckout?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  ordered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
   chunkCount?: Prisma.IntFieldUpdateOperationsInput | number
   pageViews?: Prisma.IntFieldUpdateOperationsInput | number
@@ -628,6 +727,11 @@ export type SessionReplayCountOrderByAggregateInput = {
   startedAt?: Prisma.SortOrder
   lastSeenAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrder
+  reachedCart?: Prisma.SortOrder
+  reachedCheckout?: Prisma.SortOrder
+  ordered?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
+  durationMs?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
   chunkCount?: Prisma.SortOrder
   pageViews?: Prisma.SortOrder
@@ -637,6 +741,7 @@ export type SessionReplayCountOrderByAggregateInput = {
 }
 
 export type SessionReplayAvgOrderByAggregateInput = {
+  durationMs?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
   chunkCount?: Prisma.SortOrder
   pageViews?: Prisma.SortOrder
@@ -657,6 +762,11 @@ export type SessionReplayMaxOrderByAggregateInput = {
   startedAt?: Prisma.SortOrder
   lastSeenAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrder
+  reachedCart?: Prisma.SortOrder
+  reachedCheckout?: Prisma.SortOrder
+  ordered?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
+  durationMs?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
   chunkCount?: Prisma.SortOrder
   pageViews?: Prisma.SortOrder
@@ -679,6 +789,11 @@ export type SessionReplayMinOrderByAggregateInput = {
   startedAt?: Prisma.SortOrder
   lastSeenAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrder
+  reachedCart?: Prisma.SortOrder
+  reachedCheckout?: Prisma.SortOrder
+  ordered?: Prisma.SortOrder
+  hasSnapshot?: Prisma.SortOrder
+  durationMs?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
   chunkCount?: Prisma.SortOrder
   pageViews?: Prisma.SortOrder
@@ -687,6 +802,7 @@ export type SessionReplayMinOrderByAggregateInput = {
 }
 
 export type SessionReplaySumOrderByAggregateInput = {
+  durationMs?: Prisma.SortOrder
   eventCount?: Prisma.SortOrder
   chunkCount?: Prisma.SortOrder
   pageViews?: Prisma.SortOrder
@@ -726,6 +842,11 @@ export type SessionReplayCreateWithoutChunksInput = {
   startedAt: Date | string
   lastSeenAt: Date | string
   endedAt?: Date | string | null
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: number
   eventCount?: number
   chunkCount?: number
   pageViews?: number
@@ -749,6 +870,11 @@ export type SessionReplayUncheckedCreateWithoutChunksInput = {
   startedAt: Date | string
   lastSeenAt: Date | string
   endedAt?: Date | string | null
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: number
   eventCount?: number
   chunkCount?: number
   pageViews?: number
@@ -788,6 +914,11 @@ export type SessionReplayUpdateWithoutChunksInput = {
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reachedCart?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  reachedCheckout?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  ordered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
   chunkCount?: Prisma.IntFieldUpdateOperationsInput | number
   pageViews?: Prisma.IntFieldUpdateOperationsInput | number
@@ -811,6 +942,11 @@ export type SessionReplayUncheckedUpdateWithoutChunksInput = {
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   lastSeenAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reachedCart?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  reachedCheckout?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  ordered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  hasSnapshot?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   eventCount?: Prisma.IntFieldUpdateOperationsInput | number
   chunkCount?: Prisma.IntFieldUpdateOperationsInput | number
   pageViews?: Prisma.IntFieldUpdateOperationsInput | number
@@ -865,6 +1001,11 @@ export type SessionReplaySelect<ExtArgs extends runtime.Types.Extensions.Interna
   startedAt?: boolean
   lastSeenAt?: boolean
   endedAt?: boolean
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: boolean
   eventCount?: boolean
   chunkCount?: boolean
   pageViews?: boolean
@@ -890,6 +1031,11 @@ export type SessionReplaySelectCreateManyAndReturn<ExtArgs extends runtime.Types
   startedAt?: boolean
   lastSeenAt?: boolean
   endedAt?: boolean
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: boolean
   eventCount?: boolean
   chunkCount?: boolean
   pageViews?: boolean
@@ -913,6 +1059,11 @@ export type SessionReplaySelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   startedAt?: boolean
   lastSeenAt?: boolean
   endedAt?: boolean
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: boolean
   eventCount?: boolean
   chunkCount?: boolean
   pageViews?: boolean
@@ -936,6 +1087,11 @@ export type SessionReplaySelectScalar = {
   startedAt?: boolean
   lastSeenAt?: boolean
   endedAt?: boolean
+  reachedCart?: boolean
+  reachedCheckout?: boolean
+  ordered?: boolean
+  hasSnapshot?: boolean
+  durationMs?: boolean
   eventCount?: boolean
   chunkCount?: boolean
   pageViews?: boolean
@@ -944,7 +1100,7 @@ export type SessionReplaySelectScalar = {
   updatedAt?: boolean
 }
 
-export type SessionReplayOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "visitorId" | "source" | "medium" | "campaign" | "landingUrl" | "lastUrl" | "referrer" | "device" | "viewport" | "status" | "startedAt" | "lastSeenAt" | "endedAt" | "eventCount" | "chunkCount" | "pageViews" | "metadata" | "createdAt" | "updatedAt", ExtArgs["result"]["sessionReplay"]>
+export type SessionReplayOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "visitorId" | "source" | "medium" | "campaign" | "landingUrl" | "lastUrl" | "referrer" | "device" | "viewport" | "status" | "startedAt" | "lastSeenAt" | "endedAt" | "reachedCart" | "reachedCheckout" | "ordered" | "hasSnapshot" | "durationMs" | "eventCount" | "chunkCount" | "pageViews" | "metadata" | "createdAt" | "updatedAt", ExtArgs["result"]["sessionReplay"]>
 export type SessionReplayInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   chunks?: boolean | Prisma.SessionReplay$chunksArgs<ExtArgs>
   _count?: boolean | Prisma.SessionReplayCountOutputTypeDefaultArgs<ExtArgs>
@@ -972,6 +1128,11 @@ export type $SessionReplayPayload<ExtArgs extends runtime.Types.Extensions.Inter
     startedAt: Date
     lastSeenAt: Date
     endedAt: Date | null
+    reachedCart: boolean
+    reachedCheckout: boolean
+    ordered: boolean
+    hasSnapshot: boolean
+    durationMs: number
     eventCount: number
     chunkCount: number
     pageViews: number
@@ -1416,6 +1577,11 @@ export interface SessionReplayFieldRefs {
   readonly startedAt: Prisma.FieldRef<"SessionReplay", 'DateTime'>
   readonly lastSeenAt: Prisma.FieldRef<"SessionReplay", 'DateTime'>
   readonly endedAt: Prisma.FieldRef<"SessionReplay", 'DateTime'>
+  readonly reachedCart: Prisma.FieldRef<"SessionReplay", 'Boolean'>
+  readonly reachedCheckout: Prisma.FieldRef<"SessionReplay", 'Boolean'>
+  readonly ordered: Prisma.FieldRef<"SessionReplay", 'Boolean'>
+  readonly hasSnapshot: Prisma.FieldRef<"SessionReplay", 'Boolean'>
+  readonly durationMs: Prisma.FieldRef<"SessionReplay", 'Int'>
   readonly eventCount: Prisma.FieldRef<"SessionReplay", 'Int'>
   readonly chunkCount: Prisma.FieldRef<"SessionReplay", 'Int'>
   readonly pageViews: Prisma.FieldRef<"SessionReplay", 'Int'>

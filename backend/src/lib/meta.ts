@@ -24,26 +24,7 @@ export type MetaServerEvent = {
   orderId?: string;
 };
 
-export async function sendMetaServerEvent(event: MetaServerEvent) {
-  const isCapiEnabled = await getSetting<boolean | string>("tracking.metaCapiEnabled", true);
-  if (isCapiEnabled === false || isCapiEnabled === "false") {
-    return { ok: false, skipped: "META_CAPI_DISABLED" };
-  }
-
-  const configuredPixelId = await getSetting<string>(
-    "tracking.metaPixelId",
-    process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "1645715973642563",
-  );
-  const pixelId = String(configuredPixelId || process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
-  const configuredToken = await getSetting<string>(
-    "tracking.metaCapiToken",
-    process.env.META_CAPI_TOKEN || "",
-  );
-  const token = String(configuredToken || process.env.META_CAPI_TOKEN || "").trim();
-  if (!pixelId || !token) {
-    return { ok: false, skipped: "META_CAPI_NOT_CONFIGURED" };
-  }
-
+export function metaUserData(event:MetaServerEvent){
   const userData: Record<string, unknown> = {
     client_ip_address: event.ip,
     client_user_agent: event.userAgent,
@@ -60,6 +41,31 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
   };
 
   Object.keys(userData).forEach((key) => userData[key] === undefined && delete userData[key]);
+
+  return userData;
+}
+
+export async function sendMetaServerEvent(event: MetaServerEvent) {
+  const isCapiEnabled = await getSetting<boolean | string>("tracking.metaCapiEnabled", true);
+  if (isCapiEnabled === false || isCapiEnabled === "false") {
+    return { ok: false, skipped: "META_CAPI_DISABLED" };
+  }
+
+  const configuredPixelId = await getSetting<string>(
+    "tracking.metaPixelId",
+    process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "",
+  );
+  const pixelId = String(configuredPixelId || process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
+  const configuredToken = await getSetting<string>(
+    "tracking.metaCapiToken",
+    process.env.META_CAPI_TOKEN || "",
+  );
+  const token = String(configuredToken || process.env.META_CAPI_TOKEN || "").trim();
+  if (!pixelId || !token) {
+    return { ok: false, skipped: "META_CAPI_NOT_CONFIGURED" };
+  }
+
+  const userData=metaUserData(event);
 
   const payload: Record<string, unknown> = {
     data: [
@@ -88,11 +94,12 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
   let body: any;
   try {
     response = await fetch(
-      `https://graph.facebook.com/${graphVersion}/${pixelId}/events?access_token=${encodeURIComponent(token)}`,
+      `https://graph.facebook.com/${graphVersion}/${pixelId}/events`,
       {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json",authorization:`Bearer ${token}` },
         body: JSON.stringify(payload),
+        signal:AbortSignal.timeout(15000),
       },
     );
     body = await response.json().catch(() => ({ status: response.status }));
@@ -122,11 +129,11 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
       sourceUrl: event.sourceUrl,
       payload: payload as any,
       response: body as any,
-      accepted: response.ok,
+      accepted: response.ok && Number(body?.events_received)>0,
       error: response.ok ? undefined : JSON.stringify(body),
     },
   });
 
-  if (!response.ok) throw new Error(`Meta CAPI error: ${JSON.stringify(body)}`);
+  if (!response.ok || !Number(body?.events_received)) throw new Error(`Meta CAPI error: ${JSON.stringify(body)}`);
   return body;
 }

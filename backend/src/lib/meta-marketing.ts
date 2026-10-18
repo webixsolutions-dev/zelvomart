@@ -84,7 +84,7 @@ export async function testMetaMarketingConnection() {
   return result;
 }
 
-export async function fetchMetaAds() {
+export async function fetchMetaAds(range?:{from:string;to:string}) {
   const config = await getMetaMarketingConfig();
   if (!config.accessToken || !config.adAccountId) {
     return { configured: false, ads: [], currency: null, adAccountName: null };
@@ -100,7 +100,7 @@ export async function fetchMetaAds() {
     }),
     graph(`${config.adAccountId}/insights`, config.accessToken, {
       level: "ad",
-      date_preset: "last_30d",
+      ...(range?{time_range:JSON.stringify({since:range.from,until:range.to})}:{date_preset:'last_30d'}),
       fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,reach,clicks,cpc,ctr,actions",
       limit: "500",
     }),

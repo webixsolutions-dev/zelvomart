@@ -1,3 +1,15 @@
+import {orderEditRouter,orderExtras} from './admin-order-edit';
+import {registerRecovery} from './recovery';
+import {overviewRouter} from './admin-overview';
+import {couponRouter} from './admin-coupons';
+import {validateCoupon} from './lib/coupons';
+import {SITE_ORIGIN,isStorefrontUrl} from './lib/site-url';
+import {privateSafeUrl} from "./lib/url-privacy";
+import {storeReplayChunk,replayChunkUrl,replayStorageConfigured,deleteReplayChunks,readReplayChunk} from "./lib/replay-storage";
+import {catalogFeed} from "./lib/catalog-feed";
+import {saveCatalogImage} from "./lib/catalog-images";
+import {sendTikTokServerEvent} from "./lib/tiktok";
+import {trackingHealth} from "./lib/tracking-health";
 import 'dotenv/config';
 import { createHash, randomBytes } from 'node:crypto';
 import path from 'node:path';
@@ -8,7 +20,7 @@ import multer from 'multer';
 import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatus } from './generated/prisma/client';
 import { prisma } from './lib/db';
 import { signAdminToken, requireAuth, type AuthedRequest } from './lib/auth';
-import { createOrder, restoreOrderStock } from './lib/order';
+import { createOrder, transitionOrder } from './lib/order';
 import { checkoutSchema } from './lib/validators';
 import { normalizePakistanPhone } from './lib/phone';
 import { getSetting, getSettings, setSetting } from './lib/settings';
@@ -21,7 +33,7 @@ import { cleanCatalogMeta, sanitizeGlobalProductTabs, sanitizeProductTabOverride
 import { productBadges } from './lib/product-badges';
 import { parseVideoUrl, VIDEO_URL_ERROR } from './lib/product-video';
 import { cleanStockStatus, IN_STOCK_WHERE, canSell, itemStockStatus, productStockStatus, trackedQuantity } from './lib/stock';
-import { BUY_TWO_DISCOUNT_PERCENT, priceSummary, variantPriceSummary } from './lib/pricing';
+import { BUY_TWO_DISCOUNT_PERCENT, bundleLineTotal, priceSummary, variantPriceSummary } from './lib/pricing';
 import { sendContactTeamEmail } from './lib/email';
 import { consumeRateLimit, requestIp, isLikelyBot } from './lib/rate-limit';
 import { dispatchJobRow } from './lib/jobs';
@@ -36,7 +48,7 @@ if (!process.env.DATABASE_URL) {
   console.error('[config] DATABASE_URL is not set in the backend environment');
   app.use((_req, res) => { res.setHeader('Cache-Control', 'no-store'); res.status(503).json({ ok: false, error: 'BACKEND_MISCONFIGURED', missing: ['DATABASE_URL'] }); });
 }
-const frontendOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',').map(v => v.trim()).filter(Boolean);
+const frontendOrigins = [...new Set([...(process.env.FRONTEND_URL || 'http://localhost:3000').split(',').map(v => v.trim()).filter(Boolean),SITE_ORIGIN,'https://zelvomart.vercel.app','https://zelvomart.com','https://www.zelvomart.com'])];
 app.use(cors({ origin(origin, cb) { if (!origin || frontendOrigins.includes(origin)) return cb(null, true); cb(new Error('CORS_NOT_ALLOWED')); }, credentials: false }));
 app.use('/uploads', express.static(getLocalUploadDir(), { maxAge: '365d', immutable: true, index: false, fallthrough: true }));
 app.use(express.json({ limit: '4mb' }));
@@ -81,7 +93,7 @@ function normalizeRedirectDestination(value: unknown): string {
   const raw = String(value || "").trim();
   if (!raw || /^(javascript|data|vbscript):/i.test(raw)) return "";
   try {
-    const site = new URL(`${(process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com").replace(/\/$/, "")}/`);
+    const site = new URL(`${(SITE_ORIGIN).replace(/\/$/, "")}/`);
     const url = raw.startsWith("/") ? new URL(raw, site) : new URL(raw);
     if (url.protocol !== "http:" && url.protocol !== "https:") return "";
     const hosts = new Set([site.hostname, site.hostname.replace(/^www\./, ""), `www.${site.hostname.replace(/^www\./, "")}`, "localhost", "127.0.0.1"]);
@@ -496,14 +508,11 @@ app.get('/api/store/bootstrap', async (_req, res) => {
   const [categories, settings] = await Promise.all([
     prisma.category.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], include: { _count: { select: { products: { where: { status: 'PUBLISHED' } } } } } }),
     getSettings([
-      'store.announcement',
       'store.info',
       'tracking.metaPixelEnabled',
       'tracking.metaPixelId',
       'tracking.tiktokPixelEnabled',
       'tracking.tiktokPixelId',
-      'tracking.clarityEnabled',
-      'tracking.clarityId',
       'tracking.sessionReplayEnabled',
       'homepage.config',
       'store.bundleDefaultDiscountPercent',
@@ -562,65 +571,17 @@ app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 8640
 // Every redirect, for the storefront proxy: it answers old URLs with a real 301 before the page renders.
 app.get('/api/redirects/map', async (_req,res)=>{setPublicCache(res,120,600,['redirects']);const rows=await prisma.redirect.findMany({select:{sourcePath:true,destination:true,permanent:true},take:20000});res.json(rows.map(r=>[r.sourcePath,r.destination,r.permanent?1:0]));});
 app.get('/api/redirects/resolve', async (req,res)=>{setPublicCache(res,3600,86400,['redirects']);const sourcePath=String(req.query.path||'');const row=await prisma.redirect.findUnique({where:{sourcePath}});if(!row)return res.status(404).json({error:'NOT_FOUND'});res.json(row);});
-app.get('/api/feed/meta.xml', async (_req,res)=>{
-  setPublicCache(res,900,3600,['products','feed']);
-  const products=await prisma.product.findMany({where:{status:'PUBLISHED'},include:{category:true,variants:{where:{active:true}}},orderBy:{updatedAt:'desc'}});
-  const base=(process.env.NEXT_PUBLIC_SITE_URL||'https://zelvomart.com').replace(/\/$/,'');
-  const x=(v:any)=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const itemXml=(input:{id:string;groupId:string;title:string;description:string;available:boolean;price:number;salePrice?:number|null;link:string;image?:string;extraImages:string[];productType:string})=>{
-    const regular=Number(input.price).toFixed(2);
-    const sale=input.salePrice!=null&&Number(input.salePrice)<Number(input.price)?Number(input.salePrice).toFixed(2):'';
-    return `<item><g:id>${x(input.id)}</g:id><g:item_group_id>${x(input.groupId)}</g:item_group_id><g:title>${x(input.title)}</g:title><g:description>${x(input.description)}</g:description><g:availability>${input.available?'in stock':'out of stock'}</g:availability><g:condition>new</g:condition><g:price>${regular} PKR</g:price>${sale?`<g:sale_price>${sale} PKR</g:sale_price>`:''}<g:link>${x(input.link)}</g:link>${input.image?`<g:image_link>${x(input.image)}</g:image_link>`:''}${input.extraImages.slice(0,10).map(i=>`<g:additional_image_link>${x(i)}</g:additional_image_link>`).join('')}<g:brand>Zelvomart</g:brand><g:product_type>${x(input.productType)}</g:product_type></item>`;
-  };
-  const items:string[]=[];
-  for(const product of products){
-    const images=Array.isArray(product.images)?product.images.filter((i):i is string=>typeof i==='string'):[];
-    const link=`${base}/product/${product.slug}/`;
-    if(product.variants.length){
-      for(const variant of product.variants){
-        const hasOverride=variant.priceOverride!=null;
-        items.push(itemXml({
-          id:variant.sku,
-          groupId:product.sku,
-          title:variant.name?`${product.title} - ${variant.name}`:product.title,
-          description:product.shortDescription||product.title,
-          available:canSell(variant),
-          price:hasOverride?Number(variant.priceOverride):Number(product.price),
-          salePrice:hasOverride?null:(product.salePrice==null?null:Number(product.salePrice)),
-          link,
-          image:variant.imageUrl||images[0],
-          extraImages:images.filter(i=>i!==(variant.imageUrl||images[0])),
-          productType:product.category?.name||'',
-        }));
-      }
-    }else{
-      items.push(itemXml({
-        id:product.sku,
-        groupId:product.sku,
-        title:product.title,
-        description:product.shortDescription||product.title,
-        available:canSell(product),
-        price:Number(product.price),
-        salePrice:product.salePrice==null?null:Number(product.salePrice),
-        link,
-        image:images[0],
-        extraImages:images.slice(1),
-        productType:product.category?.name||'',
-      }));
-    }
-  }
-  res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><rss xmlns:g="http://base.google.com/ns/1.0" version="2.0"><channel><title>Zelvomart</title><link>${base}</link><description>Zelvomart product feed</description>${items.join('')}</channel></rss>`);
-});
+for(const platform of ['meta','tiktok','google'] as const){app.get(`/api/feed/${platform}.xml`,async(_req,res)=>{setPublicCache(res,300,600,['products','feed']);const feed=await catalogFeed(platform);void setSetting('health.feed.'+platform,{at:new Date().toISOString(),count:feed.count,missingImages:feed.missingImages.length}).catch(()=>undefined);res.setHeader('X-Catalog-Items',String(feed.count));res.setHeader('X-Catalog-Missing-Images',String(feed.missingImages.length));res.type('application/xml').send(feed.xml)})}
 
 app.post('/api/orders', async (req,res) => {
   if (!(await allowRequest(req, res, 'checkout-ip', 12, 15 * 60 * 1000))) return;
   const rawPhone = String(req.body?.phone || '').replace(/\D/g, '').slice(-10);
   if (rawPhone && !(await allowRequest(req, res, 'checkout-phone', 6, 15 * 60 * 1000, rawPhone))) return;
   const parsed = checkoutSchema.safeParse(req.body); if(!parsed.success) return res.status(400).json({error:'VALIDATION_ERROR',issues:parsed.error.flatten()});
-  try { const order = await createOrder({ ...parsed.data, email: parsed.data.email || undefined, postcode: parsed.data.postcode || undefined, orderNotes: parsed.data.orderNotes || undefined, clientIp:req.ip, clientUserAgent:req.get('user-agent') || undefined }); await invalidateFrontendCache(['products']); res.status(201).json({ orderNumber: order.orderNumber, id: order.id, total: Number(order.total) }); }
+  try { const order = await createOrder({ ...parsed.data, email: parsed.data.email || undefined, postcode: parsed.data.postcode || undefined, orderNotes: parsed.data.orderNotes || undefined, trackingAllowed:isStorefrontUrl(req.get('origin')||req.get('referer')||''), clientIp:req.ip, clientUserAgent:req.get('user-agent') || undefined }); await invalidateFrontendCache(['products']); res.status(201).json({ orderNumber: order.orderNumber, id: order.id, total: Number(order.total) }); }
   catch(e:any){ res.status(400).json({error:e?.message || 'ORDER_FAILED'}); }
 });
-app.post('/api/orders/track', async (req,res) => { if (!(await allowRequest(req, res, 'order-track', 30, 15 * 60 * 1000))) return; const orderNumber=String(req.body.orderNumber||'').toUpperCase(); const phone=String(req.body.phone||'').replace(/\D/g,''); const order=await prisma.order.findFirst({where:{orderNumber, OR:[{phone:{endsWith:phone.slice(-10)}},{phone:{endsWith:phone.slice(-11)}}]},select:{orderNumber:true,status:true,postexTracking:true,createdAt:true,total:true,city:true}}); if(!order)return res.status(404).json({error:'NOT_FOUND'}); res.json({...order,total:Number(order.total),trackingUrl:order.postexTracking?postexTrackingUrl(order.postexTracking):null}); });
+app.post('/api/orders/track', async (req,res) => { if (!(await allowRequest(req, res, 'order-track', 30, 15 * 60 * 1000))) return; const orderNumber=String(req.body.orderNumber||'').toUpperCase(); const phone=String(req.body.phone||'').replace(/\D/g,'');if(!normalizePakistanPhone(phone))return res.status(400).json({error:'Enter a valid Pakistani phone number.'}); const order=await prisma.order.findFirst({where:{orderNumber, OR:[{phone:{endsWith:phone.slice(-10)}},{phone:{endsWith:phone.slice(-11)}}]},select:{orderNumber:true,status:true,postexTracking:true,createdAt:true,total:true,city:true}}); if(!order)return res.status(404).json({error:'NOT_FOUND'}); const city=await prisma.city.findUnique({where:{name:order.city}});res.json({...order,deliveryEstimate:`${city?.deliveryMinDays??2}–${city?.deliveryMaxDays??7} working days`,total:Number(order.total),trackingUrl:order.postexTracking?postexTrackingUrl(order.postexTracking):null}); });
 app.get('/api/orders/confirmation/:orderNumber', async (req,res) => {
   const order=await prisma.order.findUnique({where:{orderNumber:routeParam(req, 'orderNumber').toUpperCase()},include:{items:true}});
   if(!order)return res.status(404).json({error:'NOT_FOUND'});
@@ -628,9 +589,15 @@ app.get('/api/orders/confirmation/:orderNumber', async (req,res) => {
   // The opaque database ID is returned only to the browser that placed the order and is kept in the success URL.
   if(String(req.query.key||'')!==order.id)return res.status(404).json({error:'NOT_FOUND'});
   const city=await prisma.city.findUnique({where:{name:order.city}});
-  res.json({...order,subtotal:Number(order.subtotal),bundleSaving:Number(order.bundleSaving),deliveryFee:Number(order.deliveryFee),codFee:Number(order.codFee),total:Number(order.total),items:order.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),deliveryEstimate:city?`${city.deliveryMinDays}-${city.deliveryMaxDays} days`:null});
+  res.json({...order,subtotal:Number(order.subtotal),bundleSaving:Number(order.bundleSaving),deliveryFee:Number(order.deliveryFee),codFee:Number(order.codFee),total:Number(order.total),items:order.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),deliveryEstimate:`${city?.deliveryMinDays??2}-${city?.deliveryMaxDays??7} working days`});
 });
-app.post('/api/checkout/abandoned', async (req,res) => { const phone=String(req.body.phone||'').trim(); if(phone.length<10)return res.json({ok:true}); const existing=await prisma.abandonedCheckout.findFirst({where:{phone,convertedAt:null},orderBy:{createdAt:'desc'}}); const data={phone,fullName:req.body.fullName||null,email:req.body.email||null,city:req.body.city||null,address:req.body.address||null,cart:req.body.cart||[],source:req.body.source||null}; if(existing) await prisma.abandonedCheckout.update({where:{id:existing.id},data}); else await prisma.abandonedCheckout.create({data}); res.json({ok:true}); });
+app.get('/api/settings/delivery',async(_req,res)=>{setNoStore(res);res.json(await getSetting('store.delivery',{}));});
+registerRecovery(app,findStoreSession);
+app.use('/api/admin/coupons',couponRouter);
+app.use('/api/admin/orders',orderEditRouter);
+app.use('/api/admin/overview',overviewRouter);
+app.post('/api/checkout/coupon',async(req,res)=>{if(!(await allowRequest(req,res,'coupon',20,60000)))return;try{const cart=Array.isArray(req.body.cart)?req.body.cart:[];if(!cart.length||cart.length>50)throw new Error('Your cart is empty.');const products=await prisma.product.findMany({where:{id:{in:cart.map((i:any)=>String(i.productId))},status:'PUBLISHED'},include:{variants:true}});let subtotal=0;for(const item of cart){if(!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>20)throw new Error('Invalid quantity.');const p=products.find(p=>p.id===item.productId);if(!p)throw new Error('Product unavailable.');const v=item.variantId?p.variants.find(v=>v.id===item.variantId&&v.active):undefined;if(item.variantId&&!v||!v&&p.variants.some(v=>v.active))throw new Error('Choose a valid variation.');const price=variantPriceSummary(priceSummary(p.price,p.salePrice),{priceOverride:v?.priceOverride}).price;subtotal+=bundleLineTotal(price,item.quantity,item.bundleSize===2&&p.bundleEnabled?2:1,BUY_TWO_DISCOUNT_PERCENT).total;}res.json(await validateCoupon(req.body.code,subtotal));}catch(e:any){res.status(400).json({error:e.message});} });
+
 app.post('/api/reviews', async (req,res) => {
   if (!(await allowRequest(req, res, 'review', 10, 24 * 60 * 60 * 1000))) return;
   if(String(req.body.honeypot||''))return res.status(201).json({ok:true});
@@ -651,25 +618,26 @@ app.post('/api/events', async (req,res) => {
 
   const eventName = String(req.body.eventName || '');
   const eventId = String(req.body.eventId || '');
-  const sessionReplayId = String(req.body.replaySessionId || '').trim() || null;
-  if (!META_EVENT_NAMES.has(eventName) || !eventId || eventId.length > 160) return res.status(400).json({ error: 'INVALID_EVENT' });
+  const replayId=String(req.body.replaySessionId||'');
+  const sessionReplayId=/^[0-9a-f-]{36}$/i.test(replayId)?replayId:null;
+  if ((!META_EVENT_NAMES.has(eventName)&&!['ReplayRageClick','ReplayError'].includes(eventName)) || !eventId || eventId.length > 160) return res.status(400).json({ error: 'INVALID_EVENT' });
 
-  const sourceUrl = String(req.body.sourceUrl || '').slice(0, 4000) || null;
+  if(await prisma.eventLog.findFirst({where:{channel:'browser',eventId,eventName},select:{id:true}}))return res.json({ok:true,duplicate:true});
+  const sourceUrl = privateSafeUrl(String(req.body.sourceUrl || '')).slice(0,4000) || null;
   const params = req.body.params && typeof req.body.params === 'object' && !Array.isArray(req.body.params) ? req.body.params as Record<string, unknown> : {};
   const row = await prisma.eventLog.create({
     data: { eventName, eventId, sessionReplayId, channel: 'browser', sourceUrl, payload: req.body || {} },
   });
 
-  if (sessionReplayId) {
-    prisma.sessionReplay.updateMany({
-      where: { id: sessionReplayId },
-      data: { lastSeenAt: new Date(), lastUrl: sourceUrl || '', ...(eventName === 'PageView' ? { pageViews: { increment: 1 } } : {}) },
-    }).catch(() => {});
+  if(sessionReplayId){
+    const now=new Date(),flags={...(eventName==='AddToCart'?{reachedCart:true}:{}),...(eventName==='InitiateCheckout'?{reachedCheckout:true}:{})};
+    await prisma.sessionReplay.upsert({where:{id:sessionReplayId},update:{lastSeenAt:now,lastUrl:sourceUrl||'',...flags},create:{id:sessionReplayId,visitorId:/^[0-9a-f-]{36}$/i.test(String(req.body.visitorId||''))?req.body.visitorId:sessionReplayId,source:'direct',landingUrl:sourceUrl||'',lastUrl:sourceUrl||'',startedAt:now,lastSeenAt:now,...flags}});
   }
 
   // Purchase is dispatched from the order transaction. All other storefront events
   // are queued to CAPI and TikTok with the SAME event ID as the browser Pixel event.
-  if (eventName !== 'Purchase') {
+  const productionEvent=isStorefrontUrl(sourceUrl||'');
+  if (eventName !== 'Purchase' && !eventName.startsWith('Replay') && productionEvent) {
     const job = await prisma.job.create({
       data: {
         name: 'meta-event',
@@ -678,6 +646,8 @@ app.post('/api/events', async (req,res) => {
           eventId,
           sourceUrl,
           userAgent,
+          eventTime:Math.floor(Date.now()/1000),
+          visitorId:req.body.visitorId||null,
           ip: requestIp(req),
           fbp: req.body.fbp || null,
           fbc: req.body.fbc || null,
@@ -695,8 +665,11 @@ app.post('/api/events', async (req,res) => {
           eventId,
           sourceUrl,
           userAgent,
+          eventTime:Math.floor(Date.now()/1000),
+          visitorId:req.body.visitorId||null,
           ip: requestIp(req),
           ttp: req.body.ttp || null,
+          ttclid:req.body.ttclid||null,
           customData: params,
         } as Prisma.InputJsonValue,
       },
@@ -708,55 +681,17 @@ app.post('/api/events', async (req,res) => {
 });
 
 // Privacy-safe customer session replay ingestion. Input values are masked in the browser before these events arrive.
-app.get('/api/experiments/active', async (req,res) => {
-  setNoStore(res);
-  const path = String(req.query.path || '/');
-  const now = new Date();
-  const rows = await prisma.experiment.findMany({
-    where: {
-      status: 'RUNNING',
-      OR: [{ startsAt: null }, { startsAt: { lte: now } }],
-      AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
-    },
-    orderBy: { updatedAt: 'desc' },
-    take: 25,
-  });
-  const matches = rows.filter((row) => {
-    const pattern = String(row.pagePattern || '/');
-    if (pattern === path) return true;
-    if (pattern.endsWith('*')) return path.startsWith(pattern.slice(0, -1));
-    return false;
-  });
-  const row = matches[0];
-  if (!row) return res.json({ experiment: null });
-  res.json({ experiment: { id: row.id, name: row.name, pagePattern: row.pagePattern, variants: row.variants, trafficSplit: row.trafficSplit } });
-});
-
-app.post('/api/experiments/exposure', async (req,res) => {
-  if (!(await allowRequest(req, res, 'experiment-exposure', 120, 60 * 1000))) return;
-  const experimentId=String(req.body.experimentId||'').trim();
-  const variant=String(req.body.variant||'').trim();
-  const visitorId=String(req.body.visitorId||'').trim();
-  const path=String(req.body.path||'').slice(0,1000);
-  if(!experimentId||!variant||!visitorId)return res.status(400).json({error:'INVALID_EXPOSURE'});
-  const experiment=await prisma.experiment.findUnique({where:{id:experimentId},select:{id:true,name:true,status:true}});
-  if(!experiment||experiment.status!=='RUNNING')return res.status(404).json({error:'EXPERIMENT_NOT_RUNNING'});
-  const eventId=`${experimentId}:${visitorId}`;
-  const exists=await prisma.eventLog.findFirst({where:{eventName:'ExperimentExposure',eventId}});
-  if(!exists) await prisma.eventLog.create({data:{eventName:'ExperimentExposure',eventId,channel:'browser',sourceUrl:path||null,payload:{experimentId,experimentName:experiment.name,variant,visitorId,path} as Prisma.InputJsonValue}});
-  res.json({ok:true});
-});
-
 app.post('/api/session-replays/start', async (req,res) => {
   void maybeCleanupOldSessionReplays();
+  if(!(await allowRequest(req,res,'replay-start',60,60000)))return;
   const sessionId=String(req.body.sessionId||'').trim();
   const visitorId=String(req.body.visitorId||'').trim();
   if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!/^[0-9a-f-]{36}$/i.test(visitorId)) return res.status(400).json({error:'INVALID_SESSION'});
   const source=req.body.source&&typeof req.body.source==='object'?req.body.source:{};
   const sourceName=normalizeTrafficSource((source as any).source||(source as any).utm_source||(source as any).lastTouch?.utm_source||(source as any).firstTouch?.utm_source||'direct');
   const startedAt=new Date(req.body.startedAt||Date.now());
-  const landingUrl=String(req.body.landingUrl||req.body.currentUrl||'').slice(0,4000);
-  const lastUrl=String(req.body.currentUrl||landingUrl).slice(0,4000);
+  const landingUrl=privateSafeUrl(String(req.body.landingUrl||req.body.currentUrl||'')).slice(0,4000);
+  const lastUrl=privateSafeUrl(String(req.body.currentUrl||landingUrl)).slice(0,4000);
   const now=new Date();
   const medium=String((source as any).medium||(source as any).utm_medium||'').slice(0,120)||null;
   const campaign=String((source as any).campaign||(source as any).utm_campaign||'').slice(0,240)||null;
@@ -784,109 +719,31 @@ app.post('/api/session-replays/start', async (req,res) => {
   res.json({ok:true});
 });
 
-app.post('/api/session-replays/chunk', async (req,res) => {
-  const sessionId=String(req.body.sessionId||'').trim();
-  const sequence=Number(req.body.sequence);
-  const events=Array.isArray(req.body.events)?req.body.events:[];
-  if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!Number.isInteger(sequence)||sequence<0||events.length<1||events.length>100) return res.status(400).json({error:'INVALID_REPLAY_CHUNK'});
-  const currentUrl=String(req.body.currentUrl||'').slice(0,4000);
-  const now=new Date();
-  const replayTouch={lastSeenAt:now,...(currentUrl?{lastUrl:currentUrl}:{})};
-
-  // Session replay is analytics, so do not hold a Prisma transaction open across
-  // a slow/remote PostgreSQL connection. Each write is independent and retries
-  // are handled by the unique (sessionId, sequence) key. This avoids P2028
-  // transaction-expired/rollback errors while keeping replay chunks idempotent.
-  const ensureReplaySession=async()=>{
-    const touched=await prisma.sessionReplay.updateMany({where:{id:sessionId},data:replayTouch});
-    if(touched.count) return;
-    await prisma.sessionReplay.upsert({
-      where:{id:sessionId},
-      update:replayTouch,
-      create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:now,lastSeenAt:now}
-    });
-  };
-
-  const saveChunk=async()=>{
-    try{
-      await prisma.sessionReplayChunk.create({
-        data:{sessionId,sequence,events:events as Prisma.InputJsonValue,eventCount:events.length}
-      });
-      await prisma.sessionReplay.updateMany({
-        where:{id:sessionId},
-        data:{...replayTouch,eventCount:{increment:events.length},chunkCount:{increment:1}}
-      });
-      return;
-    }catch(error:any){
-      const code=String(error?.code||'');
-      if(code==='P2002'){
-        const existing=await prisma.sessionReplayChunk.findUnique({
-          where:{sessionId_sequence:{sessionId,sequence}},
-          select:{eventCount:true}
-        });
-        const previousCount=existing?.eventCount||0;
-        await prisma.sessionReplayChunk.update({
-          where:{sessionId_sequence:{sessionId,sequence}},
-          data:{events:events as Prisma.InputJsonValue,eventCount:events.length}
-        });
-        const delta=events.length-previousCount;
-        await prisma.sessionReplay.updateMany({
-          where:{id:sessionId},
-          data:{...replayTouch,...(delta!==0?{eventCount:{increment:delta}}:{})}
-        });
-        return;
-      }
-      if(code==='P2003'||code==='P2025'){
-        await ensureReplaySession();
-        try{
-          await prisma.sessionReplayChunk.create({
-            data:{sessionId,sequence,events:events as Prisma.InputJsonValue,eventCount:events.length}
-          });
-          await prisma.sessionReplay.updateMany({
-            where:{id:sessionId},
-            data:{...replayTouch,eventCount:{increment:events.length},chunkCount:{increment:1}}
-          });
-          return;
-        }catch(retryError:any){
-          if(String(retryError?.code||'')!=='P2002') throw retryError;
-          const existing=await prisma.sessionReplayChunk.findUnique({
-            where:{sessionId_sequence:{sessionId,sequence}},
-            select:{eventCount:true}
-          });
-          const previousCount=existing?.eventCount||0;
-          await prisma.sessionReplayChunk.update({
-            where:{sessionId_sequence:{sessionId,sequence}},
-            data:{events:events as Prisma.InputJsonValue,eventCount:events.length}
-          });
-          const delta=events.length-previousCount;
-          await prisma.sessionReplay.updateMany({
-            where:{id:sessionId},
-            data:{...replayTouch,...(delta!==0?{eventCount:{increment:delta}}:{})}
-          });
-          return;
-        }
-      }
-      throw error;
-    }
-  };
-
-  try{
-    await saveChunk();
-    return res.json({ok:true});
-  }catch(error){
-    // Replay must never break the storefront. Log it for diagnostics but return
-    // an accepted response so a temporary analytics/database issue does not
-    // trigger retry storms from the browser.
-    console.error('session replay chunk write failed', error);
-    return res.status(202).json({ok:false,accepted:true});
-  }
+app.post('/api/session-replays/chunk', async(req,res)=>{
+ if(!(await allowRequest(req,res,'replay-chunks',180,60000)))return;
+ const sessionId=String(req.body.sessionId||''),sequence=Number(req.body.sequence),events=Array.isArray(req.body.events)?req.body.events:[];
+ if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!Number.isInteger(sequence)||sequence<0||events.length<1||events.length>100)return res.status(400).json({error:'INVALID_REPLAY_CHUNK'});
+ if(events.some((e:any)=>!e||!Number.isFinite(e.timestamp)||e.timestamp<Date.now()-90*86400000||e.timestamp>Date.now()+60000))return res.status(400).json({error:'INVALID_REPLAY_TIMESTAMP'});
+ const now=new Date(),currentUrl=privateSafeUrl(String(req.body.currentUrl||'')).slice(0,4000);
+ const firstTimestamp=Math.min(...events.map((e:any)=>e.timestamp)),lastTimestamp=Math.max(...events.map((e:any)=>e.timestamp));
+ await prisma.sessionReplay.upsert({where:{id:sessionId},update:{lastSeenAt:now,lastUrl:currentUrl},create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:new Date(firstTimestamp),lastSeenAt:now}});
+ let stored;try{stored=await storeReplayChunk(sessionId,sequence,events)}catch(error){console.error('Private replay upload failed',error instanceof Error?error.message:error);return res.status(503).json({error:'REPLAY_STORAGE_UNAVAILABLE'})}
+ const data={events:(stored?[]:events) as Prisma.InputJsonValue,eventCount:events.length,hasSnapshot:events.some((e:any)=>e.type===2),firstTimestamp,lastTimestamp,...(stored||{} )};
+ await prisma.$transaction(async tx=>{
+  await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${sessionId}))`;
+  const old=await tx.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId,sequence}},select:{eventCount:true}});
+  await tx.sessionReplayChunk.upsert({where:{sessionId_sequence:{sessionId,sequence}},create:{sessionId,sequence,...data},update:data});
+  const session=await tx.sessionReplay.findUniqueOrThrow({where:{id:sessionId},select:{startedAt:true,durationMs:true}});
+  await tx.sessionReplay.update({where:{id:sessionId},data:{lastSeenAt:now,lastUrl:currentUrl,eventCount:{increment:events.length-(old?.eventCount||0)},...(!old?{chunkCount:{increment:1}}:{}),...(events.some((e:any)=>e.type===2)?{hasSnapshot:true}:{}),durationMs:Math.max(session.durationMs,Math.min(2147483647,lastTimestamp-session.startedAt.getTime()))}});
+ },{maxWait:15000,timeout:30000});
+ res.json({ok:true});
 });
 
 app.post('/api/session-replays/end', async (req,res) => {
   const sessionId=String(req.body.sessionId||'').trim();
   if(!/^[0-9a-f-]{36}$/i.test(sessionId)) return res.status(400).json({error:'INVALID_SESSION'});
   const endedAt=new Date(req.body.endedAt||Date.now());
-  await prisma.sessionReplay.updateMany({where:{id:sessionId},data:{status:'ENDED',endedAt:Number.isNaN(endedAt.getTime())?new Date():endedAt,lastSeenAt:new Date(),lastUrl:String(req.body.currentUrl||'').slice(0,4000)}});
+  await prisma.sessionReplay.updateMany({where:{id:sessionId},data:{status:'ENDED',endedAt:Number.isNaN(endedAt.getTime())?new Date():endedAt,lastSeenAt:new Date(),lastUrl:privateSafeUrl(String(req.body.currentUrl||'')).slice(0,4000)}});
   res.json({ok:true});
 });
 
@@ -945,6 +802,7 @@ app.post('/api/auth/login', async (req,res) => {
 app.get('/api/auth/me', requireAuth(), async (req:AuthedRequest,res) => res.json({user:req.admin}));
 
 app.get('/api/admin/dashboard', requireAuth('orders.read'), async (_req,res) => {
+  const health=await trackingHealth();
   const start=new Date();start.setHours(0,0,0,0); const yesterday=new Date(start.getTime()-86400000);
   const [todayOrders,yesterdayOrders,products,customers,failedJobs,events,recent,acceptedPurchases,teamEmails]=await Promise.all([
     prisma.order.findMany({where:{createdAt:{gte:start}}}),
@@ -958,7 +816,7 @@ app.get('/api/admin/dashboard', requireAuth('orders.read'), async (_req,res) => 
     prisma.job.count({where:{createdAt:{gte:start},name:'order-team-email',status:'SUCCEEDED'}}),
   ]);
   const realOrders=todayOrders.filter(o=>!o.test&&!o.staffCreated).length;
-  res.json({ordersToday:todayOrders.length,revenueToday:todayOrders.reduce((s,o)=>s+Number(o.total),0),ordersYesterday:yesterdayOrders.length,revenueYesterday:yesterdayOrders.reduce((s,o)=>s+Number(o.total),0),delivered:todayOrders.filter(o=>o.status==='DELIVERED').length,failedJobs,products,customers,acceptedPurchases,trackingCoverage:realOrders?Math.round(acceptedPurchases/realOrders*1000)/10:100,teamEmails,emailCoverage:todayOrders.length?Math.round(teamEmails/todayOrders.length*1000)/10:100,events:Object.fromEntries(events.map(e=>[e.eventName,e._count._all])),recent:recent.map(o=>({...o,total:Number(o.total)}))});
+  res.json({health,ordersToday:todayOrders.length,revenueToday:todayOrders.reduce((s,o)=>s+Number(o.total),0),ordersYesterday:yesterdayOrders.length,revenueYesterday:yesterdayOrders.reduce((s,o)=>s+Number(o.total),0),delivered:todayOrders.filter(o=>o.status==='DELIVERED').length,failedJobs,products,customers,acceptedPurchases,trackingCoverage:realOrders?Math.round(acceptedPurchases/realOrders*1000)/10:null,teamEmails,emailCoverage:todayOrders.length?Math.round(teamEmails/todayOrders.length*1000)/10:null,events:Object.fromEntries(events.map(e=>[e.eventName,e._count._all])),recent:recent.map(o=>({...o,total:Number(o.total)}))});
 });
 
 app.get('/api/admin/products/insights', requireAuth('products.write'), async (_req,res)=>{
@@ -1080,7 +938,7 @@ app.post('/api/admin/categories', requireAuth('products.write'), async (req:Auth
 app.patch('/api/admin/categories/:id', requireAuth('products.write'), async (req:AuthedRequest,res) => { const b=req.body; const row=await prisma.category.update({where:{id:routeParam(req, 'id')},data:{name:b.name,slug:b.slug,sortOrder:b.sortOrder==null?undefined:Number(b.sortOrder),imageUrl:b.imageUrl===undefined?undefined:(b.imageUrl||null),description:b.description===undefined?undefined:(b.description||null),seoTitle:b.seoTitle===undefined?undefined:(b.seoTitle||null),seoDescription:b.seoDescription===undefined?undefined:(b.seoDescription||null)}});await audit(req,'update','Category',row.id);await invalidateFrontendCache(['categories','products','store']);res.json(row);});
 app.delete('/api/admin/categories/:id', requireAuth('products.write'), async (req:AuthedRequest,res)=>{await prisma.category.delete({where:{id:routeParam(req, 'id')}});await audit(req,'delete','Category',routeParam(req, 'id'));await invalidateFrontendCache(['categories','products','store']);res.json({ok:true});});
 
-function orderFilters(query: Record<string, unknown>): Prisma.OrderWhereInput {
+async function orderFilters(query: Record<string, unknown>): Promise<Prisma.OrderWhereInput> {
   const text = (key: string) => String(query[key] || '').trim();
   const q = text('q'), status = text('status');
   const groups: Record<string, OrderStatus[]> = {Pending:['NEW','ON_HOLD'],Processing:['CONFIRMED'],Shipped:['BOOKED','IN_TRANSIT'],Delivered:['DELIVERED','SETTLED'],Cancelled:['CANCELLED'],Returned:['RETURNED']};
@@ -1097,6 +955,8 @@ function orderFilters(query: Record<string, unknown>): Prisma.OrderWhereInput {
   if (status && !Object.values(OrderStatus).includes(status as OrderStatus)) throw new Error('INVALID_STATUS');
   return {
     ...(status ? {status: status as OrderStatus} : groups[text('group')] ? {status:{in:groups[text('group')]}} : {}),
+    ...(text('hasReplay')==='true'?{replaySessionId:{not:null}}:{}),
+    ...(text('repeat')==='true'?{customerId:{in:(await prisma.order.groupBy({by:['customerId'],where:{customerId:{not:null}},_count:{_all:true},having:{customerId:{_count:{gt:1}}}})).map(r=>r.customerId! )}}:{}),
     ...(text('city') ? {city:{contains:text('city'),mode:'insensitive'}} : {}),
     ...(text('source') ? {source:{contains:text('source'),mode:'insensitive'}} : {}),
     ...(gte || lte ? {createdAt:{gte,lte}} : {}),
@@ -1107,7 +967,7 @@ function orderFilters(query: Record<string, unknown>): Prisma.OrderWhereInput {
 // Static routes must precede /orders/:id.
 app.get('/api/admin/orders/export.csv', requireAuth('orders.export'), async (req,res)=>{
   let where: Prisma.OrderWhereInput;
-  try { where=orderFilters(req.query); } catch(error:any) { return res.status(400).json({error:error.message}); }
+  try { where=await orderFilters(req.query); } catch(error:any) { return res.status(400).json({error:error.message}); }
   const rows=await prisma.order.findMany({where,orderBy:{createdAt:'desc'}});
   const esc=(v:unknown)=>`"${String(v??'').replace(/^[=+@\-\t\r]/,"'$&").replace(/"/g,'""')}"`;
   const csv=['orderNumber,date,customer,phone,email,city,status,paymentMethod,total,source,tracking',...rows.map(o=>[o.orderNumber,o.createdAt.toISOString(),o.fullName,o.phone,o.email,o.city,o.status,o.paymentMethod,o.total,o.source,o.postexTracking].map(esc).join(','))].join('\r\n');
@@ -1115,7 +975,7 @@ app.get('/api/admin/orders/export.csv', requireAuth('orders.export'), async (req
 });
 app.get('/api/admin/orders/dashboard', requireAuth('orders.read'), async (req,res)=>{
   let where: Prisma.OrderWhereInput;
-  try { where=orderFilters({...req.query,status:'',group:''}); } catch(error:any) { return res.status(400).json({error:error.message}); }
+  try { where=await orderFilters({...req.query,status:'',group:''}); } catch(error:any) { return res.status(400).json({error:error.message}); }
   // Compare the selected period with the preceding equal-length period in Pakistan time.
   const now=new Date(Date.now()+5*3600000);
   const start=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1)-5*3600000);
@@ -1150,48 +1010,47 @@ app.post('/api/admin/orders', requireAuth('orders.write'), async (req:AuthedRequ
 });
 app.get('/api/admin/orders', requireAuth('orders.read'), async (req,res)=>{
   let where: Prisma.OrderWhereInput;
-  try {where=orderFilters(req.query);} catch(error:any) {return res.status(400).json({error:error.message});}
+  try {where=await orderFilters(req.query);} catch(error:any) {return res.status(400).json({error:error.message});}
   const paginated=req.query.page!==undefined;
   const page=Math.max(1,Math.floor(Number(req.query.page)||1));
   const limit=Math.min(100,Math.max(1,Math.floor(Number(req.query.limit)||10)));
   const sorts: Record<string,Prisma.OrderOrderByWithRelationInput>={newest:{createdAt:'desc'},oldest:{createdAt:'asc'},highest:{total:'desc'},lowest:{total:'asc'}};
   const [rows,total]=await Promise.all([
-    prisma.order.findMany({where,include:{items:true},orderBy:[sorts[String(req.query.sort)]||sorts.newest,{id:'asc'}],skip:paginated?(page-1)*limit:0,take:paginated?limit:1000}),
+    prisma.order.findMany({where,include:{items:true,customer:{select:{refusalCount:true,blocklisted:true,_count:{select:{orders:true}}}}},orderBy:[sorts[String(req.query.sort)]||sorts.newest,{id:'asc'}],skip:paginated?(page-1)*limit:0,take:paginated?limit:1000}),
     prisma.order.count({where}),
   ]);
   const items=rows.map(r=>({...r,total:Number(r.total)}));
   res.json(paginated?{items,total,page,totalPages:Math.max(1,Math.ceil(total/limit))}:items);
 });
+async function enqueueOrderStatusTracking(orderId:string,status:string){
+ const order=await prisma.order.findUnique({where:{id:orderId},select:{test:true,staffCreated:true,blocklistedAtOrder:true}});if(!order||order.test||order.staffCreated||order.blocklistedAtOrder)return;
+ const eventName=status==='CONFIRMED'?'OrderConfirmed':'OrderDelivered';
+ const jobs=await Promise.all(['meta-purchase','tiktok-purchase'].map(name=>prisma.job.create({data:{name,orderId,payload:{orderId,eventName}}})));
+ await Promise.allSettled(jobs.map(job=>dispatchJobRow(job.id)));
+}
 app.patch('/api/admin/orders/bulk-status', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{
   const ids=Array.isArray(req.body.ids)?req.body.ids.map(String).slice(0,100):[];const next=String(req.body.status) as OrderStatus;
   if(!ids.length||!Object.values(OrderStatus).includes(next))return res.status(400).json({error:'INVALID_BULK_UPDATE'});
   let updated=0;
   for(const id of ids){
     const existing=await prisma.order.findUnique({where:{id}});if(!existing||existing.status===next)continue;
-    if(!['CANCELLED','RETURNED'].includes(existing.status)&&['CANCELLED','RETURNED'].includes(next))await restoreOrderStock(id);
-    await prisma.$transaction([
-      prisma.order.update({where:{id},data:{status:next}}),
-      prisma.orderStatusHistory.create({data:{orderId:id,from:existing.status,to:next,userId:req.admin?.id,note:'Bulk status update'}}),
-      ...(next==='RETURNED'&&existing.customerId?[prisma.customer.update({where:{id:existing.customerId},data:{refusalCount:{increment:1}}})]:[]),
-    ]);
+    await transitionOrder(id,next,req.admin?.id,'Bulk status update');
     if(['CONFIRMED','BOOKED','DELIVERED'].includes(next)){const job=await prisma.job.create({data:{name:'customer-status-email',orderId:id,payload:{orderId:id,status:next}}});dispatchJobRow(job.id).catch(()=>undefined);}
+    if(['CONFIRMED','DELIVERED'].includes(next))await enqueueOrderStatusTracking(id,next);
     updated+=1;
   }
   await audit(req,'bulk_status_change','Order',undefined,{ids,status:next,updated});if(['CANCELLED','RETURNED'].includes(next))await invalidateFrontendCache(['products']);res.json({ok:true,updated});
 });
-app.get('/api/admin/orders/:id', requireAuth('orders.read'), async (req,res)=>{const row=await prisma.order.findUnique({where:{id:routeParam(req, 'id')},include:{items:true,statusHistory:{include:{user:true},orderBy:{createdAt:'desc'}},customer:true}});if(!row)return res.status(404).json({error:'NOT_FOUND'});res.json({...row,total:Number(row.total),subtotal:Number(row.subtotal),bundleSaving:Number(row.bundleSaving),deliveryFee:Number(row.deliveryFee),codFee:Number(row.codFee),items:row.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),trackingUrl:row.postexTracking?postexTrackingUrl(row.postexTracking):null});});
+app.post('/api/admin/orders/:id/resend-purchase',requireAuth('orders.write'),async(req:AuthedRequest,res)=>{const id=routeParam(req,'id'),order=await prisma.order.findUnique({where:{id}});if(!order)return res.status(404).json({error:'NOT_FOUND'});if(order.test||order.staffCreated||order.blocklistedAtOrder)return res.status(400).json({error:'Tracking is excluded for this order.'});for(const name of ['meta-purchase','tiktok-purchase']){const existing=await prisma.job.findFirst({where:{orderId:id,name,status:{in:['QUEUED','RUNNING']}}});if(!existing){const job=await prisma.job.create({data:{orderId:id,name,payload:{orderId:id}}});void dispatchJobRow(job.id).catch(()=>undefined);}}await audit(req,'resend_purchase','Order',id);res.json({ok:true});});
+app.get('/api/admin/orders/:id', requireAuth('orders.read'), async (req,res)=>{const row=await prisma.order.findUnique({where:{id:routeParam(req, 'id')},include:{items:true,statusHistory:{include:{user:true},orderBy:{createdAt:'desc'}},customer:true}});if(!row)return res.status(404).json({error:'NOT_FOUND'});res.json({...row,...await orderExtras(row),total:Number(row.total),subtotal:Number(row.subtotal),bundleSaving:Number(row.bundleSaving),deliveryFee:Number(row.deliveryFee),codFee:Number(row.codFee),items:row.items.map(i=>({...i,unitPrice:Number(i.unitPrice),lineTotal:Number(i.lineTotal),bundleDiscount:Number(i.bundleDiscount)})),trackingUrl:row.postexTracking?postexTrackingUrl(row.postexTracking):null});});
 app.patch('/api/admin/orders/:id/status', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{
   const id=routeParam(req,'id');
   const next=String(req.body.status) as OrderStatus;
   if(!Object.values(OrderStatus).includes(next)) return res.status(400).json({error:'INVALID_STATUS'});
   const existing=await prisma.order.findUnique({where:{id}});
   if(!existing) return res.status(404).json({error:'NOT_FOUND'});
-  if(!['CANCELLED','RETURNED'].includes(existing.status)&&['CANCELLED','RETURNED'].includes(next)) await restoreOrderStock(id);
-  await prisma.$transaction([
-    prisma.order.update({where:{id},data:{status:next}}),
-    prisma.orderStatusHistory.create({data:{orderId:id,from:existing.status,to:next,userId:req.admin?.id,note:req.body.note||null}}),
-    ...(next==='RETURNED'&&existing.customerId&&existing.status!=='RETURNED'?[prisma.customer.update({where:{id:existing.customerId},data:{refusalCount:{increment:1}}})]:[]),
-  ]);
+  await transitionOrder(id,next,req.admin?.id,String(req.body.note||'').slice(0,5000));
+  if(existing.status!==next&&['CONFIRMED','DELIVERED'].includes(next))await enqueueOrderStatusTracking(id,next);
   await audit(req,'status_change','Order',id,{from:existing.status,to:next});
   if(['CANCELLED','RETURNED'].includes(next)) await invalidateFrontendCache(['products']);
   if(existing.status!==next && ['CONFIRMED','BOOKED','DELIVERED'].includes(next)) {
@@ -1205,9 +1064,8 @@ app.patch('/api/admin/orders/:id/tracking', requireAuth('orders.write'), async (
   const tracking=String(req.body.tracking||'').trim();
   const existing=await prisma.order.findUnique({where:{id}});
   if(!existing)return res.status(404).json({error:'NOT_FOUND'});
-  await prisma.order.update({where:{id},data:{postexTracking:tracking||null,status:tracking?'BOOKED':existing.status}});
+  await transitionOrder(id,tracking?'BOOKED':existing.status,req.admin?.id,tracking?`PostEx tracking ${tracking}`:undefined,tracking||null);
   if(tracking&&existing.status!=='BOOKED') {
-    await prisma.orderStatusHistory.create({data:{orderId:id,from:existing.status,to:'BOOKED',userId:req.admin?.id,note:`PostEx tracking ${tracking}`}});
     const job=await prisma.job.create({data:{name:'customer-status-email',orderId:id,payload:{orderId:id,status:'BOOKED'}}});
     dispatchJobRow(job.id).catch(()=>undefined);
   }
@@ -1234,11 +1092,12 @@ app.patch('/api/admin/customers/bulk-blocklist', requireAuth('customers.write'),
   const ids:string[]=Array.isArray(req.body.ids)?[...new Set<string>(req.body.ids.map(String))].slice(0,100):[];if(!ids.length||typeof req.body.blocklisted!=='boolean')return res.status(400).json({error:'INVALID_BULK_UPDATE'});
   const result=await prisma.customer.updateMany({where:{id:{in:ids}},data:{blocklisted:req.body.blocklisted}});await audit(req,'bulk_blocklist','Customer',undefined,{ids,blocklisted:req.body.blocklisted});res.json({updated:result.count});
 });
+app.get('/api/admin/customers/:id',requireAuth('customers.read'),async(req,res)=>{const row=await prisma.customer.findUnique({where:{id:routeParam(req,'id')},include:{orders:{include:{items:true},orderBy:{createdAt:'desc'}}}});if(!row)return res.status(404).json({error:'NOT_FOUND'});const abandoned=await prisma.abandonedCheckout.findMany({where:{OR:[{phone:row.phone},...(row.email?[{email:row.email}]:[])]},orderBy:{createdAt:'desc'},take:30});res.json({...row,orders:row.orders.map(o=>({...o,total:Number(o.total)})),abandoned});});
 app.patch('/api/admin/customers/:id', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{
   const data=customerInput(req.body);if(!data)return res.status(400).json({error:'Enter a name, valid Pakistani mobile number, and valid optional email.'});
   try{const row=await prisma.customer.update({where:{id:routeParam(req,'id')},data});await audit(req,'update','Customer',row.id);res.json({id:row.id});}catch(error:any){if(error.code==='P2002')return res.status(409).json({error:'A customer with this phone number already exists.'});if(error.code==='P2025')return res.status(404).json({error:'Customer not found.'});throw error;}
 });
-app.patch('/api/admin/customers/:id/blocklist', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{const current=await prisma.customer.findUnique({where:{id:routeParam(req, 'id')}});if(!current)return res.status(404).json({error:'NOT_FOUND'});const row=await prisma.customer.update({where:{id:routeParam(req, 'id')},data:{blocklisted:!current.blocklisted}});await audit(req,'toggle_blocklist','Customer',row.id,{blocklisted:row.blocklisted});res.json(row);});
+app.patch('/api/admin/customers/:id/blocklist', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{const current=await prisma.customer.findUnique({where:{id:routeParam(req, 'id')}});if(!current)return res.status(404).json({error:'NOT_FOUND'});const row=await prisma.customer.update({where:{id:routeParam(req, 'id')},data:{blocklisted:typeof req.body.blocklisted==='boolean'?req.body.blocklisted:!current.blocklisted}});await audit(req,'toggle_blocklist','Customer',row.id,{blocklisted:row.blocklisted});res.json(row);});
 
 app.get('/api/admin/pages', requireAuth('content.write'), async (_req,res)=>res.json(await prisma.page.findMany({orderBy:{slug:'asc'}})));
 app.post('/api/admin/pages', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const b=req.body||{};const slug=String(b.slug||'').trim().toLowerCase();const title=String(b.title||'').trim();if(!slug||!title)return res.status(400).json({error:'TITLE_AND_SLUG_REQUIRED'});const row=await prisma.page.upsert({where:{slug},update:{title,bodyHtml:String(b.bodyHtml||''),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false},create:{slug,title,bodyHtml:String(b.bodyHtml||''),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false}});await audit(req,'upsert','Page',row.id);await invalidateFrontendCache(['pages']);res.status(201).json(row);});
@@ -1279,7 +1138,7 @@ app.put('/api/admin/settings', requireAuth('settings.write'), async (req:AuthedR
   await invalidateFrontendCache(['settings','store']);
   res.json({ok:true});
 });
-app.put('/api/admin/cities', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{const cities=Array.isArray(req.body.cities)?req.body.cities:[];for(const c of cities){if(!c.name)continue;await prisma.city.upsert({where:{name:String(c.name)},update:{deliveryMinDays:Number(c.deliveryMinDays||2),deliveryMaxDays:Number(c.deliveryMaxDays||5),active:c.active!==false},create:{name:String(c.name),deliveryMinDays:Number(c.deliveryMinDays||2),deliveryMaxDays:Number(c.deliveryMaxDays||5),active:c.active!==false}});}await audit(req,'update','Cities');await invalidateFrontendCache(['cities']);res.json({ok:true});});
+app.put('/api/admin/cities',requireAuth('settings.write'),async(req:AuthedRequest,res)=>{const cities=req.body.cities;if(!Array.isArray(cities)||cities.length>1000||cities.some(c=>!c.name||!Number.isInteger(c.deliveryMinDays)||!Number.isInteger(c.deliveryMaxDays)||c.deliveryMinDays<1||c.deliveryMaxDays<c.deliveryMinDays||c.deliveryMaxDays>90))return res.status(400).json({error:'Each city needs a name and valid minimum/maximum delivery days (1–90).'});await prisma.$transaction(cities.map(c=>prisma.city.upsert({where:{name:String(c.name).trim()},update:{deliveryMinDays:c.deliveryMinDays,deliveryMaxDays:c.deliveryMaxDays,active:c.active!==false},create:{name:String(c.name).trim(),deliveryMinDays:c.deliveryMinDays,deliveryMaxDays:c.deliveryMaxDays,active:c.active!==false}})));await audit(req,'update','Cities');await invalidateFrontendCache(['cities']);res.json({ok:true});});
 
 app.get('/api/admin/users', requireAuth('users.write'), async (_req,res)=>res.json(await prisma.user.findMany({select:{id:true,name:true,email:true,role:true,active:true,createdAt:true,updatedAt:true},orderBy:{createdAt:'desc'}})));
 app.post('/api/admin/users', requireAuth('users.write'), async (req:AuthedRequest,res)=>{const password=String(req.body.password||'');if(password.length<8)return res.status(400).json({error:'PASSWORD_TOO_SHORT'});const row=await prisma.user.create({data:{name:String(req.body.name),email:String(req.body.email).toLowerCase(),passwordHash:await bcrypt.hash(password,12),role:(req.body.role||'ORDER_AGENT') as Role,active:req.body.active!==false}});await audit(req,'create','User',row.id);res.status(201).json({id:row.id,name:row.name,email:row.email,role:row.role,active:row.active});});
@@ -1290,95 +1149,57 @@ app.patch('/api/admin/reviews/:id', requireAuth('content.write'), async (req:Aut
 app.get('/api/admin/redirects', requireAuth('settings.write'), async (_req,res)=>res.json(await prisma.redirect.findMany({orderBy:{sourcePath:'asc'}})));
 app.post('/api/admin/redirects', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{const row=await prisma.redirect.upsert({where:{sourcePath:String(req.body.sourcePath)},update:{destination:String(req.body.destination),permanent:req.body.permanent!==false},create:{sourcePath:String(req.body.sourcePath),destination:String(req.body.destination),permanent:req.body.permanent!==false}});await audit(req,'upsert','Redirect',row.id);await invalidateFrontendCache(['redirects']);res.json(row);});
 app.delete('/api/admin/redirects/:id', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{await prisma.redirect.delete({where:{id:routeParam(req, 'id')}});await audit(req,'delete','Redirect',routeParam(req, 'id'));await invalidateFrontendCache(['redirects']);res.json({ok:true});});
-app.get('/api/admin/session-replays', requireAuth('reports.read'), async (req,res)=>{
-  const source=String(req.query.source||'').trim().toLowerCase();
-  const q=String(req.query.q||'').trim();
-  const limit=Math.min(200,Math.max(20,Number(req.query.limit||100)));
-  const since=new Date(Date.now()-30*86400000);
-  const where:Prisma.SessionReplayWhereInput={...(source&&source!=='all'?{source}:{}),...(q?{OR:[{landingUrl:{contains:q,mode:'insensitive'}},{lastUrl:{contains:q,mode:'insensitive'}},{campaign:{contains:q,mode:'insensitive'}},{visitorId:{contains:q,mode:'insensitive'}}]}:{})};
-  const [sessions,total,last30,sourceGroups,ordered30]=await Promise.all([
-    prisma.sessionReplay.findMany({where,orderBy:{startedAt:'desc'},take:limit}),
-    prisma.sessionReplay.count({where}),
-    prisma.sessionReplay.count({where:{startedAt:{gte:since}}}),
-    prisma.sessionReplay.groupBy({by:['source'],where:{startedAt:{gte:since}},_count:{_all:true}}),
-    prisma.order.count({where:{createdAt:{gte:since},replaySessionId:{not:null}}}),
-  ]);
-  const ids=sessions.map(row=>row.id);
-  const orders=ids.length?await prisma.order.findMany({where:{replaySessionId:{in:ids}},select:{id:true,orderNumber:true,replaySessionId:true,total:true,createdAt:true},orderBy:{createdAt:'desc'}}):[];
-  const orderBySession=new Map(orders.filter(o=>o.replaySessionId).map(o=>[o.replaySessionId!,o]));
-  const outcome=String(req.query.outcome||'all');
-  const items=sessions.map(row=>{const order=orderBySession.get(row.id);return {...row,durationMs:Math.max(0,Number((row.endedAt||row.lastSeenAt).getTime()-row.startedAt.getTime())),order:order?{id:order.id,orderNumber:order.orderNumber,total:Number(order.total),createdAt:order.createdAt}:null};}).filter(row=>outcome==='ordered'?Boolean(row.order):outcome==='no-order'?!row.order:true);
-  res.json({total,items,stats:{last30,ordered30,sources:Object.fromEntries(sourceGroups.map(x=>[x.source,x._count._all]))}});
+app.get('/api/admin/session-replays', requireAuth('reports.read'),async(req,res)=>{
+ if(req.query.minDuration!==undefined&&(!Number.isFinite(Number(req.query.minDuration))||Number(req.query.minDuration)<0))return res.status(400).json({error:'INVALID_DURATION'});
+ const q=String(req.query.q||'').trim(),source=String(req.query.source||''),outcome=String(req.query.outcome||'all');
+ const page=Math.max(1,Math.floor(Number(req.query.page)||1)),limit=Math.min(100,Math.max(10,Math.floor(Number(req.query.limit)||20)));
+ const from=req.query.from?new Date(`${req.query.from}T00:00:00+05:00`):new Date(Date.now()-30*86400000),to=req.query.to?new Date(`${req.query.to}T23:59:59.999+05:00`):new Date();
+ if(Number.isNaN(from.getTime())||Number.isNaN(to.getTime())||from>to)return res.status(400).json({error:'INVALID_DATE_RANGE'});
+ const where:Prisma.SessionReplayWhereInput={startedAt:{gte:from,lte:to},hasSnapshot:true,eventCount:{gte:2},durationMs:{gte:Math.max(10000,Number(req.query.minDuration||10)*1000)},...(source&&source!=='all'?{source}:{}),...(req.query.device?{device:String(req.query.device)}:{}),...(req.query.campaign?{campaign:{contains:String(req.query.campaign),mode:'insensitive'}}:{}),...(req.query.product?{OR:[{landingUrl:{contains:String(req.query.product),mode:'insensitive'}},{lastUrl:{contains:String(req.query.product),mode:'insensitive'}}]}:{}),...(q?{AND:[{OR:[{landingUrl:{contains:q,mode:'insensitive'}},{lastUrl:{contains:q,mode:'insensitive'}},{campaign:{contains:q,mode:'insensitive'}},{visitorId:{contains:q}}]}]}:{}),...(req.query.visitor?{visitorId:String(req.query.visitor)}:{}),...(outcome==='ordered'?{ordered:true}:outcome==='no-order'?{ordered:false}:outcome==='cart-no-order'?{reachedCart:true,ordered:false}:outcome==='checkout-no-order'?{reachedCheckout:true,ordered:false}:outcome==='live'?{status:'ACTIVE',lastSeenAt:{gte:new Date(Date.now()-60000)}}:{})};
+ if(['product-no-cart','visitor-no-product'].includes(outcome)){const viewed=await prisma.eventLog.findMany({where:{eventName:'ViewContent',channel:'browser',createdAt:{gte:from,lte:to},sessionReplayId:{not:null}},distinct:['sessionReplayId'],select:{sessionReplayId:true}});where.id=outcome==='product-no-cart'?{in:viewed.map(e=>e.sessionReplayId!)}:{notIn:viewed.map(e=>e.sessionReplayId!)};where.ordered=false;if(outcome==='product-no-cart')where.reachedCart=false;}
+ if(outcome==='cart-no-checkout'){where.reachedCart=true;where.reachedCheckout=false;where.ordered=false;}
+ const [sessions,total,sourceGroups]=await Promise.all([prisma.sessionReplay.findMany({where,orderBy:req.query.sort==='oldest'?{startedAt:'asc'}:req.query.sort==='duration'?{durationMs:'desc'}:{startedAt:'desc'},skip:(page-1)*limit,take:limit}),prisma.sessionReplay.count({where}),prisma.sessionReplay.groupBy({by:['source'],where:{startedAt:{gte:from,lte:to}},_count:{_all:true}})]);
+ const orders=await prisma.order.findMany({where:{replaySessionId:{in:sessions.map(s=>s.id)}},select:{id:true,orderNumber:true,replaySessionId:true,total:true,createdAt:true,city:true},orderBy:{createdAt:'desc'}});
+ const orderMap=new Map(orders.map(o=>[o.replaySessionId,o]));
+ res.json({total,page,totalPages:Math.max(1,Math.ceil(total/limit)),items:sessions.map(s=>({...s,orderDestination:orderMap.get(s.id)?.city||null,order:orderMap.has(s.id)?{...orderMap.get(s.id),total:Number(orderMap.get(s.id)!.total)}:null})),stats:{last30:total,ordered30:await prisma.sessionReplay.count({where:{startedAt:{gte:from,lte:to},ordered:true}}),sources:Object.fromEntries(sourceGroups.map(s=>[s.source,s._count._all]))}});
 });
-
-app.get('/api/admin/session-replays/:id', requireAuth('reports.read'), async (req,res)=>{
-  const id=routeParam(req,'id');
-  const [session,chunks,order,markers]=await Promise.all([
-    prisma.sessionReplay.findUnique({where:{id}}),
-    prisma.sessionReplayChunk.findMany({where:{sessionId:id},orderBy:{sequence:'asc'},take:2500}),
-    prisma.order.findFirst({where:{replaySessionId:id},select:{id:true,orderNumber:true,total:true,source:true,createdAt:true}}),
-    prisma.eventLog.findMany({where:{sessionReplayId:id,eventName:{in:['PageView','ViewContent','AddToCart','InitiateCheckout','Purchase']}},select:{eventName:true,sourceUrl:true,createdAt:true,payload:true},orderBy:{createdAt:'asc'},take:500}),
-  ]);
-  if(!session) return res.status(404).json({error:'NOT_FOUND'});
-  const events=chunks.flatMap(chunk=>Array.isArray(chunk.events)?chunk.events:[]);
-  const replayDiagnostics={
-    hasFullSnapshot:events.some((event:any)=>Number(event?.type)===2),
-    fullSnapshotCount:events.filter((event:any)=>Number(event?.type)===2).length,
-    hasMeta:events.some((event:any)=>Number(event?.type)===4),
-    chunkCount:chunks.length,
-    eventCount:events.length,
-  };
-  res.json({session:{...session,durationMs:Math.max(0,Number((session.endedAt||session.lastSeenAt).getTime()-session.startedAt.getTime()))},events,replayDiagnostics,order:order?{...order,total:Number(order.total)}:null,markers});
+app.get('/api/admin/session-replays/:id/chunks/:sequence',requireAuth('reports.read'),async(req,res)=>{
+ if(!Number.isInteger(Number(routeParam(req,'sequence')))||Number(routeParam(req,'sequence'))<0)return res.status(400).json({error:'INVALID_SEQUENCE'});
+ const chunk=await prisma.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId:routeParam(req,'id'),sequence:Number(routeParam(req,'sequence'))}}});
+ if(!chunk)return res.status(404).json({error:'NOT_FOUND'});
+ setNoStore(res);if(chunk.storageKey){if(req.query.download==='1'){try{return res.json({events:await readReplayChunk(chunk.storageKey)})}catch(error:any){if(Array.isArray(chunk.events)&&chunk.events.length)return res.json({events:chunk.events});if(error?.name==='NoSuchKey'||error?.$metadata?.httpStatusCode===404)return res.status(410).json({error:'RECORDING_FILE_EXPIRED'});return res.status(503).json({error:'REPLAY_STORAGE_UNAVAILABLE'});}}return res.json({url:await replayChunkUrl(chunk.storageKey)});}res.json({events:chunk.events});
+});
+app.get('/api/admin/session-replays/:id',requireAuth('reports.read'),async(req,res)=>{
+ const id=routeParam(req,'id');
+ const checkpoint=req.query.live==='1'?await prisma.sessionReplayChunk.findFirst({where:{sessionId:id,hasSnapshot:true},select:{sequence:true},orderBy:{sequence:'desc'}}):null;
+ const [session,order,markers,chunks]=await Promise.all([prisma.sessionReplay.findUnique({where:{id}}),prisma.order.findFirst({where:{replaySessionId:id},select:{id:true,orderNumber:true,total:true,createdAt:true}}),prisma.eventLog.findMany({where:{sessionReplayId:id,channel:'browser'},orderBy:{createdAt:'asc'},take:1000}),prisma.sessionReplayChunk.findMany({where:{sessionId:id,...(checkpoint?{sequence:{gte:checkpoint.sequence}}:{})},select:{sequence:true,eventCount:true,hasSnapshot:true,storageKey:true,byteSize:true,firstTimestamp:true,lastTimestamp:true},orderBy:{sequence:'asc'}})]);
+ if(!session)return res.status(404).json({error:'NOT_FOUND'});setNoStore(res);
+ const [width,height]=String(session.viewport||'1280x720').split('x').map(Number);
+ const first=chunks[0]?.firstTimestamp;
+ const bootstrap=first?{type:4,timestamp:first-1,data:{href:privateSafeUrl(session.landingUrl),width:Number.isFinite(width)&&width>0?width:1280,height:Number.isFinite(height)&&height>0?height:720}}:undefined;
+ res.json({replayVersion:2,session,order:order?{...order,total:Number(order.total)}:null,markers,chunks,bootstrap,storage:replayStorageConfigured()?'private-r2':'database-legacy'});
 });
 
 app.delete('/api/admin/session-replays/:id', requireAuth('reports.read'), async (req:AuthedRequest,res)=>{
   const id=routeParam(req,'id');
+  const chunks=await prisma.sessionReplayChunk.findMany({where:{sessionId:id,storageKey:{not:null}},select:{storageKey:true}});
+  await deleteReplayChunks(chunks.map(c=>c.storageKey!));
   await prisma.sessionReplay.deleteMany({where:{id}});
   await audit(req,'delete','SessionReplay',id);
   res.json({ok:true});
 });
 
-app.get('/api/admin/experiments', requireAuth('reports.read'), async (_req,res)=>{
-  const [rows,orders,exposures]=await Promise.all([
-    prisma.experiment.findMany({orderBy:{createdAt:'desc'}}),
-    prisma.order.findMany({where:{experiments:{not:Prisma.DbNull}},select:{experiments:true},take:5000}),
-    prisma.eventLog.findMany({where:{eventName:'ExperimentExposure'},select:{payload:true,eventId:true},take:20000}),
-  ]);
-  const enriched=rows.map(row=>{
-    const variants=Array.isArray(row.variants)?row.variants.map(String):Object.keys((row.variants||{}) as any);
-    const report:Record<string,{visitors:number;orders:number;orderRate:number}>={};
-    for(const variant of variants) report[variant]={visitors:0,orders:0,orderRate:0};
-    for(const exposure of exposures){
-      const payload=(exposure.payload&&typeof exposure.payload==='object'&&!Array.isArray(exposure.payload)?exposure.payload:{}) as Record<string,unknown>;
-      if(String(payload.experimentId||'')!==row.id)continue;
-      const variant=String(payload.variant||'');
-      if(!variant)continue;
-      if(!report[variant])report[variant]={visitors:0,orders:0,orderRate:0};
-      report[variant].visitors+=1;
-    }
-    for(const order of orders){
-      const map=(order.experiments&&typeof order.experiments==='object'&&!Array.isArray(order.experiments)?order.experiments:{}) as Record<string,unknown>;
-      const variant=String(map[row.id]||map[row.name]||'');
-      if(!variant)continue;
-      if(!report[variant])report[variant]={visitors:0,orders:0,orderRate:0};
-      report[variant].orders+=1;
-    }
-    for(const variant of Object.keys(report)) report[variant].orderRate=report[variant].visitors?Math.round(report[variant].orders/report[variant].visitors*1000)/10:0;
-    return {...row,report};
-  });
-  res.json(enriched);
+app.get('/api/admin/tracking/health', requireAuth('reports.read'), async (_req,res)=>res.json(await trackingHealth()));
+app.post('/api/admin/jobs/:id/retry', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{
+ const job=await prisma.job.findUnique({where:{id:routeParam(req,'id')}});if(!job)return res.status(404).json({error:'NOT_FOUND'});
+ if(!['FAILED','SKIPPED'].includes(job.status)&&!(job.status==='QUEUED'&&Date.now()-job.createdAt.getTime()>300000))return res.status(409).json({error:'JOB_NOT_RETRYABLE'});
+ await prisma.job.update({where:{id:job.id},data:{status:'QUEUED',externalId:null,error:null,finishedAt:null}});await dispatchJobRow(job.id);await audit(req,'retry','Job',job.id);res.json({ok:true});
 });
-app.post('/api/admin/experiments', requireAuth('content.write'), async (req:AuthedRequest,res)=>{
-  const pagePattern=String(req.body.pagePattern||'/').trim()||'/';
-  const row=await prisma.experiment.create({data:{name:String(req.body.name),pagePattern,variants:req.body.variants||['A','B'],trafficSplit:req.body.trafficSplit||{A:50,B:50},status:(req.body.status||'DRAFT') as ExperimentStatus}});
-  await audit(req,'create','Experiment',row.id);res.status(201).json(row);
-});
-app.patch('/api/admin/experiments/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{
-  const id=routeParam(req,'id');
-  const existing=await prisma.experiment.findUnique({where:{id}});if(!existing)return res.status(404).json({error:'NOT_FOUND'});
-  const nextStatus=req.body.status as ExperimentStatus|undefined;
-  if(nextStatus==='RUNNING') await prisma.experiment.updateMany({where:{id:{not:id},pagePattern:existing.pagePattern,status:'RUNNING'},data:{status:'PAUSED'}});
-  const row=await prisma.experiment.update({where:{id},data:req.body});await audit(req,'update','Experiment',row.id);res.json(row);
+app.post('/api/admin/tracking/test/:platform', requireAuth('settings.write'), async(req:AuthedRequest,res)=>{
+ const platform=routeParam(req,'platform');if(!['meta','tiktok'].includes(platform))return res.status(400).json({error:'INVALID_PLATFORM'});
+ const testKey=platform==='meta'?'tracking.metaTestEventCode':'tracking.tiktokTestEventCode';if(!await getSetting(testKey,''))return res.status(400).json({error:'Save a platform test event code first.'});
+ try{const event={eventName:'PageView',eventId:`admin-test-${randomBytes(12).toString('hex')}`,sourceUrl:`${SITE_ORIGIN}/`,customData:{test:true}};
+ const result=platform==='meta'?await sendMetaServerEvent(event):await sendTikTokServerEvent(event);await audit(req,'test_event','Tracking',platform);res.json({platform,result});}catch(error:any){res.status(502).json({error:error.message||'TEST_EVENT_FAILED'})}
 });
 app.get('/api/admin/jobs', requireAuth('reports.read'), async (_req,res)=>res.json(await prisma.job.findMany({orderBy:{createdAt:'desc'},take:500})));
 app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
@@ -1399,8 +1220,6 @@ app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
       'tracking.tiktokEventsApiToken',
       'tracking.tiktokAccessToken',
       'tracking.tiktokTestEventCode',
-      'tracking.clarityEnabled',
-      'tracking.clarityId',
       'tracking.sessionReplayEnabled',
       'tracking.sessionReplayRetentionDays',
     ]),
@@ -1454,9 +1273,6 @@ app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
   const tiktokEventsApiConfigured = Boolean(settings['tracking.tiktokEventsApiToken'] || settings['tracking.tiktokAccessToken'] || process.env.TIKTOK_EVENTS_API_TOKEN || process.env.TIKTOK_ACCESS_TOKEN);
   const tiktokTestEventCodeConfigured = Boolean(settings['tracking.tiktokTestEventCode'] || process.env.TIKTOK_TEST_EVENT_CODE);
 
-  const clarityEnabled = settings['tracking.clarityEnabled'] !== false && settings['tracking.clarityEnabled'] !== 'false';
-  const clarityId = String(settings['tracking.clarityId'] || process.env.NEXT_PUBLIC_CLARITY_ID || process.env.CLARITY_ID || '');
-  const clarityConfigured = Boolean(clarityId);
 
   const sessionReplayEnabled = settings['tracking.sessionReplayEnabled'] !== false && settings['tracking.sessionReplayEnabled'] !== 'false';
   const sessionReplayRetentionDays = Number(settings['tracking.sessionReplayRetentionDays'] || process.env.SESSION_REPLAY_RETENTION_DAYS || 14);
@@ -1505,13 +1321,11 @@ app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
       metaCapi: { enabled: metaCapiEnabled, configured: metaCapiConfigured, testEventCodeConfigured: metaTestEventCodeConfigured },
       tiktokPixel: { enabled: tiktokPixelEnabled, configured: tiktokPixelConfigured, id: tiktokPixelId },
       tiktokEventsApi: { enabled: tiktokEventsApiEnabled, configured: tiktokEventsApiConfigured, testEventCodeConfigured: tiktokTestEventCodeConfigured },
-      clarity: { enabled: clarityEnabled, configured: clarityConfigured, id: clarityId },
       sessionReplay: { enabled: sessionReplayEnabled, configured: true, retentionDays: sessionReplayRetentionDays },
     },
 
     config: {
       pixelId: metaPixelId,
-      clarityId,
       capiConfigured: metaCapiConfigured,
       testEventCodeConfigured: metaTestEventCodeConfigured,
       appEnv: process.env.APP_ENV || 'development',
@@ -1519,7 +1333,6 @@ app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
       metaCapi: { enabled: metaCapiEnabled, configured: metaCapiConfigured, testEventCodeConfigured: metaTestEventCodeConfigured },
       tiktokPixel: { enabled: tiktokPixelEnabled, configured: tiktokPixelConfigured, id: tiktokPixelId },
       tiktokEventsApi: { enabled: tiktokEventsApiEnabled, configured: tiktokEventsApiConfigured, testEventCodeConfigured: tiktokTestEventCodeConfigured },
-      clarity: { enabled: clarityEnabled, configured: clarityConfigured, id: clarityId },
       sessionReplay: { enabled: sessionReplayEnabled, configured: true, retentionDays: sessionReplayRetentionDays },
     },
   });
@@ -1630,7 +1443,7 @@ app.put('/api/admin/marketing/meta', requireAuth('settings.write'), async (req:A
 });
 app.post('/api/admin/marketing/meta/test', requireAuth('settings.write'), async (_req,res)=>{try{res.json({ok:true,details:await testMetaMarketingConnection()});}catch(error:any){res.status(400).json({error:'META_CONNECTION_FAILED',message:error?.message||'Unable to connect to Meta'});}});
 
-app.get('/api/admin/abandoned', requireAuth('customers.read'), async (_req,res)=>res.json(await prisma.abandonedCheckout.findMany({orderBy:{createdAt:'desc'},take:500})));
+
 
 // CSV import. Create-only: a row whose SKU, slug or title (or a variation SKU) matches an
 // existing product, drafts included, is rejected as "Already exists". New products are DRAFTS.
@@ -1808,7 +1621,8 @@ app.post('/api/admin/upload', requireAuth('products.write'), (req,res,next)=>{
   try {
     const hash=createHash('sha256').update(req.file.buffer).digest('hex');
     const url=await uploadObject(`products/${hash}.${ext}`,req.file.buffer,req.file.mimetype);
-    res.json({url,hash});
+    let feedImageUrl:string|undefined;try{feedImageUrl=await saveCatalogImage(url,req.file.buffer)}catch(error){console.error('Catalog JPG copy failed; backfill can retry',error instanceof Error?error.message:error)}
+    res.json({url,hash,feedImageUrl});
   } catch (error:any) {
     const status=error instanceof StorageError&&error.code==='STORAGE_NOT_CONFIGURED'?503:502;
     res.status(status).json({error:error?.code||'UPLOAD_FAILED',message:error?.message||'Unable to upload: Cloudflare R2 did not accept the image.'});

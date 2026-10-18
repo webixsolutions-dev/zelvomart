@@ -16,7 +16,7 @@ export function whatsappHelpHref(number: string | undefined, pathname: string) {
 }
 
 export function trackWhatsAppTap(pathname: string) {
-  trackStoreEvent("Contact", { content_name: pathname }, { clarityEvent: "whatsapp_tap" }).catch(() => undefined);
+  trackStoreEvent("Contact", { content_name: pathname }).catch(() => undefined);
 }
 
 export default function FloatingWhatsApp({ number = DEFAULT_WHATSAPP_NUMBER }: { number?: string }) {

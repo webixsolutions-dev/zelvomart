@@ -54,12 +54,10 @@ interface TrackingData {
     metaCapi?: IntegrationStatus;
     tiktokPixel?: IntegrationStatus;
     tiktokEventsApi?: IntegrationStatus;
-    clarity?: IntegrationStatus;
     sessionReplay?: IntegrationStatus;
   };
   config?: {
     pixelId?: string;
-    clarityId?: string;
     capiConfigured?: boolean;
     testEventCodeConfigured?: boolean;
     appEnv?: string;
@@ -67,7 +65,6 @@ interface TrackingData {
     metaCapi?: IntegrationStatus;
     tiktokPixel?: IntegrationStatus;
     tiktokEventsApi?: IntegrationStatus;
-    clarity?: IntegrationStatus;
     sessionReplay?: IntegrationStatus;
   };
   errors: Array<{
@@ -124,7 +121,6 @@ export default function Tracking() {
   const metaCapi = data.integrations?.metaCapi || data.config?.metaCapi;
   const tiktokPixel = data.integrations?.tiktokPixel || data.config?.tiktokPixel;
   const tiktokEventsApi = data.integrations?.tiktokEventsApi || data.config?.tiktokEventsApi;
-  const clarity = data.integrations?.clarity || data.config?.clarity;
   const sessionReplay = data.integrations?.sessionReplay || data.config?.sessionReplay;
 
   const metaPurchaseCoverage = data.meta?.purchaseCoverage ?? data.purchaseCoverage ?? 0;
@@ -143,7 +139,6 @@ export default function Tracking() {
         <div>
           <h1>Tracking Health &amp; Diagnostics</h1>
           <p>
-            Real-time status, event delivery volumes, and browser ↔ server deduplication metrics for Meta, TikTok, Microsoft Clarity, and CRO Replays.
           </p>
         </div>
       </div>
@@ -208,21 +203,6 @@ export default function Tracking() {
           </strong>
           <p>Test Code: {tiktokEventsApi?.testEventCodeConfigured ? "Configured" : "None"}</p>
           <i style={{ width: tiktokEventsApi?.enabled && tiktokEventsApi?.configured ? "100%" : "0%", background: "#fe2c55" }} />
-        </article>
-
-        {/* Microsoft Clarity */}
-        <article className="admin-tracking-card" style={{ minHeight: 120 }}>
-          <div>
-            <small>Microsoft Clarity</small>
-            <span className={`admin-health-pill ${statusTone(Boolean(clarity?.enabled && clarity?.configured))}`}>
-              {!clarity?.enabled ? "Disabled" : clarity?.configured ? "Ready" : "Missing ID"}
-            </span>
-          </div>
-          <strong className="status-copy">
-            {!clarity?.enabled ? "Disabled" : clarity?.configured ? "Configured" : "Not Set"}
-          </strong>
-          <p>{clarity?.id ? `Project ID: ${clarity.id}` : `${data.config?.appEnv || "development"} env`}</p>
-          <i style={{ width: clarity?.enabled && clarity?.configured ? "100%" : "0%" }} />
         </article>
 
         {/* CRO Session Replay */}

@@ -44,9 +44,9 @@ export async function sendOrderTeamEmail(orderId: string) {
 
   const items = order.items
     .map((item) => `${escapeHtml(item.quantity)} × ${escapeHtml(item.title)} (${escapeHtml(item.sku)}) — ${escapeHtml(money(item.lineTotal))}`)
-    .join("<br/>");
+    .join("<br/>") + (Number(order.couponDiscount)>0?`<br/>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}`:"");
 
-  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com"}/admin/orders/${order.id}`;
+  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app"}/admin/orders/${order.id}`;
   const whatsappPhone = order.phone.replace(/\D/g, "");
   const defaultTemplate = `
     <h2>New order {{orderNumber}}</h2>
@@ -92,7 +92,7 @@ export async function sendCustomerOrderEmail(orderId: string) {
 
   const items = order.items
     .map((item) => `<li>${escapeHtml(item.quantity)} × ${escapeHtml(item.title)} — ${escapeHtml(money(item.lineTotal))}</li>`)
-    .join("");
+    .join("") + (Number(order.couponDiscount)>0?`<li>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}</li>`:"");
   const defaultTemplate = `
     <h2>Thanks for your order, {{customerName}}.</h2>
     <p>Your order number is <strong>{{orderNumber}}</strong>.</p>
@@ -166,7 +166,7 @@ export async function sendCustomerStatusEmail(orderId: string, status: "CONFIRME
   const resend = client();
   if (!resend) throw new Error("RESEND_API_KEY is not configured");
 
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.com").replace(/\/$/, "");
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app").replace(/\/$/, "");
   const trackingUrl = order.postexTracking
     ? `${process.env.POSTEX_TRACKING_BASE_URL || "https://postex.pk/tracking"}/${encodeURIComponent(order.postexTracking)}`
     : `${base}/track-order`;

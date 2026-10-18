@@ -1,5 +1,9 @@
 "use client";
+import {privateSafeUrl} from "./url-privacy";
 
+import {tiktokProperties} from "./tracking-payload";
+import {adsAllowed,staffDevice} from "./tracking-policy";
+import {getReplayVisitorId} from "./session-replay-client";
 import { getReplaySessionId } from "@/lib/session-replay-client";
 
 declare global {
@@ -11,40 +15,25 @@ declare global {
       identify?: (options: Record<string, unknown>) => void;
       [key: string]: any;
     };
-    clarity?: (...args: any[]) => void;
   }
 }
 
 export async function trackStoreEvent(
   eventName: string,
   params: Record<string, unknown> = {},
-  options: { eventId?: string; clarityEvent?: string } = {},
+  options: { eventId?: string } = {},
 ) {
   const eventId = options.eventId || crypto.randomUUID();
-  try {
-    window.fbq?.("track", eventName, params, { eventID: eventId });
-  } catch {}
-
-  try {
-    const tiktokEventMap: Record<string, string> = {
-      PageView: "PageView",
-      ViewContent: "ViewContent",
-      Search: "Search",
-      AddToCart: "AddToCart",
-      InitiateCheckout: "InitiateCheckout",
-      Purchase: "CompletePayment",
-      Contact: "Contact",
-      Lead: "SubmitForm",
+  if(staffDevice())return eventId;
+  if(adsAllowed()&&!eventName.startsWith("Replay")){
+    const deliver=(platform:'meta'|'tiktok',attempt=0)=>{
+      try{
+        if(platform==='meta'&&window.fbq){window.fbq('track',eventName,params,{eventID:eventId});return;}
+        if(platform==='tiktok'&&window.ttq){if(eventName==='PageView')window.ttq.page();else window.ttq.track(eventName,tiktokProperties(params),{event_id:eventId});return;}
+      }catch{return;}
+      if(attempt<50)window.setTimeout(()=>deliver(platform,attempt+1),100);
     };
-    const ttEvent = tiktokEventMap[eventName] || eventName;
-    if (eventName === "PageView") {
-      window.ttq?.page();
-    }
-    window.ttq?.track(ttEvent, params, { event_id: eventId });
-  } catch {}
-
-  if (options.clarityEvent) {
-    try { window.clarity?.("event", options.clarityEvent); } catch {}
+    deliver('meta');deliver('tiktok');
   }
 
   try {
@@ -55,12 +44,15 @@ export async function trackStoreEvent(
       body: JSON.stringify({
         eventName,
         eventId,
+        occurredAt:Date.now(),
         replaySessionId: getReplaySessionId(),
-        sourceUrl: window.location.href,
+        sourceUrl: privateSafeUrl(window.location.href),
         params,
         fbp: readCookie("_fbp"),
         fbc: readCookie("_fbc"),
         ttp: readCookie("_ttp"),
+        ttclid: readCookie("ttclid"),
+        visitorId: getReplayVisitorId(),
       }),
     });
   } catch {}

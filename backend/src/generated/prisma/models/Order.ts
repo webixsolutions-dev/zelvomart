@@ -30,6 +30,7 @@ export type OrderAvgAggregateOutputType = {
   subtotal: runtime.Decimal | null
   bundleSaving: runtime.Decimal | null
   deliveryFee: runtime.Decimal | null
+  couponDiscount: runtime.Decimal | null
   codFee: runtime.Decimal | null
   total: runtime.Decimal | null
 }
@@ -38,6 +39,7 @@ export type OrderSumAggregateOutputType = {
   subtotal: runtime.Decimal | null
   bundleSaving: runtime.Decimal | null
   deliveryFee: runtime.Decimal | null
+  couponDiscount: runtime.Decimal | null
   codFee: runtime.Decimal | null
   total: runtime.Decimal | null
 }
@@ -59,9 +61,14 @@ export type OrderMinAggregateOutputType = {
   subtotal: runtime.Decimal | null
   bundleSaving: runtime.Decimal | null
   deliveryFee: runtime.Decimal | null
+  couponCode: string | null
+  couponDiscount: runtime.Decimal | null
   codFee: runtime.Decimal | null
   total: runtime.Decimal | null
   source: string | null
+  ttp: string | null
+  ttclid: string | null
+  visitorId: string | null
   fbp: string | null
   fbc: string | null
   clarityId: string | null
@@ -97,9 +104,14 @@ export type OrderMaxAggregateOutputType = {
   subtotal: runtime.Decimal | null
   bundleSaving: runtime.Decimal | null
   deliveryFee: runtime.Decimal | null
+  couponCode: string | null
+  couponDiscount: runtime.Decimal | null
   codFee: runtime.Decimal | null
   total: runtime.Decimal | null
   source: string | null
+  ttp: string | null
+  ttclid: string | null
+  visitorId: string | null
   fbp: string | null
   fbc: string | null
   clarityId: string | null
@@ -135,11 +147,16 @@ export type OrderCountAggregateOutputType = {
   subtotal: number
   bundleSaving: number
   deliveryFee: number
+  couponCode: number
+  couponDiscount: number
   codFee: number
   total: number
   source: number
   firstTouch: number
   lastTouch: number
+  ttp: number
+  ttclid: number
+  visitorId: number
   fbp: number
   fbc: number
   clarityId: number
@@ -165,6 +182,7 @@ export type OrderAvgAggregateInputType = {
   subtotal?: true
   bundleSaving?: true
   deliveryFee?: true
+  couponDiscount?: true
   codFee?: true
   total?: true
 }
@@ -173,6 +191,7 @@ export type OrderSumAggregateInputType = {
   subtotal?: true
   bundleSaving?: true
   deliveryFee?: true
+  couponDiscount?: true
   codFee?: true
   total?: true
 }
@@ -194,9 +213,14 @@ export type OrderMinAggregateInputType = {
   subtotal?: true
   bundleSaving?: true
   deliveryFee?: true
+  couponCode?: true
+  couponDiscount?: true
   codFee?: true
   total?: true
   source?: true
+  ttp?: true
+  ttclid?: true
+  visitorId?: true
   fbp?: true
   fbc?: true
   clarityId?: true
@@ -232,9 +256,14 @@ export type OrderMaxAggregateInputType = {
   subtotal?: true
   bundleSaving?: true
   deliveryFee?: true
+  couponCode?: true
+  couponDiscount?: true
   codFee?: true
   total?: true
   source?: true
+  ttp?: true
+  ttclid?: true
+  visitorId?: true
   fbp?: true
   fbc?: true
   clarityId?: true
@@ -270,11 +299,16 @@ export type OrderCountAggregateInputType = {
   subtotal?: true
   bundleSaving?: true
   deliveryFee?: true
+  couponCode?: true
+  couponDiscount?: true
   codFee?: true
   total?: true
   source?: true
   firstTouch?: true
   lastTouch?: true
+  ttp?: true
+  ttclid?: true
+  visitorId?: true
   fbp?: true
   fbc?: true
   clarityId?: true
@@ -398,11 +432,16 @@ export type OrderGroupByOutputType = {
   subtotal: runtime.Decimal
   bundleSaving: runtime.Decimal
   deliveryFee: runtime.Decimal
+  couponCode: string | null
+  couponDiscount: runtime.Decimal
   codFee: runtime.Decimal
   total: runtime.Decimal
   source: string | null
   firstTouch: runtime.JsonValue | null
   lastTouch: runtime.JsonValue | null
+  ttp: string | null
+  ttclid: string | null
+  visitorId: string | null
   fbp: string | null
   fbc: string | null
   clarityId: string | null
@@ -462,11 +501,16 @@ export type OrderWhereInput = {
   subtotal?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.StringNullableFilter<"Order"> | string | null
+  couponDiscount?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.StringNullableFilter<"Order"> | string | null
   firstTouch?: Prisma.JsonNullableFilter<"Order">
   lastTouch?: Prisma.JsonNullableFilter<"Order">
+  ttp?: Prisma.StringNullableFilter<"Order"> | string | null
+  ttclid?: Prisma.StringNullableFilter<"Order"> | string | null
+  visitorId?: Prisma.StringNullableFilter<"Order"> | string | null
   fbp?: Prisma.StringNullableFilter<"Order"> | string | null
   fbc?: Prisma.StringNullableFilter<"Order"> | string | null
   clarityId?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -485,6 +529,7 @@ export type OrderWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   customer?: Prisma.XOR<Prisma.CustomerNullableScalarRelationFilter, Prisma.CustomerWhereInput> | null
+  privateNotes?: Prisma.OrderNoteListRelationFilter
   items?: Prisma.OrderItemListRelationFilter
   statusHistory?: Prisma.OrderStatusHistoryListRelationFilter
   events?: Prisma.EventLogListRelationFilter
@@ -508,11 +553,16 @@ export type OrderOrderByWithRelationInput = {
   subtotal?: Prisma.SortOrder
   bundleSaving?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  couponCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  couponDiscount?: Prisma.SortOrder
   codFee?: Prisma.SortOrder
   total?: Prisma.SortOrder
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   firstTouch?: Prisma.SortOrderInput | Prisma.SortOrder
   lastTouch?: Prisma.SortOrderInput | Prisma.SortOrder
+  ttp?: Prisma.SortOrderInput | Prisma.SortOrder
+  ttclid?: Prisma.SortOrderInput | Prisma.SortOrder
+  visitorId?: Prisma.SortOrderInput | Prisma.SortOrder
   fbp?: Prisma.SortOrderInput | Prisma.SortOrder
   fbc?: Prisma.SortOrderInput | Prisma.SortOrder
   clarityId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -531,6 +581,7 @@ export type OrderOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   customer?: Prisma.CustomerOrderByWithRelationInput
+  privateNotes?: Prisma.OrderNoteOrderByRelationAggregateInput
   items?: Prisma.OrderItemOrderByRelationAggregateInput
   statusHistory?: Prisma.OrderStatusHistoryOrderByRelationAggregateInput
   events?: Prisma.EventLogOrderByRelationAggregateInput
@@ -557,11 +608,16 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   subtotal?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.StringNullableFilter<"Order"> | string | null
+  couponDiscount?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.StringNullableFilter<"Order"> | string | null
   firstTouch?: Prisma.JsonNullableFilter<"Order">
   lastTouch?: Prisma.JsonNullableFilter<"Order">
+  ttp?: Prisma.StringNullableFilter<"Order"> | string | null
+  ttclid?: Prisma.StringNullableFilter<"Order"> | string | null
+  visitorId?: Prisma.StringNullableFilter<"Order"> | string | null
   fbp?: Prisma.StringNullableFilter<"Order"> | string | null
   fbc?: Prisma.StringNullableFilter<"Order"> | string | null
   clarityId?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -580,6 +636,7 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   customer?: Prisma.XOR<Prisma.CustomerNullableScalarRelationFilter, Prisma.CustomerWhereInput> | null
+  privateNotes?: Prisma.OrderNoteListRelationFilter
   items?: Prisma.OrderItemListRelationFilter
   statusHistory?: Prisma.OrderStatusHistoryListRelationFilter
   events?: Prisma.EventLogListRelationFilter
@@ -603,11 +660,16 @@ export type OrderOrderByWithAggregationInput = {
   subtotal?: Prisma.SortOrder
   bundleSaving?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  couponCode?: Prisma.SortOrderInput | Prisma.SortOrder
+  couponDiscount?: Prisma.SortOrder
   codFee?: Prisma.SortOrder
   total?: Prisma.SortOrder
   source?: Prisma.SortOrderInput | Prisma.SortOrder
   firstTouch?: Prisma.SortOrderInput | Prisma.SortOrder
   lastTouch?: Prisma.SortOrderInput | Prisma.SortOrder
+  ttp?: Prisma.SortOrderInput | Prisma.SortOrder
+  ttclid?: Prisma.SortOrderInput | Prisma.SortOrder
+  visitorId?: Prisma.SortOrderInput | Prisma.SortOrder
   fbp?: Prisma.SortOrderInput | Prisma.SortOrder
   fbc?: Prisma.SortOrderInput | Prisma.SortOrder
   clarityId?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -652,11 +714,16 @@ export type OrderScalarWhereWithAggregatesInput = {
   subtotal?: Prisma.DecimalWithAggregatesFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalWithAggregatesFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalWithAggregatesFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  couponDiscount?: Prisma.DecimalWithAggregatesFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalWithAggregatesFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalWithAggregatesFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   firstTouch?: Prisma.JsonNullableWithAggregatesFilter<"Order">
   lastTouch?: Prisma.JsonNullableWithAggregatesFilter<"Order">
+  ttp?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  ttclid?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  visitorId?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   fbp?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   fbc?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   clarityId?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
@@ -692,11 +759,16 @@ export type OrderCreateInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -715,6 +787,7 @@ export type OrderCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer?: Prisma.CustomerCreateNestedOneWithoutOrdersInput
+  privateNotes?: Prisma.OrderNoteCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogCreateNestedManyWithoutOrderInput
@@ -738,11 +811,16 @@ export type OrderUncheckedCreateInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -760,6 +838,7 @@ export type OrderUncheckedCreateInput = {
   settledAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogUncheckedCreateNestedManyWithoutOrderInput
@@ -782,11 +861,16 @@ export type OrderUpdateInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -805,6 +889,7 @@ export type OrderUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneWithoutOrdersNestedInput
+  privateNotes?: Prisma.OrderNoteUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUpdateManyWithoutOrderNestedInput
@@ -828,11 +913,16 @@ export type OrderUncheckedUpdateInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -850,6 +940,7 @@ export type OrderUncheckedUpdateInput = {
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUncheckedUpdateManyWithoutOrderNestedInput
@@ -873,11 +964,16 @@ export type OrderCreateManyInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -913,11 +1009,16 @@ export type OrderUpdateManyMutationInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -954,11 +1055,16 @@ export type OrderUncheckedUpdateManyInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1005,11 +1111,16 @@ export type OrderCountOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   bundleSaving?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  couponCode?: Prisma.SortOrder
+  couponDiscount?: Prisma.SortOrder
   codFee?: Prisma.SortOrder
   total?: Prisma.SortOrder
   source?: Prisma.SortOrder
   firstTouch?: Prisma.SortOrder
   lastTouch?: Prisma.SortOrder
+  ttp?: Prisma.SortOrder
+  ttclid?: Prisma.SortOrder
+  visitorId?: Prisma.SortOrder
   fbp?: Prisma.SortOrder
   fbc?: Prisma.SortOrder
   clarityId?: Prisma.SortOrder
@@ -1033,6 +1144,7 @@ export type OrderAvgOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   bundleSaving?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  couponDiscount?: Prisma.SortOrder
   codFee?: Prisma.SortOrder
   total?: Prisma.SortOrder
 }
@@ -1054,9 +1166,14 @@ export type OrderMaxOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   bundleSaving?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  couponCode?: Prisma.SortOrder
+  couponDiscount?: Prisma.SortOrder
   codFee?: Prisma.SortOrder
   total?: Prisma.SortOrder
   source?: Prisma.SortOrder
+  ttp?: Prisma.SortOrder
+  ttclid?: Prisma.SortOrder
+  visitorId?: Prisma.SortOrder
   fbp?: Prisma.SortOrder
   fbc?: Prisma.SortOrder
   clarityId?: Prisma.SortOrder
@@ -1092,9 +1209,14 @@ export type OrderMinOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   bundleSaving?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  couponCode?: Prisma.SortOrder
+  couponDiscount?: Prisma.SortOrder
   codFee?: Prisma.SortOrder
   total?: Prisma.SortOrder
   source?: Prisma.SortOrder
+  ttp?: Prisma.SortOrder
+  ttclid?: Prisma.SortOrder
+  visitorId?: Prisma.SortOrder
   fbp?: Prisma.SortOrder
   fbc?: Prisma.SortOrder
   clarityId?: Prisma.SortOrder
@@ -1117,6 +1239,7 @@ export type OrderSumOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   bundleSaving?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  couponDiscount?: Prisma.SortOrder
   codFee?: Prisma.SortOrder
   total?: Prisma.SortOrder
 }
@@ -1245,6 +1368,20 @@ export type OrderUpdateOneWithoutReviewsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.OrderUpdateToOneWithWhereWithoutReviewsInput, Prisma.OrderUpdateWithoutReviewsInput>, Prisma.OrderUncheckedUpdateWithoutReviewsInput>
 }
 
+export type OrderCreateNestedOneWithoutPrivateNotesInput = {
+  create?: Prisma.XOR<Prisma.OrderCreateWithoutPrivateNotesInput, Prisma.OrderUncheckedCreateWithoutPrivateNotesInput>
+  connectOrCreate?: Prisma.OrderCreateOrConnectWithoutPrivateNotesInput
+  connect?: Prisma.OrderWhereUniqueInput
+}
+
+export type OrderUpdateOneRequiredWithoutPrivateNotesNestedInput = {
+  create?: Prisma.XOR<Prisma.OrderCreateWithoutPrivateNotesInput, Prisma.OrderUncheckedCreateWithoutPrivateNotesInput>
+  connectOrCreate?: Prisma.OrderCreateOrConnectWithoutPrivateNotesInput
+  upsert?: Prisma.OrderUpsertWithoutPrivateNotesInput
+  connect?: Prisma.OrderWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.OrderUpdateToOneWithWhereWithoutPrivateNotesInput, Prisma.OrderUpdateWithoutPrivateNotesInput>, Prisma.OrderUncheckedUpdateWithoutPrivateNotesInput>
+}
+
 export type OrderCreateWithoutCustomerInput = {
   id?: string
   orderNumber: string
@@ -1261,11 +1398,16 @@ export type OrderCreateWithoutCustomerInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -1283,6 +1425,7 @@ export type OrderCreateWithoutCustomerInput = {
   settledAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  privateNotes?: Prisma.OrderNoteCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogCreateNestedManyWithoutOrderInput
@@ -1305,11 +1448,16 @@ export type OrderUncheckedCreateWithoutCustomerInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -1327,6 +1475,7 @@ export type OrderUncheckedCreateWithoutCustomerInput = {
   settledAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogUncheckedCreateNestedManyWithoutOrderInput
@@ -1379,11 +1528,16 @@ export type OrderScalarWhereInput = {
   subtotal?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.StringNullableFilter<"Order"> | string | null
+  couponDiscount?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.StringNullableFilter<"Order"> | string | null
   firstTouch?: Prisma.JsonNullableFilter<"Order">
   lastTouch?: Prisma.JsonNullableFilter<"Order">
+  ttp?: Prisma.StringNullableFilter<"Order"> | string | null
+  ttclid?: Prisma.StringNullableFilter<"Order"> | string | null
+  visitorId?: Prisma.StringNullableFilter<"Order"> | string | null
   fbp?: Prisma.StringNullableFilter<"Order"> | string | null
   fbc?: Prisma.StringNullableFilter<"Order"> | string | null
   clarityId?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -1419,11 +1573,16 @@ export type OrderCreateWithoutItemsInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -1442,6 +1601,7 @@ export type OrderCreateWithoutItemsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer?: Prisma.CustomerCreateNestedOneWithoutOrdersInput
+  privateNotes?: Prisma.OrderNoteCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogCreateNestedManyWithoutOrderInput
   reviews?: Prisma.ReviewCreateNestedManyWithoutOrderInput
@@ -1464,11 +1624,16 @@ export type OrderUncheckedCreateWithoutItemsInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -1486,6 +1651,7 @@ export type OrderUncheckedCreateWithoutItemsInput = {
   settledAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogUncheckedCreateNestedManyWithoutOrderInput
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutOrderInput
@@ -1523,11 +1689,16 @@ export type OrderUpdateWithoutItemsInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1546,6 +1717,7 @@ export type OrderUpdateWithoutItemsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneWithoutOrdersNestedInput
+  privateNotes?: Prisma.OrderNoteUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUpdateManyWithoutOrderNestedInput
   reviews?: Prisma.ReviewUpdateManyWithoutOrderNestedInput
@@ -1568,11 +1740,16 @@ export type OrderUncheckedUpdateWithoutItemsInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1590,6 +1767,7 @@ export type OrderUncheckedUpdateWithoutItemsInput = {
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUncheckedUpdateManyWithoutOrderNestedInput
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutOrderNestedInput
@@ -1611,11 +1789,16 @@ export type OrderCreateWithoutStatusHistoryInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -1634,6 +1817,7 @@ export type OrderCreateWithoutStatusHistoryInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer?: Prisma.CustomerCreateNestedOneWithoutOrdersInput
+  privateNotes?: Prisma.OrderNoteCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogCreateNestedManyWithoutOrderInput
   reviews?: Prisma.ReviewCreateNestedManyWithoutOrderInput
@@ -1656,11 +1840,16 @@ export type OrderUncheckedCreateWithoutStatusHistoryInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -1678,6 +1867,7 @@ export type OrderUncheckedCreateWithoutStatusHistoryInput = {
   settledAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogUncheckedCreateNestedManyWithoutOrderInput
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutOrderInput
@@ -1715,11 +1905,16 @@ export type OrderUpdateWithoutStatusHistoryInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1738,6 +1933,7 @@ export type OrderUpdateWithoutStatusHistoryInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneWithoutOrdersNestedInput
+  privateNotes?: Prisma.OrderNoteUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUpdateManyWithoutOrderNestedInput
   reviews?: Prisma.ReviewUpdateManyWithoutOrderNestedInput
@@ -1760,11 +1956,16 @@ export type OrderUncheckedUpdateWithoutStatusHistoryInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1782,6 +1983,7 @@ export type OrderUncheckedUpdateWithoutStatusHistoryInput = {
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUncheckedUpdateManyWithoutOrderNestedInput
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutOrderNestedInput
@@ -1803,11 +2005,16 @@ export type OrderCreateWithoutEventsInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -1826,6 +2033,7 @@ export type OrderCreateWithoutEventsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer?: Prisma.CustomerCreateNestedOneWithoutOrdersInput
+  privateNotes?: Prisma.OrderNoteCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
   reviews?: Prisma.ReviewCreateNestedManyWithoutOrderInput
@@ -1848,11 +2056,16 @@ export type OrderUncheckedCreateWithoutEventsInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -1870,6 +2083,7 @@ export type OrderUncheckedCreateWithoutEventsInput = {
   settledAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
   reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutOrderInput
@@ -1907,11 +2121,16 @@ export type OrderUpdateWithoutEventsInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1930,6 +2149,7 @@ export type OrderUpdateWithoutEventsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneWithoutOrdersNestedInput
+  privateNotes?: Prisma.OrderNoteUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
   reviews?: Prisma.ReviewUpdateManyWithoutOrderNestedInput
@@ -1952,11 +2172,16 @@ export type OrderUncheckedUpdateWithoutEventsInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1974,6 +2199,7 @@ export type OrderUncheckedUpdateWithoutEventsInput = {
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
   reviews?: Prisma.ReviewUncheckedUpdateManyWithoutOrderNestedInput
@@ -1995,11 +2221,16 @@ export type OrderCreateWithoutReviewsInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -2018,6 +2249,7 @@ export type OrderCreateWithoutReviewsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   customer?: Prisma.CustomerCreateNestedOneWithoutOrdersInput
+  privateNotes?: Prisma.OrderNoteCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogCreateNestedManyWithoutOrderInput
@@ -2040,11 +2272,16 @@ export type OrderUncheckedCreateWithoutReviewsInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -2062,6 +2299,7 @@ export type OrderUncheckedCreateWithoutReviewsInput = {
   settledAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedCreateNestedManyWithoutOrderInput
   items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
   events?: Prisma.EventLogUncheckedCreateNestedManyWithoutOrderInput
@@ -2099,11 +2337,16 @@ export type OrderUpdateWithoutReviewsInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2122,6 +2365,7 @@ export type OrderUpdateWithoutReviewsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   customer?: Prisma.CustomerUpdateOneWithoutOrdersNestedInput
+  privateNotes?: Prisma.OrderNoteUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUpdateManyWithoutOrderNestedInput
@@ -2144,11 +2388,232 @@ export type OrderUncheckedUpdateWithoutReviewsInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  replaySessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  experiments?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  possibleDuplicate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blocklistedAtOrder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  test?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  staffCreated?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  postexTracking?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postexStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  settlementRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutOrderNestedInput
+  items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
+  statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
+  events?: Prisma.EventLogUncheckedUpdateManyWithoutOrderNestedInput
+}
+
+export type OrderCreateWithoutPrivateNotesInput = {
+  id?: string
+  orderNumber: string
+  idempotencyKey: string
+  fullName: string
+  phone: string
+  email?: string | null
+  city: string
+  address: string
+  postcode?: string | null
+  notes?: string | null
+  status?: $Enums.OrderStatus
+  paymentMethod?: $Enums.PaymentMethod
+  subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
+  bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  source?: string | null
+  firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
+  fbp?: string | null
+  fbc?: string | null
+  clarityId?: string | null
+  replaySessionId?: string | null
+  clientIp?: string | null
+  clientUserAgent?: string | null
+  experiments?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  possibleDuplicate?: boolean
+  blocklistedAtOrder?: boolean
+  test?: boolean
+  staffCreated?: boolean
+  postexTracking?: string | null
+  postexStatus?: string | null
+  settlementRef?: string | null
+  settledAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  customer?: Prisma.CustomerCreateNestedOneWithoutOrdersInput
+  items?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
+  statusHistory?: Prisma.OrderStatusHistoryCreateNestedManyWithoutOrderInput
+  events?: Prisma.EventLogCreateNestedManyWithoutOrderInput
+  reviews?: Prisma.ReviewCreateNestedManyWithoutOrderInput
+}
+
+export type OrderUncheckedCreateWithoutPrivateNotesInput = {
+  id?: string
+  orderNumber: string
+  idempotencyKey: string
+  customerId?: string | null
+  fullName: string
+  phone: string
+  email?: string | null
+  city: string
+  address: string
+  postcode?: string | null
+  notes?: string | null
+  status?: $Enums.OrderStatus
+  paymentMethod?: $Enums.PaymentMethod
+  subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
+  bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  total: runtime.Decimal | runtime.DecimalJsLike | number | string
+  source?: string | null
+  firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
+  fbp?: string | null
+  fbc?: string | null
+  clarityId?: string | null
+  replaySessionId?: string | null
+  clientIp?: string | null
+  clientUserAgent?: string | null
+  experiments?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  possibleDuplicate?: boolean
+  blocklistedAtOrder?: boolean
+  test?: boolean
+  staffCreated?: boolean
+  postexTracking?: string | null
+  postexStatus?: string | null
+  settlementRef?: string | null
+  settledAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  items?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
+  statusHistory?: Prisma.OrderStatusHistoryUncheckedCreateNestedManyWithoutOrderInput
+  events?: Prisma.EventLogUncheckedCreateNestedManyWithoutOrderInput
+  reviews?: Prisma.ReviewUncheckedCreateNestedManyWithoutOrderInput
+}
+
+export type OrderCreateOrConnectWithoutPrivateNotesInput = {
+  where: Prisma.OrderWhereUniqueInput
+  create: Prisma.XOR<Prisma.OrderCreateWithoutPrivateNotesInput, Prisma.OrderUncheckedCreateWithoutPrivateNotesInput>
+}
+
+export type OrderUpsertWithoutPrivateNotesInput = {
+  update: Prisma.XOR<Prisma.OrderUpdateWithoutPrivateNotesInput, Prisma.OrderUncheckedUpdateWithoutPrivateNotesInput>
+  create: Prisma.XOR<Prisma.OrderCreateWithoutPrivateNotesInput, Prisma.OrderUncheckedCreateWithoutPrivateNotesInput>
+  where?: Prisma.OrderWhereInput
+}
+
+export type OrderUpdateToOneWithWhereWithoutPrivateNotesInput = {
+  where?: Prisma.OrderWhereInput
+  data: Prisma.XOR<Prisma.OrderUpdateWithoutPrivateNotesInput, Prisma.OrderUncheckedUpdateWithoutPrivateNotesInput>
+}
+
+export type OrderUpdateWithoutPrivateNotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  idempotencyKey?: Prisma.StringFieldUpdateOperationsInput | string
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  city?: Prisma.StringFieldUpdateOperationsInput | string
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  postcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
+  paymentMethod?: Prisma.EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+  subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  replaySessionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  clientUserAgent?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  experiments?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  possibleDuplicate?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blocklistedAtOrder?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  test?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  staffCreated?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  postexTracking?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  postexStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  settlementRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  customer?: Prisma.CustomerUpdateOneWithoutOrdersNestedInput
+  items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
+  statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
+  events?: Prisma.EventLogUpdateManyWithoutOrderNestedInput
+  reviews?: Prisma.ReviewUpdateManyWithoutOrderNestedInput
+}
+
+export type OrderUncheckedUpdateWithoutPrivateNotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  idempotencyKey?: Prisma.StringFieldUpdateOperationsInput | string
+  customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fullName?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  city?: Prisma.StringFieldUpdateOperationsInput | string
+  address?: Prisma.StringFieldUpdateOperationsInput | string
+  postcode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  status?: Prisma.EnumOrderStatusFieldUpdateOperationsInput | $Enums.OrderStatus
+  paymentMethod?: Prisma.EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+  subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2169,6 +2634,7 @@ export type OrderUncheckedUpdateWithoutReviewsInput = {
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUncheckedUpdateManyWithoutOrderNestedInput
+  reviews?: Prisma.ReviewUncheckedUpdateManyWithoutOrderNestedInput
 }
 
 export type OrderCreateManyCustomerInput = {
@@ -2187,11 +2653,16 @@ export type OrderCreateManyCustomerInput = {
   subtotal: runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: string | null
+  couponDiscount?: runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: runtime.Decimal | runtime.DecimalJsLike | number | string
   total: runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: string | null
+  ttclid?: string | null
+  visitorId?: string | null
   fbp?: string | null
   fbc?: string | null
   clarityId?: string | null
@@ -2227,11 +2698,16 @@ export type OrderUpdateWithoutCustomerInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2249,6 +2725,7 @@ export type OrderUpdateWithoutCustomerInput = {
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  privateNotes?: Prisma.OrderNoteUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUpdateManyWithoutOrderNestedInput
@@ -2271,11 +2748,16 @@ export type OrderUncheckedUpdateWithoutCustomerInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2293,6 +2775,7 @@ export type OrderUncheckedUpdateWithoutCustomerInput = {
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  privateNotes?: Prisma.OrderNoteUncheckedUpdateManyWithoutOrderNestedInput
   items?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
   statusHistory?: Prisma.OrderStatusHistoryUncheckedUpdateManyWithoutOrderNestedInput
   events?: Prisma.EventLogUncheckedUpdateManyWithoutOrderNestedInput
@@ -2315,11 +2798,16 @@ export type OrderUncheckedUpdateManyWithoutCustomerInput = {
   subtotal?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   bundleSaving?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   deliveryFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  couponCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  couponDiscount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   codFee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   total?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   source?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   firstTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   lastTouch?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  ttp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ttclid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visitorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fbc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   clarityId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2345,6 +2833,7 @@ export type OrderUncheckedUpdateManyWithoutCustomerInput = {
  */
 
 export type OrderCountOutputType = {
+  privateNotes: number
   items: number
   statusHistory: number
   events: number
@@ -2352,6 +2841,7 @@ export type OrderCountOutputType = {
 }
 
 export type OrderCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  privateNotes?: boolean | OrderCountOutputTypeCountPrivateNotesArgs
   items?: boolean | OrderCountOutputTypeCountItemsArgs
   statusHistory?: boolean | OrderCountOutputTypeCountStatusHistoryArgs
   events?: boolean | OrderCountOutputTypeCountEventsArgs
@@ -2366,6 +2856,13 @@ export type OrderCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extens
    * Select specific fields to fetch from the OrderCountOutputType
    */
   select?: Prisma.OrderCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * OrderCountOutputType without action
+ */
+export type OrderCountOutputTypeCountPrivateNotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OrderNoteWhereInput
 }
 
 /**
@@ -2414,11 +2911,16 @@ export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   subtotal?: boolean
   bundleSaving?: boolean
   deliveryFee?: boolean
+  couponCode?: boolean
+  couponDiscount?: boolean
   codFee?: boolean
   total?: boolean
   source?: boolean
   firstTouch?: boolean
   lastTouch?: boolean
+  ttp?: boolean
+  ttclid?: boolean
+  visitorId?: boolean
   fbp?: boolean
   fbc?: boolean
   clarityId?: boolean
@@ -2437,6 +2939,7 @@ export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   createdAt?: boolean
   updatedAt?: boolean
   customer?: boolean | Prisma.Order$customerArgs<ExtArgs>
+  privateNotes?: boolean | Prisma.Order$privateNotesArgs<ExtArgs>
   items?: boolean | Prisma.Order$itemsArgs<ExtArgs>
   statusHistory?: boolean | Prisma.Order$statusHistoryArgs<ExtArgs>
   events?: boolean | Prisma.Order$eventsArgs<ExtArgs>
@@ -2461,11 +2964,16 @@ export type OrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   subtotal?: boolean
   bundleSaving?: boolean
   deliveryFee?: boolean
+  couponCode?: boolean
+  couponDiscount?: boolean
   codFee?: boolean
   total?: boolean
   source?: boolean
   firstTouch?: boolean
   lastTouch?: boolean
+  ttp?: boolean
+  ttclid?: boolean
+  visitorId?: boolean
   fbp?: boolean
   fbc?: boolean
   clarityId?: boolean
@@ -2503,11 +3011,16 @@ export type OrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   subtotal?: boolean
   bundleSaving?: boolean
   deliveryFee?: boolean
+  couponCode?: boolean
+  couponDiscount?: boolean
   codFee?: boolean
   total?: boolean
   source?: boolean
   firstTouch?: boolean
   lastTouch?: boolean
+  ttp?: boolean
+  ttclid?: boolean
+  visitorId?: boolean
   fbp?: boolean
   fbc?: boolean
   clarityId?: boolean
@@ -2545,11 +3058,16 @@ export type OrderSelectScalar = {
   subtotal?: boolean
   bundleSaving?: boolean
   deliveryFee?: boolean
+  couponCode?: boolean
+  couponDiscount?: boolean
   codFee?: boolean
   total?: boolean
   source?: boolean
   firstTouch?: boolean
   lastTouch?: boolean
+  ttp?: boolean
+  ttclid?: boolean
+  visitorId?: boolean
   fbp?: boolean
   fbc?: boolean
   clarityId?: boolean
@@ -2569,9 +3087,10 @@ export type OrderSelectScalar = {
   updatedAt?: boolean
 }
 
-export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderNumber" | "idempotencyKey" | "customerId" | "fullName" | "phone" | "email" | "city" | "address" | "postcode" | "notes" | "status" | "paymentMethod" | "subtotal" | "bundleSaving" | "deliveryFee" | "codFee" | "total" | "source" | "firstTouch" | "lastTouch" | "fbp" | "fbc" | "clarityId" | "replaySessionId" | "clientIp" | "clientUserAgent" | "experiments" | "possibleDuplicate" | "blocklistedAtOrder" | "test" | "staffCreated" | "postexTracking" | "postexStatus" | "settlementRef" | "settledAt" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
+export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderNumber" | "idempotencyKey" | "customerId" | "fullName" | "phone" | "email" | "city" | "address" | "postcode" | "notes" | "status" | "paymentMethod" | "subtotal" | "bundleSaving" | "deliveryFee" | "couponCode" | "couponDiscount" | "codFee" | "total" | "source" | "firstTouch" | "lastTouch" | "ttp" | "ttclid" | "visitorId" | "fbp" | "fbc" | "clarityId" | "replaySessionId" | "clientIp" | "clientUserAgent" | "experiments" | "possibleDuplicate" | "blocklistedAtOrder" | "test" | "staffCreated" | "postexTracking" | "postexStatus" | "settlementRef" | "settledAt" | "createdAt" | "updatedAt", ExtArgs["result"]["order"]>
 export type OrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   customer?: boolean | Prisma.Order$customerArgs<ExtArgs>
+  privateNotes?: boolean | Prisma.Order$privateNotesArgs<ExtArgs>
   items?: boolean | Prisma.Order$itemsArgs<ExtArgs>
   statusHistory?: boolean | Prisma.Order$statusHistoryArgs<ExtArgs>
   events?: boolean | Prisma.Order$eventsArgs<ExtArgs>
@@ -2589,6 +3108,7 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   name: "Order"
   objects: {
     customer: Prisma.$CustomerPayload<ExtArgs> | null
+    privateNotes: Prisma.$OrderNotePayload<ExtArgs>[]
     items: Prisma.$OrderItemPayload<ExtArgs>[]
     statusHistory: Prisma.$OrderStatusHistoryPayload<ExtArgs>[]
     events: Prisma.$EventLogPayload<ExtArgs>[]
@@ -2611,11 +3131,16 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     subtotal: runtime.Decimal
     bundleSaving: runtime.Decimal
     deliveryFee: runtime.Decimal
+    couponCode: string | null
+    couponDiscount: runtime.Decimal
     codFee: runtime.Decimal
     total: runtime.Decimal
     source: string | null
     firstTouch: runtime.JsonValue | null
     lastTouch: runtime.JsonValue | null
+    ttp: string | null
+    ttclid: string | null
+    visitorId: string | null
     fbp: string | null
     fbc: string | null
     clarityId: string | null
@@ -3028,6 +3553,7 @@ readonly fields: OrderFieldRefs;
 export interface Prisma__OrderClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   customer<T extends Prisma.Order$customerArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Order$customerArgs<ExtArgs>>): Prisma.Prisma__CustomerClient<runtime.Types.Result.GetResult<Prisma.$CustomerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  privateNotes<T extends Prisma.Order$privateNotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Order$privateNotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderNotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   items<T extends Prisma.Order$itemsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Order$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   statusHistory<T extends Prisma.Order$statusHistoryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Order$statusHistoryArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderStatusHistoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   events<T extends Prisma.Order$eventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Order$eventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EventLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -3077,11 +3603,16 @@ export interface OrderFieldRefs {
   readonly subtotal: Prisma.FieldRef<"Order", 'Decimal'>
   readonly bundleSaving: Prisma.FieldRef<"Order", 'Decimal'>
   readonly deliveryFee: Prisma.FieldRef<"Order", 'Decimal'>
+  readonly couponCode: Prisma.FieldRef<"Order", 'String'>
+  readonly couponDiscount: Prisma.FieldRef<"Order", 'Decimal'>
   readonly codFee: Prisma.FieldRef<"Order", 'Decimal'>
   readonly total: Prisma.FieldRef<"Order", 'Decimal'>
   readonly source: Prisma.FieldRef<"Order", 'String'>
   readonly firstTouch: Prisma.FieldRef<"Order", 'Json'>
   readonly lastTouch: Prisma.FieldRef<"Order", 'Json'>
+  readonly ttp: Prisma.FieldRef<"Order", 'String'>
+  readonly ttclid: Prisma.FieldRef<"Order", 'String'>
+  readonly visitorId: Prisma.FieldRef<"Order", 'String'>
   readonly fbp: Prisma.FieldRef<"Order", 'String'>
   readonly fbc: Prisma.FieldRef<"Order", 'String'>
   readonly clarityId: Prisma.FieldRef<"Order", 'String'>
@@ -3511,6 +4042,30 @@ export type Order$customerArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   include?: Prisma.CustomerInclude<ExtArgs> | null
   where?: Prisma.CustomerWhereInput
+}
+
+/**
+ * Order.privateNotes
+ */
+export type Order$privateNotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the OrderNote
+   */
+  select?: Prisma.OrderNoteSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the OrderNote
+   */
+  omit?: Prisma.OrderNoteOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderNoteInclude<ExtArgs> | null
+  where?: Prisma.OrderNoteWhereInput
+  orderBy?: Prisma.OrderNoteOrderByWithRelationInput | Prisma.OrderNoteOrderByWithRelationInput[]
+  cursor?: Prisma.OrderNoteWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OrderNoteScalarFieldEnum | Prisma.OrderNoteScalarFieldEnum[]
 }
 
 /**

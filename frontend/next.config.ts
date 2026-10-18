@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     const api = (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(/\/$/, "");
     return [
-      { source: "/feeds/meta.xml", destination: `${api}/api/feed/meta.xml` },
+      { source: "/feeds/:platform(meta|tiktok|google).xml", destination: `${api}/api/feed/:platform.xml` },
       { source: "/uploads/:path*", destination: `${api}/uploads/:path*` },
     ];
   },
