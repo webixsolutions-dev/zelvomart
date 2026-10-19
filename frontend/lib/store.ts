@@ -2,17 +2,12 @@ import type { Category, Product, ProductListResponse } from '@/types/product';
 import { apiFetch } from './api';
 import { DEFAULT_CATEGORIES, getDisplayCategories } from './dummy-content';
 import { withProductMedia } from './product-media';
-import { findSiteProduct, siteCatalogResponse } from './site-catalog';
 
 export type MenuProduct = {
   name: string;
   slug: string;
   categorySlugs: string[];
 };
-
-function isOfflineError(error: unknown) {
-  return !(error instanceof Error) || !error.message.startsWith('API_');
-}
 
 export type StoreBootstrap = {
   categories: Category[];
@@ -22,7 +17,7 @@ export type StoreBootstrap = {
 export async function getStoreBootstrap(): Promise<StoreBootstrap> {
   try {
     const result = await apiFetch<StoreBootstrap>('/api/store/bootstrap', {
-      next: { revalidate: 300, tags: ['store', 'categories', 'settings'] },
+      next: { revalidate: 30, tags: ['store', 'categories', 'settings'] },
     });
     return {
       categories: getDisplayCategories(result.categories || []),
@@ -50,10 +45,8 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       next: { revalidate: 120, tags: ['products', `product:${slug}`] },
     });
     return withProductMedia(product);
-  } catch (error) {
-    if (!isOfflineError(error)) return null;
-    const fallback = findSiteProduct(slug);
-    return fallback ? withProductMedia(fallback) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -87,21 +80,7 @@ export async function getProducts(options: { category?: string; search?: string;
       totalPages: Math.max(1, result?.totalPages || 1),
     };
   } catch (error) {
-    if (!isOfflineError(error)) {
-    return {
-      items: [],
-      page: options.page || 1,
-      limit: options.limit || 12,
-      total: 0,
-      totalPages: 1,
-    };
-  }
-
-    const fallback = siteCatalogResponse(options);
-    return {
-      ...fallback,
-      items: fallback.items.map(withProductMedia),
-    };
+    return {items:[],page:options.page||1,limit:options.limit||12,total:0,totalPages:1};
   }
 }
 

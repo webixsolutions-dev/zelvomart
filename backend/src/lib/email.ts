@@ -1,13 +1,7 @@
-import { Resend } from "resend";
+import { deliverEmail, emailIdentity, emailLayout } from "./email-delivery";
 import { prisma } from "./db";
 import { money } from "./format";
 import { getSetting } from "./settings";
-
-function client() {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return null;
-  return new Resend(key);
-}
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -25,7 +19,7 @@ function renderTemplate(template: string, values: Record<string, string>) {
 async function recipients() {
   return getSetting<string[]>(
     "notifications.orderRecipients",
-    (process.env.ORDER_ALERT_RECIPIENTS || "zelvomart@gmail.com")
+    (process.env.ORDER_ALERT_RECIPIENTS || "support@zelvomart.com")
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean),
@@ -39,8 +33,6 @@ export async function sendOrderTeamEmail(orderId: string) {
   });
   if (!order) throw new Error("Order not found");
 
-  const resend = client();
-  if (!resend) throw new Error("RESEND_API_KEY is not configured");
 
   const items = order.items
     .map((item) => `${escapeHtml(item.quantity)} × ${escapeHtml(item.title)} (${escapeHtml(item.sku)}) — ${escapeHtml(money(item.lineTotal))}`)
@@ -72,12 +64,12 @@ export async function sendOrderTeamEmail(orderId: string) {
     adminUrl: escapeHtml(adminUrl),
   });
 
-  await resend.emails.send({
-    from: process.env.EMAIL_FROM || "Zelvomart Orders <orders@zelvomart.com>",
+  return deliverEmail({
+    ...emailIdentity("orders"),
     to: await recipients(),
     subject: `${order.orderNumber} • New COD order • ${money(order.total)}`,
-    html,
-  });
+    html: emailLayout(html),
+  }, `order-team-${order.id}`);
 }
 
 export async function sendCustomerOrderEmail(orderId: string) {
@@ -85,10 +77,9 @@ export async function sendCustomerOrderEmail(orderId: string) {
     where: { id: orderId },
     include: { items: true },
   });
-  if (!order?.email) return;
+  if (!order) throw new Error("Order not found");
+  if (!order.email) return { skipped: "Customer did not provide an email address" };
 
-  const resend = client();
-  if (!resend) throw new Error("RESEND_API_KEY is not configured");
 
   const items = order.items
     .map((item) => `<li>${escapeHtml(item.quantity)} × ${escapeHtml(item.title)} — ${escapeHtml(money(item.lineTotal))}</li>`)
@@ -112,19 +103,18 @@ export async function sendCustomerOrderEmail(orderId: string) {
     address: escapeHtml(order.address),
   });
 
-  await resend.emails.send({
-    from: process.env.EMAIL_FROM || "Zelvomart Orders <orders@zelvomart.com>",
+  return deliverEmail({
+    ...emailIdentity("orders"),
     to: order.email,
     subject: `Order received • ${order.orderNumber}`,
-    html,
-  });
+    html: emailLayout(html),
+  }, `order-received-${order.id}`);
 }
 
 export async function sendFailureAlert(subject: string, details: string) {
-  const resend = client();
-  if (!resend) return;
-  await resend.emails.send({
-    from: process.env.EMAIL_FROM || "Zelvomart Alerts <orders@zelvomart.com>",
+  if (!process.env.RESEND_API_KEY) return { skipped: "Email provider is not configured" };
+  return deliverEmail({
+    ...emailIdentity("orders"),
     to: await recipients(),
     subject,
     html: `<pre style="white-space:pre-wrap">${escapeHtml(details)}</pre>`,
@@ -138,8 +128,6 @@ export async function sendContactTeamEmail(input: {
   problem: string;
   sourceUrl?: string;
 }) {
-  const resend = client();
-  if (!resend) throw new Error("RESEND_API_KEY is not configured");
 
   const html = `
     <h2>New Zelvomart contact request</h2>
@@ -151,25 +139,24 @@ export async function sendContactTeamEmail(input: {
     ${input.sourceUrl ? `<p><strong>Source:</strong> ${escapeHtml(input.sourceUrl)}</p>` : ""}
   `;
 
-  await resend.emails.send({
-    from: process.env.EMAIL_FROM || "Zelvomart Support <orders@zelvomart.com>",
-    to: await recipients(),
+  return deliverEmail({
+    ...emailIdentity("support"),
+    to: process.env.SUPPORT_EMAIL_TO || "support@zelvomart.com",
     replyTo: input.email,
     subject: `Contact request • ${input.name}`,
-    html,
+    html: emailLayout(html),
   });
 }
 
 export async function sendCustomerStatusEmail(orderId: string, status: "CONFIRMED" | "BOOKED" | "DELIVERED") {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: { include: { product: { select: { slug: true } } } } } });
-  if (!order?.email) return;
-  const resend = client();
-  if (!resend) throw new Error("RESEND_API_KEY is not configured");
+  if (!order) throw new Error("Order not found");
+  if (!order.email) return { skipped: "Customer did not provide an email address" };
 
   const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app").replace(/\/$/, "");
   const trackingUrl = order.postexTracking
     ? `${process.env.POSTEX_TRACKING_BASE_URL || "https://postex.pk/tracking"}/${encodeURIComponent(order.postexTracking)}`
-    : `${base}/track-order`;
+    : `${base}/track-your-order`;
   const reviewSlug = order.items[0]?.product?.slug;
   const reviewUrl = reviewSlug ? `${base}/product/${encodeURIComponent(reviewSlug)}/` : base;
 
@@ -179,10 +166,10 @@ export async function sendCustomerStatusEmail(orderId: string, status: "CONFIRME
       ? { subject: `Your order has shipped • ${order.orderNumber}`, html: `<h2>Your order is on the way.</h2><p>Order <strong>${escapeHtml(order.orderNumber)}</strong> has been booked with the courier.</p><p><a href="${escapeHtml(trackingUrl)}">Track your parcel</a></p>` }
       : { subject: `Delivered • ${order.orderNumber}`, html: `<h2>We hope you enjoy your order.</h2><p>Order <strong>${escapeHtml(order.orderNumber)}</strong> is marked delivered.</p><p>If you have a moment, you can leave a review on the product page: <a href="${escapeHtml(reviewUrl)}">Review your purchase</a>.</p>` };
 
-  await resend.emails.send({
-    from: process.env.EMAIL_FROM || "Zelvomart Orders <orders@zelvomart.com>",
+  return deliverEmail({
+    ...emailIdentity("orders"),
     to: order.email,
     subject: content.subject,
-    html: content.html,
-  });
+    html: emailLayout(content.html),
+  }, `order-status-${order.id}-${status}`);
 }

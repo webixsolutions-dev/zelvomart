@@ -3,6 +3,8 @@ import {registerRecovery} from './recovery';
 import {overviewRouter} from './admin-overview';
 import {couponRouter} from './admin-coupons';
 import {validateCoupon} from './lib/coupons';
+import {catalogQuery} from './lib/catalog-query';
+import {publicSettingKeys} from './lib/public-settings';
 import {SITE_ORIGIN,isStorefrontUrl} from './lib/site-url';
 import {privateSafeUrl} from "./lib/url-privacy";
 import {storeReplayChunk,replayChunkUrl,replayStorageConfigured,deleteReplayChunks,readReplayChunk} from "./lib/replay-storage";
@@ -231,7 +233,7 @@ function jsonProduct(row: any) {
   const reviews = (row.reviews || []).map((review: any) => ({ id: review.id, name: review.name, rating: review.rating, body: review.body, verified: review.verified, createdAt: review.createdAt?.toISOString?.() || review.createdAt }));
   const averageRating = reviews.length ? reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviews.length : undefined;
   return {
-    id: row.id, slug: row.slug, name: row.title, title: row.title, sku: row.sku,
+    id: row.id, slug: row.slug, name: row.title, title: row.title, sku: row.sku, orderCount:row._count?.orderItems||0,
     categories: row.category ? [{ id: row.category.id, name: row.category.name, slug: row.category.slug, description: row.category.description, image: row.category.imageUrl }] : [],
     categorySlugs: row.category ? [row.category.slug] : [],
     category: row.category || null,
@@ -280,7 +282,7 @@ const productInclude = { category: true, variants: { where: { active: true }, or
 
 const productListSelect = {
   id: true, slug: true, title: true, sku: true, images: true, price: true, salePrice: true, stock: true, trackStock: true, stockStatus: true, featured: true, sourceUrl: true,
-  shortDescription: true, bundleEnabled: true, bundleDiscountPercent: true,
+  shortDescription: true, bundleEnabled: true, bundleDiscountPercent: true, createdAt:true,updatedAt:true,
   category: { select: { id: true, name: true, slug: true, description: true, imageUrl: true, seoTitle: true, seoDescription: true } },
   variants: { where: { active: true }, select: { id: true, sku: true, name: true, stock: true, trackStock: true, stockStatus: true, active: true, priceOverride: true, imageUrl: true, attributes: true } },
   reviews: { where: { status: 'APPROVED' as const }, select: { rating: true } },
@@ -296,7 +298,7 @@ function jsonProductSummary(row: any) {
   const imageAlt = String(catalog.imageMeta?.alt || row.title || '');
   const imageTitle = String(catalog.imageMeta?.title || '').trim() || null;
   return {
-    id: row.id, slug: row.slug, name: row.title, title: row.title, sku: row.sku,
+    id: row.id, slug: row.slug, name: row.title, title: row.title, sku: row.sku, createdAt:row.createdAt,updatedAt:row.updatedAt,orderCount:row._count?.orderItems||0,
     categories: row.category ? [{ id: row.category.id, name: row.category.name, slug: row.category.slug, description: row.category.description, image: row.category.imageUrl }] : [],
     categorySlugs: row.category ? [row.category.slug] : [],
     ...pricing, salePrice: row.salePrice == null ? null : Number(row.salePrice),
@@ -504,11 +506,12 @@ app.post('/api/contact', async (req, res) => {
 });
 
 app.get('/api/store/bootstrap', async (_req, res) => {
-  setPublicCache(res, 300, 1800, ['store', 'categories', 'settings']);
+  setPublicCache(res, 30, 30, ['store', 'categories', 'settings']);
   const [categories, settings] = await Promise.all([
     prisma.category.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], include: { _count: { select: { products: { where: { status: 'PUBLISHED' } } } } } }),
     getSettings([
       'store.info',
+      'store.delivery',
       'tracking.metaPixelEnabled',
       'tracking.metaPixelId',
       'tracking.tiktokPixelEnabled',
@@ -529,7 +532,8 @@ app.get('/api/categories', async (_req, res) => {
 
 app.get('/api/products', async (req, res) => {
   if (String(req.query.search || '').trim() && !(await allowRequest(req, res, 'search', 60, 60 * 1000))) return;
-  const page = Math.max(1, Number(req.query.page || 1)); const limit = Math.min(100, Math.max(1, Number(req.query.limit || 12)));
+  const rawPage=Math.floor(Number(req.query.page)),rawLimit=Math.floor(Number(req.query.limit));
+  const page=Number.isFinite(rawPage)?Math.max(1,rawPage):1,limit=Number.isFinite(rawLimit)&&rawLimit>0?Math.min(100,rawLimit):12;
   const search = String(req.query.search || '').trim(); const category = String(req.query.category || '').trim(); const sort = String(req.query.sort || 'popular');
   const featured = String(req.query.featured || '') === 'true';
   const minPriceRaw = Number(req.query.minPrice); const maxPriceRaw = Number(req.query.maxPrice);
@@ -538,34 +542,18 @@ app.get('/api/products', async (req, res) => {
   const availability = String(req.query.availability || '').trim();
   const tag = String(req.query.tag || '').trim().replace(/[^a-z0-9-]/gi, '');
   setPublicCache(res, 60, 300, ['products', ...(category ? [`category:${category}`] : []), ...(featured ? ['featured-products'] : [])]);
-  const andFilters: Prisma.ProductWhereInput[] = [];
-  if (minPrice != null || maxPrice != null) {
-    const bounds: any = { ...(minPrice != null ? { gte: minPrice } : {}), ...(maxPrice != null ? { lte: maxPrice } : {}) };
-    andFilters.push({ OR: [{ salePrice: { not: null, ...bounds } }, { salePrice: null, price: bounds }] });
-  }
-  if (availability === 'instock') {
-    andFilters.push(IN_STOCK_WHERE);
-  }
-  if (tag === 'discount') {
-    // A product is on Discount only when it has a sale price; the %-off tags alone do not count.
-    andFilters.push({ salePrice: { not: null } });
-  } else if (tag === 'best-selling') {
-    andFilters.push({ OR: [{ featured: true }, { sourceUrl: { contains: '"best-selling"' } }] });
-  } else if (tag) {
-    andFilters.push({ sourceUrl: { contains: `"${tag}"` } });
-  }
-  const where: Prisma.ProductWhereInput = {
-    status: 'PUBLISHED', ...(featured ? { featured: true } : {}), ...(category ? { category: { slug: category } } : {}),
-    ...(search ? { OR: [{ title: { contains: search, mode: 'insensitive' } }, { sku: { contains: search, mode: 'insensitive' } }, { category: { name: { contains: search, mode: 'insensitive' } } }] } : {}),
-    ...(andFilters.length ? { AND: andFilters } : {})
-  };
-  const orderBy: Prisma.ProductOrderByWithRelationInput[] = sort === 'price-asc' ? [{ salePrice:'asc' },{ price:'asc' }] : sort === 'price-desc' ? [{ salePrice:'desc' },{ price:'desc' }] : sort === 'newest' ? [{ createdAt:'desc' }] : [{ orderItems: { _count: 'desc' } }, { createdAt:'desc' }];
-  const [rows,total] = await Promise.all([prisma.product.findMany({ where, select: productListSelect, orderBy, skip:(page-1)*limit, take:limit }), prisma.product.count({ where })]);
-  res.json({ items: rows.map(jsonProductSummary), page, limit, total, totalPages: Math.max(1, Math.ceil(total/limit)) });
+  const query=catalogQuery({search,category,featured,minPrice,maxPrice,availability,tag,sort});
+  const [rank,counts]=await Promise.all([
+    prisma.$queryRaw<{id:string;orders:bigint}[]>(Prisma.sql`SELECT p.id,COALESCE(s.orders,0) AS orders ${query.from} ORDER BY ${query.order} LIMIT ${limit} OFFSET ${(page-1)*limit}`),
+    prisma.$queryRaw<{total:bigint}[]>(Prisma.sql`SELECT COUNT(*) AS total ${query.from}`),
+  ]);
+  const rows=rank.length?await prisma.product.findMany({where:{id:{in:rank.map(r=>r.id)}},select:productListSelect}):[];
+  const byId=new Map(rows.map(row=>[row.id,row])),total=Number(counts[0]?.total||0);
+  res.json({items:rank.flatMap(r=>{const row=byId.get(r.id);return row?[jsonProductSummary({...row,_count:{orderItems:Number(r.orders)}})]:[];}),page,limit,total,totalPages:Math.max(1,Math.ceil(total/limit))});
 });
 app.get('/api/products/slug/:slug', async (req,res) => { const slug=routeParam(req, 'slug'); setPublicCache(res, 120, 600, ['products', `product:${slug}`]); const row = await prisma.product.findFirst({ where:{ slug, status:'PUBLISHED' }, include: productInclude }); if(!row) return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row)); });
 app.get('/api/pages/:slug', async (req,res) => { setPublicCache(res, 900, 3600, ['pages']); const slugs = [routeParam(req, 'slug'), ...String(req.query.fallback || '').split(',').filter(Boolean)]; const page = await prisma.page.findFirst({ where:{ slug:{in:slugs}, published:true } }); if(!page) return res.status(404).json({error:'NOT_FOUND'}); res.json(page); });
-app.get('/api/settings/public', async (req,res) => { setPublicCache(res, 300, 1800, ['settings']); const keys = String(req.query.keys || '').split(',').filter(Boolean); res.json(await getSettings(keys)); });
+app.get('/api/settings/public', async (req,res) => { setPublicCache(res, 30, 30, ['settings']); const keys = publicSettingKeys(req.query.keys); res.json(keys.length?await getSettings(keys):{}); });
 app.get('/api/cities', async (_req,res) => { setPublicCache(res, 3600, 86400, ['cities']); res.json(await prisma.city.findMany({ where:{active:true}, orderBy:{name:'asc'} })); });
 app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 86400, ['seo']); const [products,categories,pages] = await Promise.all([prisma.product.findMany({where:{status:'PUBLISHED'},select:{slug:true,updatedAt:true,sourceUrl:true}}).then(rows=>rows.filter(r=>readCatalogMeta(r.sourceUrl)?.robotsIndex!=='noindex').map(({slug,updatedAt})=>({slug,updatedAt}))),prisma.category.findMany({select:{slug:true,updatedAt:true}}),prisma.page.findMany({where:{published:true},select:{slug:true,updatedAt:true}})]); res.json({products,categories,pages}); });
 // Every redirect, for the storefront proxy: it answers old URLs with a real 301 before the page renders.

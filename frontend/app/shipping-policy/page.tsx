@@ -1,13 +1,9 @@
-import type { Metadata } from "next";
-import DbPage from "@/components/DbPage";
-import { metadataForPage } from "@/lib/page-metadata";
+import { PolicyLayout } from "@/components/launch/pages/PolicyLayout";
+import { policyMetadata } from "@/lib/launch/policies/metadata";
+import { shippingPolicy } from "@/lib/launch/policies/shipping";
 
-export const revalidate = 600;
-
-export async function generateMetadata(): Promise<Metadata> {
-  return metadataForPage('shipping-policy', ['shipping-delivery']);
-}
+export const metadata = policyMetadata(shippingPolicy);
 
 export default function Page() {
-  return <DbPage slug='shipping-policy' fallbackSlugs={['shipping-delivery']} />;
+  return <PolicyLayout policy={shippingPolicy} />;
 }

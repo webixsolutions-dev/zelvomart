@@ -9,6 +9,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Keep a one-off production check separate from the user's running dev server.
+  distDir: process.env.NEXT_BUILD_DIR === '.next-launch' ? '.next-launch' : '.next',
+  // WooCommerce URLs end with a slash; let the migration proxy return one 301.
+  skipTrailingSlashRedirect: true,
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400,
@@ -32,6 +36,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/(.*)", headers: securityHeaders },
+      {
+        source: "/(.*)",
+        missing: [{ type: "host", value: "(www\\.)?zelvomart\\.com" }],
+        headers: [{ key: "X-Robots-Tag", value: "noindex" }],
+      },
       {
         source: "/images/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],

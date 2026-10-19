@@ -49,5 +49,10 @@ export default function TrackingProvider() {
     trackStoreEvent("PageView").catch(() => undefined);
   }, [pathname, search]);
 
+  useEffect(()=>{
+    const contact=(event:MouseEvent)=>{const link=(event.target as Element)?.closest?.('a[href]');if(!link||link.hasAttribute('data-contact-tracked'))return;try{const url=new URL(link.getAttribute('href')||'',location.href);if(['wa.me','api.whatsapp.com'].includes(url.hostname))void trackStoreEvent('Contact',{contact_method:'whatsapp'});}catch{}};
+    document.addEventListener('click',contact);return()=>document.removeEventListener('click',contact);
+  },[]);
+  useEffect(()=>{const term=search.get('q')||search.get('search');if(pathname==='/search'&&term)void trackStoreEvent('Search',{search_string:/@|(?:\d[\s-]*){7,}/.test(term)?'[redacted]':term.slice(0,150)});},[pathname,search]);
   return null;
 }

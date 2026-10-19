@@ -23,6 +23,7 @@ export default function FloatingWhatsApp({ number = DEFAULT_WHATSAPP_NUMBER }: {
   const pathname = usePathname() || "/";
   return (
     <a
+      data-contact-tracked="true"
       className="floating-whatsapp"
       href={whatsappHelpHref(number, pathname)}
       target="_blank"

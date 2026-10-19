@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import {launchRedirect} from './lib/launch/redirects';
 
 const SESSION_COOKIE = "zelvomart_admin_session";
 
@@ -73,6 +74,8 @@ export async function proxy(request: NextRequest) {
   }
 
   if (request.method === "GET" || request.method === "HEAD") {
+    const replacement=launchRedirect(pathname);
+    if(replacement){const target=new URL(replacement,request.url);target.search=request.nextUrl.search;return NextResponse.redirect(target,301);}
     const hit = await findRedirect(pathname);
     if (hit) {
       const target = new URL(hit.destination, request.url);

@@ -93,7 +93,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (user?.role === "MARKETER" && pathname === "/admin") {
-      router.replace("/admin/reports");
+      // Reports now redirects to /admin; using it here creates a navigation loop.
+      router.replace("/admin/products");
     }
   }, [user, pathname, router]);
 

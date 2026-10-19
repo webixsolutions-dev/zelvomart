@@ -8,9 +8,10 @@ function cachePathsForTags(tags: string[]) {
   if (refreshesCatalog) {
     paths.add('/');
     paths.add('/shop');
+    for(const path of ['/shop-all-products','/new-arrivals','/bestsellers','/deals-and-offers','/llms.txt','/sitemap.xml'])paths.add(path);
   }
   for (const tag of tags) {
-    if (tag.startsWith('category:')) paths.add(`/product-category/${tag.slice('category:'.length)}/`);
+    if (tag.startsWith('category:')) { paths.add(`/product-category/${tag.slice('category:'.length)}/`);paths.add(`/category/${tag.slice('category:'.length)}`); }
     if (tag.startsWith('product:')) paths.add(`/product/${tag.slice('product:'.length)}/`);
   }
   return [...paths];

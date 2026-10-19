@@ -72,6 +72,7 @@ export default function ProductDetailClient({
     getInitialProductImage(product, fallbackImage)
   );
   const viewedProduct=useRef<string|null>(null);
+  const [resolvedProduct,setResolvedProduct]=useState('');
   const [variant, setVariant] = useState<Variant | null>(() => getInitialVariant(product));
   const [bundleSize, setBundleSize] = useState<1 | 2>(1);
   const [quantity, setQuantity] = useState<number>(1);
@@ -86,6 +87,7 @@ export default function ProductDetailClient({
       const matched=product.variants?.find(v=>v.sku===requested);
       setVariant(matched||getInitialVariant(product));
       if(matched?.imageUrl)setSelectedImage(matched.imageUrl);
+      setResolvedProduct(product.id);
     }
   }, [product?.id, fallbackImage]);
 
@@ -104,7 +106,7 @@ export default function ProductDetailClient({
 
   // Analytics tracking
   useEffect(() => {
-    if (!product||viewedProduct.current===product.id) return;
+    if (!product||resolvedProduct!==product.id||viewedProduct.current===product.id) return;
     viewedProduct.current=product.id;
     trackStoreEvent(
       "ViewContent",
@@ -115,7 +117,7 @@ export default function ProductDetailClient({
         currency: "PKR",
       }
     ).catch(() => undefined);
-  }, [product?.id, basePrice, product?.sku, variant?.sku]);
+  }, [product?.id, basePrice, product?.sku, variant?.sku,resolvedProduct]);
 
   // Sticky order bar viewport intersection
   useEffect(() => {

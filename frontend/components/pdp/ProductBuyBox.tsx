@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import type { PriceSummary, Product, Variant } from "@/types/product";
 import { pairOffer } from "@/lib/bundle-price";
+import {trackStoreEvent} from "@/lib/client-tracking";
 import { money } from "@/lib/format";
 import { WhatsAppIcon } from "@/components/Icons";
 import { useDeliveryPolicy } from "@/components/DeliveryPolicy";
@@ -225,6 +226,7 @@ export default function ProductBuyBox({
 
   // Safe client-side handler: fixes hydration mismatch by accessing window.location only on user click
   const handleWhatsAppClick = () => {
+    void trackStoreEvent("Contact",{contact_method:"whatsapp",content_ids:[variant?.sku||product.sku]});
     const url = typeof window !== "undefined" ? window.location.href : "";
     const colorPart = variant?.name ? ` (Color: ${variant.name})` : "";
     const msg = encodeURIComponent(

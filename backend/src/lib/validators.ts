@@ -18,7 +18,8 @@ export const checkoutSchema = z
     address: z.string().trim().min(8).max(500),
     postcode: z.string().trim().max(20).optional().or(z.literal("")),
     orderNotes: z.string().trim().max(1000).optional().or(z.literal("")),
-    terms: z.boolean(),
+    // Older clients may still send this. The checkout displays a terms notice, not a required checkbox.
+    terms: z.boolean().optional(),
     paymentMethod: z.enum(["COD", "NAYAPAY"]).default("COD"),
     cart: z.array(cartItemSchema).min(1).max(50),
     honeypot: z.string().max(0).optional().or(z.literal("")),

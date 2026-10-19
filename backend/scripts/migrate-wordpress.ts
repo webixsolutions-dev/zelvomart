@@ -1,8 +1,12 @@
+import "dotenv/config";
 import crypto from "node:crypto";
-import { Prisma, PrismaClient } from "../src/generated/prisma/client";
+import { Prisma } from "../src/generated/prisma/client";
+import { prisma } from "../src/lib/db";
+import {readCatalogMeta,writeCatalogMeta} from "../src/lib/catalog-meta";
+import { wooStock } from "../src/lib/wordpress-import";
 import { isCloudStorageConfigured, uploadObject } from "../src/lib/storage";
 
-const prisma = new PrismaClient();
+const apply = process.argv.includes("--apply");
 const source = (process.env.SOURCE_STORE_URL || "https://zelvomart.com").replace(/\/$/, "");
 const consumerKey = process.env.WC_CONSUMER_KEY;
 const consumerSecret = process.env.WC_CONSUMER_SECRET;
@@ -12,8 +16,14 @@ function stripHtml(value: string | undefined) {
 }
 
 async function api<T>(url: string): Promise<T> {
-  const response = await fetch(url, { headers: { "user-agent": "ZelvomartMigration/1.0" } });
-  if (!response.ok) throw new Error(`${response.status} ${url}`);
+  const target = new URL(url);
+  if (target.origin !== new URL(source).origin || target.protocol !== 'https:') throw new Error('WooCommerce source must use the configured HTTPS origin.');
+  target.searchParams.delete('consumer_key'); target.searchParams.delete('consumer_secret');
+  const response = await fetch(target, { redirect: 'error', signal: AbortSignal.timeout(30000), headers: {
+    'user-agent': 'ZelvomartMigration/1.0',
+    ...(consumerKey && consumerSecret ? { authorization: 'Basic '+Buffer.from(consumerKey+':'+consumerSecret).toString('base64') } : {}),
+  } });
+  if (!response.ok) throw new Error(`WooCommerce HTTP ${response.status} at ${target.pathname}`);
   return response.json() as Promise<T>;
 }
 
@@ -42,10 +52,11 @@ function productVideoUrl(row: any) {
 
 async function maybeRehost(url: string) {
   if (!isCloudStorageConfigured()) return url;
-  const response = await fetch(url);
-  if (!response.ok) return url;
+  const response = await fetch(url,{signal:AbortSignal.timeout(30000)});
+  if (!response.ok) throw new Error(`Image import failed (HTTP ${response.status}). No source image fallback is allowed for launch.`);
   const bytes = new Uint8Array(await response.arrayBuffer());
-  const type = response.headers.get("content-type") || "image/jpeg";
+  const type = response.headers.get("content-type") || "";
+  if(!type.startsWith("image/")||bytes.length>20*1024*1024)throw new Error("Source image must be an image under 20 MB.");
   const extension = type.includes("png") ? "png" : type.includes("webp") ? "webp" : "jpg";
   const key = `products/${crypto.createHash("sha1").update(url).digest("hex")}.${extension}`;
   return uploadObject(key, bytes, type);
@@ -90,167 +101,31 @@ async function importCategoriesAuthenticated() {
 }
 
 async function importProductsAuthenticated() {
-  let page = 1;
-  while (true) {
-    const url = new URL(`${source}/wp-json/wc/v3/products`);
-    url.searchParams.set("per_page", "100");
-    url.searchParams.set("page", String(page));
-    url.searchParams.set("status", "any");
-    url.searchParams.set("consumer_key", consumerKey!);
-    url.searchParams.set("consumer_secret", consumerSecret!);
-    const rows = await api<any[]>(url.toString());
-    if (!rows.length) break;
-
-    for (const row of rows) {
-      const categorySlug = row.categories?.[0]?.slug;
-      const category = categorySlug ? await prisma.category.findUnique({ where: { slug: categorySlug } }) : null;
-      const images = [] as string[];
-      for (const image of row.images || []) {
-        if (image.src) images.push(await maybeRehost(image.src));
+  for(let page=1;;page++){
+    const rows=await api<any[]>(`${source}/wp-json/wc/v3/products?per_page=100&page=${page}&status=any`);
+    for(const row of rows){
+      if(!['simple','variable'].includes(row.type))throw new Error(`Unsupported WooCommerce product type for ${row.slug}: ${row.type}`);
+      const sku=row.sku||`WP-${row.id}`,images:string[]=[],prepared:any[]=[];
+      for(const image of row.images||[])if(image.src)images.push(await maybeRehost(image.src));
+      for(const variationId of row.variations||[]){
+        const v=await api<any>(`${source}/wp-json/wc/v3/products/${row.id}/variations/${variationId}`);
+        prepared.push({sku:v.sku||`${sku}-${variationId}`,name:(v.attributes||[]).map((a:any)=>a.option).filter(Boolean).join(' / ')||`Variant ${variationId}`,attributes:Object.fromEntries((v.attributes||[]).map((a:any)=>[String(a.name),String(a.option)])),priceOverride:v.price!==''&&v.price!=null?Number(v.price):null,...wooStock(v,row),imageUrl:v.image?.src?await maybeRehost(v.image.src):null,active:v.status==='publish',regularPrice:Number(v.regular_price||v.price||0)});
       }
-
-      const seo = rankMathSeo(row);
-      const product = await prisma.product.upsert({
-        where: { slug: row.slug },
-        update: {
-          title: row.name,
-          sku: row.sku || `WP-${row.id}`,
-          shortDescription: stripHtml(row.short_description),
-          descriptionHtml: row.description || null,
-          images,
-          videoUrl: productVideoUrl(row) || null,
-          categoryId: category?.id,
-          price: Number(row.regular_price || row.price || 0),
-          salePrice: row.sale_price ? Number(row.sale_price) : null,
-          stock: row.manage_stock ? Number(row.stock_quantity || 0) : row.stock_status === "instock" ? 9999 : 0,
-          status: row.status === "publish" ? "PUBLISHED" : "DRAFT",
-          featured: Boolean(row.featured),
-          seoTitle: seo.title || stripHtml(row.name),
-          seoDescription: seo.description || stripHtml(row.short_description),
-          canonicalUrl: row.permalink,
-          sourceUrl: row.permalink,
-          sourceId: String(row.id),
-        },
-        create: {
-          title: row.name,
-          slug: row.slug,
-          sku: row.sku || `WP-${row.id}`,
-          shortDescription: stripHtml(row.short_description),
-          descriptionHtml: row.description || null,
-          images,
-          videoUrl: productVideoUrl(row) || null,
-          categoryId: category?.id,
-          price: Number(row.regular_price || row.price || 0),
-          salePrice: row.sale_price ? Number(row.sale_price) : null,
-          stock: row.manage_stock ? Number(row.stock_quantity || 0) : row.stock_status === "instock" ? 9999 : 0,
-          status: row.status === "publish" ? "PUBLISHED" : "DRAFT",
-          featured: Boolean(row.featured),
-          seoTitle: seo.title || stripHtml(row.name),
-          seoDescription: seo.description || stripHtml(row.short_description),
-          canonicalUrl: row.permalink,
-          sourceUrl: row.permalink,
-          sourceId: String(row.id),
-        },
-      });
-
-      await prisma.variant.deleteMany({ where: { productId: product.id } });
-      for (const variationId of row.variations || []) {
-        const vUrl = new URL(`${source}/wp-json/wc/v3/products/${row.id}/variations/${variationId}`);
-        vUrl.searchParams.set("consumer_key", consumerKey!);
-        vUrl.searchParams.set("consumer_secret", consumerSecret!);
-        const variant = await api<any>(vUrl.toString());
-        const name = (variant.attributes || []).map((attr: any) => attr.option).filter(Boolean).join(" / ") || `Variant ${variationId}`;
-        await prisma.variant.create({
-          data: {
-            productId: product.id,
-            sku: variant.sku || `${product.sku}-${variationId}`,
-            name,
-            attributes: Object.fromEntries((variant.attributes || []).map((attr: any) => [String(attr.name), String(attr.option)])) as Prisma.InputJsonObject,
-            priceOverride: variant.price ? Number(variant.price) : null,
-            stock: variant.manage_stock ? Number(variant.stock_quantity || 0) : variant.stock_status === "instock" ? 9999 : 0,
-            imageUrl: variant.image?.src ? await maybeRehost(variant.image.src) : null,
-            active: variant.status === "publish",
-          },
-        });
-      }
+      if(new Set(prepared.map(v=>v.sku)).size!==prepared.length)throw new Error(`Duplicate variation SKU for ${row.slug}`);
+      const seo=rankMathSeo(row),categorySlug=row.categories?.[0]?.slug;
+      const category=categorySlug?await prisma.category.findUnique({where:{slug:categorySlug}}):null;
+      // Network and image uploads finish before the transaction. A failed variation
+      // cannot leave a half-imported product or remove IDs used by existing carts/orders.
+      await prisma.$transaction(async tx=>{
+        const previous=await tx.product.findUnique({where:{slug:row.slug}});
+        const meta=readCatalogMeta(previous?.sourceUrl)||{};
+        const data={title:row.name,sku,shortDescription:stripHtml(row.short_description),descriptionHtml:row.description||null,images,videoUrl:productVideoUrl(row)||null,categoryId:category?.id,price:Number(row.regular_price||row.price||0),salePrice:row.sale_price?Number(row.sale_price):null,...wooStock(row),status:(row.status==='publish'?'PUBLISHED':'DRAFT') as 'PUBLISHED'|'DRAFT',featured:Boolean(row.featured),seoTitle:seo.title||stripHtml(row.name),seoDescription:seo.description||stripHtml(row.short_description),canonicalUrl:row.permalink,sourceId:String(row.id),sourceUrl:writeCatalogMeta({...meta,legacySourceUrl:row.permalink,attributes:(row.attributes||[]).map((a:any)=>({name:a.name,valuesText:(a.options||[]).join(' | '),visible:a.visible,forVariations:a.variation})),variations:prepared.map(v=>({sku:v.sku,name:v.name,regularPrice:v.regularPrice}))})};
+        const product=await tx.product.upsert({where:{slug:row.slug},update:data,create:{...data,slug:row.slug,...(row.date_created_gmt?{createdAt:new Date(row.date_created_gmt+'Z')}:{})}});
+        for(const item of prepared){const {regularPrice,...variant}=item;const existing=await tx.variant.findUnique({where:{sku:item.sku}});if(existing&&existing.productId!==product.id)throw new Error(`Variation SKU conflict for ${item.sku}`);await tx.variant.upsert({where:{sku:item.sku},create:{...variant,productId:product.id},update:variant});}
+        await tx.variant.updateMany({where:{productId:product.id,sku:{notIn:prepared.map(v=>v.sku)}},data:{active:false}});
+      },{maxWait:15000,timeout:90000});
     }
-
-    console.log(`Imported product page ${page} (${rows.length})`);
-    if (rows.length < 100) break;
-    page += 1;
-  }
-}
-
-async function importPublicStoreApi() {
-  let page = 1;
-  while (true) {
-    const rows = await api<any[]>(`${source}/wp-json/wc/store/v1/products?per_page=100&page=${page}`);
-    if (!rows.length) break;
-
-    for (const row of rows) {
-      const categoryInfo = row.categories?.[0];
-      let categoryId: string | undefined;
-      if (categoryInfo) {
-        const category = await prisma.category.upsert({
-          where: { slug: categoryInfo.slug },
-          update: { name: categoryInfo.name },
-          create: { name: categoryInfo.name, slug: categoryInfo.slug },
-        });
-        categoryId = category.id;
-      }
-
-      const minor = Number(row.prices?.currency_minor_unit ?? 2);
-      const divisor = 10 ** minor;
-      const regular = Number(row.prices?.regular_price || row.prices?.price || 0) / divisor;
-      const current = Number(row.prices?.price || 0) / divisor;
-      const images: string[] = [];
-      for (const image of row.images || []) if (image.src) images.push(await maybeRehost(image.src));
-
-      await prisma.product.upsert({
-        where: { slug: row.slug },
-        update: {
-          title: row.name,
-          sku: row.sku || `WC-${row.id}`,
-          shortDescription: stripHtml(row.short_description || row.summary),
-          descriptionHtml: row.description || null,
-          images,
-          videoUrl: productVideoUrl(row) || null,
-          categoryId,
-          price: regular || current,
-          salePrice: current && regular && current < regular ? current : null,
-          stock: row.is_in_stock ? 9999 : 0,
-          status: "PUBLISHED",
-          seoTitle: stripHtml(row.name),
-          seoDescription: stripHtml(row.short_description || row.summary),
-          canonicalUrl: `${source}/product/${row.slug}/`,
-          sourceUrl: `${source}/product/${row.slug}/`,
-          sourceId: String(row.id),
-        },
-        create: {
-          title: row.name,
-          slug: row.slug,
-          sku: row.sku || `WC-${row.id}`,
-          shortDescription: stripHtml(row.short_description || row.summary),
-          descriptionHtml: row.description || null,
-          images,
-          videoUrl: productVideoUrl(row) || null,
-          categoryId,
-          price: regular || current,
-          salePrice: current && regular && current < regular ? current : null,
-          stock: row.is_in_stock ? 9999 : 0,
-          status: "PUBLISHED",
-          seoTitle: stripHtml(row.name),
-          seoDescription: stripHtml(row.short_description || row.summary),
-          canonicalUrl: `${source}/product/${row.slug}/`,
-          sourceUrl: `${source}/product/${row.slug}/`,
-          sourceId: String(row.id),
-        },
-      });
-    }
-
-    console.log(`Imported public product page ${page} (${rows.length})`);
-    if (rows.length < 100) break;
-    page += 1;
+    console.log(`Imported product page ${page} (${rows.length})`);if(rows.length<100)break;
   }
 }
 
@@ -270,7 +145,7 @@ async function importReviewsAuthenticated() {
       if (!product) continue;
       const legacyId = `wc-review-${row.id}`;
       const existing = await prisma.review.findFirst({
-        where: { productId: product.id, body: row.review || "", name: row.reviewer || "Customer" },
+        where: { productId: product.id, body: stripHtml(row.review) || `Imported review wc-review-${row.id}`, name: row.reviewer || "Customer" },
       });
       if (existing) continue;
       await prisma.review.create({
@@ -392,15 +267,17 @@ async function importPages() {
 }
 
 async function main() {
-  console.log(`Migrating from ${source}`);
-  if (consumerKey && consumerSecret) {
-    await importCategoriesAuthenticated();
-    await importProductsAuthenticated();
-    await importReviewsAuthenticated();
-  } else {
-    console.warn("WooCommerce credentials not set; using public Store API. Variants/stock precision may be limited.");
-    await importPublicStoreApi();
+  if (!consumerKey || !consumerSecret) throw new Error('Set WC_CONSUMER_KEY and WC_CONSUMER_SECRET in backend/.env. Use a read-only WooCommerce key. No products have been changed.');
+  if (!apply) {
+    let page=1,total=0,variations=0;
+    while(true){const rows=await api<any[]>(`${source}/wp-json/wc/v3/products?per_page=100&page=${page}&status=publish`);total+=rows.length;variations+=rows.reduce((n,r)=>n+(r.variations?.length||0),0);console.log(JSON.stringify({page,products:rows.map(r=>({sourceId:r.id,slug:r.slug,sku:r.sku,type:r.type,images:r.images?.length||0,stock:wooStock(r)}))}));if(rows.length<100)break;page++;}
+    console.log(JSON.stringify({dryRun:true,total,variations,next:'Review this inventory, then run with --apply. Existing orders/customers are unchanged unless MIGRATE_PAST_ORDERS=true.'}));return;
   }
+  if (!isCloudStorageConfigured()) throw new Error('Configure R2 product image storage before importing. Source images must remain available after WordPress is retired.');
+  console.log(`Migrating from ${new URL(source).origin}`);
+  await importCategoriesAuthenticated();
+  await importProductsAuthenticated();
+  await importReviewsAuthenticated();
   await importPages();
   await importPastOrdersAndCustomers();
   console.log("Migration complete. Re-run immediately before cutover as required by the specification.");

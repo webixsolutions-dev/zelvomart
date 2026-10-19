@@ -5,8 +5,8 @@ import {quoteDelivery,amountUntilFreeShipping} from '../src/lib/shipping';
 import {quoteDelivery as browserQuote} from '../../frontend/lib/shipping';
 import {checkoutSchema} from '../src/lib/validators';
 import {assertContactable,recoveryStatus} from '../src/recovery';
-test('checkout accepts no email and no postcode, with terms matching the form',()=>{
- const result=checkoutSchema.safeParse({idempotencyKey:'12345554-99d3-409f-bb15-de0e90deca76',fullName:'QA Customer',phone:'03001234567',city:'Lahore',address:'Test address 123',terms:true,cart:[{productId:'qa',quantity:1}]});assert.equal(result.success,true);assert.equal(result.success&&result.data.email,undefined);assert.equal(result.success&&result.data.postcode,undefined);
+test('checkout accepts no email, postcode or terms checkbox',()=>{
+ const result=checkoutSchema.safeParse({idempotencyKey:'12345554-99d3-409f-bb15-de0e90deca76',fullName:'QA Customer',phone:'03001234567',city:'Lahore',address:'Test address 123',cart:[{productId:'qa',quantity:1}]});assert.equal(result.success,true);assert.equal(result.success&&result.data.email,undefined);assert.equal(result.success&&result.data.postcode,undefined);
 });
 test('shipping threshold is inclusive, consistent and ignores historical COD fees',()=>{
  const rule={flatRate:250,freeAbove:8000,codFee:999};for(const subtotal of [7999,8000,8001])assert.deepEqual(quoteDelivery(subtotal,false,rule),browserQuote(subtotal,false,rule));assert.equal(quoteDelivery(8000,false,rule).fee,0);assert.equal(quoteDelivery(7999,false,rule).fee,250);assert.equal(amountUntilFreeShipping(8000,8000),0);assert.equal('codFee' in quoteDelivery(8000,false,rule),false);

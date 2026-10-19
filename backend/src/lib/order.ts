@@ -23,7 +23,7 @@ type CheckoutInput = {
   postcode?: string;
   orderNotes?: string;
   paymentMethod: "COD" | "NAYAPAY";
-  terms: boolean;
+  terms?: boolean;
   cart: Array<{ productId: string; variantId?: string | null; quantity: number; bundleSize: 1 | 2 }>;
   source?: Record<string, unknown>;
   fbp?: string;
@@ -51,7 +51,6 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
   const [deliveryRule,paymentMethods]=await Promise.all([getSetting<any>('store.delivery',{}),getSetting<string[]>('payments.methods',['COD'])]);
   if(!paymentMethods.includes(input.paymentMethod))throw new Error('PAYMENT_METHOD_DISABLED');
   if(!input.fullName.trim()||!input.phone||!input.city.trim()||!input.address.trim())throw new Error('REQUIRED_FIELDS');
-  if(!input.terms&&!input.staffCreated)throw new Error('TERMS_REQUIRED');
 
   const productIds = [...new Set(input.cart.map((item) => item.productId))];
   const products = await prisma.product.findMany({

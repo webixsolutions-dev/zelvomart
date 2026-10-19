@@ -146,7 +146,6 @@ export default function CheckoutClient({
     if (!fields.city.trim()) next.city = "City is required.";
     if (fields.address.trim().length < 6) next.address = "Complete delivery address is required.";
     if (required.orderNotes && !fields.orderNotes.trim()) next.orderNotes = "Order notes are required.";
-    if (required.terms && !fields.terms) next.terms = "Please accept the terms.";
     setErrors(next);
     if (Object.keys(next).length) {
       const first = Object.keys(next)[0];
@@ -300,15 +299,11 @@ export default function CheckoutClient({
               <span><b>Cash on Delivery</b><small>Pay cash when your parcel arrives.</small></span>
               <strong>COD</strong>
             </label>
-            <label className="mock-checkout-terms" data-checkout-field="terms">
-              <input type="checkbox" checked={fields.terms} onChange={(e) => update("terms", e.target.checked)} />
-              <span>I agree to the terms and confirm my delivery details are correct.</span>
-            </label>
-            {errors.terms ? <span className="field-error">{errors.terms}</span> : null}
+            <p className="mock-checkout-terms">By placing your order, you agree to our <a href="/terms-and-conditions/" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a> and confirm your delivery details are correct.</p>
 
             <div className="hidden" aria-hidden="true"><input tabIndex={-1} autoComplete="off" value={fields.website} onChange={(e) => update("website", e.target.value)} /></div>
             {serverError ? <div className="mock-checkout-error">{serverError}</div> : null}
-            <button type="submit" className="mock-place-order mock-single-place-order" disabled={submitting || (required.terms && !fields.terms)}>
+            <button type="submit" className="mock-place-order mock-single-place-order" disabled={submitting}>
               {submitting ? <><span className="mock-order-button-spinner" /> Confirming…</> : `Place order · ${money(total)} →`}
             </button>
           </div>
@@ -332,7 +327,7 @@ export default function CheckoutClient({
           </p>
           <div className="total"><span>Total</span><b>{money(total)}</b></div>
           <div className="mock-pay-arrival">✓ Pay cash when your parcel arrives</div>
-          <button type="submit" className="mock-place-order" disabled={submitting || (required.terms && !fields.terms)}>{submitting ? <><span className="mock-order-button-spinner" /> Confirming…</> : "Place order →"}</button>
+          <button type="submit" className="mock-place-order" disabled={submitting}>{submitting ? <><span className="mock-order-button-spinner" /> Confirming…</> : "Place order →"}</button>
           <p className="mock-order-help">Need help? Call <b>0300-2026711</b> or message us on WhatsApp.</p>
         </aside>
       </form>

@@ -8,6 +8,7 @@ export function couponDiscount(coupon:{type:string;amount:unknown;active:boolean
 export async function validateCoupon(code:unknown,subtotal:number,db:Pick<typeof prisma,'coupon'>=prisma){
  const normalized=couponCode(code);if(!normalized)return {code:null,discount:0};
  const coupon=await db.coupon.findUnique({where:{code:normalized}});if(!coupon)throw new Error('Coupon code not found.');
+ if(normalized.startsWith('RCV-')&&coupon.usedCount>0)throw new Error('This recovery offer has already been used.');
  return {code:normalized,discount:couponDiscount(coupon,subtotal)};
 }
 export function couponInput(body:any){

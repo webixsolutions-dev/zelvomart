@@ -75,6 +75,7 @@ export type Product = {
   /** Live tracked quantity, or null when stock is not tracked. */
   stockQuantity: number | null;
   featured: boolean;
+  orderCount?: number;
   averageRating?: number;
   reviewCount?: number;
   image?: string;

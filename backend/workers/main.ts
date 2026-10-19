@@ -8,13 +8,21 @@ import { sendTikTokServerEvent } from "../src/lib/tiktok";
 import { Resend } from "resend";
 import { money } from "../src/lib/format";
 import { setSetting, getSetting } from "../src/lib/settings";
+import {assertWorkerDatabase,expiredBacklog} from '../src/lib/launch-jobs';
 
 async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>) {
   if (jobLogId) {
-    await prisma.job.update({
-      where: { id: jobLogId },
+    const row=await prisma.job.findUnique({where:{id:jobLogId}});
+    if(!row||row.status==='SKIPPED'||row.status==='SUCCEEDED')return {skipped:'JOB_ALREADY_HANDLED'};
+    if(expiredBacklog(row.createdAt)){
+      await prisma.job.updateMany({where:{id:jobLogId,status:{in:['QUEUED','FAILED']}},data:{status:'SKIPPED',error:'STALE_BACKLOG: older than seven days.',finishedAt:new Date()}});
+      return {skipped:'STALE_BACKLOG'};
+    }
+    const claim=await prisma.job.updateMany({
+      where: { id: jobLogId, status:{in:['QUEUED','FAILED']} },
       data: { status: "RUNNING", attempts: { increment: 1 }, startedAt: new Date(), error: null },
     });
+    if(!claim.count)return {skipped:'JOB_ALREADY_CLAIMED'};
   }
 
   try {
@@ -40,6 +48,8 @@ async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>)
 }
 
 async function main() {
+  assertWorkerDatabase(process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL);
+  if(process.env.WORKER_BACKLOG_REVIEWED!=='true')throw new Error('Run scripts/review-worker-backlog.ts, review the pending sends, then set WORKER_BACKLOG_REVIEWED=true before starting.');
   const boss = await getBoss();
   for(const name of ['order-team-email','customer-order-email','customer-status-email','meta-event','meta-purchase','tiktok-event','tiktok-purchase','daily-summary','tracking-health-check','abandoned-checkout-scan','rate-limit-cleanup','session-replay-retention-cleanup','job-recovery'])await boss.createQueue(name);
   const heartbeat=()=>setSetting('worker.heartbeat',{at:new Date().toISOString(),pid:process.pid}).catch(error=>console.error('Worker heartbeat failed',error));

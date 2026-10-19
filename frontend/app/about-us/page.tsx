@@ -1,111 +1,217 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { cmsSections } from "@/lib/cms-sections";
-import { getCmsPage } from "@/lib/cms-page";
-import { metadataForPage } from "@/lib/page-metadata";
-import { getProductBySlug, getProducts, getStoreBootstrap } from "@/lib/store";
-import { getProductFallbackImage } from "@/lib/product-media";
-import StorefrontHero from "@/components/StorefrontHero";
-import { storeImages } from "@/lib/store-images";
+import { ArrowRight, Check, Boxes, ClipboardCheck, Headphones, Home, Heart, Dumbbell, Sparkles, PackageCheck, Truck, ShieldCheck, Eye, HeartHandshake } from "lucide-react";
+import { WhatsAppBand, CategoryGrid } from "@/components/launch/home/Blocks";
+import { SectionHead } from "@/components/launch/ui/SectionHead";
+import { Breadcrumbs } from "@/components/launch/ui/Breadcrumbs";
+import { FaqAccordion } from "@/components/launch/ui/FaqAccordion";
+import { faqs } from "@/lib/launch/content";
+import { WhatsAppIcon } from "@/components/launch/ui/BrandIcons";
+import { site } from "@/lib/launch/site";
 
-export const revalidate = 300;
+export const metadata: Metadata = {
+  title: { absolute: "About Zelvomart: Online Store in Lahore, Pakistan" },
+  description:
+    "Zelvomart is a Lahore-based online store selling everyday products in seven categories. Every order is checked before dispatch and sent across Pakistan.",
+  alternates: { canonical: "/about-us/" },
+};
 
-export async function generateMetadata(): Promise<Metadata> {
-  return metadataForPage("about-us", []);
-}
+/** "Zelvomart at a glance": short, quotable facts, all from the store settings. */
+const glance: [string, string][] = [
+  ["Name", site.name],
+  ["Based in", site.city],
+  [
+    "What we sell",
+    "Everyday products in seven categories: home and living, home decor, beauty and personal care, tech and gadgets, fashion accessories, sports and fitness, kids and toys",
+  ],
+  ["How to order", `zelvomart.com, WhatsApp ${site.phoneDisplay}, Facebook Messenger or Instagram`],
+  ["Payment", "Cash on Delivery"],
+  ["Delivery", `Across Pakistan, usually ${site.shipping.estimate} depending on the city`],
+  ["Support", `WhatsApp and email, ${site.supportHours}`],
+  ["Started", "July 2026"],
+  ["Co-founder", site.founder],
+];
 
-export default async function AboutPage() {
-  const [page, bootstrap, latest] = await Promise.all([
-    getCmsPage("about-us"),
-    getStoreBootstrap(),
-    getProducts({ sort: "newest", limit: 6 }),
-  ]);
-  const sections = cmsSections(page?.bodyHtml);
-  const lead = latest.items[0];
-  const detailedProducts = await Promise.all(
-    latest.items.slice(0, 6).map(async (product) => (await getProductBySlug(product.slug)) || product),
-  );
-  const liveReviews = detailedProducts.flatMap((product) =>
-    (product.reviews || []).map((review) => ({ ...review, productName: product.name })),
-  ).slice(0, 3);
+const categories = [
+  { icon: Home, label: "Home & Living" },
+  { icon: Sparkles, label: "Beauty & Personal Care" },
+  { icon: Boxes, label: "Tech & Gadgets" },
+  { icon: Heart, label: "Fashion Accessories" },
+  { icon: Home, label: "Home Décor" },
+  { icon: Dumbbell, label: "Fitness & Lifestyle" },
+  { icon: HeartHandshake, label: "Kids & Family" },
+];
 
+const steps = [
+  { icon: Eye, title: "Find your everyday.", sub: "Browse clean listings with honest photos, clear specs and straightforward pricing." },
+  { icon: ClipboardCheck, title: "Let us pack it.", sub: "Every order is inspected and carefully packed before it leaves our Lahore fulfilment centre." },
+  { icon: PackageCheck, title: "Arriving, no rush.", sub: "Track your order. We deliver nationwide and confirm by WhatsApp before dispatch." },
+  { icon: ShieldCheck, title: "Always supported.", sub: "Real people on WhatsApp before and after you buy. Not a chatbot — a real conversation." },
+];
+
+const confidenceChecks = [
+  "Clear what you're ordering",
+  "Clear what you'll pay",
+  "Clear about return policy",
+];
+
+export default function Page() {
   return (
-    <div className="mock-about-page">
-      <StorefrontHero
-        eyebrow="ABOUT ZELVOMART"
-        title="Small things. Better chosen."
-        description="Zelvomart is built around a simple idea: everyday shopping should feel clearer, more useful and more human."
-        image={lead?.image || getProductFallbackImage(lead) || storeImages.shop.src}
-        alt={lead ? lead.name : "Zelvomart products"}
-        primaryLabel="Shop Zelvomart"
-        primaryHref="/shop"
-        secondaryLabel="Contact us"
-        secondaryHref="/contact-us"
-        priority
-      />
-
-      <section className="site-shell mock-about-stats">
-        <article><b>{bootstrap.categories.length || 7}</b><span>live categories</span></article>
-        <article><b>{latest.total || latest.items.length}</b><span>products in catalog</span></article>
-        <article><b>COD</b><span>across Pakistan</span></article>
-        <article><b>100%</b><span>human support</span></article>
-      </section>
-
-      <section className="site-shell mock-about-story">
-        <div><span className="mock-eyebrow">OUR STORY</span><h2>We started with one question: why is online shopping so noisy?</h2></div>
-        <div>
-          {sections.length ? (
-            <div className="mock-about-cms">
-              {sections.slice(0, 3).map((section) => (
-                <article key={section.id}>{section.title ? <h3>{section.title}</h3> : null}<div dangerouslySetInnerHTML={{ __html: section.bodyHtml }} /></article>
-              ))}
+    <>
+      {/* ── Hero ── */}
+      <section className="hero hero-short about-hero">
+        <picture className="hero-art">
+          <img
+            src="/launch/images/about-hero.webp"
+            alt="Curated everyday essentials by Zelvomart"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+          />
+        </picture>
+        <div className="container hero-inner">
+          <div className="hero-content">
+            <Breadcrumbs items={[{ label: "About Us" }]} inHero />
+            <div className="eyebrow">About us</div>
+            <h1>About Zelvomart.<br /><em>Everyday things, chosen better.</em></h1>
+            <p>
+              Zelvomart is a curated online store — we stock what matters for everyday life in
+              Pakistan, describe it clearly, pack it carefully and deliver it to your doorstep with
+              Cash on Delivery nationwide.
+            </p>
+            <div className="hero-buttons">
+              <Link className="btn" href="/shop-all-products/">
+                Shop the collection <ArrowRight size={16} />
+              </Link>
+              <Link className="btn secondary" href="/contact-us/">
+                Speak to us <ArrowRight size={16} />
+              </Link>
             </div>
-          ) : (
-            <><p>Too many stores make simple purchases harder than they need to be. We wanted a place where useful products are easy to understand, easy to order and backed by a real person when you need help.</p><p>That means clear product information, Cash on Delivery and a final check before dispatch.</p></>
-          )}
-        </div>
-      </section>
-
-      <section className="mock-about-how">
-        <div className="site-shell">
-          <span className="mock-eyebrow">HOW WE WORK</span><h2>From useful find to your doorstep.</h2>
-          <div className="mock-step-grid">
-            <article><b>01</b><h3>We find</h3><p>Practical products people actually use.</p></article>
-            <article><b>02</b><h3>We check</h3><p>Details, condition and presentation before dispatch.</p></article>
-            <article><b>03</b><h3>You order</h3><p>A simple checkout with Cash on Delivery.</p></article>
-            <article className="dark"><b>04</b><h3>We stay around</h3><p>Real WhatsApp support before and after your order.</p></article>
+            <p className="about-hero-note">
+              <WhatsAppIcon size={15} /> Real support on WhatsApp. Always a person.
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="mock-about-promise">
-        <div className="site-shell">
-          <div><span className="mock-eyebrow">THE ZELVO PROMISE</span><h2>What we refuse to compromise on.</h2></div>
-          <div className="mock-about-promise-grid">
-            <article><span>✓</span><h3>Clear descriptions</h3><p>No unnecessary confusion before you buy.</p></article>
-            <article><span>✓</span><h3>Checked orders</h3><p>Eligible products are checked before dispatch.</p></article>
-            <article><span>✓</span><h3>Real support</h3><p>Talk to a person, not just a bot.</p></article>
-            <article><span>✓</span><h3>Simple payment</h3><p>Pay cash when your parcel arrives.</p></article>
+      {/* ── A more considered way to shop ── */}
+      <section className="section about-considered">
+        <div className="container about-considered-grid">
+          <div className="about-considered-copy">
+            <h2>A more considered<br />way to shop.</h2>
+          </div>
+          <div className="about-considered-detail">
+            <div className="eyebrow">Built in practice. Clear in words.</div>
+            <h3>How a Zelvomart order actually works, and why it matters.</h3>
+            <p>
+              Every product on Zelvomart is selected, listed and packed by our own team. We don&apos;t
+              drop-ship from random warehouses. You get real photos, measured specs and a support
+              team on WhatsApp that actually replies.
+            </p>
+            <p>
+              We started small — a handful of items we could stand behind — and we&apos;re growing based
+              on what customers in Pakistan actually need. Not trending, not random. Useful.
+            </p>
           </div>
         </div>
       </section>
 
-      {liveReviews.length ? (
-        <section className="site-shell mock-about-testimonials">
-          <span className="mock-eyebrow">CUSTOMER WORDS</span><h2>Real reviews from the catalog.</h2>
-          <div>
-            {liveReviews.map((review) => (
-              <article key={review.id}><p>“{review.body}”</p><b>— {review.name} · {review.productName}</b></article>
+      {/* ── For the many sides of your everyday ── */}
+      <section className="section section-soft about-sides">
+        <div className="container about-sides-grid">
+          <div className="about-sides-media">
+            <Image
+              src="/about us and contact us/careful-packing.webp"
+              alt="Careful hands, thoughtful packing"
+              fill
+              sizes="(max-width:760px) 100vw, 580px"
+              className="about-sides-photo"
+            />
+          </div>
+          <div className="about-sides-copy">
+            <div className="eyebrow">Seven categories, one standard.</div>
+            <h2>For the many sides<br />of your everyday.</h2>
+            <ul className="about-category-list">
+              {categories.map((c) => (
+                <li key={c.label}>
+                  <span className="about-cat-ico"><c.icon size={18} /></span>
+                  {c.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* ── From our stock to your doorstep ── */}
+      <section className="section about-process">
+        <div className="container">
+          <div className="about-process-head">
+            <h2>From our stock<br /><em>to your doorstep.</em></h2>
+          </div>
+          <div className="about-process-grid">
+            {steps.map((s, i) => (
+              <article className="about-process-card" key={s.title}>
+                <span className="about-process-ico"><s.icon size={22} /></span>
+                <small>Step {String(i + 1).padStart(2, "0")}</small>
+                <h3>{s.title}</h3>
+                <p>{s.sub}</p>
+              </article>
             ))}
           </div>
-        </section>
-      ) : null}
-
-      <section className="site-shell mock-about-cta">
-        <div><span className="mock-eyebrow">READY TO BROWSE?</span><h2>Find something worth keeping.</h2><p>Useful everyday products, picked with more care.</p></div>
-        <Link href="/shop">Shop all products →</Link>
+        </div>
       </section>
-    </div>
+
+      {/* ── Confidence is in the details ── */}
+      <section className="section about-confidence">
+        <div className="container about-confidence-grid">
+          <div className="about-confidence-copy">
+            <div className="eyebrow light">Shopping with confidence</div>
+            <h2>Confidence is<br />in the details.</h2>
+            <p>Every listing is written to answer your questions before you need to ask.</p>
+            <Link className="btn secondary" href="/shop-all-products/">
+              Browse the store <ArrowRight size={16} />
+            </Link>
+          </div>
+          <div className="about-confidence-checks">
+            {confidenceChecks.map((c) => (
+              <div className="about-conf-item" key={c}>
+                <span className="about-conf-check"><Check size={16} /></span>
+                <span>{c}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Get to know Zelvomart / FAQ ── */}
+      <section className="section about-know">
+        <div className="container about-know-grid">
+          <div className="about-know-copy">
+            <div className="eyebrow">Building trust</div>
+            <h2>Get to know<br />Zelvomart.</h2>
+            <p>The questions most people ask before their first order.</p>
+            <div className="glance">
+              <h3>Zelvomart at a glance</h3>
+              <dl>
+                {glance.map(([k, v]) => (
+                  <div key={k}>
+                    <dt>{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <Link className="pill" href="/faqs/">
+              See all FAQs <ArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="about-know-faq">
+            <FaqAccordion items={faqs.slice(0, 5)} />
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
