@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Mail } from "lucide-react";
 import Link from "next/link";
-import { site } from "@/lib/site";
-import { waLink } from "@/lib/format";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import s from "./Contact.module.css";
 
 export const topics = ["Product question", "Order update", "Delivery question", "Returns & exchanges", "Something else"] as const;

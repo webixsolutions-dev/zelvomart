@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { CartView } from "@/components/pages/CartView";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { CartView } from "@store/components/pages/CartView";
 
 export const metadata: Metadata = { title: "Your Cart", robots: { index: false } };
 

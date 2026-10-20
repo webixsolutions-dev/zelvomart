@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { categories, categoryPath, products } from "@/lib/catalog";
-import { ProductGrid } from "@/components/product/ProductGrid";
-import { SearchBox } from "@/components/layout/SearchBox";
+import { categories, categoryPath, products } from "@store/lib/catalog";
+import { ProductGrid } from "@store/components/product/ProductGrid";
+import { SearchBox } from "@store/components/layout/SearchBox";
 
 // Next.js marks the not-found page noindex itself.
 export const metadata: Metadata = { title: "Page not found" };

@@ -1,6 +1,6 @@
-import type { Product } from "@/lib/catalog";
-import { SectionHead } from "@/components/ui/SectionHead";
-import { ProductCard } from "@/components/product/ProductCard";
+import type { Product } from "@store/lib/catalog";
+import { SectionHead } from "@store/components/ui/SectionHead";
+import { ProductCard } from "@store/components/product/ProductCard";
 
 export function ArrivalsShowcase({ items }: { items: Product[] }) {
   const showcase = items.slice(0, 5);

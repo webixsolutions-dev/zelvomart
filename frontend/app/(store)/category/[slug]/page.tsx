@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { categories, getCategoryBySlug, type CategoryId } from "@/lib/catalog";
-import { CategoryArchive } from "@/components/shop/ArchivePage";
-import { bannerOg, shareMeta } from "@/lib/seo";
+import { categories, getCategoryBySlug, type CategoryId } from "@store/lib/catalog";
+import { CategoryArchive } from "@store/components/shop/ArchivePage";
+import { bannerOg, shareMeta } from "@store/lib/seo";
 
 export const dynamicParams = false;
 

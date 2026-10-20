@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { PageIntro } from "@/components/home/Blocks";
-import { CheckoutView } from "@/components/pages/CheckoutView";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { PageIntro } from "@store/components/home/Blocks";
+import { CheckoutView } from "@store/components/pages/CheckoutView";
 
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 

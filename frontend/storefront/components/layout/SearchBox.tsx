@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useMemo, useRef, useState } from "react";
 import { ArrowRight, Search, X } from "lucide-react";
-import { getCategory, searchProducts } from "@/lib/catalog";
-import { money } from "@/lib/format";
+import { getCategory, searchProducts } from "@store/lib/catalog";
+import { money } from "@store/lib/format";
 import { CategoryBrowser } from "./CategoryBrowser";
 
 const popular = ["Tumbler", "Earbuds", "Handbag", "Jewellery set", "Magnetic tiles", "Perfume"];

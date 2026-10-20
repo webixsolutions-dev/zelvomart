@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { products, isOnSale } from "@/lib/catalog";
-import { homeFaqs } from "@/lib/content";
-import { site } from "@/lib/site";
-import { shareMeta } from "@/lib/seo";
-import { HeroSlider } from "@/components/home/HeroSlider";
-import { Hero } from "@/components/home/Hero";
-import { CategoryGrid, CollectionCards, ProcessSteps, TrustStrip, WhatsAppBand } from "@/components/home/Blocks";
-import { SectionHead } from "@/components/ui/SectionHead";
-import { ProductTabs } from "@/components/home/ProductTabs";
-import { WatchDiscover } from "@/components/home/WatchDiscover";
-import { BrandPromise } from "@/components/home/BrandPromise";
-import { FaqAccordion, FaqJsonLd } from "@/components/ui/FaqAccordion";
+import { products, isOnSale } from "@store/lib/catalog";
+import { homeFaqs } from "@store/lib/content";
+import { site } from "@store/lib/site";
+import { shareMeta } from "@store/lib/seo";
+import { HeroSlider } from "@store/components/home/HeroSlider";
+import { Hero } from "@store/components/home/Hero";
+import { CategoryGrid, CollectionCards, ProcessSteps, TrustStrip, WhatsAppBand } from "@store/components/home/Blocks";
+import { SectionHead } from "@store/components/ui/SectionHead";
+import { ProductTabs } from "@store/components/home/ProductTabs";
+import { WatchDiscover } from "@store/components/home/WatchDiscover";
+import { BrandPromise } from "@store/components/home/BrandPromise";
+import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
 
 export const metadata: Metadata = {
   title: { absolute: "Zelvomart | Online Shopping in Pakistan, Cash on Delivery" },

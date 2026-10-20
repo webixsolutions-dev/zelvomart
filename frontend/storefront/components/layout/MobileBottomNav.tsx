@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Heart, House, LayoutGrid, ShoppingBag, User } from "lucide-react";
-import { useShop } from "@/lib/store";
+import { useShop } from "@store/lib/store";
 
 export function MobileBottomNav() {
   const pathname = usePathname();

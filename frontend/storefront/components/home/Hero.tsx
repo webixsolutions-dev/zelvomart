@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { Breadcrumbs, type Crumb } from "@/components/ui/Breadcrumbs";
+import { Breadcrumbs, type Crumb } from "@store/components/ui/Breadcrumbs";
 
 export type HeroProps = {
   desktop: string;

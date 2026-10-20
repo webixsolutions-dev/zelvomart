@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { SearchView } from "@/components/pages/SearchView";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { SearchView } from "@store/components/pages/SearchView";
 
 export const metadata: Metadata = { title: "Search", robots: { index: false } };
 

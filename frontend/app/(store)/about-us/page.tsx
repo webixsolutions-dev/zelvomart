@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { shareMeta } from "@/lib/seo";
+import { shareMeta } from "@store/lib/seo";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -15,13 +15,13 @@ import {
   Sparkles,
   Truck,
 } from "lucide-react";
-import { categories, categoryPath, type CategoryId } from "@/lib/catalog";
-import { site } from "@/lib/site";
-import { waLink } from "@/lib/format";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { FaqAccordion, FaqJsonLd } from "@/components/ui/FaqAccordion";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
-import s from "@/components/pages/About.module.css";
+import { categories, categoryPath, type CategoryId } from "@store/lib/catalog";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
+import s from "@store/components/pages/About.module.css";
 
 export const metadata: Metadata = {
   title: { absolute: "About Zelvomart: Online Store in Lahore, Pakistan" },

@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
-import { getCategory, type Product } from "@/lib/catalog";
-import { discountPct } from "@/lib/format";
-import { useShop } from "@/lib/store";
-import { Price } from "@/components/ui/Price";
-import { Stars } from "@/components/ui/Stars";
+import { getCategory, type Product } from "@store/lib/catalog";
+import { discountPct } from "@store/lib/format";
+import { useShop } from "@store/lib/store";
+import { Price } from "@store/components/ui/Price";
+import { Stars } from "@store/components/ui/Stars";
 
 export function ProductCard({ p, priority = false, featured = false }: { p: Product; priority?: boolean; featured?: boolean }) {
   const { addToCart, toggleWish, isWished, ready } = useShop();

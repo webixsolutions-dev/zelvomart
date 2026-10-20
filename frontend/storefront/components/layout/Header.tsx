@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BadgePercent, Heart, Menu, ShoppingBag, Sparkle, User, X } from "lucide-react";
-import { categories, categoryPath } from "@/lib/catalog";
-import { site } from "@/lib/site";
-import { waLink } from "@/lib/format";
-import { useShop } from "@/lib/store";
-import { Logo } from "@/components/ui/Logo";
-import { CategoryIcon } from "@/components/ui/CategoryIcon";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { categories, categoryPath } from "@store/lib/catalog";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
+import { useShop } from "@store/lib/store";
+import { Logo } from "@store/components/ui/Logo";
+import { CategoryIcon } from "@store/components/ui/CategoryIcon";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import { SearchBox } from "./SearchBox";
 
 export function Header() {

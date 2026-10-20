@@ -3,15 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Banknote, ShieldCheck, ShoppingBag, Trash2 } from "lucide-react";
-import { categoryPath, getCategory, getProductById, products } from "@/lib/catalog";
-import { money } from "@/lib/format";
-import { unitPrice, useShop } from "@/lib/store";
-import { FreeShippingMeter } from "@/components/shop/FreeShippingMeter";
-import { QtyStepper } from "@/components/shop/QtyStepper";
-import { CouponBox } from "@/components/shop/CouponBox";
-import { ProductGrid } from "@/components/product/ProductGrid";
-import { SectionHead } from "@/components/ui/SectionHead";
-import { PageIntro } from "@/components/home/Blocks";
+import { categoryPath, getCategory, getProductById, products } from "@store/lib/catalog";
+import { money } from "@store/lib/format";
+import { unitPrice, useShop } from "@store/lib/store";
+import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
+import { QtyStepper } from "@store/components/shop/QtyStepper";
+import { CouponBox } from "@store/components/shop/CouponBox";
+import { ProductGrid } from "@store/components/product/ProductGrid";
+import { SectionHead } from "@store/components/ui/SectionHead";
+import { PageIntro } from "@store/components/home/Blocks";
 
 /** Next steps offered on the empty cart. */
 const emptyCategories = ["home-living", "beauty", "tech", "kids"];

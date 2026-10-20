@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { collections } from "@/lib/catalog";
-import { CollectionArchive } from "@/components/shop/ArchivePage";
-import { bannerOg, shareMeta } from "@/lib/seo";
+import { collections } from "@store/lib/catalog";
+import { CollectionArchive } from "@store/components/shop/ArchivePage";
+import { bannerOg, shareMeta } from "@store/lib/seo";
 
 const c = collections["new-arrivals"];
 

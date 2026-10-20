@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { CircleCheck } from "lucide-react";
-import { useShop } from "@/lib/store";
+import { useShop } from "@store/lib/store";
 
 export function Toaster() {
   const { toasts } = useShop();

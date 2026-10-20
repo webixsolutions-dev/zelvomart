@@ -1,5 +1,5 @@
 import { Dumbbell, Gem, Headphones, Lamp, Sofa, Sparkles, ToyBrick } from "lucide-react";
-import type { CategoryId } from "@/lib/catalog";
+import type { CategoryId } from "@store/lib/catalog";
 
 const map = {
   "home-living": Sofa,

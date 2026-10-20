@@ -1,6 +1,6 @@
-import { categories, collections, products, type CategoryId, type CollectionKey } from "@/lib/catalog";
-import { Hero } from "@/components/home/Hero";
-import { WhatsAppBand } from "@/components/home/Blocks";
+import { categories, collections, products, type CategoryId, type CollectionKey } from "@store/lib/catalog";
+import { Hero } from "@store/components/home/Hero";
+import { WhatsAppBand } from "@store/components/home/Blocks";
 import { ArchiveView } from "./ArchiveView";
 import { CollectionAbout } from "./CollectionAbout";
 

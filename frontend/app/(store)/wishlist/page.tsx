@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { PageIntro } from "@/components/home/Blocks";
-import { WishlistView } from "@/components/pages/WishlistView";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { PageIntro } from "@store/components/home/Blocks";
+import { WishlistView } from "@store/components/pages/WishlistView";
 
 export const metadata: Metadata = { title: "Wishlist", robots: { index: false } };
 

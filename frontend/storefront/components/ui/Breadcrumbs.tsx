@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { site } from "@/lib/site";
+import { site } from "@store/lib/site";
 
 export type Crumb = { label: string; href?: string };
 

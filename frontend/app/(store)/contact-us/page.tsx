@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { shareMeta } from "@/lib/seo";
+import { shareMeta } from "@store/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Clock, Mail, MapPin, MessageCircleQuestion, PackageSearch, RefreshCw } from "lucide-react";
-import { site } from "@/lib/site";
-import { money, waLink } from "@/lib/format";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { FaqAccordion, FaqJsonLd } from "@/components/ui/FaqAccordion";
-import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, TiktokIcon, WhatsAppIcon, XIcon, YoutubeIcon } from "@/components/ui/BrandIcons";
-import { ContactForm, TopicLink } from "@/components/pages/ContactForm";
-import s from "@/components/pages/Contact.module.css";
+import { site } from "@store/lib/site";
+import { money, waLink } from "@store/lib/format";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
+import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, TiktokIcon, WhatsAppIcon, XIcon, YoutubeIcon } from "@store/components/ui/BrandIcons";
+import { ContactForm, TopicLink } from "@store/components/pages/ContactForm";
+import s from "@store/components/pages/Contact.module.css";
 
 export const metadata: Metadata = {
   title: { absolute: "Contact Zelvomart: WhatsApp, Phone & Email" },

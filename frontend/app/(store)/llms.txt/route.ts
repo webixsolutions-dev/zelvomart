@@ -1,5 +1,5 @@
-import { categories, categoryPath } from "@/lib/catalog";
-import { site } from "@/lib/site";
+import { categories, categoryPath } from "@store/lib/catalog";
+import { site } from "@store/lib/site";
 
 export const dynamic = "force-static";
 

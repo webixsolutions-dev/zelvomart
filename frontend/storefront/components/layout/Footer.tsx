@@ -2,10 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChevronRight, Mail, MapPin } from "lucide-react";
-import { categories, categoryPath } from "@/lib/catalog";
-import { site } from "@/lib/site";
-import { waLink } from "@/lib/format";
-import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, TiktokIcon, WhatsAppIcon, XIcon, YoutubeIcon } from "@/components/ui/BrandIcons";
+import { categories, categoryPath } from "@store/lib/catalog";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
+import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, TiktokIcon, WhatsAppIcon, XIcon, YoutubeIcon } from "@store/components/ui/BrandIcons";
 import styles from "./Footer.module.css";
 
 const customerServiceLinks = [

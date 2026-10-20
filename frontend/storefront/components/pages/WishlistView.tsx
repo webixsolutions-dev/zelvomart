@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { ArrowRight, Heart } from "lucide-react";
-import { products } from "@/lib/catalog";
-import { useShop } from "@/lib/store";
-import { ProductGrid } from "@/components/product/ProductGrid";
+import { products } from "@store/lib/catalog";
+import { useShop } from "@store/lib/store";
+import { ProductGrid } from "@store/components/product/ProductGrid";
 
 export function WishlistView() {
   const { wishlist, ready, addToCart, notify } = useShop();

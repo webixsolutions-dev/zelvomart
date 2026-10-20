@@ -4,11 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
 import { ArrowRight, ShieldCheck, ShoppingBag, Trash2, X } from "lucide-react";
-import { getProductById, products } from "@/lib/catalog";
-import { money } from "@/lib/format";
-import { unitPrice, useShop } from "@/lib/store";
-import { FreeShippingMeter } from "@/components/shop/FreeShippingMeter";
-import { QtyStepper } from "@/components/shop/QtyStepper";
+import { getProductById, products } from "@store/lib/catalog";
+import { money } from "@store/lib/format";
+import { unitPrice, useShop } from "@store/lib/store";
+import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
+import { QtyStepper } from "@store/components/shop/QtyStepper";
 
 export function CartDrawer() {
   const { cart, cartOpen, setCartOpen, setQty, removeLine, subtotal, shipping, total, addToCart, cartCount } = useShop();

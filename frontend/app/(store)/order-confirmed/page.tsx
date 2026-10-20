@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { OrderConfirmed } from "@/components/pages/OrderConfirmed";
+import { OrderConfirmed } from "@store/components/pages/OrderConfirmed";
 
 export const metadata: Metadata = { title: "Order Confirmed", robots: { index: false } };
 

@@ -1,6 +1,6 @@
-import { shareMeta } from "@/lib/seo";
+import { shareMeta } from "@store/lib/seo";
 import type { Metadata } from "next";
-import { site } from "@/lib/site";
+import { site } from "@store/lib/site";
 import type { PolicyDocument } from "./types";
 
 export function policyMetadata(policy: PolicyDocument): Metadata {

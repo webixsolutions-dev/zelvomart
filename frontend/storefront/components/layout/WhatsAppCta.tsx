@@ -1,7 +1,7 @@
 import { ArrowRight, Clock3 } from "lucide-react";
-import { site } from "@/lib/site";
-import { waLink } from "@/lib/format";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 
 export function WhatsAppCta() {
   return (

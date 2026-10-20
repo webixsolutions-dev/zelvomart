@@ -4,9 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, BadgePercent, ChevronDown, Flame, LayoutGrid, Sparkle } from "lucide-react";
-import { categories, collections, products, type CategoryId, type Product, categoryPath } from "@/lib/catalog";
-import { money } from "@/lib/format";
-import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import { categories, collections, products, type CategoryId, type Product, categoryPath } from "@store/lib/catalog";
+import { money } from "@store/lib/format";
+import { CategoryIcon } from "@store/components/ui/CategoryIcon";
 
 type Group = { key: string; label: string; href: string; icon: React.ReactNode; items: Product[] };
 

@@ -1,4 +1,4 @@
-import { discountPct, money } from "@/lib/format";
+import { discountPct, money } from "@store/lib/format";
 
 export function Price({ price, compare, size = "md" }: { price: number; compare?: number; size?: "md" | "lg" }) {
   const pct = discountPct(price, compare);

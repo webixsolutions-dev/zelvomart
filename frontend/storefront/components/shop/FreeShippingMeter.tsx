@@ -1,6 +1,6 @@
 import { Truck } from "lucide-react";
-import { money } from "@/lib/format";
-import { site } from "@/lib/site";
+import { money } from "@store/lib/format";
+import { site } from "@store/lib/site";
 
 export function FreeShippingMeter({ subtotal }: { subtotal: number }) {
   const goal = site.shipping.freeOver;

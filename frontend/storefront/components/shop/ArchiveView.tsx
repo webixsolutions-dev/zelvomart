@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
-import { categories, getCategory, products, type CategoryId, categoryPath } from "@/lib/catalog";
-import { ProductGrid } from "@/components/product/ProductGrid";
+import { categories, getCategory, products, type CategoryId, categoryPath } from "@store/lib/catalog";
+import { ProductGrid } from "@store/components/product/ProductGrid";
 
 type Sort = "featured" | "low" | "high" | "name" | "discount";
 

@@ -2,8 +2,8 @@
 
 import { useId, useRef, useState } from "react";
 import { ChevronDown, CircleAlert, CircleCheck, LoaderCircle, TicketPercent } from "lucide-react";
-import { money } from "@/lib/format";
-import { useShop } from "@/lib/store";
+import { money } from "@store/lib/format";
+import { useShop } from "@store/lib/store";
 
 /**
  * “Apply coupon” box, shared by the cart and the checkout summary.

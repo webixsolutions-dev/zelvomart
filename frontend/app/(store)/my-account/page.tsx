@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Bell, Clock, Heart, History, Mail, Truck, Wallet, Zap } from "lucide-react";
-import { site } from "@/lib/site";
-import { faqs } from "@/lib/content";
-import { waLink } from "@/lib/format";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { FaqAccordion } from "@/components/ui/FaqAccordion";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
-import { AccountAuth, AccountDashboard, AccountSnapshot } from "@/components/pages/AccountView";
+import { site } from "@store/lib/site";
+import { faqs } from "@store/lib/content";
+import { waLink } from "@store/lib/format";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { FaqAccordion } from "@store/components/ui/FaqAccordion";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
+import { AccountAuth, AccountDashboard, AccountSnapshot } from "@store/components/pages/AccountView";
 
 export const metadata: Metadata = { title: "My Account", robots: { index: false } };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { youtubeEmbed } from "@/lib/youtube";
+import { youtubeEmbed } from "@store/lib/youtube";
 
 /**
  * YouTube embed that only loads when the visitor scrolls near it (~300px early),

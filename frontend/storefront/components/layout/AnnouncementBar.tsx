@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Banknote, PackageCheck, ShieldCheck, Truck } from "lucide-react";
-import { announcements, site } from "@/lib/site";
-import { waLink } from "@/lib/format";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { announcements, site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 
 const icons = [Banknote, Truck, PackageCheck, ShieldCheck];
 

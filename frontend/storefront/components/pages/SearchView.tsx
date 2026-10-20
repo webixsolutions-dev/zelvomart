@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { categories, products, searchProducts, categoryPath } from "@/lib/catalog";
-import { ProductGrid } from "@/components/product/ProductGrid";
-import { SearchBox } from "@/components/layout/SearchBox";
-import { SectionHead } from "@/components/ui/SectionHead";
+import { categories, products, searchProducts, categoryPath } from "@store/lib/catalog";
+import { ProductGrid } from "@store/components/product/ProductGrid";
+import { SearchBox } from "@store/components/layout/SearchBox";
+import { SectionHead } from "@store/components/ui/SectionHead";
 
 export function SearchView() {
   const q = useSearchParams().get("q") ?? "";

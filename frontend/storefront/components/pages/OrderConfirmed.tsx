@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, CalendarDays, Check, CircleCheck, Copy, PackageSearch, Video } from "lucide-react";
-import { money, waLink } from "@/lib/format";
-import { site } from "@/lib/site";
-import { useShop } from "@/lib/store";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { money, waLink } from "@store/lib/format";
+import { site } from "@store/lib/site";
+import { useShop } from "@store/lib/store";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import { OrderTimeline } from "./OrderTimeline";
 
 /** Adds `days` working days (Mon–Sat; Sundays skipped) to `from`. */

@@ -5,8 +5,8 @@ import {
   Truck, MapPin, PackageCheck, Banknote, FileText, Tags, ClipboardCheck,
   Copyright, Scale, ShieldCheck, Database, Share2, LockKeyhole, UserRound, RefreshCw,
 } from "lucide-react";
-import { site } from "@/lib/site";
-import type { PolicyDocument, PolicyIcon, PolicySlug } from "@/lib/policies/types";
+import { site } from "@store/lib/site";
+import type { PolicyDocument, PolicyIcon, PolicySlug } from "@store/lib/policies/types";
 import styles from "./PolicyLayout.module.css";
 
 const icons = {

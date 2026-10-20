@@ -1,14 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
-import { site } from "@/lib/site";
-import { ShopProvider } from "@/lib/store";
-import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { CartDrawer } from "@/components/layout/CartDrawer";
-import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
-import { Toaster } from "@/components/layout/Toaster";
+import { site } from "@store/lib/site";
+import { ShopProvider } from "@store/lib/store";
+import { AnnouncementBar } from "@store/components/layout/AnnouncementBar";
+import { Header } from "@store/components/layout/Header";
+import { Footer } from "@store/components/layout/Footer";
+import { CartDrawer } from "@store/components/layout/CartDrawer";
+import { MobileBottomNav } from "@store/components/layout/MobileBottomNav";
+import { Toaster } from "@store/components/layout/Toaster";
 
 const manrope = Manrope({
   subsets: ["latin"],

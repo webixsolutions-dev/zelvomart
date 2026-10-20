@@ -19,13 +19,13 @@ import {
   Truck,
   type LucideIcon,
 } from "lucide-react";
-import { money, waLink } from "@/lib/format";
-import { site } from "@/lib/site";
-import { useShop } from "@/lib/store";
-import { deliveryEstimate, findOrder, stages, statusInfo, type TrackedOrder } from "@/lib/tracking";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { FaqAccordion, FaqJsonLd } from "@/components/ui/FaqAccordion";
+import { money, waLink } from "@store/lib/format";
+import { site } from "@store/lib/site";
+import { useShop } from "@store/lib/store";
+import { deliveryEstimate, findOrder, stages, statusInfo, type TrackedOrder } from "@store/lib/tracking";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
 import s from "./TrackOrder.module.css";
 
 /** Same icons in the result tracker and in "What each stage means": check, shield, box, truck, house. */

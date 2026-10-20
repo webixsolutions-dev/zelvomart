@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, Banknote, ClipboardCheck, MousePointerClick, PackageCheck, ShieldCheck, Tag, Truck } from "lucide-react";
-import { categories, type CategoryId, categoryPath } from "@/lib/catalog";
-import { site } from "@/lib/site";
-import { waLink } from "@/lib/format";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { categories, type CategoryId, categoryPath } from "@store/lib/catalog";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 
 export function TrustStrip() {
   const items = [

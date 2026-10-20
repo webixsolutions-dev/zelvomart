@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { site } from "@/lib/site";
-import { waLink } from "@/lib/format";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
 
 type Slide = {
   desktop: string;

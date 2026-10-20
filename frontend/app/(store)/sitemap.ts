@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
-import { categories, products } from "@/lib/catalog";
-import { site } from "@/lib/site";
+import { categories, products } from "@store/lib/catalog";
+import { site } from "@store/lib/site";
 
 export const dynamic = "force-static";
 

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
-import type { Product } from "@/lib/catalog";
-import { ProductGrid } from "@/components/product/ProductGrid";
+import type { Product } from "@store/lib/catalog";
+import { ProductGrid } from "@store/components/product/ProductGrid";
 
 type Tab = { key: string; label: string; href: string; items: Product[] };
 

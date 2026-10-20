@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, Banknote, CircleAlert, CreditCard, Lock, ShieldCheck, ShoppingBag } from "lucide-react";
-import { getProductById } from "@/lib/catalog";
-import { money } from "@/lib/format";
-import { unitPrice, useShop } from "@/lib/store";
-import { FreeShippingMeter } from "@/components/shop/FreeShippingMeter";
-import { CouponBox } from "@/components/shop/CouponBox";
+import { getProductById } from "@store/lib/catalog";
+import { money } from "@store/lib/format";
+import { unitPrice, useShop } from "@store/lib/store";
+import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
+import { CouponBox } from "@store/components/shop/CouponBox";
 
 const cities = ["Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Quetta", "Sialkot", "Gujranwala", "Hyderabad", "Bahawalpur", "Sargodha", "Abbottabad"];
 

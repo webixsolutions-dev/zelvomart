@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getCategory, getProduct, products, relatedProducts, categoryPath, type Product } from "@/lib/catalog";
-import { site } from "@/lib/site";
-import { productOg, shareMeta } from "@/lib/seo";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { ProductDetail } from "@/components/product/ProductDetail";
-import { ProductGrid } from "@/components/product/ProductGrid";
-import { SectionHead } from "@/components/ui/SectionHead";
-import { approvedReviews, reviewSummary } from "@/lib/reviews";
+import { getCategory, getProduct, products, relatedProducts, categoryPath, type Product } from "@store/lib/catalog";
+import { site } from "@store/lib/site";
+import { productOg, shareMeta } from "@store/lib/seo";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { ProductDetail } from "@store/components/product/ProductDetail";
+import { ProductGrid } from "@store/components/product/ProductGrid";
+import { SectionHead } from "@store/components/ui/SectionHead";
+import { approvedReviews, reviewSummary } from "@store/lib/reviews";
 
 export const dynamicParams = false;
 

@@ -1,6 +1,6 @@
-import { PolicyLayout } from "@/components/pages/PolicyLayout";
-import { policyMetadata } from "@/lib/policies/metadata";
-import { termsPolicy } from "@/lib/policies/terms";
+import { PolicyLayout } from "@store/components/pages/PolicyLayout";
+import { policyMetadata } from "@store/lib/policies/metadata";
+import { termsPolicy } from "@store/lib/policies/terms";
 
 export const metadata = policyMetadata(termsPolicy);
 

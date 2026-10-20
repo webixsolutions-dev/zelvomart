@@ -5,17 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Banknote, Check, ChevronDown, Heart, MessageCircle, PackageCheck, RotateCcw, ShieldCheck, ShoppingBag, Truck } from "lucide-react";
-import { getCategory, getProduct, categoryPath, type Variant } from "@/lib/catalog";
-import { discountPct, money, waLink } from "@/lib/format";
-import { site } from "@/lib/site";
-import { useShop } from "@/lib/store";
-import { deliverBy, shortDate } from "@/lib/delivery";
-import { resolveProductTabs } from "@/lib/productTabs";
-import { approvedReviews, reviewSummary } from "@/lib/reviews";
-import { Price } from "@/components/ui/Price";
-import { Stars } from "@/components/ui/Stars";
-import { QtyStepper } from "@/components/shop/QtyStepper";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/catalog";
+import { discountPct, money, waLink } from "@store/lib/format";
+import { site } from "@store/lib/site";
+import { useShop } from "@store/lib/store";
+import { deliverBy, shortDate } from "@store/lib/delivery";
+import { resolveProductTabs } from "@store/lib/productTabs";
+import { approvedReviews, reviewSummary } from "@store/lib/reviews";
+import { Price } from "@store/components/ui/Price";
+import { Stars } from "@store/components/ui/Stars";
+import { QtyStepper } from "@store/components/shop/QtyStepper";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import { ProductReviews, ReviewCard } from "./ProductReviews";
 
 const views = [

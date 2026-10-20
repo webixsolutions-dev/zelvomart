@@ -21,10 +21,10 @@ import {
   ShoppingCart,
   Headset,
 } from "lucide-react";
-import { money, waLink } from "@/lib/format";
-import { site } from "@/lib/site";
-import { useShop } from "@/lib/store";
-import { WhatsAppIcon } from "@/components/ui/BrandIcons";
+import { money, waLink } from "@store/lib/format";
+import { site } from "@store/lib/site";
+import { useShop } from "@store/lib/store";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 
 /** Live counts for the hero card — everything comes from this device's saved shop state. */
 export function AccountSnapshot() {

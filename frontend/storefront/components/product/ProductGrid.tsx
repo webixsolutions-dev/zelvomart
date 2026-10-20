@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { Product } from "@/lib/catalog";
+import type { Product } from "@store/lib/catalog";
 import { ProductCard } from "./ProductCard";
 
 export function ProductGrid({ items, cols = 4, priorityCount = 0 }: { items: Product[]; cols?: 3 | 4; priorityCount?: number }) {

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { allFaqs } from "@/lib/content";
-import { shareMeta } from "@/lib/seo";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { PageIntro, WhatsAppBand } from "@/components/home/Blocks";
-import { FaqAccordion, FaqJsonLd } from "@/components/ui/FaqAccordion";
+import { allFaqs } from "@store/lib/content";
+import { shareMeta } from "@store/lib/seo";
+import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
+import { PageIntro, WhatsAppBand } from "@store/components/home/Blocks";
+import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
 
 export const metadata: Metadata = {
   title: { absolute: "Zelvomart FAQs: Delivery, Cash on Delivery & Returns" },

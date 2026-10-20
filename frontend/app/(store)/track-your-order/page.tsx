@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { shareMeta } from "@/lib/seo";
-import { TrackOrderView } from "@/components/pages/TrackOrderView";
+import { shareMeta } from "@store/lib/seo";
+import { TrackOrderView } from "@store/components/pages/TrackOrderView";
 
 export const metadata: Metadata = {
   title: { absolute: "Track Your Zelvomart Order" },
