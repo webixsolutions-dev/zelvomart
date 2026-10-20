@@ -4,9 +4,13 @@ import { categories as artwork, type Product, type Category } from './catalog';
 export function categoryArtwork(slug: string) {
   return artwork.find(c => c.slug === slug || c.id === slug) || artwork.find(c => slug.includes(c.id) || c.id==='beauty'&&slug.includes('beauty') || c.id==='tech'&&slug.includes('tech') || c.id==='fitness'&&slug.includes('sport') || c.id==='kids'&&slug.includes('kids')) || artwork[0];
 }
+/** Only a photo uploaded in the admin (an https URL) replaces the design artwork; the seeded /images/categories/*.svg placeholders never do. */
+function uploadedImage(url?: string | null) {
+  return url && /^https?:\/\//i.test(url) && !/\.svg(\?|$)/i.test(url) ? url : '';
+}
 export function designCategory(c: ApiCategory): Category {
   const art = categoryArtwork(c.slug);
-  return {...art, id:c.slug as Category['id'],slug:c.slug,name:c.name,short:c.name,image:c.image||art.image,seoTitle:c.seoTitle||art.seoTitle,seoDescription:c.seoDescription||art.seoDescription};
+  return {...art, id:c.slug as Category['id'],slug:c.slug,name:c.name,short:c.name,image:uploadedImage(c.image)||art.image,seoTitle:c.seoTitle||art.seoTitle,seoDescription:c.seoDescription||art.seoDescription};
 }
 export function designProduct(p: ApiProduct): Product {
   const c=p.categories?.[0], art=categoryArtwork(c?.slug||p.categorySlugs?.[0]||'');

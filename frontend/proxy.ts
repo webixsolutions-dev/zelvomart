@@ -30,19 +30,31 @@ function backendUrl() {
 
 async function loadRedirects() {
   const base = backendUrl();
-  if (!base) return;
+  if (!base) {
+    redirectMap = redirectMap || new Map();
+    redirectLoadedAt = Date.now();
+    return;
+  }
+  let loaded = false;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 1500);
     const response = await fetch(`${base}/api/redirects/map`, { signal: controller.signal, cache: "no-store" });
     clearTimeout(timer);
-    if (!response.ok) return;
+    if (!response.ok) throw new Error(`REDIRECTS_${response.status}`);
     const rows = (await response.json()) as [string, string, number][];
     redirectMap = new Map(rows.map(([source, destination, permanent]) => [source, { destination, permanent: permanent === 1 }]));
     redirectLoadedAt = Date.now();
+    loaded = true;
   } catch {
     // Keep the previous map; the page-level redirect still works.
   } finally {
+    if (!loaded) {
+      // A failed load must not make every page view wait again: keep (or start) an empty map
+      // and retry in the background after 30 seconds.
+      redirectMap = redirectMap || new Map();
+      redirectLoadedAt = Date.now() - REDIRECT_TTL_MS + 30_000;
+    }
     redirectLoading = null;
   }
 }

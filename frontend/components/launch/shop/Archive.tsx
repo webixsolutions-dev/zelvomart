@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {launchProducts,launchCategories} from '@/lib/launch/server';
 import {collections,type CollectionKey} from '@/lib/launch/catalog';
 import {Hero} from '../home/Hero';
+import {CollectionAbout} from './CollectionAbout';
 import {ProductGrid} from '../product/ProductGrid';
 
 export default async function Archive({collection='shop',category,searchParams={}}:{collection?:CollectionKey;category?:string;searchParams?:Record<string,string|string[]|undefined>}){
@@ -34,6 +35,7 @@ export default async function Archive({collection='shop',category,searchParams={
    <ProductGrid items={result.data.items}/>
    {!result.error&&!result.data.items.length&&<div className="empty-state"><h2>No products found</h2><p>Try a different search or remove a filter.</p></div>}
    <nav className="launch-pagination" aria-label="Product pages">{result.data.page>1&&<Link className="btn secondary" href={pageLink(result.data.page-1)}>Previous</Link>}<span>Page {result.data.page} of {Math.max(1,result.data.totalPages)}</span>{result.data.page<result.data.totalPages&&<Link className="btn" href={pageLink(result.data.page+1)}>Next</Link>}</nav>
+   <CollectionAbout name={cat?.name||title} text={cat?.about||info.sub}/>
   </div></section>
  </>;
 }
