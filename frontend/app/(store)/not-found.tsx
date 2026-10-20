@@ -3,11 +3,13 @@ import Link from "next/link";
 import { categories, categoryPath, products } from "@store/lib/catalog";
 import { ProductGrid } from "@store/components/product/ProductGrid";
 import { SearchBox } from "@store/components/layout/SearchBox";
+import { loadStore } from "@store/lib/backend";
 
 // Next.js marks the not-found page noindex itself.
 export const metadata: Metadata = { title: "Page not found" };
 
-export default function NotFound() {
+export default async function NotFound() {
+  await loadStore();
   return (
     <section className="section">
       <div className="container">

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { categories, getCategoryBySlug, type CategoryId } from "@store/lib/catalog";
 import { CategoryArchive } from "@store/components/shop/ArchivePage";
 import { bannerOg, shareMeta } from "@store/lib/seo";
+import { loadStore } from "@store/lib/backend";
 
 export const dynamicParams = false;
 
@@ -21,7 +22,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
+export const revalidate = 300;
+
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  await loadStore();
   const c = getCategoryBySlug((await params).slug);
   if (!c) notFound();
   return <CategoryArchive id={c.id as CategoryId} />;

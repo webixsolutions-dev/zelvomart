@@ -9,6 +9,7 @@ import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/
 import { discountPct, money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
 import { useShop } from "@store/lib/store";
+import { useViewContent } from "@store/lib/orders";
 import { deliverBy, shortDate } from "@store/lib/delivery";
 import { resolveProductTabs } from "@store/lib/productTabs";
 import { approvedReviews, reviewSummary } from "@store/lib/reviews";
@@ -30,6 +31,7 @@ function isSize(label: string, kind?: string) {
 
 export function ProductDetail({ slug }: { slug: string }) {
   const p = getProduct(slug)!;
+  useViewContent(p);
   const cat = getCategory(p.category)!;
   const router = useRouter();
   const { addToCart, toggleWish, isWished, ready } = useShop();

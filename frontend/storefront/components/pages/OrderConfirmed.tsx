@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ArrowRight, CalendarDays, Check, CircleCheck, Copy, PackageSearch, Video } from "lucide-react";
 import { money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
-import { useShop } from "@store/lib/store";
+import { useConfirmedOrder } from "@store/lib/orders";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import { OrderTimeline } from "./OrderTimeline";
 
@@ -81,8 +81,9 @@ function CopyOrderNumber({ id }: { id: string }) {
 }
 
 export function OrderConfirmed() {
-  const id = useSearchParams().get("id");
-  const { orders, ready } = useShop();
+  const params = useSearchParams();
+  const id = params.get("id");
+  const { orders, ready } = useConfirmedOrder(id, params.get("key"));
   if (!ready) return <div className="container skeleton-block" />;
   const order = orders.find((o) => o.id === id);
 

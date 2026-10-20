@@ -13,6 +13,7 @@ import { ProductTabs } from "@store/components/home/ProductTabs";
 import { WatchDiscover } from "@store/components/home/WatchDiscover";
 import { BrandPromise } from "@store/components/home/BrandPromise";
 import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
+import { loadStore } from "@store/lib/backend";
 
 export const metadata: Metadata = {
   title: { absolute: "Zelvomart | Online Shopping in Pakistan, Cash on Delivery" },
@@ -36,7 +37,10 @@ const websiteJsonLd = {
   url: `${site.url}/`,
 };
 
-export default function HomePage() {
+export const revalidate = 300;
+
+export default async function HomePage() {
+  await loadStore();
   const best = products.filter((p) => p.isBestseller).slice(0, 8);
   const fresh = products.filter((p) => p.isNew);
   const deals = products.filter(isOnSale).slice(0, 8);

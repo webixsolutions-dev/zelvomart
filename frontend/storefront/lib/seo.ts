@@ -12,10 +12,13 @@ export function bannerOg(banner: string, alt: string): OgImage {
   return { url: `/images/og/${name}.jpg`, width: 1200, height: 630, alt };
 }
 
-/** A product's first image as a 1200 px JPG copy. */
+/**
+ * A product's share image: its first photo from the backend.
+ * TODO(api): the backend keeps JPG catalog copies only for the feeds; when the product API returns
+ * that `feedImageUrl`, use it here (WhatsApp and Facebook prefer JPG over WebP).
+ */
 export function productOg(image: string, alt: string): OgImage {
-  const name = image.split("/").pop()!.replace(/\.\w+$/, "");
-  return { url: `/images/og/products/${name}.jpg`, width: 1200, height: 1200, alt };
+  return { url: image, width: 1200, height: 1200, alt };
 }
 
 /**

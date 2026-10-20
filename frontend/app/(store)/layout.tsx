@@ -17,6 +17,8 @@ import SessionReplayProvider from "@/components/SessionReplayProvider";
 import MetaPixelScript from "@/components/MetaPixelScript";
 import TikTokPixelScript from "@/components/TikTokPixelScript";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import { loadStore, slimProduct } from "@store/lib/backend";
+import { CatalogBridge } from "@store/lib/bridge";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -56,7 +58,8 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-const orgJsonLd = {
+// Built per request, so it carries the phone and email from Admin → Settings.
+const orgJsonLd = () => ({
   "@context": "https://schema.org",
   "@type": "OnlineStore",
   "@id": `${site.url}/#organization`,
@@ -81,12 +84,12 @@ const orgJsonLd = {
   },
   currenciesAccepted: "PKR",
   paymentAccepted: "Cash",
-};
+});
 
 export const revalidate = 300;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const bootstrap = await getStoreBootstrap().catch(() => null);
+  const [bootstrap, store] = await Promise.all([getStoreBootstrap().catch(() => null), loadStore()]);
   const settings = (bootstrap?.settings || {}) as Record<string, unknown>;
   const enabled = (key: string) => settings[key] !== false && settings[key] !== "false";
   const pixelId = String(settings["tracking.metaPixelId"] || "");
@@ -94,6 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en-PK" className={manrope.variable}>
       <body>
+        <CatalogBridge products={store.catalog.map(slimProduct)} settings={store.settings}>
         <ShopProvider>
           <a href="#main" className="skip-link">
             Skip to content
@@ -106,7 +110,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CartDrawer />
           <Toaster />
         </ShopProvider>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+        </CatalogBridge>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd()) }} />
         <Suspense fallback={null}>
           <TrackingProvider />
           <GoogleAnalytics />

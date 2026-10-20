@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, ImagePlus, Play, X } from "lucide-react";
 import type { Product } from "@store/lib/catalog";
-import { reviewSummary, savePendingReview, saveSubscriber, timeAgo, type Review } from "@store/lib/reviews";
+import { reviewSummary, timeAgo, type Review } from "@store/lib/reviews";
+import { submitReview as savePendingReview, subscribeToUpdates as saveSubscriber } from "@store/lib/api-gaps";
 import { Stars } from "@store/components/ui/Stars";
 
 const initials = (name: string) =>

@@ -3,22 +3,51 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getProductById, type Product } from "./catalog";
 import { site } from "./site";
+import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
+import { getReplaySessionId, getReplayVisitorId, requestReplayFlush } from "@/lib/session-replay-client";
 
 /**
- * Client-side shop state (cart, wishlist, orders placed on this device).
- * Persisted to localStorage so the static build behaves like a real store.
- * Replace with API calls once the backend exists — the hook surface can stay the same.
+ * Shop state. The cart and wishlist stay on the device (as before) and every cart change is
+ * synced to the backend (/api/account/cart). Coupons, orders, the confirmation page and the
+ * restore link all use the backend through /api/store-proxy, with the same request bodies the
+ * previous storefront sent (CheckoutClient, CartProvider, PurchaseClient).
  */
 
 /** `bundle` is the Buy 2 discount (percent) when the line was added as a bundle. */
 export type CartLine = { key: string; id: string; variant?: string; qty: number; bundle?: number };
 
-/** Price per item for a cart line, with any bundle discount applied. */
-export function unitPrice(p: Product, line?: Pick<CartLine, "bundle">) {
-  return line?.bundle ? Math.round(p.price * (1 - line.bundle / 100)) : p.price;
+/** Price per item for a cart line: the chosen variation's price, with any bundle discount applied. */
+export function unitPrice(p: Product, line?: Pick<CartLine, "bundle"> & { variant?: string }) {
+  const base = p.variants?.options.find((o) => o.name === line?.variant)?.price ?? p.price;
+  return line?.bundle ? Math.round(base * (1 - line.bundle / 100)) : base;
+}
+
+/** A cart line in the shape the backend expects (productId, variantId, quantity, bundleSize). */
+function backendLine(l: CartLine) {
+  const p = getProductById(l.id);
+  const variantId = p?.variants?.options.find((o) => o.name === l.variant)?.id;
+  const bundleSize = l.bundle ? 2 : 1;
+  return { productId: l.id, variantId, quantity: bundleSize === 2 ? Math.max(1, Math.round(l.qty / 2)) : l.qty, bundleSize };
+}
+
+function parseJsonCookie(name: string) {
+  try {
+    const value = readCookie(name);
+    return value ? JSON.parse(decodeURIComponent(value)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function lineSku(l: CartLine) {
+  const p = getProductById(l.id);
+  return p?.variants?.options.find((o) => o.name === l.variant)?.sku || p?.sku || l.id;
 }
 export type Order = {
+  /** The order number (ZM-…). */
   id: string;
+  /** The private key the confirmation page needs (the backend order id). */
+  key?: string;
   createdAt: string;
   lines: (CartLine & { name: string; price: number; image: string })[];
   subtotal: number;
@@ -35,13 +64,6 @@ export type Order = {
 
 /** A coupon the customer has applied; kept on the device so it follows them from cart to checkout. */
 export type AppliedCoupon = { code: string; percent?: number; amount?: number };
-
-/**
- * Live coupon codes. None are running yet, so the list is empty and every code is rejected.
- * When the backend exists, `applyCoupon` calls POST /api/checkout/coupon instead.
- * Example entry: NEXT15: { percent: 15 }  or  WELCOME500: { amount: 500 }
- */
-const COUPONS: Record<string, Omit<AppliedCoupon, "code">> = {};
 
 export function couponDiscount(coupon: AppliedCoupon | null, subtotal: number) {
   if (!coupon || subtotal <= 0) return 0;
@@ -75,7 +97,8 @@ type Ctx = {
   clearCart: () => void;
   toggleWish: (id: string) => void;
   isWished: (id: string) => boolean;
-  placeOrder: (customer: Order["customer"], opts: { terms: true }) => Order;
+  /** Places the order on the backend (POST /api/orders) and returns it with the real order number. */
+  placeOrder: (customer: Order["customer"], opts: { terms: true }) => Promise<Order>;
   cartOpen: boolean;
   setCartOpen: (v: boolean) => void;
   toasts: Toast[];
@@ -119,7 +142,6 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setCart(read("zlv-cart-v2", []));
     setWishlist(read("zlv-wishlist-v2", []));
-    setOrders(read("zlv-orders-v1", []));
     setCoupon(read<AppliedCoupon | null>("zlv-coupon-v1", null));
     setReady(true);
   }, []);
@@ -130,21 +152,92 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (ready) write("zlv-wishlist-v2", wishlist);
   }, [wishlist, ready]);
+  // Every cart change is synced to the backend (account cart / abandoned-cart recovery), as before.
   useEffect(() => {
-    if (ready) write("zlv-orders-v1", orders);
-  }, [orders, ready]);
+    if (!ready || !cart.length) return;
+    const timer = setTimeout(() => {
+      void fetch("/api/account/cart", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cart: cart.map(backendLine), source: { page: location.pathname } }),
+      }).catch(() => undefined);
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [cart, ready]);
+
+  // Recovery link from the abandoned-cart message: /cart/?restore=<token>[&coupon=CODE]
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get("restore");
+    if (!token || location.pathname.replace(/\/+$/, "") !== "/cart") return;
+    const controller = new AbortController();
+    void fetch("/api/store-proxy/api/recovery/restore/" + encodeURIComponent(token), { signal: controller.signal })
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok || controller.signal.aborted) return;
+        const lines: CartLine[] = (data.items || []).map(
+          (i: { productId: string; variantId?: string; quantity: number; bundleSize?: number; bundleDiscountPercent?: number }) => {
+            const p = getProductById(i.productId);
+            const variant = p?.variants?.options.find((o) => o.id === i.variantId)?.name;
+            const bundle = i.bundleSize === 2 ? Number(i.bundleDiscountPercent || p?.bundleDiscountPercent || 5) : undefined;
+            return { key: i.productId + (variant ? `::${variant}` : "") + (bundle ? "::bundle" : ""), id: i.productId, variant, qty: i.quantity * (i.bundleSize || 1), ...(bundle ? { bundle } : {}) };
+          },
+        );
+        setCart(lines);
+        write("zlv-cart-v2", lines);
+        const code = params.get("coupon");
+        if (code) sessionStorage.setItem("zm_checkout_coupon", code);
+        location.assign("/checkout/" + (code ? "?coupon=" + encodeURIComponent(code) : ""));
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
   useEffect(() => {
     if (ready) write("zlv-coupon-v1", coupon);
   }, [coupon, ready]);
 
+  const cartRef = useRef(cart);
+  cartRef.current = cart;
+  // POST /api/checkout/coupon prices the coupon on the real cart; the discount it returns is what we show.
   const applyCoupon = useCallback<Ctx["applyCoupon"]>(async (raw) => {
     const code = raw.trim().toUpperCase();
-    const rule = COUPONS[code];
-    if (!rule) return { ok: false, message: "This code isn't valid or has expired." };
-    setCoupon({ code, ...rule });
-    return { ok: true, message: `${code} applied.` };
+    if (!code) return { ok: false, message: "Enter a coupon code." };
+    try {
+      const response = await fetch("/api/store-proxy/api/checkout/coupon", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code, cart: cartRef.current.map(backendLine) }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) return { ok: false, message: "This code isn't valid or has expired." };
+      const applied = { code: String(data.code || code), amount: Number(data.discount || 0) };
+      setCoupon(applied);
+      try {
+        sessionStorage.setItem("zm_checkout_coupon", applied.code);
+      } catch {}
+      return { ok: true, message: `${applied.code} applied.` };
+    } catch {
+      return { ok: false, message: "We couldn't check that code right now. Please try again." };
+    }
   }, []);
-  const removeCoupon = useCallback(() => setCoupon(null), []);
+  const removeCoupon = useCallback(() => {
+    setCoupon(null);
+    try {
+      sessionStorage.removeItem("zm_checkout_coupon");
+    } catch {}
+  }, []);
+
+  // The coupon's amount depends on the cart, so it is re-priced whenever the cart changes.
+  const cartSignature = JSON.stringify(cart.map(backendLine));
+  const couponCode = coupon?.code;
+  useEffect(() => {
+    if (!ready || !couponCode) return;
+    if (!cart.length) return;
+    void applyCoupon(couponCode).then((r) => {
+      if (!r.ok) setCoupon(null);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSignature, ready]);
 
   const notify = useCallback((t: Omit<Toast, "id">) => {
     const id = ++toastId.current;
@@ -161,6 +254,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       return [...lines, { key, id: p.id, variant: opts.variant, qty, ...(opts.bundle ? { bundle: opts.bundle } : {}) }];
     });
     if (!opts.silent) setCartOpen(true);
+    const option = p.variants?.options.find((o) => o.name === opts.variant);
+    const price = unitPrice(p, { bundle: opts.bundle, variant: opts.variant });
+    void trackStoreEvent("AddToCart", {
+      content_ids: [option?.sku || p.sku],
+      contents: [{ id: option?.sku || p.sku, quantity: qty, item_price: price }],
+      value: price * qty,
+      currency: "PKR",
+    }).catch(() => undefined);
   }, []);
 
   const setQty = useCallback((key: string, qty: number) => {
@@ -200,36 +301,74 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const discount = couponDiscount(coupon, subtotal);
 
   const placeOrder = useCallback<Ctx["placeOrder"]>(
-    (customer, opts) => {
+    async (customer, opts) => {
       const lines = cart
         .map((l) => {
           const p = getProductById(l.id);
           return p ? { ...l, name: p.name, price: unitPrice(p, l), image: p.image } : null;
         })
         .filter((l): l is NonNullable<typeof l> => !!l);
-      const sub = lines.reduce((s, l) => s + l.price * l.qty, 0);
-      const ship = shippingFor(sub);
-      const off = couponDiscount(coupon, sub);
+      requestReplayFlush();
+      let idempotencyKey = "";
+      try {
+        idempotencyKey = sessionStorage.getItem("zm_checkout_idempotency") || crypto.randomUUID();
+        sessionStorage.setItem("zm_checkout_idempotency", idempotencyKey);
+      } catch {
+        idempotencyKey = crypto.randomUUID();
+      }
+      // Same body the previous checkout sent, so the backend, pixels and replays see no change.
+      const response = await fetch("/api/store-proxy/api/orders", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          idempotencyKey,
+          couponCode: coupon?.code,
+          fullName: customer.name,
+          phone: customer.phone,
+          email: customer.email || "",
+          city: customer.city,
+          address: customer.address,
+          orderNotes: customer.notes || "",
+          terms: opts.terms,
+          paymentMethod: "COD",
+          honeypot: "",
+          cart: cart.map(backendLine),
+          source: { firstTouch: parseJsonCookie("zm_first_touch"), lastTouch: parseJsonCookie("zm_last_touch"), ...(parseJsonCookie("zm_last_touch") || {}) },
+          fbp: readCookie("_fbp"),
+          fbc: readCookie("_fbc"),
+          ttp: readCookie("_ttp"),
+          ttclid: readCookie("ttclid"),
+          visitorId: getReplayVisitorId(),
+          replaySessionId: getReplaySessionId(),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(String(data.message || data.error || "Could not place order").replace(/_/g, " "));
+      requestReplayFlush();
+      const sub = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
       const order: Order = {
-        id: "ZLV-" + String(Date.now()).slice(-6) + Math.floor(Math.random() * 10),
+        id: String(data.orderNumber),
+        key: String(data.id),
         createdAt: new Date().toISOString(),
         lines,
-        subtotal: sub,
-        shipping: ship,
-        ...(off > 0 && coupon ? { discount: off, coupon: coupon.code } : {}),
-        total: sub + ship - off,
+        subtotal: Number(data.subtotal ?? sub),
+        shipping: Number(data.deliveryFee ?? shippingFor(sub)),
+        ...(coupon ? { discount: Number(data.discount ?? discount), coupon: coupon.code } : {}),
+        total: Number(data.total ?? sub + shippingFor(sub) - discount),
         terms: opts.terms,
         customer,
         payment: "cod",
       };
-      setOrders((o) => [order, ...o]);
-      // Persist immediately so the confirmation page can read it after navigation.
-      write("zlv-orders-v1", [order, ...read<Order[]>("zlv-orders-v1", [])]);
       setCart([]);
+      write("zlv-cart-v2", []);
       setCoupon(null);
+      try {
+        sessionStorage.removeItem("zm_checkout_idempotency");
+        sessionStorage.removeItem("zm_checkout_coupon");
+      } catch {}
       return order;
     },
-    [cart, coupon],
+    [cart, coupon, discount],
   );
 
   const value: Ctx = {

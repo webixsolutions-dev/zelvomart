@@ -8,6 +8,7 @@ import { ArrowRight, Banknote, CircleAlert, CreditCard, Lock, ShieldCheck, Shopp
 import { getProductById } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
 import { unitPrice, useShop } from "@store/lib/store";
+import { useCheckoutTracking } from "@store/lib/orders";
 import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { CouponBox } from "@store/components/shop/CouponBox";
 
@@ -28,8 +29,9 @@ function validate(f: Form) {
 
 export function CheckoutView() {
   const router = useRouter();
-  const { cart, ready, subtotal, shipping, coupon, discount, payable, placeOrder } = useShop();
+  const { cart, ready, subtotal, shipping, coupon, discount, payable, placeOrder, notify } = useShop();
   const [form, setForm] = useState<Form>(empty);
+  useCheckoutTracking(form);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({});
   const [terms, setTerms] = useState(false);
   const [termsError, setTermsError] = useState(false);
@@ -66,7 +68,7 @@ export function CheckoutView() {
   });
   const err = (k: keyof Form) => errors[k] && <span className="field-error" id={`err-${k}`}>{errors[k]}</span>;
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const v = validate(form);
     setErrors(v);
@@ -76,7 +78,9 @@ export function CheckoutView() {
       return;
     }
     setSubmitting(true);
-    const order = placeOrder(
+    let order;
+    try {
+      order = await placeOrder(
       {
       name: form.name.trim(),
       phone: form.phone.trim(),
@@ -86,8 +90,13 @@ export function CheckoutView() {
       notes: form.notes.trim() || undefined,
       },
       { terms: true },
-    );
-    router.push(`/order-confirmed/?id=${order.id}`);
+      );
+    } catch (error) {
+      setSubmitting(false);
+      notify({ title: "We couldn't place your order", body: error instanceof Error ? error.message : "Please try again." });
+      return;
+    }
+    router.push(`/order-confirmed/?id=${encodeURIComponent(order.id)}&key=${encodeURIComponent(order.key || "")}`);
   }
 
   return (

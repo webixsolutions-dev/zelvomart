@@ -1,13 +1,8 @@
-import { getProductById } from "./catalog";
 import { site } from "./site";
-import type { Order } from "./store";
 
 /**
- * Order tracking, frontend side.
- *
- * There is no tracking endpoint in this static build, so `findOrder` looks up the orders saved on this
- * device by the store (checkout writes them to localStorage). When `POST /api/orders/track` exists, swap
- * `findOrder` for a fetch that returns the same `TrackedOrder` shape; the page does not need to change.
+ * Order tracking: POST /api/orders/track (order number + mobile number) through the store proxy.
+ * The backend answers with the order's status, city, total, PostEx number and the city's delivery days.
  */
 
 export type TrackStatus = "NEW" | "CONFIRMED" | "ON_HOLD" | "BOOKED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED" | "RETURNED";
@@ -24,6 +19,8 @@ export type TrackedOrder = {
   courier: string;
   trackingNumber?: string;
   trackingUrl?: string;
+  /** Delivery days for the order's city (Admin → Cities). */
+  estimate?: string;
 };
 
 /** The five stages shown in the tracker and in "What each stage means" (same order, same icons). */
@@ -59,6 +56,7 @@ export function normaliseStatus(raw: unknown): TrackStatus {
     OUT_FOR_DELIVERY: "IN_TRANSIT",
     SHIPPED: "IN_TRANSIT",
     CANCELED: "CANCELLED",
+    SETTLED: "DELIVERED",
   };
   if (s in statusInfo) return s as TrackStatus;
   return aliases[s] ?? "NEW";
@@ -83,27 +81,27 @@ export function deliveryEstimate(city: string): string {
   return cities?.[city.trim().toLowerCase()] ?? site.shipping.estimate;
 }
 
-type StoredOrder = Order & { status?: string; trackingNumber?: string; trackingUrl?: string };
-
-function toTracked(o: StoredOrder): TrackedOrder {
-  return {
-    number: o.id,
-    createdAt: o.createdAt,
-    status: normaliseStatus(o.status),
-    city: cityName(o.customer.city),
-    lines: o.lines.map((l) => ({ name: l.name, qty: l.qty, price: l.price, image: l.image, slug: getProductById(l.id)?.slug })),
-    total: o.total,
-    courier: site.shipping.courier,
-    trackingNumber: o.trackingNumber,
-    trackingUrl: o.trackingUrl?.startsWith("https://") ? o.trackingUrl : undefined,
-  };
-}
-
 /** Order number and mobile number must both match, and a miss never says which one was wrong. */
-export function findOrder(orders: Order[], number: string, phone: string): TrackedOrder | null {
-  const n = orderKey(number);
-  const p = phoneKey(phone);
-  if (!n || p.length < 10) return null;
-  const hit = orders.find((o) => orderKey(o.id) === n && phoneKey(o.customer.phone) === p);
-  return hit ? toTracked(hit as StoredOrder) : null;
+export async function findOrder(number: string, phone: string): Promise<TrackedOrder | null> {
+  const orderNumber = number.trim().replace(/^#/, "").toUpperCase();
+  if (!orderKey(number) || phoneKey(phone).length < 10) return null;
+  const response = await fetch("/api/store-proxy/api/orders/track", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ orderNumber, phone }),
+  });
+  if (!response.ok) return null;
+  const o = await response.json();
+  return {
+    number: String(o.orderNumber || orderNumber),
+    createdAt: String(o.createdAt || ""),
+    status: normaliseStatus(o.status),
+    city: cityName(String(o.city || "")),
+    lines: Array.isArray(o.items) ? o.items : [],
+    total: Number(o.total || 0),
+    courier: site.shipping.courier,
+    trackingNumber: o.postexTracking || undefined,
+    trackingUrl: typeof o.trackingUrl === "string" && o.trackingUrl.startsWith("https://") ? o.trackingUrl : undefined,
+    estimate: typeof o.deliveryEstimate === "string" ? o.deliveryEstimate : undefined,
+  };
 }

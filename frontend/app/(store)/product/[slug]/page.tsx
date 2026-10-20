@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getCategory, getProduct, products, relatedProducts, categoryPath, type Product } from "@store/lib/catalog";
+import { getCategory, relatedProducts, categoryPath, type Product } from "@store/lib/catalog";
+import { loadProduct, loadStore } from "@store/lib/backend";
+import { ProductBridge } from "@store/lib/bridge";
 import { site } from "@store/lib/site";
 import { productOg, shareMeta } from "@store/lib/seo";
 import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
@@ -9,11 +11,8 @@ import { ProductGrid } from "@store/components/product/ProductGrid";
 import { SectionHead } from "@store/components/ui/SectionHead";
 import { approvedReviews, reviewSummary } from "@store/lib/reviews";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
-}
+// Products come from the backend: rendered on demand and refreshed every 5 minutes.
+export const revalidate = 300;
 
 const BRAND_SUFFIX = " | Zelvomart";
 
@@ -38,7 +37,7 @@ function transitDays(): [number, number] {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const p = getProduct((await params).slug);
+  const p = await loadProduct((await params).slug);
   if (!p) return {};
   const desc = productDescription(p);
   return {
@@ -52,7 +51,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
-  const p = getProduct((await params).slug);
+  const slug = (await params).slug;
+  await loadStore();
+  const p = await loadProduct(slug);
   if (!p) notFound();
   const cat = getCategory(p.category)!;
   const url = `${site.url}/product/${p.slug}/`;
@@ -108,7 +109,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   return (
     <div className="product-page">
       <Breadcrumbs items={[{ label: cat.name, href: categoryPath(cat.id) }, { label: p.name }]} />
-      <ProductDetail slug={p.slug} />
+      <ProductBridge product={p}>
+        <ProductDetail slug={p.slug} />
+      </ProductBridge>
       <section className="section pd-related">
         <div className="container">
           <SectionHead eyebrow="Keep exploring" title="You may also like" sub={`More from ${cat.name}, plus customer favourites.`} href={categoryPath(cat.id)} linkLabel={`Shop ${cat.short}`} />

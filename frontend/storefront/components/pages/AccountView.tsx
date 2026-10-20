@@ -24,6 +24,7 @@ import {
 import { money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
 import { useShop } from "@store/lib/store";
+import { signIn } from "@store/lib/account";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 
 /** Live counts for the hero card — everything comes from this device's saved shop state. */
@@ -129,7 +130,8 @@ export function AccountAuth() {
       setResetSent(true);
       return;
     }
-    notify({ title: "Accounts are launching soon", body: "You can still order as a guest — no account needed." });
+    // Login and register go to the backend (/api/account/login, /api/account/signup → /api/customer-auth/*).
+    void signIn(mode, form).then((r) => notify(r));
   };
 
   const password = (

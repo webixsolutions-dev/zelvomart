@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
-import { useShop } from "@store/lib/store";
 import { deliveryEstimate, findOrder, stages, statusInfo, type TrackedOrder } from "@store/lib/tracking";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
@@ -60,7 +59,6 @@ export const trackFaqs = [
 const wa = (text: string) => waLink(site.whatsappNumber, text);
 
 export function TrackOrderView() {
-  const { orders } = useShop();
   const [id, setId] = useState("");
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<{ id?: string; phone?: string }>({});
@@ -72,7 +70,7 @@ export function TrackOrderView() {
     if (result && result !== "none") resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [result]);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: typeof errors = {};
     if (!id.trim()) next.id = "Please enter your order number.";
@@ -80,7 +78,11 @@ export function TrackOrderView() {
     setErrors(next);
     if (next.id || next.phone) return;
     setSearched(id.trim());
-    setResult(findOrder(orders, id, phone) ?? "none");
+    try {
+      setResult((await findOrder(id, phone)) ?? "none");
+    } catch {
+      setResult("none");
+    }
   };
 
   return (
@@ -376,7 +378,7 @@ function OrderResult({ order }: { order: TrackedOrder }) {
               <dt>
                 <Clock size={16} /> {delivered ? "Delivery" : "Expected delivery"}
               </dt>
-              <dd>{delivered ? "Delivered" : deliveryEstimate(order.city)}</dd>
+              <dd>{delivered ? "Delivered" : order.estimate || deliveryEstimate(order.city)}</dd>
             </div>
             <div>
               <dt>

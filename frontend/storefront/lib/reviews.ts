@@ -1,7 +1,9 @@
+import { getProductById } from "./catalog";
+
 /**
- * Product reviews. Only approved reviews are ever shown or put into schema.
- * Mock layer: no approved reviews exist yet, and new reviews are kept on this device
- * as "pending" until the reviews API (POST /api/reviews + admin moderation) is connected.
+ * Product reviews. Only approved reviews are ever shown or put into schema: they come with the
+ * product from the backend (GET /api/products/slug/:slug returns approved reviews only).
+ * Writing a review and the email subscribe stay static for now: see lib/api-gaps.ts.
  */
 
 export type ReviewMedia = { type: "image" | "video"; url: string };
@@ -17,11 +19,8 @@ export type Review = {
   media?: ReviewMedia[];
 };
 
-const approved: Review[] = [];
-
 export function approvedReviews(productId: string): Review[] {
-  return approved
-    .filter((r) => r.productId === productId)
+  return [...(getProductById(productId)?.reviews || [])]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
