@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {launchRedirect} from './lib/launch/redirects';
+import { storefrontRedirect } from "./storefront/lib/redirects";
 
 const SESSION_COOKIE = "zelvomart_admin_session";
 
@@ -57,6 +57,16 @@ async function findRedirect(pathname: string) {
   return redirectMap.get(withSlash) || redirectMap.get(pathname) || null;
 }
 
+const withSlash = (path: string) => (path.endsWith("/") || /\.[a-z0-9]+$/i.test(path) ? path : `${path}/`);
+
+/** Keeps the visitor's query (utm tags, the order key) on top of any query the target already has. */
+function withQuery(target: URL, request: NextRequest) {
+  request.nextUrl.searchParams.forEach((value, key) => {
+    if (!target.searchParams.has(key)) target.searchParams.append(key, value);
+  });
+  return target;
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   if (pathname === "/admin/login") return NextResponse.next();
@@ -74,15 +84,23 @@ export async function proxy(request: NextRequest) {
   }
 
   if (request.method === "GET" || request.method === "HEAD") {
-    const replacement=launchRedirect(pathname);
-    if(replacement){const target=new URL(replacement,request.url);target.search=request.nextUrl.search;return NextResponse.redirect(target,301);}
+    const replacement = storefrontRedirect(pathname);
+    if (replacement) return NextResponse.redirect(withQuery(new URL(replacement, request.url), request), 301);
     const hit = await findRedirect(pathname);
     if (hit) {
       const target = new URL(hit.destination, request.url);
-      if (target.pathname !== pathname || target.origin !== request.nextUrl.origin) {
-        if (!/^https?:\/\//i.test(hit.destination)) target.search = request.nextUrl.search;
+      if (target.origin === request.nextUrl.origin) target.pathname = withSlash(target.pathname);
+      if (target.pathname !== withSlash(pathname) || target.origin !== request.nextUrl.origin) {
+        if (!/^https?:\/\//i.test(hit.destination)) withQuery(target, request);
         return NextResponse.redirect(target, hit.permanent ? 301 : 302);
       }
+    }
+    // Every storefront URL ends with "/"; the form without it answers one 301.
+    // A plain URL: NextURL would drop the slash again, because next.config keeps trailingSlash off.
+    const raw = new URL(request.url);
+    if (!raw.pathname.endsWith("/")) {
+      raw.pathname = `${raw.pathname}/`;
+      return NextResponse.redirect(raw, 301);
     }
   }
 

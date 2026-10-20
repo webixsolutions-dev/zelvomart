@@ -1,10 +1,16 @@
 import { categories, categoryPath } from "@store/lib/catalog";
 import { site } from "@store/lib/site";
+import { loadCategoryIds, loadStoreSettings } from "@store/lib/backend";
+import { applyStoreSettings } from "@store/lib/settings";
 
-export const dynamic = "force-static";
+export const revalidate = 3600;
 
 /** /llms.txt — a short plain-text summary of Zelvomart for AI assistants, built from the same settings as the site. */
-export function GET() {
+export async function GET() {
+  // Phone, delivery fees and the category list come from the backend settings.
+  const [settings, live] = await Promise.all([loadStoreSettings(), loadCategoryIds()]);
+  applyStoreSettings(settings);
+  const shown = categories.filter((c) => !live.size || live.has(c.id));
   const u = (path: string) => `${site.url}${path}`;
   const body = `# ${site.name}
 
@@ -25,7 +31,7 @@ export function GET() {
 - [Track an order](${u("/track-your-order/")})
 
 ## Categories
-${categories.map((c) => `- [${c.name}](${u(categoryPath(c.id))}): ${c.seoDescription}`).join("\n")}
+${shown.map((c) => `- [${c.name}](${u(categoryPath(c.id))}): ${c.seoDescription}`).join("\n")}
 
 ## Shop
 - [All products](${u("/shop-all-products/")})

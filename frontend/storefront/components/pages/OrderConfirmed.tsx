@@ -82,7 +82,7 @@ function CopyOrderNumber({ id }: { id: string }) {
 
 export function OrderConfirmed() {
   const params = useSearchParams();
-  const id = params.get("id");
+  const id = params.get("id") || params.get("order");
   const { orders, ready } = useConfirmedOrder(id, params.get("key"));
   if (!ready) return <div className="container skeleton-block" />;
   const order = orders.find((o) => o.id === id);

@@ -14,6 +14,11 @@ import { approvedReviews, reviewSummary } from "@store/lib/reviews";
 // Products come from the backend: rendered on demand and refreshed every 5 minutes.
 export const revalidate = 300;
 
+// No page is built ahead; each product page is cached on its first visit (ISR).
+export async function generateStaticParams() {
+  return [];
+}
+
 const BRAND_SUFFIX = " | Zelvomart";
 
 /** The product's own SEO title; "| Zelvomart" is added only while the whole title fits Google's ~60 characters. */
@@ -66,7 +71,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     name: p.name,
     url,
     sku: p.sku,
-    image: [site.url + p.image],
+    image: [p.image.startsWith("http") ? p.image : site.url + p.image],
     description: p.description,
     brand: { "@type": "Brand", name: site.name },
     category: cat.name,
