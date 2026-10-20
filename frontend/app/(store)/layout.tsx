@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
-import "./globals.css";
+import "@store/styles/globals.css";
 import { site } from "@store/lib/site";
 import { ShopProvider } from "@store/lib/store";
 import { AnnouncementBar } from "@store/components/layout/AnnouncementBar";
@@ -9,6 +9,14 @@ import { Footer } from "@store/components/layout/Footer";
 import { CartDrawer } from "@store/components/layout/CartDrawer";
 import { MobileBottomNav } from "@store/components/layout/MobileBottomNav";
 import { Toaster } from "@store/components/layout/Toaster";
+// Platform providers (non-visual): settings bootstrap, Meta/TikTok pixels, GA4, tracking events and session replays.
+import { Suspense } from "react";
+import { getStoreBootstrap } from "@/lib/store";
+import TrackingProvider from "@/components/TrackingProvider";
+import SessionReplayProvider from "@/components/SessionReplayProvider";
+import MetaPixelScript from "@/components/MetaPixelScript";
+import TikTokPixelScript from "@/components/TikTokPixelScript";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -75,7 +83,14 @@ const orgJsonLd = {
   paymentAccepted: "Cash",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const revalidate = 300;
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const bootstrap = await getStoreBootstrap().catch(() => null);
+  const settings = (bootstrap?.settings || {}) as Record<string, unknown>;
+  const enabled = (key: string) => settings[key] !== false && settings[key] !== "false";
+  const pixelId = String(settings["tracking.metaPixelId"] || "");
+  const tiktokPixelId = String(settings["tracking.tiktokPixelId"] || "");
   return (
     <html lang="en-PK" className={manrope.variable}>
       <body>
@@ -92,6 +107,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Toaster />
         </ShopProvider>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+        <Suspense fallback={null}>
+          <TrackingProvider />
+          <GoogleAnalytics />
+          {enabled("tracking.sessionReplayEnabled") ? <SessionReplayProvider /> : null}
+        </Suspense>
+        {enabled("tracking.metaPixelEnabled") ? <MetaPixelScript pixelId={pixelId} /> : null}
+        {enabled("tracking.tiktokPixelEnabled") ? <TikTokPixelScript pixelId={tiktokPixelId} /> : null}
       </body>
     </html>
   );
