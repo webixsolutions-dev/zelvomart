@@ -1,294 +1,256 @@
+import {getSetting} from "@/lib/settings";
 import type { Metadata } from "next";
-import { shareMeta } from "@/lib/launch/seo";
 import Link from "next/link";
-import { ArrowRight, Clock, Mail, MapPin, MessageCircleQuestion, PackageSearch, RefreshCw } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, Clock, Mail, MapPin, MessageCircle, PackageSearch, ArrowUpRight, RefreshCw, HelpCircle } from "lucide-react";
 import { site } from "@/lib/launch/site";
-import { money, waLink } from "@/lib/launch/format";
+import { faqs } from "@/lib/launch/content";
+import { waLink } from "@/lib/launch/format";
+import { SectionHead } from "@/components/launch/ui/SectionHead";
 import { Breadcrumbs } from "@/components/launch/ui/Breadcrumbs";
-import { FaqAccordion, FaqJsonLd } from "@/components/launch/ui/FaqAccordion";
-import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, TiktokIcon, WhatsAppIcon, XIcon, YoutubeIcon } from "@/components/launch/ui/BrandIcons";
+import { FaqAccordion } from "@/components/launch/ui/FaqAccordion";
+import { WhatsAppIcon } from "@/components/launch/ui/BrandIcons";
 import ContactForm from "@/components/ContactForm";
-import s from "@/components/launch/pages/Contact.module.css";
 
 export const metadata: Metadata = {
   title: { absolute: "Contact Zelvomart: WhatsApp, Phone & Email" },
   description: `Contact Zelvomart on WhatsApp at ${site.phoneDisplay} or by email. Ask about products, orders or delivery; our Lahore team replies Monday to Saturday.`,
   alternates: { canonical: "/contact-us/" },
-  ...shareMeta({ title: "Contact Zelvomart: WhatsApp, Phone & Email", description: `Contact Zelvomart on WhatsApp at ${site.phoneDisplay} or by email. Ask about products, orders or delivery; our Lahore team replies Monday to Saturday.`, path: "/contact-us/" }),
 };
 
-const wa = waLink(site.whatsappNumber, "Hi Zelvomart! I have a question.");
-/** "Mon–Sat, 10am – 7pm" → "Mon–Sat, 10am–7pm" */
-const hours = site.supportHours.replace(/\s+–\s+/g, "–");
-const fee = money(site.shipping.flatFee);
-const freeOver = money(site.shipping.freeOver);
-
-const socials = [
-  { label: "Facebook", href: site.social.facebook, Icon: FacebookIcon },
-  { label: "Instagram", href: site.social.instagram, Icon: InstagramIcon },
-  { label: "TikTok", href: site.social.tiktok, Icon: TiktokIcon },
-  { label: "YouTube", href: site.social.youtube, Icon: YoutubeIcon },
-  { label: "Pinterest", href: site.social.pinterest, Icon: PinterestIcon },
-  { label: "LinkedIn", href: site.social.linkedin, Icon: LinkedinIcon },
-  { label: "X", href: site.social.x, Icon: XIcon },
+const socialLinks: [string, string][] = [
+  ["Facebook", site.social.facebook],
+  ["Instagram", site.social.instagram],
+  ["Pinterest", site.social.pinterest],
+  ["LinkedIn", site.social.linkedin],
+  ["X", site.social.x],
+  ["TikTok", site.social.tiktok],
+  ["YouTube", site.social.youtube],
 ];
 
-const contactFaqs = [
+const quickLinks = [
   {
-    q: "Do you offer Cash on Delivery?",
-    a: "Yes. Choose Cash on Delivery at checkout and pay the courier in cash when your parcel arrives. Available payment options are shown before you order.",
+    icon: PackageSearch,
+    eyebrow: "My order update",
+    title: "Track my order",
+    sub: "Check the status of your delivery. All you need is your order number and the phone number you used.",
+    href: "/track-your-order/",
   },
   {
-    q: "When will my order arrive?",
-    a: `Delivery takes ${site.shipping.estimate}, depending on your city. Check your order information and our shipping policy, or message us with your order number.`,
+    icon: RefreshCw,
+    eyebrow: "Returns & Exchange",
+    title: "Returns & exchange",
+    sub: "Something not quite right? Start a return or exchange request. We'll guide you through the process.",
+    href: "/refund-and-return-policy/",
   },
   {
-    q: "How much does delivery cost?",
-    a: `Delivery is ${fee}, and free on orders above ${freeOver}. Your delivery charge is shown at checkout before you place your order.`,
-  },
-  {
-    q: "How can I track my order?",
-    a: "Use our Track Order page with your order number and mobile number. If you need help, send us your order number.",
-  },
-  {
-    q: "Can I ask about a product first?",
-    a: "Absolutely. Share the product name or link and ask about its size, materials, colour or availability. We’ll help with the details.",
-  },
-  {
-    q: "What if an item needs attention?",
-    a: "Contact us with your order number and a description of the issue. Photos can help us understand it. See the Returns & Refunds policy for the applicable process.",
+    icon: HelpCircle,
+    eyebrow: "Explore our products",
+    title: "Ask about a product",
+    sub: "Need more detail about a specific item — size, colour, materials? We're happy to help before you buy.",
+    href: "/shop-all-products/",
   },
 ];
 
-export default function Page() {
+export default async function Page() {
+  const info=await getSetting<{phone?:string;email?:string;whatsapp?:string}>('store.info',{});
+  const store={...site,phoneDisplay:info.phone||site.phoneDisplay,email:info.email||site.email,whatsappNumber:String(info.whatsapp||site.whatsappNumber).replace(/\D/g,'')};
   return (
     <>
       {/* ── Hero ── */}
-      <section className={s.hero} aria-labelledby="contact-title">
-        <Breadcrumbs items={[{ label: "Contact Us" }]} />
-        <div className={`container ${s.heroGrid}`}>
-          <div className={s.heroCopy}>
-            <p className="eyebrow">
-              <span className={s.line} aria-hidden="true" />
-              We’re here for your everyday
+      <section className="hero hero-short contact-hero">
+        <picture className="hero-art">
+          <img
+            src="/launch/extra/contact-desktop.webp"
+            alt="Warm and responsive customer concierge support at Zelvomart"
+            fetchPriority="high"
+            loading="eager"
+            decoding="async"
+          />
+        </picture>
+        <div className="container hero-inner">
+          <div className="hero-content">
+            <Breadcrumbs items={[{ label: "Contact Us" }]} inHero />
+            <div className="eyebrow">Contact us</div>
+            <h1>Contact Zelvomart.<br /><em>Real people, real answers.</em></h1>
+            <p>
+              Got a question about a product, your order or delivery with Zelvomart? We're here for that —
+              real help, nothing scripted, one message at a time.
             </p>
-            <h1 id="contact-title">
-              Contact Zelvomart. <span>Real people, real answers.</span>
-            </h1>
-            <p className={s.heroLead}>
-              A product question, an order update, or a little help after delivery. Let’s make the next step easy.
-            </p>
-            <div className={s.heroActions}>
-              <a className="btn wa lg" href={wa} target="_blank" rel="noopener noreferrer">
-                <WhatsAppIcon size={19} /> Chat on WhatsApp
-              </a>
-              <a className={s.formLink} href="#contact-form">
-                Or share a few details <ArrowRight size={16} />
+            <div className="hero-buttons">
+              <a className="btn wa" href={waLink(store.whatsappNumber, "Hi Zelvomart! I have a question.")} target="_blank" rel="noopener noreferrer">
+                Chat on WhatsApp <ArrowRight size={16} />
               </a>
             </div>
-            <p className={s.heroHours}>
-              <Clock size={16} /> <span>{hours}</span> · Pakistan time
+            <p className="contact-hero-note">
+              <WhatsAppIcon size={14} /> Typical reply time: a few hours during support hours.
             </p>
-          </div>
-          <div className={s.heroArt}>
-            <img
-              src="/images/contact/contact-hero-760.webp"
-              srcSet="/images/contact/contact-hero-760.webp 760w, /images/contact/contact-hero-1280.webp 1280w"
-              sizes="(max-width: 760px) 100vw, 640px"
-              alt="A powder-blue telephone, a cream envelope and a location pin on a warm, minimal desk"
-              width={1280}
-              height={853}
-              fetchPriority="high"
-              decoding="async"
-            />
           </div>
         </div>
       </section>
 
-      {/* ── Three ways to reach us, as plain text ── */}
-      <section className={s.cards} aria-label="Ways to reach Zelvomart">
-        <div className={`container ${s.cardGrid}`}>
-          <article className={`${s.card} ${s.waCard}`}>
-            <div className={s.cardTop}>
-              <span className={`${s.channelIcon} ${s.green}`} aria-hidden="true">
+      {/* ── Contact cards ── */}
+      <section className="section contact-reach">
+        <div className="container">
+          <div className="contact-cards-row">
+            {/* WhatsApp card */}
+            <a className="contact-card contact-card-wa" href={waLink(store.whatsappNumber)} target="_blank" rel="noopener noreferrer">
+              <span className="contact-card-ico wa-ico">
                 <WhatsAppIcon size={24} />
               </span>
-              <span className={s.channelLabel}>A conversation, made easy</span>
-            </div>
-            <h2>Let’s chat.</h2>
-            <a className={s.value} href={wa} target="_blank" rel="noopener noreferrer">
-              {site.phoneDisplay}
-            </a>
-            <p>Ask about a product or get help with an order. A real person is a message away.</p>
-            <a className={`${s.cardLink} ${s.greenText}`} href={wa} target="_blank" rel="noopener noreferrer">
-              Start a conversation <ArrowRight size={16} />
-            </a>
-          </article>
-          <article className={s.card}>
-            <div className={s.cardTop}>
-              <span className={s.channelIcon} aria-hidden="true">
-                <Mail size={22} />
+              <h3>WhatsApp</h3>
+              <p className="contact-card-number">{store.phoneDisplay}</p>
+              <p className="contact-card-desc">
+                Message us directly — we reply with real answers, not a script. Usually within a few hours during support hours.
+              </p>
+              <span className="link-cta">
+                Start a conversation <ArrowUpRight size={14} />
               </span>
-              <span className={s.channelLabel}>A little more detail?</span>
-            </div>
-            <h2>Write to us.</h2>
-            <a className={s.value} href={`mailto:${site.email}`}>
-              {site.email}
             </a>
-            <p>Send your question, product link or order details. We’ll help with the next step.</p>
-            <a className={s.cardLink} href={`mailto:${site.email}`}>
-              Write an email <ArrowRight size={16} />
-            </a>
-          </article>
-          <article className={s.card}>
-            <div className={s.cardTop}>
-              <span className={s.channelIcon} aria-hidden="true">
-                <Clock size={22} />
+
+            {/* Email card */}
+            <a className="contact-card" href={`mailto:${store.email}`}>
+              <span className="contact-card-ico">
+                <Mail size={24} />
               </span>
-              <span className={s.channelLabel}>When we’re here</span>
+              <h3>Email us</h3>
+              <p className="contact-card-number">{store.email}</p>
+              <p className="contact-card-desc">
+                For longer questions or if you prefer email, write to us and we&apos;ll get back to you within 24 hours.
+              </p>
+              <span className="link-cta">
+                Write an email <ArrowUpRight size={14} />
+              </span>
+            </a>
+
+            {/* Support hours card */}
+            <div className="contact-card">
+              <span className="contact-card-ico">
+                <Clock size={24} />
+              </span>
+              <h3>Support hours</h3>
+              <p className="contact-card-number">{site.supportHours}</p>
+              <p className="contact-card-desc">
+                We respond to messages received during these hours. Messages sent outside hours are picked up the next working day.
+              </p>
+              <span className="link-cta">
+                View our hours <ArrowUpRight size={14} />
+              </span>
             </div>
-            <h2>Support hours.</h2>
-            <p className={s.value}>{hours}</p>
-            <p>Pakistan Standard Time. Messages outside these hours are picked up during our next support day.</p>
-            <span className={s.hoursTag}>
-              <span aria-hidden="true" /> Pakistan time · UTC+5
-            </span>
-          </article>
+          </div>
         </div>
       </section>
 
-      {/* ── Quick help ── */}
-      <section className={s.quick} aria-labelledby="quick-title">
-        <div className={`container ${s.quickGrid}`}>
-          <div className={s.quickCopy}>
-            <p className="eyebrow">A quicker way to the right answer</p>
-            <h2 id="quick-title">
-              What can we
-              <br />
-              help you with?
-            </h2>
-            <p>Choose a starting point. We’ll take it from there.</p>
-            <div className={s.topics}>
-              <Link className={s.topic} href="/track-your-order/">
-                <span className={s.topicIcon} aria-hidden="true">
-                  <PackageSearch size={22} />
-                </span>
-                <span>
-                  <strong>Where’s my order?</strong>
-                  <small>Head straight to order tracking.</small>
-                </span>
-                <ArrowRight size={18} className={s.topicArrow} />
-              </Link>
-              <a className={s.topic} href="#contact-form">
-                <span className={s.topicIcon} aria-hidden="true">
-                  <RefreshCw size={21} />
-                </span>
-                <span>
-                  <strong>Help with an order</strong>
-                  <small>Returns, exchanges or an item query.</small>
-                </span>
-                <ArrowRight size={18} className={s.topicArrow} />
-              </a>
-              <a className={s.topic} href="#contact-form">
-                <span className={s.topicIcon} aria-hidden="true">
-                  <MessageCircleQuestion size={22} />
-                </span>
-                <span>
-                  <strong>A product on your mind?</strong>
-                  <small>Ask about size, details or availability.</small>
-                </span>
-                <ArrowRight size={18} className={s.topicArrow} />
-              </a>
-            </div>
-          </div>
-          <figure className={s.care}>
-            <img
-              src="/images/about/packing-care-720.webp"
-              srcSet="/images/about/packing-care-720.webp 720w, /images/about/packing-care-1200.webp 1200w"
-              sizes="(max-width: 760px) 100vw, 560px"
-              alt="An everyday find being carefully wrapped in a parcel"
-              width={1200}
-              height={800}
-              loading="lazy"
-              decoding="async"
-            />
-            <figcaption>
-              A little care.
-              <strong>With every order, and every question.</strong>
-            </figcaption>
-            <span className={s.stamp} aria-hidden="true">
-              From our stock.
-              <strong>With care.</strong>
-            </span>
-          </figure>
-        </div>
-      </section>
-
-      {/* ── Form + FAQ ── */}
-      <section className={s.workspace} aria-label="Send us a message">
-        <div className={`container ${s.workspaceGrid}`}>
-          <div className={s.message} id="contact-form">
-            <div className={s.messageTop}>
-              <p className="eyebrow">Let’s get started</p>
-              <span className={s.channelTag}>
-                <WhatsAppIcon size={15} /> Via WhatsApp
-              </span>
-            </div>
-            <h2>
-              Start with
-              <br />a few details.
-            </h2>
-            <p className={s.formIntro}>Tell us what you need, and we’ll help you find the next step.</p>
-            <ContactForm whatsapp={site.whatsappNumber} />
-          </div>
-
-          <aside className={s.faq} aria-labelledby="faq-title">
-            <p className="eyebrow">A little clarity, right here</p>
-            <h2 id="faq-title">
-              Good questions.
-              <br />
-              Useful answers.
-            </h2>
-            <p className={s.faqLead}>A few things you may want to know before getting in touch.</p>
-            <FaqAccordion items={contactFaqs} />
-            <p className={s.emailReminder}>
-              <Mail size={18} aria-hidden="true" />
-              <span>
-                A longer question?
-                <a href={`mailto:${site.email}`}>{site.email}</a>
-              </span>
-            </p>
-          </aside>
-        </div>
-        <FaqJsonLd items={contactFaqs} />
-      </section>
-
-      {/* ── Home base (last section) ── */}
-      <section className={`${s.location} ${s.last}`} aria-labelledby="location-title">
-        <div className={`container ${s.locationGrid}`}>
-          <div className={s.identity}>
-            <span className={s.locationSymbol} aria-hidden="true">
-              <MapPin size={26} />
-            </span>
-            <div>
-              <p className="eyebrow">Our home base</p>
-              <h2 id="location-title">Lahore, Pakistan.</h2>
-              <p>An online store for everyday life, delivering across Pakistan.</p>
-            </div>
-          </div>
-          <div className={s.social}>
-            <p>Find a little everyday inspiration.</p>
-            <ul>
-              {socials.map(({ label, href, Icon }) => (
+      {/* ── Contact details as plain text (readable and quotable by search engines and AI tools) ── */}
+      <section className="section pt-0 contact-details">
+        <div className="container">
+          <address className="contact-facts">
+            <h2>Zelvomart contact details</h2>
+            <dl>
+              <div>
+                <dt>WhatsApp &amp; phone</dt>
+                <dd>
+                  <a href={waLink(store.whatsappNumber)} target="_blank" rel="noopener noreferrer">{store.phoneDisplay}</a>
+                </dd>
+              </div>
+              <div>
+                <dt>Email</dt>
+                <dd>
+                  <a href={`mailto:${store.email}`}>{store.email}</a>
+                </dd>
+              </div>
+              <div>
+                <dt>City</dt>
+                <dd>{site.city}</dd>
+              </div>
+              <div>
+                <dt>Support hours</dt>
+                <dd>{site.supportHours}</dd>
+              </div>
+            </dl>
+            <p className="contact-social-label">Follow Zelvomart</p>
+            <ul className="contact-social">
+              {socialLinks.map(([label, href]) => (
                 <li key={label}>
-                  <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Zelvomart on ${label}`}>
-                    <Icon size={19} />
-                    <span>{label}</span>
-                  </a>
+                  <a href={href} target="_blank" rel="noopener noreferrer">{label}</a>
                 </li>
               ))}
             </ul>
+          </address>
+        </div>
+      </section>
+
+      {/* ── Quick links ── */}
+      <section className="section section-soft contact-quick">
+        <div className="container">
+          <div className="contact-quick-head">
+            <div className="eyebrow">Explore by topic</div>
+            <h2>Let&apos;s get you to the right place.</h2>
           </div>
+          <div className="contact-quick-grid">
+            {quickLinks.map((l) => (
+              <Link className="contact-quick-card" href={l.href} key={l.title}>
+                <span className="contact-quick-ico"><l.icon size={22} /></span>
+                <small>{l.eyebrow}</small>
+                <h3>{l.title} <ArrowUpRight size={15} /></h3>
+                <p>{l.sub}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Contact form + FAQ ── */}
+      <section className="section contact-desk-section">
+        <div className="container contact-desk">
+          <div className="contact-form-panel">
+            <div className="contact-form-head">
+              <div>
+                <div className="eyebrow">Please fill this form</div>
+                <h2>Start with<br />a few details.</h2>
+                <p>
+                  Just let us know what you&apos;re looking for. A product query, order update, return request or
+                  something else — we&apos;ll get back to you.
+                </p>
+              </div>
+              <span className="contact-reply-pill">
+                <MessageCircle size={14} /> Typical reply: a few hours
+              </span>
+            </div>
+
+            {/* Info box within form */}
+            <div className="contact-dispatch-box">
+              <div className="contact-dispatch-inner">
+                <strong>Based in Lahore, Pakistan.</strong>
+                <p>
+                  All orders are packed and dispatched by Zelvomart directly. No dropshipping,
+                  no middlemen — just real people and real answers.
+                </p>
+              </div>
+            </div>
+
+            <div className="launch-legacy"><ContactForm whatsapp={store.whatsappNumber}/></div>
+
+            <p className="fine-print">
+              This form opens WhatsApp with your enquiry. For privacy, never share PINs or OTPs.{" "}
+              <Link href="/privacy-policy/">Privacy policy</Link>.
+            </p>
+          </div>
+
+          <aside className="contact-faq-panel">
+            <div className="contact-faq-head">
+              <div className="eyebrow">Getting started</div>
+              <h2>A little clarity,<br />right here.</h2>
+              <p>
+                Answers to the most common questions about ordering, delivery
+                and getting in touch.
+              </p>
+              <Link className="pill" href="/faqs/">
+                Read more FAQs <ArrowRight size={14} />
+              </Link>
+            </div>
+            <FaqAccordion items={faqs.slice(0, 6)} />
+          </aside>
         </div>
       </section>
     </>
