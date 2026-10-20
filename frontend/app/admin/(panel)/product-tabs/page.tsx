@@ -1,4 +1,5 @@
 "use client";
+import "@/components/admin/catalog-pages.css";
 
 import { useState } from "react";
 import AdminRichTextEditor from "@/components/admin/AdminRichTextEditor";
@@ -43,7 +44,7 @@ function ProductTabsEditor({ initial }: { initial: Record<ProductTabKey, TabCont
   }
 
   return (
-    <div className="pd-global-tabs">
+    <div className="pd-global-tabs admin-catalog-page">
       <div className="admin-title">
         <div>
           <h1>Product tabs</h1>

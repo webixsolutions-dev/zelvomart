@@ -1,0 +1,2 @@
+@media screen{.admin-print-table-scroll{width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}.admin-print-table-scroll table{min-width:600px;table-layout:auto}.admin-print-table-scroll th,.admin-print-table-scroll td{min-width:90px;white-space:normal;word-break:normal;overflow-wrap:break-word}}
+@media print{.admin-print-table-scroll{overflow:visible}.admin-print-table-scroll table{min-width:0;width:100%}}

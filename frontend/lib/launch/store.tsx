@@ -7,7 +7,7 @@ import {trackStoreEvent} from '@/lib/client-tracking';
 import {site} from './site';
 import type {Category,Product} from './catalog';
 
-type StoreInfo={phone?:string;email?:string;whatsapp?:string};
+type StoreInfo={phone?:string;email?:string;whatsapp?:string;replayRetentionDays?:number};
 const Catalog=createContext<{categories:Category[];products:Product[];info:StoreInfo}>({categories:[],products:[],info:{}});
 const Saved=createContext<{wishlist:string[];toggleWish:(id:string,p?:Product)=>void}>({wishlist:[],toggleWish:()=>{}});
 export function LaunchCatalogProvider({children,categories,products,info={}}:{children:React.ReactNode;categories:Category[];products:Product[];info?:StoreInfo}){
@@ -17,7 +17,7 @@ export function LaunchCatalogProvider({children,categories,products,info={}}:{ch
  return <Catalog.Provider value={{categories,products,info}}><Saved.Provider value={{wishlist,toggleWish}}>{children}</Saved.Provider></Catalog.Provider>;
 }
 export const useCatalog=()=>useContext(Catalog);
-export function useSite(){const delivery=useDeliveryPolicy(),{info}=useCatalog();return {...site,phoneDisplay:info.phone||site.phoneDisplay,email:info.email||site.email,whatsappNumber:String(info.whatsapp||site.whatsappNumber).replace(/\D/g,''),shipping:{...site.shipping,flatFee:delivery.flatRate,freeOver:delivery.threshold,estimate:'2–7 working days'}};}
+export function useSite(){const delivery=useDeliveryPolicy(),{info}=useCatalog();return {...site,replayRetentionDays:info.replayRetentionDays??14,phoneDisplay:info.phone||site.phoneDisplay,email:info.email||site.email,whatsappNumber:String(info.whatsapp||site.whatsappNumber).replace(/\D/g,''),shipping:{...site.shipping,flatFee:delivery.flatRate,freeOver:delivery.threshold,estimate:'2–7 working days'}};}
 export function useShop(){
  const cart=useCart();const {wishlist,toggleWish}=useContext(Saved);
  const addToCart=(p:Product,opts:{qty?:number;variant?:string;silent?:boolean}={})=>{

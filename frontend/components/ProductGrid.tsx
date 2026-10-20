@@ -66,7 +66,7 @@ export default function ProductGrid({
             price,
             quantity: 1,
             bundleSize: 1,
-            bundleDiscountPercent: item.buyTwoDiscountPercent || BUY_TWO_DISCOUNT_PERCENT,
+            bundleDiscountPercent: item.buyTwoDiscountPercent ?? BUY_TWO_DISCOUNT_PERCENT,
             variantLabel: onlyVariant?.name,
             freeShipping: Boolean(item.freeShipping),
           });

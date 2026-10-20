@@ -57,7 +57,7 @@ export function clearAdminDataCache(path?: string) {
 export function useAdminData<T>(path: string, initial: T) {
   const cachedAtRender = getCache<T>(path);
   const [data, setData] = useState<T>(() => cachedAtRender?.data ?? initial);
-  const [loading, setLoading] = useState(() => !cachedAtRender && initial === null);
+  const [loading, setLoading] = useState(() => !cachedAtRender);
   const [error, setError] = useState("");
 
   const fetchData = useCallback(async (force: boolean) => {
@@ -94,8 +94,8 @@ export function useAdminData<T>(path: string, initial: T) {
       return;
     }
 
-    // List/object pages render their supplied initial state immediately while data arrives.
-    // Detail pages that pass null may still show a first-load state, but revisits are instant from memory cache.
+    // Show loading until the first response, so an empty initial array is not
+    // mistaken for a confirmed empty list. Cached revisits remain immediate.
     void fetchData(false);
   }, [path, fetchData]);
 

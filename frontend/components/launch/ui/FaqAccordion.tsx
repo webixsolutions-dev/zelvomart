@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import {useDeliveryPolicy} from "@/components/DeliveryPolicy";
+import {useSite} from '@/lib/launch/store';
+import {site as defaults} from '@/lib/launch/site';
 import { Plus } from "lucide-react";
 
 
-function useDeliveryFaqs(items:{q:string;a:string}[]){const policy=useDeliveryPolicy();return items.map(f=>/how much.*delivery|delivery (cost|charge)|shipping (cost|charge)|free (delivery|shipping)/i.test(f.q)?{...f,a:`Delivery costs Rs. ${policy.flatRate.toLocaleString('en-PK')}, and is free on orders of Rs. ${policy.threshold.toLocaleString('en-PK')} or more. Final delivery charges are shown at checkout.`}:/how long.*(delivery|take)|delivery time/i.test(f.q)?{...f,a:'Estimated delivery is shown for your city at checkout. Unlisted cities take 2–7 working days.'}:f);}
+function useDeliveryFaqs(items:{q:string;a:string}[]){const policy=useDeliveryPolicy(),site=useSite();items=items.map(item=>({...item,a:item.a.replaceAll(defaults.phoneDisplay,site.phoneDisplay).replaceAll(defaults.email,site.email)}));return items.map(f=>/how much.*delivery|delivery (cost|charge)|shipping (cost|charge)|free (delivery|shipping)/i.test(f.q)?{...f,a:`Delivery costs Rs. ${policy.flatRate.toLocaleString('en-PK')}, and is free on orders of Rs. ${policy.threshold.toLocaleString('en-PK')} or more. Final delivery charges are shown at checkout.`}:/how long.*(delivery|take)|delivery time/i.test(f.q)?{...f,a:'Estimated delivery is shown for your city at checkout. Unlisted cities take 2–7 working days.'}:f);}
 
 export function FaqAccordion({ items, defaultOpen = 0 }: { items: { q: string; a: string }[]; defaultOpen?: number | null }) {
   items=useDeliveryFaqs(items);

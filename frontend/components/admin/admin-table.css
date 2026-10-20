@@ -1,126 +1,94 @@
-/* Shared tokens keep all admin tables consistent while allowing page-specific columns. */
-.admin-data-table-scroll {
-  --table-header-bg: #f3f7fc;
-  --table-border: #edf2f8;
-  --table-muted: #7c8da7;
-  --table-text: #41516c;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow: auto;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #c5d2e4 #f5f8fc;
-  border-radius: 6px;
+/* Tables respond to their available panel width, including the sidebar and split panels. */
+.admin-data-table-shell{container:admin-table / inline-size;position:relative;width:100%;max-width:100%;min-width:0}
+.admin-data-table-shell .admin-data-table-scroll{width:100%;max-width:100%;min-width:0;overflow:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#bacbe2 #f4f7fb;border-radius:9px}
+.admin-data-table-shell .admin-data-table-scroll:focus-visible{outline:2px solid #388bfa;outline-offset:2px}
+.admin-data-table-shell .admin-data-table-scroll>table.admin-data-table{display:table;width:100%;min-width:var(--table-readable-width,700px);max-width:none;table-layout:auto;border-collapse:collapse;border-spacing:0;text-align:left;background:#fff;color:#41516c;font-size:12px}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table>thead{display:table-header-group}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table>tbody{display:table-row-group}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table tr{display:table-row}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table :is(th,td){display:table-cell;height:auto;white-space:normal;word-break:normal;overflow-wrap:break-word;vertical-align:middle;line-height:1.6;padding:13px 14px;border-bottom:1px solid #e7edf5}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table th{background:#f4f7fc;color:#647792;font-size:11px;font-weight:650;text-align:left;white-space:nowrap}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table td{min-width:100px;max-width:360px}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table td[data-column-kind=primary]{min-width:170px}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table td[data-column-kind=selection]{min-width:44px;width:44px}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table tbody tr:hover{background:#f8fbff}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table :is(th,td)[data-column-hidden=true]{display:none!important}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table td::before{content:none}
+.admin-data-table-shell .admin-data-table :is(input,select,textarea){max-width:100%}
+.admin-data-table-shell .admin-data-table input[type=checkbox]{width:18px;height:18px;accent-color:#2563eb;cursor:pointer}
+.admin-data-table-shell .admin-data-table :is(button,a,select,input,summary):focus-visible{outline:2px solid #388bfa;outline-offset:3px}
+.admin-data-table-shell .admin-data-table .od-customer{align-items:flex-start;gap:10px;min-width:0}
+.admin-data-table-shell .admin-data-table .od-customer>div{min-width:0;flex:1}
+.admin-data-table-shell .admin-data-table .od-customer :is(b,small,.cd-name){white-space:normal;overflow-wrap:break-word;word-break:normal;line-height:1.6}
+.admin-data-table-shell .admin-data-table .od-customer small{display:block;font-size:11px}
+.admin-data-table-shell .admin-data-table .od-avatar{flex:0 0 30px}
+.admin-data-table-shell .admin-data-table .od-amount{white-space:nowrap;font-variant-numeric:tabular-nums}
+.admin-data-table-shell .admin-data-table :is(.admin-product-info-cell,.admin-product-cell){min-width:0;max-width:100%}
+.admin-data-table-shell .admin-data-table :is(.admin-product-title-link,.admin-product-subtitle,.admin-sku-text){white-space:normal;overflow-wrap:break-word;word-break:normal}
+.admin-data-table-shell .admin-data-table .admin-actions-cell{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.admin-data-table-shell .admin-data-table :is(.admin-stock-badge,.admin-status-indicator,.admin-category-pill,.od-badge,.od-payment){max-width:100%;white-space:normal;overflow-wrap:normal;word-break:normal}
+.admin-data-table-shell .admin-data-table td[data-column-kind=actions]{min-width:136px}
+.admin-data-table-shell .admin-data-table td[data-column-kind=actions]>:is(button,details,a){vertical-align:middle}
+.admin-data-table-shell .admin-data-table td[data-column-kind=actions]>.od-actions{display:inline-block;margin-left:8px}
+.admin-data-table-shell .od-quick-view{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;min-width:82px;padding:9px 12px;border:1px solid #cbdcf5;border-radius:9px;background:#edf4ff;color:#245db7;font-size:12px;font-weight:650;white-space:nowrap;cursor:pointer}
+.admin-data-table-shell .od-quick-view svg{width:18px;height:18px;flex-shrink:0}
+.admin-data-table-shell .od-quick-view:hover{background:#dfeaff;border-color:#93b7ee}
+.admin-data-table-shell .od-actions>summary{display:inline-flex;align-items:center;justify-content:center;width:42px;min-height:42px;border:1px solid #dce5f0;border-radius:9px;background:#fff;color:#526781;font-size:22px}
+.admin-data-table-shell .od-actions>summary::-webkit-details-marker{display:none}
+.admin-table-options{display:flex;justify-content:flex-end;padding:10px 0}
+.admin-column-chooser{position:relative;z-index:20;color:#52617c;font-size:12px}
+.admin-column-chooser summary{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 12px;list-style:none;cursor:pointer;border:1px solid #dce5f0;border-radius:8px;background:#fff}
+.admin-column-chooser summary::-webkit-details-marker{display:none}
+.admin-column-chooser summary span{color:#75869f;font-size:11px}
+.admin-column-menu{position:absolute;top:calc(100% + 6px);right:0;width:240px;max-width:calc(100vw - 40px);max-height:360px;overflow:auto;padding:12px;border:1px solid #dce5f0;border-radius:10px;background:white;box-shadow:0 8px 28px #14243e20}
+.admin-column-menu strong{display:block;margin-bottom:8px}
+.admin-column-menu label{display:flex;align-items:center;gap:10px;min-height:40px;cursor:pointer}
+.admin-column-menu input{width:17px;height:17px;accent-color:#2563eb}
+.admin-column-menu small{margin-left:auto;color:#8492a9;font-size:10px}
+.admin-column-menu button{margin-top:8px;padding:10px;width:100%;border:0;border-radius:7px;background:#edf4ff;color:#245db7;cursor:pointer}
+.admin-main,.admin-main>*{min-width:0}
+.admin-main :is(.admin-table-container,.admin-table-wrap,.od-table-scroll,.dashboard-table-scroll):has(>.admin-data-table-shell){min-width:0;max-width:100%;overflow:visible}
+.admin-main .admin-table-container:has(>.admin-data-table-shell){width:auto}
+/* Preserve familiar rows and columns; scrolling belongs to the table, never the page. */
+.admin-table-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
+.admin-table-scroll-hint{display:flex;align-items:center;gap:7px;color:#71839c;font-size:11px;line-height:1.5}
+.admin-table-scroll-hint svg{width:16px;height:16px;flex-shrink:0}
+.admin-data-table-shell .admin-data-table-scroll{border:1px solid #e1e8f2;scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:#b8c9e1 #f3f6fa}
+.admin-data-table-shell .admin-data-table-scroll::-webkit-scrollbar{height:10px;width:10px}
+.admin-data-table-shell .admin-data-table-scroll::-webkit-scrollbar-track{background:#f3f6fa}
+.admin-data-table-shell .admin-data-table-scroll::-webkit-scrollbar-thumb{background:#bacbe2;border:2px solid #f3f6fa;border-radius:8px}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table :is(th,td){min-width:var(--column-readable-width,100px);padding:14px 16px}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table tbody>tr:nth-child(even){background:#fafcfe}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table tbody>tr:hover{background:#f0f6ff}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table tbody>tr:last-child>td{border-bottom:0}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table td small{line-height:1.6}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table td[data-column-kind=selection]{min-width:44px;padding:12px}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table :is(th,td)[data-column-kind=primary]{position:sticky;left:0;z-index:2;background:#fff;box-shadow:2px 0 0 #e7edf5}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table th[data-column-kind=primary]{z-index:3;background:#f4f7fc}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table tbody>tr:nth-child(even)>td[data-column-kind=primary]{background:#fafcfe}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table tbody>tr:hover>td[data-column-kind=primary]{background:#f0f6ff}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table td[data-column-kind=actions]{white-space:nowrap}
+.admin-data-table-shell .admin-data-table-scroll>.admin-data-table td[data-column-kind=actions] .admin-head-actions{display:flex;flex-wrap:wrap;gap:8px}
+@container admin-table (max-width:700px){
+ .admin-table-tools{align-items:flex-start;flex-wrap:wrap;gap:0 10px}
+ .admin-table-scroll-hint{padding:10px 0 0;font-size:12px}
+ .admin-table-options{margin-left:auto}
+ .admin-data-table-shell .admin-data-table-scroll>.admin-data-table :is(th,td){padding:13px 14px;font-size:12px}
+ .admin-data-table-shell .admin-data-table-scroll>.admin-data-table :is(th,td)[data-column-kind=primary]{position:static;box-shadow:none}
+ .admin-data-table-shell .od-quick-view,.admin-data-table-shell .od-actions>summary{min-height:44px}
+ .admin-data-table-shell .admin-data-table-scroll>.admin-data-table .od-customer small{font-size:12px}
 }
-.admin-data-table-scroll:focus-visible { outline: 2px solid #388bfa; outline-offset: 2px; }
-.admin-data-table-scroll > table.admin-data-table {
-  width: 100%;
-  min-width: 0;
-  border-collapse: collapse;
-  border-spacing: 0;
-  table-layout: auto;
-  text-align: left;
-  font-size: 11px;
-  color: var(--table-text);
-  background: #fff;
-}
-.admin-data-table-scroll > .admin-data-table > thead > tr > th {
-  background: var(--table-header-bg);
-  color: var(--table-muted);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: none;
-  letter-spacing: 0;
-  padding: 11px 12px;
-  border-bottom: 1px solid var(--table-border);
-  white-space: nowrap;
-  text-align: left;
-  vertical-align: middle;
-}
-.admin-data-table-scroll > .admin-data-table > tbody > tr > td {
-  padding: 11px 12px;
-  height: auto;
-  border-bottom: 1px solid var(--table-border);
-  color: var(--table-text);
-  vertical-align: middle;
-  line-height: 1.5;
-}
-.admin-data-table-scroll > .admin-data-table > tbody > tr:hover { background: #f8fbff; }
-.admin-data-table-scroll > .admin-data-table > tbody > tr:last-child > td { border-bottom: 0; }
-.admin-data-table-scroll .admin-data-table input[type=checkbox] { width: 15px; height: 15px; accent-color: #0877ff; vertical-align: middle; cursor: pointer; }
-.admin-data-table-scroll .admin-data-table :is(button,a,select,input):focus-visible { outline: 2px solid #388bfa; outline-offset: 2px; }
-.admin-data-table-scroll > .admin-data-table :is(th,td) { overflow-wrap: anywhere; }
-/* Wide operational tables retain readable columns and scroll inside the page. */
-.admin-data-table-scroll > table.admin-modern-table { min-width: 1060px; }
-.admin-data-table-scroll > table.od-table { min-width: 1040px; }
-.admin-data-table-scroll > .admin-data-table td:has(> :is(button,select,.admin-actions-cell)) { white-space: nowrap; }
-.admin-table-wrap:has(> .admin-data-table-scroll),
-.admin-table-container:has(> .admin-data-table-scroll),
-.od-table-scroll:has(> .admin-data-table-scroll),
-.dashboard-table-scroll:has(> .admin-data-table-scroll) { min-width: 0; max-width: 100%; overflow: visible; }
-.admin-table-container:has(> .admin-data-table-scroll) { padding-bottom: 0; }
-.admin-data-table-scroll:has(.admin-btn-more) { padding-bottom: 70px; }
-.admin-main,.admin-main > * { min-width: 0; }
-@media (max-width: 760px) {
-  .admin-data-table-scroll > table.admin-data-table { width: max-content; min-width: 100%; max-width: none; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr > td { max-width: 280px; min-width: 90px; padding: 10px; }
-  .admin-data-table-scroll > .admin-data-table > thead > tr > th { padding: 10px; }
-  .admin-data-table-scroll > .admin-data-table :is(th,td):first-child:has(input[type=checkbox]) { min-width: 36px; width: 36px; }
-  .admin-data-table-scroll > .admin-data-table td[colspan] { white-space: normal; }
-}
-@media print {
-  .admin-data-table-scroll { overflow: visible; max-width: none; padding: 0; }
-  .admin-data-table-scroll > table.admin-data-table { min-width: 0; width: 100%; }
+@media print{
+ .admin-table-options{display:none!important}
+ .admin-data-table-shell{container-type:normal}
+ .admin-data-table-shell .admin-data-table-scroll{overflow:visible}
+ .admin-data-table-shell .admin-data-table-scroll>table.admin-data-table{display:table;min-width:0!important;width:100%;font-size:10px}
 }
 
-/* Configurable columns and content-first responsive rows. */
-.admin-data-table-shell { width:100%; max-width:100%; min-width:0; position:relative; }
-.admin-table-options { display:flex; justify-content:flex-end; padding:8px 0; }
-.admin-column-chooser { position:relative; z-index:15; font-size:11px; color:#52617c; }
-.admin-column-chooser summary { display:flex; align-items:center; gap:8px; list-style:none; cursor:pointer; border:1px solid #e1e8f2; border-radius:6px; padding:7px 10px; background:white; }
-.admin-column-chooser summary::-webkit-details-marker { display:none; }
-.admin-column-chooser summary span { color:#8492a9; font-size:10px; }
-.admin-column-menu { position:absolute; top:calc(100% + 5px); right:0; width:230px; max-height:360px; overflow:auto; padding:12px; border:1px solid #e1e8f2; background:white; border-radius:9px; box-shadow:0 8px 24px #14243e18; }
-.admin-column-menu strong { display:block; margin-bottom:8px; font-size:12px; }
-.admin-column-menu label { display:flex; align-items:center; gap:9px; padding:6px 0; cursor:pointer; }
-.admin-column-menu input { accent-color:#0877ff; }
-.admin-column-menu small { margin-left:auto; color:#9aa6b8; font-size:9px; }
-.admin-column-menu button { margin-top:8px; padding:7px 9px; width:100%; color:#0877ff; background:#edf5ff; border:0; border-radius:5px; cursor:pointer; }
-.admin-data-table-scroll > table.admin-data-table { min-width:0; width:100%; table-layout:fixed; }
-.admin-data-table-scroll > .admin-data-table :is(th,td)[data-column-hidden=true] { display:none!important; }
-.admin-data-table-scroll > .admin-data-table > thead > tr > th { white-space:normal; overflow-wrap:anywhere; }
-.admin-data-table-scroll > .admin-data-table > tbody > tr > td { min-width:0; white-space:normal; overflow-wrap:anywhere; }
-.admin-data-table-scroll .admin-data-table td :is(.admin-product-info-cell,.od-customer>div) { min-width:0; }
-.admin-data-table-scroll .admin-data-table td :is(.admin-product-title-link,.admin-product-subtitle,.admin-sku-text) { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; white-space:normal; overflow-wrap:anywhere; }
-.admin-data-table-scroll .admin-data-table td .admin-actions-cell { display:flex; flex-wrap:wrap; gap:5px; justify-content:flex-end; }
-.admin-data-table-scroll .admin-data-table td :is(input,select,textarea) { max-width:100%; }
-.admin-data-table-scroll .admin-data-table td:has(> :is(button,select,.admin-actions-cell)) { white-space:normal; }
-.admin-table-wrap:has(> .admin-data-table-shell),.admin-table-container:has(> .admin-data-table-shell),.od-table-scroll:has(> .admin-data-table-shell),.dashboard-table-scroll:has(> .admin-data-table-shell) { min-width:0; max-width:100%; overflow:visible; }
-.admin-table-container:has(> .admin-data-table-shell) { padding-bottom:0; }
-.admin-data-table-scroll:has(.admin-btn-more) { padding-bottom:10px; }
-@media(max-width:1000px) {
-  .admin-data-table-shell .admin-data-table-scroll { overflow:visible; padding-bottom:0; }
-  .admin-data-table-scroll > table.admin-data-table { display:block; table-layout:auto; min-width:0; width:100%; max-width:100%; }
-  .admin-data-table-scroll > .admin-data-table > thead { position:absolute; width:1px; height:1px; clip-path:inset(50%); overflow:hidden; }
-  .admin-data-table-scroll > .admin-data-table > tbody { display:grid; gap:12px; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 14px; padding:12px; border:1px solid #e1e8f2; border-radius:9px; background:white; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr > td { display:block; min-width:0!important; max-width:100%; width:auto!important; height:auto; padding:8px 0!important; border-bottom:1px solid #edf2f8; white-space:normal; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr > td::before { content:attr(data-column-label); display:block; color:#8492a9; font-size:10px; font-weight:600; margin-bottom:4px; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr > td[data-column-kind=selection] { grid-column:1/-1; padding:0 0 6px!important; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr > td[data-column-kind=selection]::before { display:none; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr > td[data-column-kind=actions] { grid-column:1/-1; border-bottom:0; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr[data-table-spanning=true] { display:block; }
-  .admin-data-table-scroll > .admin-data-table > tbody > tr[data-table-spanning=true] > td::before { display:none; }
-  .admin-data-table-scroll .admin-data-table .admin-dropdown-menu { z-index:30; }
-}
-@media print { .admin-table-options { display:none; } }
-.admin-main :is(.admin-table-container,.admin-table-wrap,.od-table-scroll,.dashboard-table-scroll):has(> .admin-data-table-shell) { overflow:visible; }
-@media(max-width:1000px) {
-  .admin-data-table-scroll .admin-data-table td :is(.admin-product-title-link,.admin-product-subtitle,.admin-sku-text) { display:block; -webkit-line-clamp:unset; overflow:visible; }
-}
-.admin-main .admin-table-container:has(> .admin-data-table-shell) { width:auto; }
-.admin-data-table-scroll .admin-data-table td :is(.admin-category-pill,.admin-added-cell,.admin-price-cell,.admin-product-info-cell) { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
-.admin-data-table-scroll .admin-data-table td .admin-category-pill { display:inline-block; }
-.admin-data-table-scroll .admin-data-table td :is(.admin-stock-badge,.admin-status-indicator) { max-width:100%; white-space:normal; flex-wrap:wrap; }
+.admin-table-scroll-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.admin-table-scroll-controls button{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid #dce5f0;border-radius:8px;background:#fff;color:#315b91;font-size:19px;cursor:pointer}
+.admin-table-scroll-controls button:hover:not(:disabled){background:#edf4ff;border-color:#aac7ee}
+.admin-table-scroll-controls button:disabled{opacity:.35;cursor:default}
+.admin-table-scroll-controls button:focus-visible{outline:2px solid #388bfa;outline-offset:2px}
+@container admin-table (max-width:700px){.admin-table-scroll-controls{padding-top:6px}.admin-table-scroll-controls .admin-table-scroll-hint{padding:0;flex-basis:100%;font-size:11px}.admin-table-scroll-controls button{width:44px;height:44px}.admin-table-tools{align-items:center}.admin-table-options{padding-block:8px}}
+@media print{.admin-table-tools{display:none!important}}

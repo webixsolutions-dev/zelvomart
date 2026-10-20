@@ -1,4 +1,5 @@
 "use client";
+import "@/components/admin/catalog-pages.css";
 
 import Link from "next/link";
 import { AdminError, AdminLoading, useAdminData } from "@/components/admin/useAdminData";
@@ -26,11 +27,11 @@ export default function TagsPage() {
   if (error) return <AdminError message={error} />;
 
   return (
-    <>
+    <div className="admin-catalog-page">
       <div className="admin-title">
         <div>
           <h1>Product tags</h1>
-          <p>Posted products always appear in the shop. These tags also place them on Bestsellers, New in, or Discounts.</p>
+          <p>Manage product labels and discount tags. Open a product to update its tags.</p>
         </div>
         <Link className="admin-btn admin-btn-primary" href="/admin/products/add">Add product</Link>
       </div>
@@ -39,13 +40,13 @@ export default function TagsPage() {
           const products = data.filter((product) => (product.tags || product.catalogMeta?.tags || []).includes(tag.id));
           return (
             <section className="admin-card" key={tag.id}>
-              <h2>{tag.label}</h2>
-              <p>{products.length} product{products.length === 1 ? "" : "s"} · shows on {tag.where}</p>
+              <div className="catalog-card-heading"><span className="catalog-tag-icon" aria-hidden="true">#</span><h2>{tag.label}</h2><span className="catalog-count">{products.length}</span></div>
+              <p>{products.length} product{products.length === 1 ? "" : "s"} assigned to this tag</p>
               <ul>
                 {products.map((product) => (
                   <li key={product.id}>
                     <Link href={`/admin/products/${product.id}`}>{product.title || product.name}</Link>
-                    <small>{product.status === "PUBLISHED" ? "Posted" : "Draft"}</small>
+                    <small className="catalog-status">{product.status === "PUBLISHED" ? "Posted" : "Draft"}</small>
                   </li>
                 ))}
                 {!products.length ? <li><span>No products use this tag yet.</span></li> : null}
@@ -54,6 +55,6 @@ export default function TagsPage() {
           );
         })}
       </div>
-    </>
+    </div>
   );
 }

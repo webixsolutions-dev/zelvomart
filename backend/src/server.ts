@@ -1,3 +1,4 @@
+import {validateSettingsUpdate,validateCitySettings} from './lib/settings-validation';
 import {orderEditRouter,orderExtras} from './admin-order-edit';
 import {registerRecovery} from './recovery';
 import {overviewRouter} from './admin-overview';
@@ -224,7 +225,7 @@ async function syncProductRedirect(options: { slug: string; previousSlug?: strin
   await invalidateFrontendCache(['redirects']);
 }
 
-function jsonProduct(row: any) {
+function jsonProduct(row: any, bundleDiscount = BUY_TWO_DISCOUNT_PERCENT) {
   const pricing = priceSummary(row.price, row.salePrice);
   const images = Array.isArray(row.images) ? row.images.filter((x: unknown) => typeof x === 'string') : [];
   const catalog = readCatalogMeta(row.sourceUrl) || {};
@@ -245,7 +246,7 @@ function jsonProduct(row: any) {
     imageAlt, imageTitle,
     tags: Array.isArray(catalog.tags) ? catalog.tags : [],
     badges: productBadges(catalog, pricing), freeShipping: Boolean(catalog.freeShipping),
-    buyTwoDiscountPercent: BUY_TWO_DISCOUNT_PERCENT,
+    buyTwoDiscountPercent: bundleDiscount,
     shortDescription: row.shortDescription, description: row.descriptionHtml, descriptionHtml: row.descriptionHtml,
     videoUrl: row.videoUrl, videoThumbnail: catalog.videoThumbnail || null, videoAddedAt: catalog.videoAddedAt || null,
     permalink: `/product/${row.slug}/`, hasOptions: (row.variants || []).length > 0,
@@ -271,7 +272,7 @@ function jsonProduct(row: any) {
         stockSetting: cleanStockStatus(v.stockStatus),
       };
     }),
-    bundleEnabled: row.bundleEnabled, bundleDiscountPercent: BUY_TWO_DISCOUNT_PERCENT, reviews,
+    bundleEnabled: row.bundleEnabled, bundleDiscountPercent: bundleDiscount, reviews,
     seoTitle: row.seoTitle, seoDescription: row.seoDescription, canonicalUrl: row.canonicalUrl, catalogMeta: readCatalogMeta(row.sourceUrl),
     costPrice: row.costPrice == null ? null : Number(row.costPrice), status: row.status, categoryId: row.categoryId,
     createdAt: row.createdAt, updatedAt: row.updatedAt,
@@ -288,7 +289,7 @@ const productListSelect = {
   reviews: { where: { status: 'APPROVED' as const }, select: { rating: true } },
 } satisfies Prisma.ProductSelect;
 
-function jsonProductSummary(row: any) {
+function jsonProductSummary(row: any, bundleDiscount = BUY_TWO_DISCOUNT_PERCENT) {
   const pricing = priceSummary(row.price, row.salePrice);
   const images = Array.isArray(row.images) ? row.images.filter((x: unknown) => typeof x === 'string') : [];
   const catalog = readCatalogMeta(row.sourceUrl) || {};
@@ -308,7 +309,7 @@ function jsonProductSummary(row: any) {
     imageAlt, imageTitle,
     tags: Array.isArray(catalog.tags) ? catalog.tags : [],
     badges: productBadges(catalog, pricing), freeShipping: Boolean(catalog.freeShipping),
-    buyTwoDiscountPercent: BUY_TWO_DISCOUNT_PERCENT,
+    buyTwoDiscountPercent: bundleDiscount,
     shortDescription: row.shortDescription, description: null, videoUrl: null, permalink: `/product/${row.slug}/`,
     hasOptions, variants: (row.variants || []).map((variant: any) => ({
       id: variant.id, sku: variant.sku, name: variant.name, attributes: variant.attributes || {},
@@ -322,7 +323,7 @@ function jsonProductSummary(row: any) {
       stock: Number(variant.stock || 0), trackStock: Boolean(variant.trackStock), stockStatus: itemStockStatus(variant),
       imageUrl: variant.imageUrl || null, images: variant.imageUrl ? [variant.imageUrl] : [], active: true,
     })), bundleEnabled: row.bundleEnabled,
-    bundleDiscountPercent: BUY_TWO_DISCOUNT_PERCENT, reviews: [],
+    bundleDiscountPercent: bundleDiscount, reviews: [],
   };
 }
 
@@ -417,7 +418,7 @@ async function catalogCacheTags(slug: string, categoryId?: string | null) {
 
 async function loadAdminProduct(id: string) {
   const row = await prisma.product.findUnique({ where: { id }, include: { category: true, variants: true, reviews: true } });
-  return row ? jsonProduct(row) : null;
+  return row ? jsonProduct(row,Number(await getSetting('store.bundleDefaultDiscountPercent',5))) : null;
 }
 
 // The database is far from the server (Supabase ap-southeast-2), so opening a connection can take
@@ -506,7 +507,7 @@ app.post('/api/contact', async (req, res) => {
 });
 
 app.get('/api/store/bootstrap', async (_req, res) => {
-  setPublicCache(res, 30, 30, ['store', 'categories', 'settings']);
+  setNoStore(res);
   const [categories, settings] = await Promise.all([
     prisma.category.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }], include: { _count: { select: { products: { where: { status: 'PUBLISHED' } } } } } }),
     getSettings([
@@ -517,6 +518,7 @@ app.get('/api/store/bootstrap', async (_req, res) => {
       'tracking.tiktokPixelEnabled',
       'tracking.tiktokPixelId',
       'tracking.sessionReplayEnabled',
+      'tracking.sessionReplayRetentionDays',
       'homepage.config',
       'store.bundleDefaultDiscountPercent',
     ])
@@ -541,7 +543,7 @@ app.get('/api/products', async (req, res) => {
   const maxPrice = Number.isFinite(maxPriceRaw) && maxPriceRaw >= 0 ? maxPriceRaw : undefined;
   const availability = String(req.query.availability || '').trim();
   const tag = String(req.query.tag || '').trim().replace(/[^a-z0-9-]/gi, '');
-  setPublicCache(res, 60, 300, ['products', ...(category ? [`category:${category}`] : []), ...(featured ? ['featured-products'] : [])]);
+  setNoStore(res);
   const query=catalogQuery({search,category,featured,minPrice,maxPrice,availability,tag,sort});
   const [rank,counts]=await Promise.all([
     prisma.$queryRaw<{id:string;orders:bigint}[]>(Prisma.sql`SELECT p.id,COALESCE(s.orders,0) AS orders ${query.from} ORDER BY ${query.order} LIMIT ${limit} OFFSET ${(page-1)*limit}`),
@@ -549,12 +551,12 @@ app.get('/api/products', async (req, res) => {
   ]);
   const rows=rank.length?await prisma.product.findMany({where:{id:{in:rank.map(r=>r.id)}},select:productListSelect}):[];
   const byId=new Map(rows.map(row=>[row.id,row])),total=Number(counts[0]?.total||0);
-  res.json({items:rank.flatMap(r=>{const row=byId.get(r.id);return row?[jsonProductSummary({...row,_count:{orderItems:Number(r.orders)}})]:[];}),page,limit,total,totalPages:Math.max(1,Math.ceil(total/limit))});
+  const discount=Number(await getSetting('store.bundleDefaultDiscountPercent',5));res.json({items:rank.flatMap(r=>{const row=byId.get(r.id);return row?[jsonProductSummary({...row,_count:{orderItems:Number(r.orders)}},discount)]:[];}),page,limit,total,totalPages:Math.max(1,Math.ceil(total/limit))});
 });
-app.get('/api/products/slug/:slug', async (req,res) => { const slug=routeParam(req, 'slug'); setPublicCache(res, 120, 600, ['products', `product:${slug}`]); const row = await prisma.product.findFirst({ where:{ slug, status:'PUBLISHED' }, include: productInclude }); if(!row) return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row)); });
+app.get('/api/products/slug/:slug', async (req,res) => { const slug=routeParam(req, 'slug'); setNoStore(res); const row = await prisma.product.findFirst({ where:{ slug, status:'PUBLISHED' }, include: productInclude }); if(!row) return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row,Number(await getSetting('store.bundleDefaultDiscountPercent',5)))); });
 app.get('/api/pages/:slug', async (req,res) => { setPublicCache(res, 900, 3600, ['pages']); const slugs = [routeParam(req, 'slug'), ...String(req.query.fallback || '').split(',').filter(Boolean)]; const page = await prisma.page.findFirst({ where:{ slug:{in:slugs}, published:true } }); if(!page) return res.status(404).json({error:'NOT_FOUND'}); res.json(page); });
-app.get('/api/settings/public', async (req,res) => { setPublicCache(res, 30, 30, ['settings']); const keys = publicSettingKeys(req.query.keys); res.json(keys.length?await getSettings(keys):{}); });
-app.get('/api/cities', async (_req,res) => { setPublicCache(res, 3600, 86400, ['cities']); res.json(await prisma.city.findMany({ where:{active:true}, orderBy:{name:'asc'} })); });
+app.get('/api/settings/public', async (req,res) => { setNoStore(res); const keys = publicSettingKeys(req.query.keys); res.json(keys.length?await getSettings(keys):{}); });
+app.get('/api/cities', async (_req,res) => { setNoStore(res); res.json(await prisma.city.findMany({ where:{active:true}, orderBy:{name:'asc'} })); });
 app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 86400, ['seo']); const [products,categories,pages] = await Promise.all([prisma.product.findMany({where:{status:'PUBLISHED'},select:{slug:true,updatedAt:true,sourceUrl:true}}).then(rows=>rows.filter(r=>readCatalogMeta(r.sourceUrl)?.robotsIndex!=='noindex').map(({slug,updatedAt})=>({slug,updatedAt}))),prisma.category.findMany({select:{slug:true,updatedAt:true}}),prisma.page.findMany({where:{published:true},select:{slug:true,updatedAt:true}})]); res.json({products,categories,pages}); });
 // Every redirect, for the storefront proxy: it answers old URLs with a real 301 before the page renders.
 app.get('/api/redirects/map', async (_req,res)=>{setPublicCache(res,120,600,['redirects']);const rows=await prisma.redirect.findMany({select:{sourcePath:true,destination:true,permanent:true},take:20000});res.json(rows.map(r=>[r.sourcePath,r.destination,r.permanent?1:0]));});
@@ -584,7 +586,7 @@ registerRecovery(app,findStoreSession);
 app.use('/api/admin/coupons',couponRouter);
 app.use('/api/admin/orders',orderEditRouter);
 app.use('/api/admin/overview',overviewRouter);
-app.post('/api/checkout/coupon',async(req,res)=>{if(!(await allowRequest(req,res,'coupon',20,60000)))return;try{const cart=Array.isArray(req.body.cart)?req.body.cart:[];if(!cart.length||cart.length>50)throw new Error('Your cart is empty.');const products=await prisma.product.findMany({where:{id:{in:cart.map((i:any)=>String(i.productId))},status:'PUBLISHED'},include:{variants:true}});let subtotal=0;for(const item of cart){if(!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>20)throw new Error('Invalid quantity.');const p=products.find(p=>p.id===item.productId);if(!p)throw new Error('Product unavailable.');const v=item.variantId?p.variants.find(v=>v.id===item.variantId&&v.active):undefined;if(item.variantId&&!v||!v&&p.variants.some(v=>v.active))throw new Error('Choose a valid variation.');const price=variantPriceSummary(priceSummary(p.price,p.salePrice),{priceOverride:v?.priceOverride}).price;subtotal+=bundleLineTotal(price,item.quantity,item.bundleSize===2&&p.bundleEnabled?2:1,BUY_TWO_DISCOUNT_PERCENT).total;}res.json(await validateCoupon(req.body.code,subtotal));}catch(e:any){res.status(400).json({error:e.message});} });
+app.post('/api/checkout/coupon',async(req,res)=>{if(!(await allowRequest(req,res,'coupon',20,60000)))return;try{const cart=Array.isArray(req.body.cart)?req.body.cart:[];if(!cart.length||cart.length>50)throw new Error('Your cart is empty.');const products=await prisma.product.findMany({where:{id:{in:cart.map((i:any)=>String(i.productId))},status:'PUBLISHED'},include:{variants:true}});const discount=Number(await getSetting('store.bundleDefaultDiscountPercent',5));let subtotal=0;for(const item of cart){if(!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>20)throw new Error('Invalid quantity.');const p=products.find(p=>p.id===item.productId);if(!p)throw new Error('Product unavailable.');const v=item.variantId?p.variants.find(v=>v.id===item.variantId&&v.active):undefined;if(item.variantId&&!v||!v&&p.variants.some(v=>v.active))throw new Error('Choose a valid variation.');const price=variantPriceSummary(priceSummary(p.price,p.salePrice),{priceOverride:v?.priceOverride}).price;subtotal+=bundleLineTotal(price,item.quantity,item.bundleSize===2&&p.bundleEnabled?2:1,discount).total;}res.json(await validateCoupon(req.body.code,subtotal));}catch(e:any){res.status(400).json({error:e.message});} });
 
 app.post('/api/reviews', async (req,res) => {
   if (!(await allowRequest(req, res, 'review', 10, 24 * 60 * 60 * 1000))) return;
@@ -815,8 +817,8 @@ app.get('/api/admin/products/insights', requireAuth('products.write'), async (_r
   res.json({sales:Object.fromEntries(sales.filter(s=>s.productId).map(s=>[s.productId,s._sum.quantity||0])),activity});
 });
 app.get('/api/admin/products/export.csv', requireAuth('orders.export'), async (_req,res)=>{const rows=await prisma.product.findMany({include:{category:true},orderBy:{updatedAt:'desc'}});const esc=(v:any)=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=['title,slug,sku,category,price,salePrice,costPrice,stock,status,featured,shortDescription,descriptionHtml,imageUrls,videoUrl,seoTitle,seoDescription',...rows.map(p=>[p.title,p.slug,p.sku,p.category?.name||'',p.price,p.salePrice||'',p.costPrice||'',p.stock,p.status,p.featured,p.shortDescription||'',p.descriptionHtml||'',Array.isArray(p.images)?p.images.join('|'):'',p.videoUrl||'',p.seoTitle||'',p.seoDescription||''].map(esc).join(','))].join('\n');res.type('text/csv').send(csv);});
-app.get('/api/admin/products', requireAuth('products.write'), async (req,res) => { const q=String(req.query.q||''); const status=String(req.query.status||''); const categoryId=String(req.query.categoryId||''); const where:Prisma.ProductWhereInput={...(q?{OR:[{title:{contains:q,mode:'insensitive'}},{sku:{contains:q,mode:'insensitive'}}]}:{}),...(status?{status:status as ProductStatus}:{}),...(categoryId?{categoryId}:{})}; const rows=await prisma.product.findMany({where,include:{category:true,variants:true,reviews:true},orderBy:{updatedAt:'desc'}}); res.json(rows.map(jsonProduct)); });
-app.get('/api/admin/products/:id', requireAuth('products.write'), async (req,res) => { const row=await prisma.product.findUnique({where:{id:routeParam(req, 'id')},include:{category:true,variants:true,reviews:true}}); if(!row)return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row)); });
+app.get('/api/admin/products', requireAuth('products.write'), async (req,res) => { const q=String(req.query.q||''); const status=String(req.query.status||''); const categoryId=String(req.query.categoryId||''); const where:Prisma.ProductWhereInput={...(q?{OR:[{title:{contains:q,mode:'insensitive'}},{sku:{contains:q,mode:'insensitive'}}]}:{}),...(status?{status:status as ProductStatus}:{}),...(categoryId?{categoryId}:{})}; const rows=await prisma.product.findMany({where,include:{category:true,variants:true,reviews:true},orderBy:{updatedAt:'desc'}}); const discount=Number(await getSetting('store.bundleDefaultDiscountPercent',5));res.json(rows.map(row=>jsonProduct(row,discount))); });
+app.get('/api/admin/products/:id', requireAuth('products.write'), async (req,res) => { const row=await prisma.product.findUnique({where:{id:routeParam(req, 'id')},include:{category:true,variants:true,reviews:true}}); if(!row)return res.status(404).json({error:'NOT_FOUND'}); res.json(jsonProduct(row,Number(await getSetting('store.bundleDefaultDiscountPercent',5)))); });
 app.post('/api/admin/products', requireAuth('products.write'), async (req:AuthedRequest,res) => {
   try {
     const b=req.body||{};
@@ -985,7 +987,7 @@ app.get('/api/admin/orders/dashboard', requireAuth('orders.read'), async (req,re
 app.get('/api/admin/orders/catalog', requireAuth('orders.write'), async (req,res)=>{
   const search=String(req.query.search||'').trim();
   const items=await prisma.product.findMany({where:{status:'PUBLISHED',...(search?{OR:[{title:{contains:search,mode:'insensitive' as const}},{sku:{contains:search,mode:'insensitive' as const}}]}:{})},select:productListSelect,take:10,orderBy:{title:'asc'}});
-  res.json({items:items.map(jsonProductSummary)});
+  const discount=Number(await getSetting('store.bundleDefaultDiscountPercent',5));res.json({items:items.map(row=>jsonProductSummary(row,discount))});
 });
 app.post('/api/admin/orders', requireAuth('orders.write'), async (req:AuthedRequest,res)=>{
   const parsed=checkoutSchema.safeParse(req.body);
@@ -1116,17 +1118,20 @@ app.get('/api/admin/settings', requireAuth('settings.write'), async (_req,res)=>
   res.json({settings:safeSettings,cities});
 });
 app.put('/api/admin/settings', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{
-  for(const [key,value] of Object.entries(req.body||{})){
-    if((key==='tracking.metaCapiToken'||key==='tracking.tiktokEventsApiToken')&&(!value||value==='••••••••')){
-      continue;
-    }
-    await setSetting(key,value);
-  }
+  let values:Record<string,unknown>;
+  try{values=validateSettingsUpdate(req.body);}catch(error){return res.status(400).json({error:error instanceof Error?error.message:'Invalid settings.'});}
+  const entries=Object.entries(values).filter(([key,value])=>!(/Token$|accessToken$/.test(key)&&(!value||value==='••••••••')));
+  await prisma.$transaction(entries.map(([key,value])=>prisma.setting.upsert({where:{key},update:{value:value as any},create:{key,value:value as any}})));
   await audit(req,'update','Settings',undefined,{keys:Object.keys(req.body||{})});
-  await invalidateFrontendCache(['settings','store']);
+  await invalidateFrontendCache(['settings','store','products','setting:store.bundleDefaultDiscountPercent']);
   res.json({ok:true});
 });
-app.put('/api/admin/cities',requireAuth('settings.write'),async(req:AuthedRequest,res)=>{const cities=req.body.cities;if(!Array.isArray(cities)||cities.length>1000||cities.some(c=>!c.name||!Number.isInteger(c.deliveryMinDays)||!Number.isInteger(c.deliveryMaxDays)||c.deliveryMinDays<1||c.deliveryMaxDays<c.deliveryMinDays||c.deliveryMaxDays>90))return res.status(400).json({error:'Each city needs a name and valid minimum/maximum delivery days (1–90).'});await prisma.$transaction(cities.map(c=>prisma.city.upsert({where:{name:String(c.name).trim()},update:{deliveryMinDays:c.deliveryMinDays,deliveryMaxDays:c.deliveryMaxDays,active:c.active!==false},create:{name:String(c.name).trim(),deliveryMinDays:c.deliveryMinDays,deliveryMaxDays:c.deliveryMaxDays,active:c.active!==false}})));await audit(req,'update','Cities');await invalidateFrontendCache(['cities']);res.json({ok:true});});
+app.put('/api/admin/cities',requireAuth('settings.write'),async(req:AuthedRequest,res)=>{
+  let cities:ReturnType<typeof validateCitySettings>;
+  try{cities=validateCitySettings(req.body.cities);}catch(error){return res.status(400).json({error:error instanceof Error?error.message:'Invalid cities.'});}
+  await prisma.$transaction([prisma.city.updateMany({where:{name:{notIn:cities.map(c=>c.name)}},data:{active:false}}),...cities.map(c=>prisma.city.upsert({where:{name:c.name},update:c,create:c}))]);
+  await audit(req,'update','Cities');await invalidateFrontendCache(['cities']);res.json({ok:true});
+});
 
 app.get('/api/admin/users', requireAuth('users.write'), async (_req,res)=>res.json(await prisma.user.findMany({select:{id:true,name:true,email:true,role:true,active:true,createdAt:true,updatedAt:true},orderBy:{createdAt:'desc'}})));
 app.post('/api/admin/users', requireAuth('users.write'), async (req:AuthedRequest,res)=>{const password=String(req.body.password||'');if(password.length<8)return res.status(400).json({error:'PASSWORD_TOO_SHORT'});const row=await prisma.user.create({data:{name:String(req.body.name),email:String(req.body.email).toLowerCase(),passwordHash:await bcrypt.hash(password,12),role:(req.body.role||'ORDER_AGENT') as Role,active:req.body.active!==false}});await audit(req,'create','User',row.id);res.status(201).json({id:row.id,name:row.name,email:row.email,role:row.role,active:row.active});});

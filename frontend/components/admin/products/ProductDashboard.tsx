@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import {RankingChart} from '../AnalyticsViews';
 import type { CSSProperties } from 'react';
 import type { Product } from './ProductTableRow';
 import { stockBadgeState } from './StockBadge';
@@ -22,6 +23,12 @@ export function ProductInsights({products,categories,data,loading,error}:{produc
  const sold=Object.values(data?.sales||{}).reduce((n,v)=>n+v,0);
  const top=products.filter(p=>(data?.sales[p.id]||0)>0).sort((a,b)=>(data?.sales[b.id]||0)-(data?.sales[a.id]||0)).slice(0,5);
  return <div className="od-insights pd-insights" aria-busy={loading}>
+ <section className="od-panel"><h3>Catalog readiness</h3>{loading?<InsightSkeleton kind="progress"/>:<RankingChart title="Listing improvements" emptyLabel="No missing images, categories, zero prices or draft listings in the loaded catalog." rows={[
+{id:'images',label:'Missing product image',count:products.filter(p=>!p.image&&!p.rawImages?.length).length},
+{id:'category',label:'Missing category',count:products.filter(p=>!p.categoryId&&!p.category?.id).length},
+{id:'price',label:'Missing or zero price',count:products.filter(p=>Number(p.regularPrice??p.price??0)<=0).length},
+{id:'draft',label:'Draft listings',count:products.filter(p=>p.status==='DRAFT').length}
+]} metrics={[{key:'count',label:'Products'}]} note="Based on the currently loaded catalog. A product can appear in multiple checks. Drafts are an editorial queue, not necessarily an error."/>}</section>
  <section className="od-panel"><h3>◈ Inventory Status Breakdown</h3>{loading?<InsightSkeleton kind="breakdown"/>:<div className="od-breakdown"><div className="od-donut" style={{background:total?`conic-gradient(${gradient})`:'#eaf0f8'}}><div><b>{total.toLocaleString()}</b><small>Total Products</small></div></div><div className="od-legend">{inventory.map(g=><div className="pd-legend-item" key={g.label}><i style={{background:g.color}}/>{g.label}<b>{g.count.toLocaleString()}</b><span>{total?(g.count/total*100).toFixed(1):0}%</span></div>)}</div></div>}</section>
  <section className="od-panel"><h3>▥ Category Performance <Link href="/admin/categories">View all</Link></h3>{loading?<InsightSkeleton kind="progress"/>:error?<p className="od-muted">Unable to load sales data.</p>:performance.length?performance.map((c,index)=><div className="pd-category" key={c.id}><span>{c.name}<b>{c.units.toLocaleString()}</b><small>{sold?(c.units/sold*100).toFixed(1):0}%</small></span><div className="od-track"><i style={{width:`${performance[0]?.units?c.units/performance[0].units*100:0}%`,background:colors[index]}}/></div></div>):<p className="od-muted">No categories yet.</p>}</section>
  <section className="od-panel"><h3>◷ Recent Product Activity</h3>{loading?<InsightSkeleton kind="activity"/>:error?<p className="od-muted">Unable to load activity.</p>:data?.activity.length?data.activity.map(a=>{const p=products.find(p=>p.id===a.entityId||p.variants?.some(v=>v.id===a.entityId));return <div key={a.id} className="pd-activity"><span className="od-avatar">{a.action==='create'?'+':'↻'}</span><div><b>{a.action.replaceAll('_',' ')} · {a.entity}</b>{p?<Link href={`/admin/products/${p.id}`}>{p.title||p.name}</Link>:<small>{a.entityId?'Removed or unavailable product':'Bulk product action'}</small>}<small>{new Date(a.createdAt).toLocaleString('en-PK',{timeZone:'Asia/Karachi'})}</small></div></div>}):<p className="od-muted">No product activity yet.</p>}</section>

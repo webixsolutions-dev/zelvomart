@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
+import {revalidatePath,revalidateTag} from 'next/cache';
 
 const SESSION_COOKIE = "zelvomart_admin_session";
 
@@ -60,6 +61,10 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
       });
       lastResponse = upstream;
       if (upstream.status === 404 && candidates.length > 1) continue;
+      if(upstream.ok&&['PUT','PATCH','POST'].includes(method)&&['/api/admin/settings','/api/admin/cities'].includes(backendPath)){
+        for(const tag of ['settings','store','products','cities'])revalidateTag(tag,{expire:0});
+        revalidatePath('/','layout');
+      }
 
       const responseHeaders = new Headers();
       for (const key of ["content-type", "content-disposition", "cache-control"]) {

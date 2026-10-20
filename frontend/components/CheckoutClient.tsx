@@ -1,7 +1,8 @@
 "use client";
+import {useSettingsRefresh} from '@/lib/settings-sync';
 import {useDeliveryPolicy} from "./DeliveryPolicy";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { clearPersistedCart, useCart } from "@/components/CartProvider";
 import { bundleLineTotal, BUY_TWO_DISCOUNT_PERCENT } from "@/lib/bundle-price";
@@ -68,6 +69,10 @@ export default function CheckoutClient({
   const abandonTimer = useRef<number | null>(null);
   const checkoutTracked = useRef(false);
 
+  const [liveCities,setLiveCities]=useState(cities);
+  useEffect(()=>setLiveCities(cities),[cities]);
+  const refreshCities=useCallback(()=>{void fetch('/api/store-proxy/api/cities',{cache:'no-store',signal:AbortSignal.timeout(10000)}).then(r=>r.ok?r.json():null).then(data=>{if(Array.isArray(data))setLiveCities(data);}).catch(()=>undefined);},[]);
+  useSettingsRefresh(refreshCities);
   const liveDelivery=useDeliveryPolicy();
   const everyFree = items.length > 0 && items.every((item) => item.freeShipping);
   const shippingQuote = useMemo(
@@ -227,7 +232,7 @@ export default function CheckoutClient({
     return <div className="content-card text-center"><h2>Your cart is empty</h2><p>Add a product before checking out.</p><a href="/shop" className="btn-primary mt-4">Shop products</a></div>;
   }
 
-  const selectedCity = cities.find((city) => city.name.toLowerCase() === fields.city.trim().toLowerCase());
+  const selectedCity = liveCities.find((city) => city.name.toLowerCase() === fields.city.trim().toLowerCase());
 
   return (
     <>
@@ -271,7 +276,7 @@ export default function CheckoutClient({
               <div className="field" data-checkout-field="city">
                 <label htmlFor="checkout-city">City *</label>
                 <input id="checkout-city" list="pakistan-cities" autoComplete="address-level2" placeholder="Search your city" value={fields.city} onChange={(e) => update("city", e.target.value)} />
-                <datalist id="pakistan-cities">{cities.map((city) => <option key={city.name} value={city.name} />)}</datalist>
+                <datalist id="pakistan-cities">{liveCities.map((city) => <option key={city.name} value={city.name} />)}</datalist>
                 <small className="mock-step-success">✓ Estimated delivery: {selectedCity?.deliveryMinDays??2}–{selectedCity?.deliveryMaxDays??7} working days</small>
                 {errors.city ? <span className="field-error">{errors.city}</span> : null}
               </div>
@@ -320,7 +325,7 @@ export default function CheckoutClient({
 
         <aside className="mock-checkout-summary">
           <h2>Your order</h2>
-          {items.map((item) => <div className="mock-checkout-line" key={`${item.productId}-${item.variantId || "base"}-${item.bundleSize}`}><span>{item.name}<small>Qty {item.quantity * item.bundleSize}</small></span><b>{money(bundleLineTotal(item.price, item.quantity, item.bundleSize, BUY_TWO_DISCOUNT_PERCENT).total)}</b></div>)}
+          {items.map((item) => <div className="mock-checkout-line" key={`${item.productId}-${item.variantId || "base"}-${item.bundleSize}`}><span>{item.name}<small>Qty {item.quantity * item.bundleSize}</small></span><b>{money(bundleLineTotal(item.price, item.quantity, item.bundleSize, item.bundleDiscountPercent ?? BUY_TWO_DISCOUNT_PERCENT).total)}</b></div>)}
           <hr />
           <div><span>Items</span><b>{money(subtotal)}</b></div>
           {bundleSaving > 0 ? <div className="saving"><span>Bundle saving</span><b>-{money(bundleSaving)}</b></div> : null}
