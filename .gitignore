@@ -38,3 +38,9 @@ Thumbs.db
 # local-only Vercel env export files (contain real secrets)
 deploy.env
 deploy.*.env
+
+# QA screenshots, temp profiles, Next build folders and design references
+output/
+.tmp-*
+.next*
+design-refs/
