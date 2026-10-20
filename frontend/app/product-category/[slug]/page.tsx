@@ -157,27 +157,29 @@ export default async function CategoryPage({
           <div className="mock-category-about-grid">
             <div className="mock-category-about-copy">
               <h2>Why shop {category.name} at Zelvomart?</h2>
-              {/* The category description from Admin → Categories (the SEO paragraph). */}
               <p>
+                <strong>Useful picks, clearly presented.</strong>{" "}
                 {category.description ||
-                  `The ${category.name} range at Zelvomart brings together useful everyday products with clear details, straightforward prices and support on WhatsApp.`}
+                  `Our ${category.name.toLowerCase()} selection focuses on useful products with clear descriptions, straightforward prices and dependable support.`}
               </p>
             </div>
 
             <div className="mock-category-about-faq">
               <details open>
                 <summary>Checked before dispatch</summary>
-                <p>Every item is inspected and packed with care before it leaves our stock.</p>
+                <p>Eligible products are checked before they leave us.</p>
               </details>
 
               <details>
                 <summary>Cash on Delivery</summary>
-                <p>Pay in cash when your parcel arrives, anywhere in Pakistan.</p>
+                <p>
+                  Available across Pakistan for a simple, familiar checkout.
+                </p>
               </details>
 
               <details>
                 <summary>Need help choosing?</summary>
-                <p>Message us on WhatsApp with the product name and we’ll help you pick.</p>
+                <p>Chat with us on WhatsApp for quick product guidance.</p>
               </details>
             </div>
           </div>

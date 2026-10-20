@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ArrowRight, Banknote, ClipboardCheck, MousePointerClick, PackageCheck, ShieldCheck, Tag, Truck } from "lucide-react";
+import { ArrowRight, Banknote, ClipboardCheck, MousePointerClick, PackageCheck, ShieldCheck, Truck } from "lucide-react";
 import { categories as categoryArt, type CategoryId, categoryPath } from "@/lib/launch/catalog";
 import {useSite,useCatalog} from "@/lib/launch/store";
 import {categoryArtwork} from "@/lib/launch/adapter";
@@ -13,7 +13,7 @@ export function TrustStrip() {
     { icon: <Banknote size={22} />, title: "Cash on Delivery", sub: "Pay when your parcel arrives" },
     { icon: <ShieldCheck size={22} />, title: "Checked Before Dispatch", sub: "Every item inspected & packed" },
     { icon: <WhatsAppIcon size={21} />, title: "Real WhatsApp Support", sub: "Ask anything before you buy" },
-    { icon: <Tag size={22} />, title: "Affordable Prices", sub: "Premium quality, budget friendly" },
+    { icon: <Truck size={22} />, title: "Delivery Across Pakistan", sub: `Free over Rs. ${site.shipping.freeOver.toLocaleString("en-PK")}` },
   ];
   return (
     <div className="trust-strip" role="list">
@@ -138,12 +138,11 @@ export function CollectionCards() {
 }
 
 export function ProcessSteps() {
-  const site = useSite();
   const steps = [
-    { icon: <MousePointerClick size={24} />, title: "Order Placed", sub: "Choose your product and confirm your order." },
-    { icon: <ClipboardCheck size={24} />, title: "Confirmation", sub: "We reach out on WhatsApp or call to confirm your address." },
-    { icon: <PackageCheck size={24} />, title: "Dispatched", sub: "Packed and handed to our courier within 24–48 hours." },
-    { icon: <Truck size={24} />, title: "Delivered", sub: `Arrives in ${site.shipping.estimate}. Pay cash on delivery.` },
+    { icon: <MousePointerClick size={24} />, title: "Choose", sub: "Browse clearly listed products with real details." },
+    { icon: <ClipboardCheck size={24} />, title: "Confirm", sub: "Place your order — we confirm by call or WhatsApp." },
+    { icon: <PackageCheck size={24} />, title: "Checked & Packed", sub: "Each item is inspected and packed with care." },
+    { icon: <Banknote size={24} />, title: "Delivered. Pay Cash.", sub: "Pay the rider at your doorstep. Simple." },
   ];
   return (
     <ol className="how-grid">
@@ -159,7 +158,7 @@ export function ProcessSteps() {
   );
 }
 
-export function WhatsAppBand({ title = "Chat with us on WhatsApp", sub = "Get product help, order updates or recommendations. We’re here to help!" }: { title?: string; sub?: string }) {
+export function WhatsAppBand({ title = "Real help, one message away.", sub = "Questions about size, colour or delivery? Our team replies on WhatsApp." }: { title?: string; sub?: string }) {
   const site=useSite();
   return (
     <div className="whatsapp-band">
@@ -167,7 +166,7 @@ export function WhatsAppBand({ title = "Chat with us on WhatsApp", sub = "Get pr
         <WhatsAppIcon size={28} />
       </span>
       <div>
-        <div className="eyebrow">Have a question?</div>
+        <div className="eyebrow">Need an answer?</div>
         <h3>{title}</h3>
         <p>{sub}</p>
       </div>

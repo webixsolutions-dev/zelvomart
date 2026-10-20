@@ -142,10 +142,9 @@ export default function ProductGallery({
           }}
         >
           {/* Top-left pills: Sale! + product badges */}
-          {/* Tags top left, discount top right, so they never stack. */}
-          {!playing && product.onSale && product.discountPercent > 0 && <span className="zpd-badge is-sale zpd-discount">-{product.discountPercent}%</span>}
-          {!playing && badges.length > 0 && (
+          {!playing && (product.onSale || badges.length > 0) && (
             <div className="zpd-badges">
+              {product.onSale && <span className="zpd-badge is-sale">Sale!</span>}
               {badges.map((badge) => (
                 <span key={badge} className="zpd-badge">
                   {badge}
@@ -253,6 +252,21 @@ export default function ProductGallery({
           </div>
         )}
       </div>
+
+      {/* Trust strip */}
+      <ul className="zpd-trust">
+        {trustItems.map((item) => (
+          <li key={item.title}>
+            <span className="zpd-trust-icon">
+              <Icon name={item.icon} />
+            </span>
+            <span>
+              <b>{item.title}</b>
+              <span>{item.text}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
 
       {/* Lightbox */}
       {lightbox && typeof document !== "undefined"

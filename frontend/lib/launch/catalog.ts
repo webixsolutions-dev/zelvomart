@@ -30,8 +30,7 @@ export type Category = {
   about: string;
 };
 
-/** A colour or size option. `imageUrl` switches the gallery and shows an image swatch; `soldOut` crosses a size out. */
-export type Variant = { name: string; swatch?: string; imageUrl?: string; soldOut?: boolean };
+export type Variant = { name: string; swatch: string };
 
 export type Product = {
   raw: import("@/types/product").Product;
@@ -58,9 +57,6 @@ export type Product = {
   keywords: string[];
   /** Omitted products are treated as in stock. */
   inStock?: boolean;
-  /** Average of approved reviews and how many there are (from the backend). */
-  rating?: number;
-  reviewCount?: number;
   /** Meta title written for this product in the admin (without "| Zelvomart"). Falls back to "{name} Price in Pakistan". */
   seoTitle?: string;
   /** Meta description written for this product in the admin (140–155 characters). */
@@ -77,7 +73,7 @@ export const categories: Category[] = [
     short: "Home & Living",
     tagline: "Practical essentials for everyday life.",
     intro:
-      "Everyday essentials for the kitchen, storage and daily routines, chosen to make home life simpler.",
+      "Hydration, storage and the small upgrades that make busy homes run smoother — chosen for daily use, not just for the shelf.",
     label: "Daily essentials",
     image: "/launch/categories/home-living-600.webp",
     tile: "/launch/images/categories/home-living.webp",
@@ -87,7 +83,7 @@ export const categories: Category[] = [
     seoDescription:
       "Shop insulated tumblers, storage organisers and everyday home and kitchen essentials at Zelvomart, chosen for daily use. Order online across Pakistan.",
     about:
-      "The Home & Living range at Zelvomart covers the things you reach for every day: insulated tumblers and drinkware, storage organisers, kitchen helpers and household essentials. Every product page lists the size, material and what comes in the box, so you know exactly what you are ordering. New pieces are added regularly as we find items that earn their place in a Pakistani home.",
+      "Zelvomart’s Home & Living range covers the things you reach for every day: insulated tumblers and drinkware, storage organisers, kitchen helpers and household essentials. Every product page lists the size, material and what comes in the box, so you know exactly what you are ordering. New pieces are added regularly as we find items that earn their place in a Pakistani home.",
   },
   {
     id: "home-decor",
@@ -96,7 +92,7 @@ export const categories: Category[] = [
     short: "Home Decor",
     tagline: "Beautiful details that feel like home.",
     intro:
-      "Decor pieces that add warmth, light and character to bedrooms, lounges and work corners.",
+      "Warm lighting, calming mist and quiet accents that turn a room into your favourite corner of the house.",
     label: "Refresh your space",
     image: "/launch/categories/home-decor-600.webp",
     tile: "/launch/images/categories/home-decor.webp",
@@ -106,7 +102,7 @@ export const categories: Category[] = [
     seoDescription:
       "Table lamps, mist humidifiers and modern decor accents from Zelvomart that make any room feel calm and finished. Cash on Delivery across Pakistan.",
     about:
-      "The Home Decor range at Zelvomart brings together table lamps, mist humidifiers, diffusers and decor accents for bedrooms, lounges and work corners. We choose pieces that look good and do a job, such as soft evening light or a calmer room. Each listing shows real photos, sizes and what is included, and our team on WhatsApp can help you choose.",
+      "Home Decor at Zelvomart brings together table lamps, mist humidifiers, diffusers and decor accents for bedrooms, lounges and work corners. We choose pieces that look good and do a job, such as soft evening light or a calmer room. Each listing shows real photos, sizes and what is included, and our team on WhatsApp can help you choose.",
   },
   {
     id: "beauty",
@@ -115,7 +111,7 @@ export const categories: Category[] = [
     short: "Beauty",
     tagline: "Everyday beauty and self-care picks.",
     intro:
-      "Makeup, fragrance and daily care essentials, with shade, size and usage details on every product.",
+      "Lip colour, fragrance and skincare edits for the routine you actually keep — with full details before you buy.",
     label: "Beauty staples",
     image: "/launch/categories/beauty-600.webp",
     tile: "/launch/images/categories/beauty.webp",
@@ -125,7 +121,7 @@ export const categories: Category[] = [
     seoDescription:
       "Shop lipgloss, perfume, makeup and daily skincare essentials at Zelvomart, with shade, size and full details on every product. Order online in Pakistan.",
     about:
-      "The Beauty & Personal Care range at Zelvomart covers lipgloss, lip and eye pencils, perfume and everyday skincare. Every listing gives the shade or size, how to use it and what is in the pack, so you can choose with confidence. If you are unsure which shade suits you, message us on WhatsApp before you order.",
+      "Zelvomart’s Beauty & Personal Care range covers lipgloss, lip and eye pencils, perfume and everyday skincare. Every listing gives the shade or size, how to use it and what is in the pack, so you can choose with confidence. If you are unsure which shade suits you, message us on WhatsApp before you order.",
   },
   {
     id: "tech",
@@ -134,7 +130,7 @@ export const categories: Category[] = [
     short: "Tech",
     tagline: "Smart tech for your everyday routine.",
     intro:
-      "Practical everyday tech for work, travel and home, explained in plain language.",
+      "Wireless audio and wearables that earn their place in your day — for work calls, commutes and workouts.",
     label: "Useful gadgets",
     image: "/launch/categories/tech-600.webp",
     tile: "/launch/images/categories/tech.webp",
@@ -144,7 +140,7 @@ export const categories: Category[] = [
     seoDescription:
       "Buy wireless earbuds, headphones, smart watches and everyday gadgets at Zelvomart, with clear specs on every product. Order online or on WhatsApp.",
     about:
-      "The Tech & Gadgets range at Zelvomart is for useful everyday tech: wireless earbuds, over-ear headphones, smart watches and handy gadgets for work, travel and home. Each product page lists battery life, connectivity and what is in the box, in plain language rather than jargon.",
+      "Tech & Gadgets at Zelvomart is for useful everyday tech: wireless earbuds, over-ear headphones, smart watches and handy gadgets for work, travel and home. Each product page lists battery life, connectivity and what is in the box, in plain language rather than jargon.",
   },
   {
     id: "fashion",
@@ -153,7 +149,7 @@ export const categories: Category[] = [
     short: "Fashion",
     tagline: "Accessories for every mood and moment.",
     intro:
-      "Bags, jewellery and accessories for everyday wear, office days and special occasions.",
+      "Handbags, clutches and gift-ready jewellery that finish an outfit — from office days to wedding season.",
     label: "Wear your style",
     image: "/launch/categories/fashion-600.webp",
     tile: "/launch/images/categories/fashion.webp",
@@ -163,7 +159,7 @@ export const categories: Category[] = [
     seoDescription:
       "Shop women’s handbags, clutches and jewellery gift sets at Zelvomart, for office days, Eid and weddings. Cash on Delivery available all over Pakistan.",
     about:
-      "The Fashion Accessories range at Zelvomart includes women’s handbags, clutches, jewellery sets and watch gift sets for everyday wear, office days and occasions like Eid and weddings. Each listing shows colours, sizes and exactly how many pieces come in a set, with real photos of the item.",
+      "Zelvomart’s Fashion Accessories range includes women’s handbags, clutches, jewellery sets and watch gift sets for everyday wear, office days and occasions like Eid and weddings. Each listing shows colours, sizes and exactly how many pieces come in a set, with real photos of the item.",
   },
   {
     id: "fitness",
@@ -172,7 +168,7 @@ export const categories: Category[] = [
     short: "Fitness",
     tagline: "Make every move count.",
     intro:
-      "Workout and fitness gear for home training and active days, compact enough for any space.",
+      "Compact training gear for home workouts — grip trainers, mats and starter kits that fit in a corner of your room.",
     label: "Fitness favourites",
     image: "/launch/categories/fitness-600.webp",
     tile: "/launch/images/categories/fitness.webp",
@@ -182,7 +178,7 @@ export const categories: Category[] = [
     seoDescription:
       "Hand grippers, yoga mats and home workout gear from Zelvomart, compact enough for any room and built for daily training. Order online across Pakistan.",
     about:
-      "The Sports & Fitness range at Zelvomart is built around home workouts and active days: hand grippers, yoga mats, workout kits and gear that fits a small space and a busy schedule. Every product page explains what it trains, how to use it safely and what comes in the box.",
+      "Sports & Fitness at Zelvomart is built around home workouts and active days: hand grippers, yoga mats, workout kits and gear that fits a small space and a busy schedule. Every product page explains what it trains, how to use it safely and what comes in the box.",
   },
   {
     id: "kids",
@@ -191,7 +187,7 @@ export const categories: Category[] = [
     short: "Kids",
     tagline: "More playful moments, more creativity.",
     intro:
-      "Creative, screen-free toys and kids’ essentials that keep children playing and learning.",
+      "Screen-free toys that build imagination — magnetic tiles, soft companions and gifts kids reach for again and again.",
     label: "Play & create",
     image: "/launch/categories/kids-600.webp",
     tile: "/launch/images/categories/kids.webp",
@@ -201,7 +197,7 @@ export const categories: Category[] = [
     seoDescription:
       "Magnetic building tiles, soft plush toys and screen-free toys for kids at Zelvomart, ideal for gifts. Shop online in Pakistan with Cash on Delivery.",
     about:
-      "The Kids & Toys range at Zelvomart focuses on creative, screen-free play: magnetic building tiles, soft plush toys and learning toys that keep children busy and thinking. Each listing gives the suggested age, the number of pieces and safety notes, so parents know exactly what they are buying.",
+      "Kids & Toys at Zelvomart focuses on creative, screen-free play: magnetic building tiles, soft plush toys and learning toys that keep children busy and thinking. Each listing gives the suggested age, the number of pieces and safety notes, so parents know exactly what they are buying.",
   },
 ];
 

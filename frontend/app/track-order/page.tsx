@@ -1,20 +1,5 @@
-import type { Metadata } from "next";
-import { TrackOrderView } from "@/components/launch/pages/TrackOrderView";
-import { shareMeta } from "@/lib/launch/seo";
-
-export const metadata: Metadata = {
-  title: { absolute: "Track Your Zelvomart Order" },
-  description:
-    "Track your Zelvomart order with your order number and mobile number, and see each step from confirmation to delivery, anywhere in Pakistan.",
-  alternates: { canonical: "/track-order/" },
-  ...shareMeta({
-    title: "Track Your Zelvomart Order",
-    description:
-      "Track your Zelvomart order with your order number and mobile number, and see each step from confirmation to delivery, anywhere in Pakistan.",
-    path: "/track-order/",
-  }),
-};
-
-export default function TrackOrderPage() {
-  return <TrackOrderView />;
-}
+import TrackOrderClient from "@/components/TrackOrderClient";
+import StorefrontHero from "@/components/StorefrontHero";
+import { storeImages } from "@/lib/store-images";
+export const metadata={title:"Track Order"};
+export default function TrackOrderPage(){return <div className="mock-track-page"><StorefrontHero eyebrow="ORDER TRACKING" title="Where's my order?" description="Enter your order number and the phone used at checkout." image={storeImages.heroOnline.src} alt="Track a Zelvomart order" primaryLabel="Need help?" primaryHref="https://wa.me/923002026711" secondaryLabel="Contact us" secondaryHref="/contact-us"><TrackOrderClient/></StorefrontHero><section className="site-shell mock-track-help"><article><span>▣</span><h3>Order number</h3><p>You'll find it in your confirmation message.</p></article><article><span>☎</span><h3>Still need help?</h3><p>Message our team on WhatsApp for a quick answer.</p></article><article><span>▱</span><h3>PostEx tracking</h3><p>Courier tracking appears after your order is booked.</p></article></section></div>}

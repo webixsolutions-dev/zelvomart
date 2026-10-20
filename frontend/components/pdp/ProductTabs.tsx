@@ -17,20 +17,17 @@ function AccordionItem({
   id,
   title,
   open,
-  active = false,
   onToggle,
   children,
 }: {
   id: string;
   title: ReactNode;
   open: boolean;
-  /** Desktop: the tab currently shown. */
-  active?: boolean;
   onToggle: () => void;
   children: ReactNode;
 }) {
   return (
-    <div className={`zpd-acc-item${open ? " is-open" : ""}${active ? " is-tab-active" : ""}`} data-tab={id}>
+    <div className={`zpd-acc-item${open ? " is-open" : ""}`}>
       <button
         type="button"
         className="zpd-acc-trigger"
@@ -82,15 +79,6 @@ export default function ProductTabs({
     additional: false,
     reviews: false,
   });
-
-  // Desktop shows the sections as tabs; every panel stays in the HTML for search engines.
-  const filledSections = sections.filter((section) => Boolean(section.html));
-  const tabs = [
-    { key: "description", title: "Description" },
-    ...filledSections.map((section) => ({ key: section.key, title: String(section.title) })),
-    { key: "additional", title: "Additional information" },
-  ];
-  const [activeTab, setActiveTab] = useState("description");
 
   const toggleSection = (key: string) => {
     setOpenSections((prev) => ({
@@ -161,28 +149,12 @@ export default function ProductTabs({
         <h2 className="zpd-h2">Details, delivery &amp; reviews</h2>
       </div>
 
-      <div className="zpd-tabbar" role="tablist" aria-label="Product details">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.key}
-            className={activeTab === tab.key ? "is-active" : ""}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.title}
-          </button>
-        ))}
-      </div>
-
       <div className="zpd-acc">
         {/* 1. DESCRIPTION */}
         <AccordionItem
           id="description"
           title="Description"
           open={Boolean(openSections.description)}
-          active={activeTab === "description"}
           onToggle={() => toggleSection("description")}
         >
           {product?.descriptionHtml || product?.description ? (
@@ -204,13 +176,12 @@ export default function ProductTabs({
         </AccordionItem>
 
         {/* 2. STORE / PRODUCT TABS */}
-        {filledSections.map((section) => (
+        {sections.map((section) => (
           <AccordionItem
             key={section.key}
             id={section.key}
             title={section.title}
             open={Boolean(openSections[section.key])}
-            active={activeTab === section.key}
             onToggle={() => toggleSection(section.key)}
           >
             {section.html ? (
@@ -226,7 +197,6 @@ export default function ProductTabs({
           id="additional"
           title="Additional information"
           open={Boolean(openSections.additional)}
-          active={activeTab === "additional"}
           onToggle={() => toggleSection("additional")}
         >
           <table className="zpd-specs">
@@ -250,13 +220,13 @@ export default function ProductTabs({
         >
           <div className="zpd-review-teaser">
             <div>
-              <strong>{reviewCount ? averageRating.toFixed(1) : "0"}</strong>
+              <strong>{reviewCount ? averageRating.toFixed(1) : "–"}</strong>
               <span>
-                <Stars value={reviewCount ? averageRating : 5} />
+                <Stars value={averageRating} />
                 <p>
                   {reviewCount
-                    ? `Based on ${reviewCount} review${reviewCount === 1 ? "" : "s"}`
-                    : "(0) No reviews yet. Be the first to share your experience."}
+                    ? `Based on ${reviewCount} verified order${reviewCount === 1 ? "" : "s"}`
+                    : "No reviews for this product yet"}
                 </p>
               </span>
             </div>
