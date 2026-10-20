@@ -146,6 +146,7 @@ export default function CheckoutClient({
     if (!fields.city.trim()) next.city = "City is required.";
     if (fields.address.trim().length < 6) next.address = "Complete delivery address is required.";
     if (required.orderNotes && !fields.orderNotes.trim()) next.orderNotes = "Order notes are required.";
+    if (!fields.terms) next.terms = "Please accept the Terms & Conditions to place your order";
     setErrors(next);
     if (Object.keys(next).length) {
       const first = Object.keys(next)[0];
@@ -299,7 +300,15 @@ export default function CheckoutClient({
               <span><b>Cash on Delivery</b><small>Pay cash when your parcel arrives.</small></span>
               <strong>COD</strong>
             </label>
-            <p className="mock-checkout-terms">By placing your order, you agree to our <a href="/terms-and-conditions/" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a> and confirm your delivery details are correct.</p>
+            {/* Required: the backend rejects storefront orders without terms: true. */}
+            <label className={`mock-checkout-terms mock-terms-check${errors.terms ? " has-error" : ""}`}>
+              <input type="checkbox" checked={fields.terms} onChange={(e) => update("terms", e.target.checked)} />
+              <span>
+                I agree to the <a href="/terms-and-conditions/" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a> and{" "}
+                <a href="/privacy-policy/" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+              </span>
+            </label>
+            {errors.terms ? <span className="field-error" role="alert">{errors.terms}</span> : null}
 
             <div className="hidden" aria-hidden="true"><input tabIndex={-1} autoComplete="off" value={fields.website} onChange={(e) => update("website", e.target.value)} /></div>
             {serverError ? <div className="mock-checkout-error">{serverError}</div> : null}
@@ -313,8 +322,6 @@ export default function CheckoutClient({
           <h2>Your order</h2>
           {items.map((item) => <div className="mock-checkout-line" key={`${item.productId}-${item.variantId || "base"}-${item.bundleSize}`}><span>{item.name}<small>Qty {item.quantity * item.bundleSize}</small></span><b>{money(bundleLineTotal(item.price, item.quantity, item.bundleSize, BUY_TWO_DISCOUNT_PERCENT).total)}</b></div>)}
           <hr />
-          <div style={{display:'block'}}><button type="button" className="admin-btn admin-btn-light" onClick={()=>setCouponOpen(v=>!v)}>Have a coupon code?</button>{couponOpen&&<div style={{display:'flex',gap:8,marginTop:10}}><input aria-label="Coupon code" value={couponText} onChange={e=>setCouponText(e.target.value)} maxLength={40}/><button type="button" className="admin-btn admin-btn-primary" disabled={couponBusy||!couponText.trim()} onClick={()=>void applyCoupon()}>{couponBusy?'Applying…':'Apply'}</button></div>}{coupon&&<p>{coupon.code} applied <button type="button" onClick={()=>{setCoupon(null);sessionStorage.removeItem('zm_checkout_coupon')}}>Remove</button></p>}</div>
-          {coupon&&<div className="saving"><span>Coupon {coupon.code}</span><b>-{money(coupon.discount)}</b></div>}
           <div><span>Items</span><b>{money(subtotal)}</b></div>
           {bundleSaving > 0 ? <div className="saving"><span>Bundle saving</span><b>-{money(bundleSaving)}</b></div> : null}
           <div><span>Delivery</span><b>{deliveryFee ? money(deliveryFee) : "Free"}</b></div>
@@ -325,8 +332,30 @@ export default function CheckoutClient({
                 ? `Free shipping because this order is above ${money(shippingQuote.threshold)}.`
                 : "Free shipping is included for the products in this order."}
           </p>
+          <div className="mock-coupon">
+            <button type="button" className="mock-coupon-toggle" aria-expanded={couponOpen} onClick={() => setCouponOpen((v) => !v)}>
+              <b>Apply coupon</b>
+              <small>Have a promo code? Add it here</small>
+            </button>
+            {couponOpen ? (
+              <div className="mock-coupon-row">
+                <input aria-label="Coupon code" placeholder="Enter code" value={couponText} onChange={(e) => setCouponText(e.target.value)} maxLength={40} />
+                <button type="button" disabled={couponBusy || !couponText.trim()} onClick={() => void applyCoupon()}>
+                  {couponBusy ? "Applying…" : "Apply"}
+                </button>
+              </div>
+            ) : null}
+            {coupon ? (
+              <p className="mock-coupon-applied">
+                {coupon.code} applied{" "}
+                <button type="button" onClick={() => { setCoupon(null); sessionStorage.removeItem("zm_checkout_coupon"); }}>Remove</button>
+              </p>
+            ) : null}
+          </div>
+          {coupon ? <div className="saving"><span>Coupon {coupon.code}</span><b>−{money(coupon.discount)}</b></div> : null}
           <div className="total"><span>Total</span><b>{money(total)}</b></div>
           <div className="mock-pay-arrival">✓ Pay cash when your parcel arrives</div>
+          <p className="mock-order-help">Card / JazzCash / Easypaisa · Coming soon</p>
           <button type="submit" className="mock-place-order" disabled={submitting}>{submitting ? <><span className="mock-order-button-spinner" /> Confirming…</> : "Place order →"}</button>
           <p className="mock-order-help">Need help? Call <b>0300-2026711</b> or message us on WhatsApp.</p>
         </aside>
