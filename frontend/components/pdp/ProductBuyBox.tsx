@@ -149,8 +149,6 @@ function productAttributeRows(product: Product, variant: Variant | null): Attrib
   return rows;
 }
 
-const isImage = (url?: string | null): url is string => typeof url === "string" && /^(https?:\/\/|\/)/.test(url.trim());
-
 function variantForAttribute(product: Product, variant: Variant | null, name: string, value: string) {
   const variants = product.variants || [];
   const current = variant?.attributes || {};
@@ -163,15 +161,6 @@ function variantForAttribute(product: Product, variant: Variant | null, name: st
       return actual.toLowerCase() === entry.toLowerCase();
     });
   return variants.find((item) => matches(item, true)) || variants.find((item) => selectedAttributeValue(item.attributes, name).toLowerCase() === value.toLowerCase()) || null;
-}
-
-const MIN_DELIVERY_DAYS = 2;
-const MAX_DELIVERY_DAYS = 7;
-
-function variantBuyable(item: Variant) {
-  const status = item.stockStatus ?? (item.attributes?.stockStatus as string | undefined);
-  if (status === "outofstock") return false;
-  return status === "instock" || (item.stock ?? 0) > 0;
 }
 
 const CheckMark = () => (
@@ -197,20 +186,21 @@ export default function ProductBuyBox({
   whatsapp,
   actionRef,
 }: ProductBuyBoxProps) {
-  const [deliveryDate, setDeliveryDate] = useState("within 2–7 working days");
+  const [deliveryDate, setDeliveryDate] = useState("3 business days");
   const delivery = useDeliveryPolicy();
   const freeShipping = Boolean(product.freeShipping ?? product.catalogMeta?.freeShipping);
 
   // Prevent SSR/Client timezone hydration mismatches on date
   useEffect(() => {
-    // Latest date in the 2–7 working-day window (Sundays skipped).
     const target = new Date();
-    let left = MAX_DELIVERY_DAYS;
-    while (left > 0) {
-      target.setDate(target.getDate() + 1);
-      if (target.getDay() !== 0) left--;
-    }
-    setDeliveryDate(target.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }));
+    target.setDate(target.getDate() + 3);
+    setDeliveryDate(
+      target.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    );
   }, []);
 
   // Tracked stock caps how many can be ordered (pieces = quantity × bundle size); untracked stock does not.
@@ -251,27 +241,35 @@ export default function ProductBuyBox({
 
   return (
     <div className="zpd-buy">
-      {/* 1. CATEGORY, RATING, TITLE */}
+      {/* 1. CATEGORY, TITLE, RATING & SHORT DESCRIPTION */}
       <div className="zpd-buy-head">
         {categoryName ? (
           categorySlug ? (
-            <Link href={`/product-category/${categorySlug}/`} className="zpd-cat">
+            <Link href={`/product-category/${categorySlug}/`} className="zpd-chip">
               {categoryName}
             </Link>
           ) : (
-            <span className="zpd-cat">{categoryName}</span>
+            <span className="zpd-chip">{categoryName}</span>
           )
         ) : null}
-        {/* Stars always show: no reviews = five yellow stars and "(0)" (`is-empty` can switch them to grey later). */}
-        <a href="#reviews" className={`zpd-rating${reviewCount ? "" : " is-empty"}`}>
-          <Stars value={reviewCount ? rating : 5} />
-          {reviewCount ? <b>{rating.toFixed(1)}</b> : null}
-          <span>({reviewCount})</span>
-        </a>
         <h1 className="zpd-title">{product.name}</h1>
+
+        {reviewCount > 0 ? (
+          <div className="zpd-rating">
+            <Stars value={rating} />
+            <b>{rating.toFixed(1)}</b>
+            <a href="#reviews">
+              {reviewCount} review{reviewCount === 1 ? "" : "s"}
+            </a>
+          </div>
+        ) : null}
+
+        {product.shortDescription ? (
+          <div className="zpd-short" dangerouslySetInnerHTML={{ __html: product.shortDescription }} />
+        ) : null}
       </div>
 
-      {/* 2. PRICE + SAVE PILL */}
+      {/* 2. PRICING ROW */}
       <div className={`zpd-price${totalSaving > 0 ? " is-sale" : ""}`}>
         <div className="zpd-price-main">
           <span className="zpd-price-now" aria-label={priceText}>
@@ -285,79 +283,32 @@ export default function ProductBuyBox({
             )}
           </span>
           {totalSaving > 0 ? <del className="zpd-price-was">{money(compareTotal)}</del> : null}
-          {totalSaving > 0 && savingPercent ? <span className="zpd-price-save">Save {savingPercent}%</span> : null}
+        </div>
+        {totalSaving > 0 ? (
+          <span className="zpd-price-save">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 12V4h8l10 10-8 8z" />
+              <path d="M7.5 8.5h.01" />
+            </svg>
+            Save {money(totalSaving)}{savingPercent ? ` (${savingPercent}%)` : ""}
+          </span>
+        ) : null}
+      </div>
+
+      {/* 3. SHIPPING NOTE */}
+      <div className={`zpd-note${freeShipping ? " is-free" : ""}`}>
+        <span className="zpd-note-icon">
+          <Icon name="truck" />
+        </span>
+        <div>
+          <b>{freeShipping ? "Free shipping" : `Delivery charges ${money(delivery.flatRate)}`}</b>
+          <p>
+            {freeShipping
+              ? `This product ships free. Orders above ${money(delivery.threshold)} ship free too.`
+              : `Orders above ${money(delivery.threshold)} ship free. Pay cash when the parcel arrives.`}
+          </p>
         </div>
       </div>
-      {totalSaving > 0 ? <p className="zpd-saving-line">You save {money(totalSaving)} on the regular price</p> : null}
-
-      <hr className="zpd-divider" />
-      {product.shortDescription ? <div className="zpd-short" dangerouslySetInnerHTML={{ __html: product.shortDescription }} /> : null}
-      <hr className="zpd-divider" />
-
-      {attributeRows.length > 0 ? (
-        <div className="zpd-attrs">
-          <div className="zpd-block-head">
-            <span className="zpd-block-label">Choose an option</span>
-          </div>
-          <div className="zpd-attr-list">
-            {attributeRows.map((row) => {
-              const colorAttribute = /colou?r/i.test(row.name) || row.values.every((value) => Boolean(colorCss(value)));
-              const sizeAttribute = /size/i.test(row.name);
-              // Colour variations with their own photo show round image swatches.
-              const imageSwatches = colorAttribute && row.forVariations && row.values.some((value) => isImage(variantForAttribute(product, variant, row.name, value)?.imageUrl));
-              return (
-                <div key={row.name}>
-                  <span className="zpd-attr-name">
-                    {row.name}
-                    {row.selected ? <>: <b>{row.selected}</b></> : null}
-                  </span>
-                  <div className={`zpd-attr-values${imageSwatches ? " is-swatches" : ""}${sizeAttribute ? " is-sizes" : ""}`}>
-                    {row.values.map((value) => {
-                      const color = colorAttribute ? colorCss(value) : "";
-                      const active = row.selected.toLowerCase() === value.toLowerCase();
-                      const nextVariant = row.forVariations ? variantForAttribute(product, variant, row.name, value) : null;
-                      const soldOut = Boolean(nextVariant && !variantBuyable(nextVariant));
-                      const swatch = imageSwatches && isImage(nextVariant?.imageUrl) ? nextVariant!.imageUrl! : "";
-                      const className = `zpd-attr-chip${active ? " is-active" : ""}${color ? " is-color" : ""}${swatch ? " is-swatch" : ""}${sizeAttribute ? " is-size" : ""}${soldOut ? " is-soldout" : ""}`;
-                      const body = swatch ? (
-                        <>
-                          <i className="zpd-attr-swatch" aria-hidden="true">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={swatch} alt="" loading="lazy" />
-                          </i>
-                          <span>{value}</span>
-                        </>
-                      ) : (
-                        <>
-                          {color ? <i className="zpd-attr-dot" style={{ background: color }} aria-hidden="true" /> : null}
-                          <span>{value}</span>
-                        </>
-                      );
-                      return nextVariant ? (
-                        <button
-                          key={value}
-                          type="button"
-                          className={className}
-                          aria-pressed={active}
-                          disabled={sizeAttribute && soldOut}
-                          aria-label={soldOut ? `${value}, sold out` : value}
-                          onClick={() => onSelectVariant(nextVariant)}
-                        >
-                          {body}
-                        </button>
-                      ) : (
-                        <span key={value} className={className}>
-                          {body}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
 
       {/* 4. BUNDLE OPTIONS */}
       {product.bundleEnabled && (
@@ -373,7 +324,6 @@ export default function ProductBuyBox({
               <span className="zpd-radio" />
               <span className="zpd-bundle-body">
                 <span className="zpd-bundle-name">Buy 1</span>
-                <span className="zpd-bundle-sub">Standard price</span>
                 <span className="zpd-bundle-price">
                   <b>{money(basePrice)}</b>
                 </span>
@@ -387,10 +337,6 @@ export default function ProductBuyBox({
               <span className="zpd-bundle-body">
                 <span className="zpd-bundle-name">Buy 2</span>
                 <span className="zpd-bundle-save">Save {money(pair.saving)}</span>
-                <span className="zpd-bundle-ticks">
-                  <span>✓ Great for gifting</span>
-                  <span>✓ Pay on delivery</span>
-                </span>
                 <span className="zpd-bundle-price">
                   <b>{money(pair.total)}</b>
                   <del>{money(pair.full)}</del>
@@ -400,6 +346,47 @@ export default function ProductBuyBox({
           </div>
         </div>
       )}
+
+      {attributeRows.length > 0 ? (
+        <div className="zpd-attrs">
+          <div className="zpd-block-head">
+            <span className="zpd-block-label">Product details</span>
+          </div>
+          <div className="zpd-attr-list">
+            {attributeRows.map((row) => {
+              const colorAttribute = /colou?r/i.test(row.name) || row.values.every((value) => Boolean(colorCss(value)));
+              return (
+                <div key={row.name}>
+                  <span className="zpd-attr-name">{row.name}</span>
+                  <div className="zpd-attr-values">
+                    {row.values.map((value) => {
+                      const color = colorAttribute ? colorCss(value) : "";
+                      const active = row.selected.toLowerCase() === value.toLowerCase();
+                      const nextVariant = row.forVariations ? variantForAttribute(product, variant, row.name, value) : null;
+                      const className = `zpd-attr-chip${active ? " is-active" : ""}${color ? " is-color" : ""}`;
+                      const body = (
+                        <>
+                          {color ? <i className="zpd-attr-dot" style={{ background: color }} aria-hidden="true" /> : null}
+                          <span>{value}</span>
+                        </>
+                      );
+                      return nextVariant ? (
+                        <button key={value} type="button" className={className} aria-pressed={active} onClick={() => onSelectVariant(nextVariant)}>
+                          {body}
+                        </button>
+                      ) : (
+                        <span key={value} className={className}>
+                          {body}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {/* 5. QUANTITY COUNTER + STOCK + ORDER TOTAL */}
       <div className="zpd-qty-row">
@@ -457,7 +444,7 @@ export default function ProductBuyBox({
           <Icon name="box" />
         </span>
         <div>
-          <b suppressHydrationWarning>Order now — get it by {deliveryDate}</b>
+          <b>Order now — get it by: {deliveryDate}</b>
           <p>Delivered to your doorstep by PostEx</p>
         </div>
       </div>
@@ -485,26 +472,9 @@ export default function ProductBuyBox({
             <Icon name="box" />
           </span>
           <b>Delivered</b>
-          <span>
-            {MIN_DELIVERY_DAYS}–{MAX_DELIVERY_DAYS} days
-          </span>
+          <span>2–5 days</span>
         </div>
       </div>
-
-      {/* 9. TRUST ICONS */}
-      <ul className="zpd-trust-mini">
-        <li><Icon name="cash" /> Cash on Delivery</li>
-        <li><Icon name="exchange" /> Easy Returns</li>
-        <li><Icon name="shield" /> Quality Checked</li>
-        <li><WhatsAppIcon size={18} /> WhatsApp Support</li>
-      </ul>
-
-      {/* Delivery charge, from Admin → Settings → Delivery */}
-      <p className="zpd-fee-note">
-        {freeShipping
-          ? `Free shipping on this product. Orders above ${money(delivery.threshold)} ship free too.`
-          : `Delivery ${money(delivery.flatRate)} · free on orders above ${money(delivery.threshold)}.`}
-      </p>
     </div>
   );
 }
