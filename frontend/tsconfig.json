@@ -23,8 +23,14 @@
       }
     ],
     "paths": {
+      "@/app/admin/*": [
+        "./app/(admin)/admin/*"
+      ],
       "@/*": [
         "./*"
+      ],
+      "@store/*": [
+        "./storefront/*"
       ]
     }
   },

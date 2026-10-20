@@ -1,0 +1,88 @@
+.linkGroup { min-width: 0; }
+
+.linkGroup .navLink {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  line-height: 1.65;
+}
+
+.navLink svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--brand);
+}
+
+.navLink span { min-width: 0; }
+
+.contacts svg { color: var(--brand); }
+
+.linkGroup.utilityLinks {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 18px;
+}
+
+@media (max-width: 760px) {
+  .linkGroup.utilityLinks { justify-content: center; }
+}
+
+/* Phones: every footer link is a 44px-tall tap area. */
+@media (max-width: 760px) {
+  .linkGroup .navLink,
+  .contacts a,
+  .utilityLinks .navLink {
+    min-height: 44px;
+    align-items: center;
+  }
+  .linkGroup .navLink svg {
+    margin-top: 0;
+  }
+  /* Full width so the email address never breaks across lines. */
+  .contacts {
+    grid-column: 1 / -1;
+  }
+}
+
+/* White logo straight on the dark footer — no box behind it. */
+.logo {
+  display: inline-flex;
+  margin: 0;
+}
+.logo img {
+  width: 160px;
+  height: auto;
+  display: block;
+}
+
+.credit {
+  color: #d3d8de;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.credit:hover {
+  color: #fff;
+}
+
+/* Phones: links sit 8px apart; each still gets a comfortable 28px tap height. */
+@media (max-width: 760px) {
+  .linkGroup nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .linkGroup .navLink,
+  .contacts a {
+    min-height: 28px;
+    margin-bottom: 0 !important;
+  }
+  .contacts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    grid-column: 1 / -1 !important;
+  }
+  .contacts h4 {
+    margin-bottom: 6px;
+  }
+}
