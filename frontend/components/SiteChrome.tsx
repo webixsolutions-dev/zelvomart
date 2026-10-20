@@ -42,7 +42,7 @@ export default function SiteChrome({
   }
 
   const checkoutRoute = pathname === "/checkout";
-  const designRoute=pathname==='/'||['/shop-all-products','/new-arrivals','/bestsellers','/deals-and-offers','/category/','/search','/contact-us','/about-us','/faqs','/shipping-policy','/refund-and-return-policy','/terms-and-conditions','/privacy-policy','/wishlist'].some(p=>pathname.startsWith(p));
+  const designRoute=pathname==='/'||['/shop-all-products','/new-arrivals','/bestsellers','/deals-and-offers','/category/','/search','/contact-us','/about-us','/faqs','/shipping-policy','/refund-and-return-policy','/terms-and-conditions','/privacy-policy','/wishlist','/track-order','/track-your-order'].some(p=>pathname.startsWith(p));
   if (checkoutRoute) {
     return (
       <div className="launch-storefront">

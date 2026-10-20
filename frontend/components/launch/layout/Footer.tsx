@@ -1,11 +1,11 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, Banknote, ChevronRight, Mail, MapPin, PackageCheck, Truck, Warehouse } from "lucide-react";
+import { ChevronRight, Mail, MapPin } from "lucide-react";
 import { categoryPath } from "@/lib/launch/catalog";
 import {useCatalog,useSite} from "@/lib/launch/store";
 import { waLink } from "@/lib/launch/format";
-import { Logo } from "@/components/launch/ui/Logo";
 import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, TiktokIcon, WhatsAppIcon, XIcon, YoutubeIcon } from "@/components/launch/ui/BrandIcons";
 import styles from "./Footer.module.css";
 
@@ -34,40 +34,11 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="container">
-        <div className="footer-promise">
-          <div>
-            <Banknote size={22} />
-            <span>
-              <strong>Cash on Delivery</strong>
-              <small>Pay when it arrives</small>
-            </span>
-          </div>
-          <div>
-            <PackageCheck size={22} />
-            <span>
-              <strong>Checked before dispatch</strong>
-              <small>Every order inspected</small>
-            </span>
-          </div>
-          <div>
-            <Truck size={22} />
-            <span>
-              <strong>Nationwide delivery</strong>
-              <small>{site.shipping.estimate}</small>
-            </span>
-          </div>
-          <div>
-            <WhatsAppIcon size={22} />
-            <span>
-              <strong>Real WhatsApp support</strong>
-              <small>{site.supportHours}</small>
-            </span>
-          </div>
-        </div>
-
         <div className="footer-inner">
           <div className="footer-brand">
-            <Logo light />
+            <Link href="/" className={styles.logo} aria-label="Zelvomart — home">
+              <Image src="/launch/brand/zelvomart-logo-white.png" alt="Zelvomart" width={320} height={211} />
+            </Link>
             <p>
               Everyday things, chosen better. Zelvomart is a Pakistani lifestyle store — we stock every product ourselves, check it
               by hand and ship it from {site.fulfilment.warehouse} with Cash on Delivery nationwide.
@@ -132,16 +103,15 @@ export function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <span>© {new Date().getFullYear()} Zelvomart. All rights reserved.</span>
-          <div className="pay-chips" aria-label="Payment methods">
-            <span>Cash on Delivery</span>
-          </div>
-          <div className={`foot-links ${styles.linkGroup} ${styles.utilityLinks}`}>
-            <FooterNavLink href="/privacy-policy/">Privacy</FooterNavLink>
-            <FooterNavLink href="/terms-and-conditions/">Terms</FooterNavLink>
-            <FooterNavLink href="/refund-and-return-policy/">Returns</FooterNavLink>
-            <FooterNavLink href="/shipping-policy/">Shipping</FooterNavLink>
-          </div>
+          <span>
+            © {new Date().getFullYear()} Zelvomart. All rights reserved. · Trusted by Our Customers
+          </span>
+          <span>
+            Designed &amp; developed by{" "}
+            <a href="https://webixsolutions.com" target="_blank" rel="noopener" className={styles.credit}>
+              Webix Solutions
+            </a>
+          </span>
         </div>
       </div>
     </footer>

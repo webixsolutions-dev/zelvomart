@@ -79,7 +79,7 @@ export default async function HomePage() {
               <em>you’ll actually want.</em>
             </>
           }
-          sub="Discount offers on bags, beauty, home and kids’ favourites, with the regular price shown beside every sale price, so you know exactly what you save."
+          sub="Discount offers across all seven Zelvomart categories, with the regular price shown beside every sale price, so you know exactly what you save."
           buttons={[{ label: "Shop all deals", href: "/deals-and-offers/" }]}
         />
       </div>
@@ -112,7 +112,7 @@ export default async function HomePage() {
 
       <section className="section pt-0 home-whatsapp">
         <div className="container">
-          <WhatsAppBand title="Order on WhatsApp, or just ask." sub="Message Zelvomart to place an order or ask about size, colour or delivery. Real people reply." />
+          <WhatsAppBand />
         </div>
       </section>
 

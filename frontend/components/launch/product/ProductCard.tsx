@@ -7,6 +7,7 @@ import { getCategory, type Product } from "@/lib/launch/catalog";
 import { discountPct } from "@/lib/launch/format";
 import { useShop } from "@/lib/launch/store";
 import { Price } from "@/components/launch/ui/Price";
+import { Stars } from "@/components/launch/ui/Stars";
 
 export function ProductCard({ p, priority = false, featured = false }: { p: Product; priority?: boolean; featured?: boolean }) {
   const { addToCart, toggleWish, isWished, ready } = useShop();
@@ -21,6 +22,7 @@ export function ProductCard({ p, priority = false, featured = false }: { p: Prod
         <h3>
           <Link href={href}>{p.name}</Link>
         </h3>
+        <Stars rating={p.rating} count={p.reviewCount} size={13} className="card-stars" />
         {featured && <p className="featured-blurb">{p.tagline}</p>}
         <Price price={p.price} compare={p.compare} />
       </div>

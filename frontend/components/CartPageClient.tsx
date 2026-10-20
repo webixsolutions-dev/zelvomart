@@ -8,13 +8,19 @@ import { money } from "@/lib/format";
 import { amountUntilFreeShipping, quoteFromPolicy } from "@/lib/shipping";
 import { MinusIcon, PlusIcon, TrashIcon, WhatsAppIcon } from "@/components/Icons";
 
+const EMPTY_CHIPS:[string,string][]=[["Home & Living","home-living"],["Beauty & Personal Care","beauty-personal-care"],["Tech & Gadgets","tech-gadgets"],["Kids & Toys","kids-toys"]];
+
 export default function CartPageClient(){
  const {items,subtotal,bundleSaving,updateQuantity,removeItem,totalItems}=useCart();
  const everyFree=items.length>0&&items.every((item)=>item.freeShipping);
  const quote=quoteFromPolicy(subtotal,everyFree,useDeliveryPolicy());
  const gap=amountUntilFreeShipping(subtotal,quote.threshold);
- if(!items.length)return <div className="mock-empty-cart"><span>🛒</span><h2>Your cart is empty</h2><p>Your next useful find is waiting.</p><Link href="/shop" className="mock-btn-dark">Start shopping</Link></div>;
+ // Empty cart: one block only (no page heading), with next steps.
+ if(!items.length)return <div className="mock-empty-cart"><span>🛒</span><h1>Your cart is empty</h1><p>Your next useful find is waiting.</p><Link href="/shop" className="mock-btn-dark">Start shopping</Link>
+  <div className="mock-empty-chips">{EMPTY_CHIPS.map(([label,slug])=><Link key={slug} href={`/product-category/${slug}/`}>{label}</Link>)}</div>
+  <Link href="/bestsellers" className="mock-empty-best">Or see our bestsellers →</Link></div>;
  return <>
+  <h1 className="mock-cart-title">Your cart</h1>
   <div className="mock-cart-progress"><span className="active"><b>1</b>Cart</span><i/><span><b>2</b>Details</span><i/><span><b>3</b>Confirmation</span></div>
   {bundleSaving>0?<div className="mock-cart-saving"><span>✓</span><div><b>Buy 2, save more applied</b><small>You're saving {money(bundleSaving)} on this order.</small></div></div>:null}
   <div className="mock-cart-layout">

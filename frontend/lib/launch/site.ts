@@ -32,6 +32,7 @@ export const site = {
     flatFee: 190, // decided 19 Oct 2026
     freeOver: 8000, // decided 19 Oct 2026
     estimate: "2–7 working days", // still to be set by operations (per-city days)
+    courier: "PostEx",
     majorCityEstimate: "2–3 working days",
   },
   returns: {

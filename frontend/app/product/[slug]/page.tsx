@@ -137,9 +137,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <div className="site-shell">
             <div className="section-title pdp-related-title">
               <div>
-                <span className="pdp-related-kicker">MORE TO EXPLORE</span>
-                <h2>Related Products</h2>
-                <p>Four more picks you may like from Zelvomart.</p>
+                <span className="pdp-related-kicker">KEEP EXPLORING</span>
+                <h2>You may also like</h2>
+                <p>More from this category, plus customer favourites.</p>
               </div>
               <Link href={categoryHref} className="btn-outline pdp-related-view">View All</Link>
             </div>
