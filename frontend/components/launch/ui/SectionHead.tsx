@@ -22,7 +22,7 @@ export function SectionHead({
         {sub && <p>{sub}</p>}
       </div>
       {href && (
-        <Link className="pill" href={href}>
+        <Link prefetch={false} className="pill" href={href}>
           {linkLabel} <ArrowRight size={14} />
         </Link>
       )}

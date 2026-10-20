@@ -144,7 +144,7 @@ export function HeroSlider() {
                         {b.label} <ArrowRight size={16} />
                       </a>
                     ) : (
-                      <Link key={b.href} className={`btn ${bi ? "secondary" : ""}`} href={b.href} tabIndex={idx === i ? 0 : -1}>
+                      <Link prefetch={false} key={b.href} className={`btn ${bi ? "secondary" : ""}`} href={b.href} tabIndex={idx === i ? 0 : -1}>
                         {b.label} <ArrowRight size={16} />
                       </Link>
                     ),

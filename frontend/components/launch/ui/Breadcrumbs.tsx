@@ -22,7 +22,7 @@ export function Breadcrumbs({ items, inHero = false }: { items: Crumb[]; inHero?
       <ol>
         {all.map((c, i) => (
           <li key={i}>
-            {c.href && i < all.length - 1 ? <Link href={c.href}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}
+            {c.href && i < all.length - 1 ? <Link prefetch={false} href={c.href}>{c.label}</Link> : <span aria-current="page">{c.label}</span>}
             {i < all.length - 1 && <ChevronRight size={13} aria-hidden="true" />}
           </li>
         ))}

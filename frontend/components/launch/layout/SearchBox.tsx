@@ -87,7 +87,7 @@ export function SearchBox({ autoFocus = false, onDone, withCategories = false }:
               <ul>
                 {results.map((p) => (
                   <li key={p.id}>
-                    <Link
+                    <Link prefetch={false}
                       href={`/product/${p.slug}/`}
                       onClick={() => {
                         setOpen(false);
