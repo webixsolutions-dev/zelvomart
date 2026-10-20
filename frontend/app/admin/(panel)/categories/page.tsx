@@ -1,4 +1,6 @@
 "use client";
+import AdminListView from "@/components/admin/AdminListView";
+import "@/components/admin/catalog-pages.css";
 import AdminTable from '@/components/admin/AdminTable';
 
 
@@ -76,7 +78,7 @@ function CategoryForm({ initial, onSaved }: { initial?: CategoryRow; onSaved: ()
   }
 
   return (
-    <form className="admin-reference-form" onSubmit={submit}>
+    <form className="admin-reference-form catalog-form" aria-busy={saving} onSubmit={submit}>
       <label className="field">
         <span>Name</span>
         <input name="name" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -132,29 +134,30 @@ export default function Categories() {
   }
 
   return (
-    <>
+    <div className="admin-catalog-page">
       <div className="admin-title">
         <div>
           <h1>Categories</h1>
           <p>Create, order, image and SEO fields.</p>
         </div>
-        <AdminModal trigger={<>＋ Add Category</>} title="Add Category">
+        <AdminModal className="catalog-modal" trigger={<>＋ Add Category</>} title="Add Category">
           <CategoryForm key="add-category" onSaved={afterSave} />
         </AdminModal>
       </div>
-      <div className="admin-table-wrap">
-        <AdminTable scrollLabel="Categories" className="admin-table">
+      <div className="admin-list-container">
+        <AdminListView rows={data} label="Categories" search={r=>`${r.name} ${r.slug}`} searchHint="Search category name or slug" sorts={[{label:'Name',value:r=>r.name},{label:'Products',value:r=>r.count||0},{label:'Sort order',value:r=>r.sortOrder||0}]} filters={[]} metrics={[{label:'Categories',value:r=>r.length},{label:'With products',value:r=>r.filter(c=>(c.count||0)>0).length},{label:'With images',value:r=>r.filter(c=>!!c.imageUrl).length},{label:'With SEO title',value:r=>r.filter(c=>!!c.seoTitle).length}]} onRefresh={reload}>{visibleRows=>(<AdminTable scrollLabel="Categories" className="admin-table">
           <thead>
             <tr>
               <th>Name</th>
               <th>Slug</th>
               <th>Products</th>
               <th>Sort</th>
-              <th></th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {data.map((c) => (
+            {!visibleRows.length && <tr><td colSpan={5}>No categories yet. Add your first category to organize products.</td></tr>}
+            {visibleRows.map((c) => (
               <tr key={c.id}>
                 <td>{c.name}</td>
                 <td>{c.slug}</td>
@@ -162,7 +165,7 @@ export default function Categories() {
                 <td>{c.sortOrder}</td>
                 <td>
                   <div className="admin-head-actions">
-                    <AdminModal trigger="Edit" triggerClassName="admin-btn admin-btn-light" title={`Edit ${c.name}`}>
+                    <AdminModal className="catalog-modal" trigger="Edit" triggerClassName="admin-btn admin-btn-light" title={`Edit ${c.name}`}>
                       <CategoryForm key={`${c.id}:${c.updatedAt ?? ""}`} initial={c} onSaved={afterSave} />
                     </AdminModal>
                     <button className="admin-btn admin-row-action-danger" type="button" onClick={() => del(c.id)}>
@@ -173,8 +176,8 @@ export default function Categories() {
               </tr>
             ))}
           </tbody>
-        </AdminTable>
+        </AdminTable>)}</AdminListView>
       </div>
-    </>
+    </div>
   );
 }

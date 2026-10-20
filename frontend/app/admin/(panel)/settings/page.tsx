@@ -1,28 +1,26 @@
 "use client";
+import './settings.css';
+import SettingsForm from '@/components/admin/SettingsForm';
+import {clearAdminDataCache} from '@/components/admin/useAdminData';
 import RecoveryOfferSettings from '@/components/admin/RecoveryOfferSettings';
 import {SITE_ORIGIN} from "@/lib/site-url";
 import { useEffect, useState } from 'react';
-import { DEFAULT_DELIVERY_CHARGE, FREE_SHIPPING_ABOVE, resolveDeliveryPolicy } from '@/lib/shipping';
+import { resolveDeliveryPolicy } from '@/lib/shipping';
 import AdminModal from '@/components/admin/AdminModal';
 import { DashboardIcon } from '@/components/admin/DashboardMetrics';
 import {setSessionReplayOptOut} from '@/lib/session-replay-client';
 import { clientApi } from '@/lib/client-api';
 import { useAdminData,AdminLoading,AdminError } from '@/components/admin/useAdminData';
 
-function StoreForm({s,onSaved}:{s:any;onSaved:()=>void}){const info=s['store.info']||{};async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);await clientApi('/api/admin/settings',{method:'PUT',body:JSON.stringify({'store.info':{name:'Zelvomart',phone:f.get('phone'),email:f.get('email'),whatsapp:f.get('whatsapp'),country:'Pakistan'},'store.minimumSellingPrice':Number(f.get('minimum')||1000),'store.bundleDefaultDiscountPercent':Number(f.get('bundle')||5)})},true);onSaved()}return <form className="admin-reference-form" onSubmit={submit}><label className="field"><span>Phone</span><input name="phone" defaultValue={info.phone||'0300-2026711'}/></label><label className="field"><span>Email</span><input name="email" defaultValue={info.email||'zelvomart@gmail.com'}/></label><label className="field"><span>WhatsApp number</span><input name="whatsapp" defaultValue={info.whatsapp||'923002026711'}/></label><label className="field"><span>Minimum selling price</span><input name="minimum" type="number" defaultValue={s['store.minimumSellingPrice']??1000}/></label><label className="field"><span>Default Buy 2 discount %</span><input name="bundle" type="number" defaultValue={s['store.bundleDefaultDiscountPercent']??5}/></label><button className="admin-reference-submit">Save Store Settings</button></form>}
-function DeliveryForm({s,onSaved}:{s:any;onSaved:()=>void}){const d=s['store.delivery']||{};const {flatRate:charge,threshold:freeAbove}=resolveDeliveryPolicy(d);async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);/* Never saved as free: an empty or zero charge is stored as DEFAULT_DELIVERY_CHARGE (lib/shipping.ts). */await clientApi('/api/admin/settings',{method:'PUT',body:JSON.stringify({'store.delivery':{mode:'FREE_ABOVE',flatRate:Number(f.get('flatRate'))>0?Number(f.get('flatRate')):DEFAULT_DELIVERY_CHARGE,freeAbove:Number(f.get('freeAbove'))>0?Number(f.get('freeAbove')):FREE_SHIPPING_ABOVE}})},true);onSaved()}return <form className="admin-reference-form" onSubmit={submit}><p className="admin-inline-note full">Every product pays this delivery charge. Delivery is free only when the order total is above the free-above amount, or when every product in the order has Free shipping turned on (product → Shipping tab). These values are used on the product page, cart, checkout and the saved order.</p><label className="field"><span>Delivery charge (Rs)</span><input name="flatRate" type="number" min="1" defaultValue={charge}/></label><label className="field"><span>Free above (Rs)</span><input name="freeAbove" type="number" min="1" defaultValue={freeAbove}/></label><button className="admin-reference-submit">Save Delivery Settings</button></form>}
+function StoreForm({s,onSaved}:{s:any;onSaved:()=>Promise<unknown>}){const info=s['store.info']||{};return <SettingsForm label="Save store settings" onSave={async f=>{await clientApi('/api/admin/settings',{method:'PUT',body:JSON.stringify({'store.info':{name:info.name||'Zelvomart',phone:String(f.get('phone')).trim(),email:String(f.get('email')).trim(),whatsapp:String(f.get('whatsapp')).trim(),country:'Pakistan'},'store.bundleDefaultDiscountPercent':Number(f.get('bundle'))})},true);await onSaved();}}><p className="settings-section-note full">Contact details update across your storefront. The Buy 2 percentage applies to eligible bundles in the product page, cart and checkout.</p><label className="field"><span>Phone</span><input required type="tel" name="phone" defaultValue={info.phone||'0300-2026711'}/></label><label className="field"><span>Email</span><input required type="email" name="email" defaultValue={info.email||'zelvomart@gmail.com'}/></label><label className="field"><span>WhatsApp number</span><input required type="tel" name="whatsapp" defaultValue={info.whatsapp||'923002026711'}/></label><label className="field"><span>Buy 2 discount (%)</span><input required name="bundle" type="number" min="0" max="100" step="0.01" defaultValue={s['store.bundleDefaultDiscountPercent']??5}/></label></SettingsForm>}
+function DeliveryForm({s,onSaved}:{s:any;onSaved:()=>Promise<unknown>}){const {flatRate,threshold}=resolveDeliveryPolicy(s['store.delivery']);return <SettingsForm label="Save delivery settings" onSave={async f=>{await clientApi('/api/admin/settings',{method:'PUT',body:JSON.stringify({'store.delivery':{mode:'FREE_ABOVE',flatRate:Number(f.get('flatRate')),freeAbove:Number(f.get('freeAbove'))}})},true);await onSaved();}}><p className="settings-section-note full">One delivery policy for the announcement bar, FAQ, product page, cart and checkout. Orders at or above the threshold qualify before coupons; products marked Free shipping retain their own exemption.</p><label className="field"><span>Delivery charge (PKR)</span><input required name="flatRate" type="number" min="1" step="0.01" defaultValue={flatRate}/></label><label className="field"><span>Free delivery from (PKR)</span><input required name="freeAbove" type="number" min="1" step="0.01" defaultValue={threshold}/></label></SettingsForm>}
 function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
   const [excluded,setExcluded]=useState(false);
   useEffect(()=>setExcluded(localStorage.getItem('zm_session_replay_opt_out')==='1'),[]);
   const [message, setMessage] = useState('');
-  const [saving, setSaving] = useState(false);
 
-  async function submit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setSaving(true);
-    setMessage('');
-    const f = new FormData(e.currentTarget);
 
+  async function submit(f: FormData) {
     const body: Record<string, unknown> = {
       'tracking.metaPixelEnabled': f.get('metaPixelEnabled') === 'on',
       'tracking.metaPixelId': String(f.get('metaPixelId') || '').trim(),
@@ -49,15 +47,8 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
     const tiktokEventsApiToken = String(f.get('tiktokEventsApiToken') || '').trim();
     if (tiktokEventsApiToken) body['tracking.tiktokEventsApiToken'] = tiktokEventsApiToken;
 
-    try {
-      await clientApi('/api/admin/settings', { method: 'PUT', body: JSON.stringify(body) }, true);
-      setMessage('Tracking settings saved successfully.');
-      onSaved();
-    } catch (err: any) {
-      setMessage(err?.message || 'Failed to save tracking settings.');
-    } finally {
-      setSaving(false);
-    }
+    await clientApi('/api/admin/settings', {method:'PUT',body:JSON.stringify(body)},true);
+    await onSaved();
   }
 
   const metaPixelOn = s['tracking.metaPixelEnabled'] !== false && s['tracking.metaPixelEnabled'] !== 'false';
@@ -70,7 +61,7 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
   const hasTikTokToken = Boolean(s['tracking.tiktokEventsApiToken'] || s['tracking.tiktokAccessToken']);
 
   return (
-    <form className="admin-reference-form" onSubmit={submit}>
+    <SettingsForm label="Save tracking settings" onSave={submit}>
       {/* Meta Suite */}
       <div className="full" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 16, marginBottom: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px', color: '#0f172a' }}>Meta (Facebook & Instagram)</h3>
@@ -144,7 +135,7 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
       {/* Session Replay */}
       <div className="full" style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px', color: '#0f172a' }}>CRO Session Replay & Retention</h3>
-        <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px' }}>Privacy-masked in-house rrweb session recordings and automated cleanup.</p>
+        <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px' }}>Privacy-masked recordings. Scheduled cleanup requires the worker; the storage bucket lifecycle must also match this retention period.</p>
 
         <label className="admin-check full" style={{ marginBottom: 10 }}>
           <input type="checkbox" name="sessionReplayEnabled" defaultChecked={replayOn} />
@@ -157,11 +148,8 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
       </div>
 
       {message && <div className="admin-inline-note full">{message}</div>}
-      <button className="admin-reference-submit" disabled={saving}>
-        {saving ? 'Saving Settings…' : 'Save Tracking & Conversion APIs'}
-      </button>
-    </form>
+    </SettingsForm>
   );
 }
-function CitiesForm({cities,onSaved}:{cities:any[];onSaved:()=>void}){async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const lines=String(f.get('cities')||'').split('\n').map(x=>x.trim()).filter(Boolean);const rows=lines.map(line=>{const [name,min,max]=line.split('|').map(x=>x.trim());if(!name||!min||!max||!Number.isInteger(Number(min))||Number(min)<1||Number(max)<Number(min))throw new Error('Enter a city and valid minimum and maximum days on every line.');return{name,deliveryMinDays:Number(min),deliveryMaxDays:Number(max),active:true}});await clientApi('/api/admin/cities',{method:'PUT',body:JSON.stringify({cities:rows})},true);onSaved()}return <form className="admin-reference-form" onSubmit={submit}><label className="field full"><span>Cities — Name | Min days | Max days</span><textarea name="cities" rows={14} defaultValue={cities.map(c=>`${c.name} | ${c.deliveryMinDays} | ${c.deliveryMaxDays}`).join('\n')}/></label><button className="admin-reference-submit">Save Cities</button></form>}
-export default function Settings(){const {data,loading,error,reload}=useAdminData<any>('/api/admin/settings',{settings:{},cities:[]});if(loading)return <AdminLoading/>;if(error)return <AdminError message={error}/>;const s=data.settings||{};const cards=[['Recovery offers','Default 5% discount, editable percentage and 24-hour single-use codes.',<RecoveryOfferSettings/>],['Store','Phone, email, WhatsApp, minimum price and bundle discount.',<StoreForm s={s} onSaved={reload}/>],['Delivery',`Every product pays Rs ${resolveDeliveryPolicy(s['store.delivery']).flatRate.toLocaleString('en-US')} delivery; orders above Rs ${resolveDeliveryPolicy(s['store.delivery']).threshold.toLocaleString('en-US')} ship free.`,<DeliveryForm s={s} onSaved={reload}/>],['Tracking & Feeds','Meta, TikTok, product feeds, and first-party Session Replay.',<TrackingForm s={s} onSaved={reload}/>],['Cities & estimates','Pakistan city list and delivery estimates.',<CitiesForm cities={data.cities||[]} onSaved={reload}/>]];return <><div className="dashboard-heading settings-page-heading"><div><span className="dashboard-eyebrow">STORE PREFERENCES</span><h1>Settings</h1><p>Manage your store, checkout, delivery and integrations.</p></div></div><div className="admin-settings-grid settings-dashboard-grid">{cards.map(([title,desc,form]:any, index:number)=><div className="admin-settings-card" key={title}><div className="settings-card-top"><span className={`dashboard-metric-icon ${["blue","purple","orange","teal","purple","green","blue"][index]}`}><DashboardIcon name={(["box","truck","eye","document"] as const)[index % 4]} /></span><span className="settings-card-category">{["MARKETING","GENERAL","FULFILMENT","INTEGRATIONS","LOCATIONS"][index]}</span></div><h2>{title}</h2><p>{desc}</p><AdminModal trigger="Manage settings →" triggerClassName="settings-card-action" title={title} size="lg">{form}</AdminModal></div>)}</div></>}
+function CitiesForm({cities,onSaved}:{cities:any[];onSaved:()=>Promise<unknown>}){return <SettingsForm label="Save cities and estimates" onSave={async f=>{const lines=String(f.get('cities')||'').split('\n').map(x=>x.trim()).filter(Boolean);if(!lines.length)throw new Error('Enter at least one city.');const rows=lines.map((line,index)=>{const parts=line.split('|').map(x=>x.trim());const [name,min,max]=parts;if(parts.length!==3||!name||!min||!max||!Number.isInteger(Number(min))||!Number.isInteger(Number(max))||Number(min)<1||Number(max)<Number(min)||Number(max)>90)throw new Error(`Line ${index+1}: use City | minimum days | maximum days (1-90).`);return{name,deliveryMinDays:Number(min),deliveryMaxDays:Number(max),active:true};});if(new Set(rows.map(row=>row.name.toLowerCase())).size!==rows.length)throw new Error('Each city must appear only once.');await clientApi('/api/admin/cities',{method:'PUT',body:JSON.stringify({cities:rows})},true);await onSaved();}}><p className="settings-section-note full">One city per line, for example Lahore | 2 | 4. Unlisted cities use 2-7 working days. Removing a city deactivates it from checkout; existing orders stay intact.</p><label className="field full"><span>City | Minimum days | Maximum days</span><textarea required name="cities" rows={12} defaultValue={cities.filter(c=>c.active).map(c=>`${c.name} | ${c.deliveryMinDays} | ${c.deliveryMaxDays}`).join('\n')}/></label></SettingsForm>}
+export default function Settings(){const {data,loading,error,reload}=useAdminData<any>('/api/admin/settings',null);if(error)return <AdminError message={error}/>;if(loading||!data)return <AdminLoading/>;const s=data.settings||{};const saved=async()=>{clearAdminDataCache();await reload();};const cards=[['Recovery offers','Discount, message templates and 24-hour single-use recovery codes.',<RecoveryOfferSettings/>],['Store','Phone, email, WhatsApp and default bundle discount.',<StoreForm s={s} onSaved={saved}/>],['Delivery',`Every product pays Rs ${resolveDeliveryPolicy(s['store.delivery']).flatRate.toLocaleString('en-US')} delivery; orders from Rs ${resolveDeliveryPolicy(s['store.delivery']).threshold.toLocaleString('en-US')} ship free.`,<DeliveryForm s={s} onSaved={saved}/>],['Tracking & Feeds','Meta, TikTok, product feeds, and first-party Session Replay.',<TrackingForm s={s} onSaved={saved}/>],['Cities & estimates','Pakistan city list and delivery estimates.',<CitiesForm cities={data.cities||[]} onSaved={saved}/>]];return <><div className="dashboard-heading settings-page-heading"><div><span className="dashboard-eyebrow">STORE PREFERENCES</span><h1>Settings</h1><p>Saved settings stay in sync with your storefront, checkout and integrations.</p></div></div><div className="admin-settings-grid settings-dashboard-grid">{cards.map(([title,desc,form]:any, index:number)=><div className="admin-settings-card" key={title}><div className="settings-card-top"><span className={`dashboard-metric-icon ${["blue","purple","orange","teal","purple","green","blue"][index]}`}><DashboardIcon name={(["box","truck","eye","document"] as const)[index % 4]} /></span><span className="settings-card-category">{["MARKETING","GENERAL","FULFILMENT","INTEGRATIONS","LOCATIONS"][index]}</span></div><h2>{title}</h2><p>{desc}</p><AdminModal className="settings-modal" description={desc} trigger="Manage settings →" triggerClassName="settings-card-action" title={title} size="lg">{form}</AdminModal></div>)}</div></>}

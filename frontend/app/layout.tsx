@@ -92,7 +92,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           tiktokPixel={tiktokPixelEnabled ? <TikTokPixelScript pixelId={tiktokPixelId} /> : null}
           organizationJson={JSON.stringify(org).replace(/</g,"\\u003c")}
           delivery={(bootstrap?.settings?.["store.delivery"] || null) as any}
-          launchCatalog={{categories:launchCats,products:launchItems,info:{phone:phoneDisplay,email:info.email,whatsapp:info.whatsapp}}}
+          launchCatalog={{categories:launchCats,products:launchItems,info:{phone:phoneDisplay,email:info.email,whatsapp:info.whatsapp,replayRetentionDays:Number(bootstrap?.settings?.["tracking.sessionReplayRetentionDays"]||14)}}}
         >
           {children}
         </SiteChrome>

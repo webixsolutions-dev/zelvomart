@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
+import StoreSettingsSync from './StoreSettingsSync';
 import { usePathname } from "next/navigation";
 import { CartProvider } from "@/components/CartProvider";
 import { DeliveryPolicyProvider } from "@/components/DeliveryPolicy";
@@ -31,7 +32,7 @@ export default function SiteChrome({
   tiktokPixel?: ReactNode;
   organizationJson: string;
   delivery?: DeliverySettings | null;
-  launchCatalog?: {categories:LaunchCategory[];products:LaunchProduct[];info?:{phone?:string;email?:string;whatsapp?:string}};
+  launchCatalog?: {categories:LaunchCategory[];products:LaunchProduct[];info?:{phone?:string;email?:string;whatsapp?:string;replayRetentionDays?:number}};
 }) {
   const pathname = usePathname().replace(/\/+$/,'') || '/';
   const adminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
@@ -45,6 +46,7 @@ export default function SiteChrome({
   if (checkoutRoute) {
     return (
       <div className="launch-storefront">
+        <StoreSettingsSync/>
         <Fragment key="meta-pixel">{metaPixel}</Fragment>
         <Fragment key="tiktok-pixel">{tiktokPixel}</Fragment>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: organizationJson }} />
@@ -60,6 +62,7 @@ export default function SiteChrome({
 
   return (
     <div className="launch-storefront">
+      <StoreSettingsSync/>
       <Fragment key="meta-pixel">{metaPixel}</Fragment>
       <Fragment key="tiktok-pixel">{tiktokPixel}</Fragment>
       <script

@@ -2,7 +2,7 @@
 import {privateSafeUrl} from "./url-privacy";
 
 import {tiktokProperties} from "./tracking-payload";
-import {adsAllowed,staffDevice} from "./tracking-policy";
+import {adsAllowed,staffDevice,trackingSettingEnabled} from "./tracking-policy";
 import {getReplayVisitorId} from "./session-replay-client";
 import { getReplaySessionId } from "@/lib/session-replay-client";
 
@@ -27,6 +27,7 @@ export async function trackStoreEvent(
   if(staffDevice())return eventId;
   if(adsAllowed()&&!eventName.startsWith("Replay")){
     const deliver=(platform:'meta'|'tiktok',attempt=0)=>{
+      if(!trackingSettingEnabled(platform==='meta'?'tracking.metaPixelEnabled':'tracking.tiktokPixelEnabled'))return;
       try{
         if(platform==='meta'&&window.fbq){window.fbq('track',eventName,params,{eventID:eventId});return;}
         if(platform==='tiktok'&&window.ttq){if(eventName==='PageView')window.ttq.page();else window.ttq.track(eventName,tiktokProperties(params),{event_id:eventId});return;}

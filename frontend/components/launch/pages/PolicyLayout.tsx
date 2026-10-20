@@ -1,4 +1,5 @@
 "use client";
+import {useSite} from '@/lib/launch/store';
 import {useDeliveryPolicy} from "@/components/DeliveryPolicy";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -37,6 +38,8 @@ function sectionId(index: number) {
 
 /** Render exact text and literal hrefs without accepting raw HTML. */
 function PolicyText({ text }: { text: string }) {
+  const live=useSite();
+  text=text.replaceAll(site.phoneDisplay,live.phoneDisplay).replaceAll(site.whatsappNumber,live.whatsappNumber).replaceAll(site.email,live.email).replaceAll('up to 14 days',`up to ${live.replayRetentionDays} days`);
   const links = /\[([^\]]+)\]\(([^)]+)\)/g;
   const parts = [];
   let cursor = 0;

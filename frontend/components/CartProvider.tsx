@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {useSettingsRefresh} from '@/lib/settings-sync';
 import { bundleLineTotal, BUY_TWO_DISCOUNT_PERCENT } from "@/lib/bundle-price";
 
 export type CartItem = {
@@ -78,6 +79,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const refreshDiscount=useCallback(()=>{void fetch('/api/store-proxy/api/settings/public?keys=store.bundleDefaultDiscountPercent',{cache:'no-store',signal:AbortSignal.timeout(10000)}).then(r=>r.ok?r.json():null).then(settings=>{const value=settings?.['store.bundleDefaultDiscountPercent'];if(typeof value==='number'&&value>=0&&value<=100)setItems(items=>items.every(item=>item.bundleDiscountPercent===value)?items:items.map(item=>({...item,bundleDiscountPercent:value})));}).catch(()=>undefined);},[]);
+  useSettingsRefresh(refreshDiscount);
+  useEffect(()=>{if(ready)refreshDiscount();},[ready,refreshDiscount]);
 
   useEffect(() => {
     setItems(readCookie());
@@ -130,7 +134,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const pricedItems = useMemo(
-    () => items.map((item) => bundleLineTotal(item.price, item.quantity, item.bundleSize, BUY_TWO_DISCOUNT_PERCENT)),
+    () => items.map((item) => bundleLineTotal(item.price, item.quantity, item.bundleSize, item.bundleDiscountPercent ?? BUY_TWO_DISCOUNT_PERCENT)),
     [items],
   );
 

@@ -9,6 +9,8 @@ const SAFE_PREFIXES = [
   "/api/checkout/",
   "/api/recovery/",
   "/api/settings/delivery",
+  "/api/settings/public",
+  "/api/cities",
 ];
 
 function backendCandidates(request: NextRequest): string[] {

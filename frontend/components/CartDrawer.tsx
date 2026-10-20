@@ -43,7 +43,7 @@ export default function CartDrawer() {
                   <Link href={`/product/${item.slug}/`} onClick={() => setOpen(false)}>{item.name}</Link>
                   {item.variantLabel ? <small>{item.variantLabel}</small> : null}
                   {item.bundleSize === 2 ? <small>Bundle: 2 pieces</small> : null}
-                  <strong>{money(bundleLineTotal(item.price, item.quantity, item.bundleSize, BUY_TWO_DISCOUNT_PERCENT).total)}</strong>
+                  <strong>{money(bundleLineTotal(item.price, item.quantity, item.bundleSize, item.bundleDiscountPercent ?? BUY_TWO_DISCOUNT_PERCENT).total)}</strong>
                   <div className="cart-line-actions">
                     <div className="qty-control">
                       <button onClick={() => updateQuantity(index, item.quantity - 1)} aria-label="Decrease quantity"><MinusIcon size={14} /></button>

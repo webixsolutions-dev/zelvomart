@@ -30,7 +30,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const add = () => {
     if (!addable) return;
-    addItem({ productId: product.id, variantId: onlyVariant?.id, sku: onlyVariant?.sku || product.sku, slug: product.slug, name: product.name, image: onlyVariant?.imageUrl || imageSrc, price: unitPrice, quantity: 1, bundleSize: 1, bundleDiscountPercent: product.buyTwoDiscountPercent || BUY_TWO_DISCOUNT_PERCENT, variantLabel: onlyVariant?.name, freeShipping: Boolean(product.freeShipping) });
+    addItem({ productId: product.id, variantId: onlyVariant?.id, sku: onlyVariant?.sku || product.sku, slug: product.slug, name: product.name, image: onlyVariant?.imageUrl || imageSrc, price: unitPrice, quantity: 1, bundleSize: 1, bundleDiscountPercent: product.buyTwoDiscountPercent ?? BUY_TWO_DISCOUNT_PERCENT, variantLabel: onlyVariant?.name, freeShipping: Boolean(product.freeShipping) });
     trackStoreEvent("AddToCart", { content_ids:[onlyVariant?.sku || product.sku], contents:[{id:onlyVariant?.sku || product.sku,quantity:1,item_price:unitPrice}], value:unitPrice, currency:"PKR" }).catch(()=>undefined);
   };
 

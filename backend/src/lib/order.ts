@@ -48,7 +48,7 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
   });
   if (existing) return existing;
 
-  const [deliveryRule,paymentMethods]=await Promise.all([getSetting<any>('store.delivery',{}),getSetting<string[]>('payments.methods',['COD'])]);
+  const [deliveryRule,paymentMethods,bundleDiscount]=await Promise.all([getSetting<any>('store.delivery',{}),getSetting<string[]>('payments.methods',['COD']),getSetting<number>('store.bundleDefaultDiscountPercent',5)]);
   if(!paymentMethods.includes(input.paymentMethod))throw new Error('PAYMENT_METHOD_DISABLED');
   if(!input.fullName.trim()||!input.phone||!input.city.trim()||!input.address.trim())throw new Error('REQUIRED_FIELDS');
 
@@ -89,7 +89,7 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
 
     const base = variantPriceSummary(priceSummary(product.price, product.salePrice), { priceOverride: variant?.priceOverride }).price;
     const offerSize: 1 | 2 = item.bundleSize === 2 && product.bundleEnabled ? 2 : 1;
-    const priced = bundleLineTotal(base, item.quantity, offerSize, BUY_TWO_DISCOUNT_PERCENT);
+    const priced = bundleLineTotal(base, item.quantity, offerSize, Number(bundleDiscount));
     // Track ON: enough quantity. Track OFF: the stock status must be In stock.
     const stockItem = variant || product;
     if (!canSell(stockItem, priced.pieces)) throw new Error("OUT_OF_STOCK");
