@@ -180,7 +180,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <section className="admin-my-account" aria-labelledby="admin-my-account-label">
           <h2 id="admin-my-account-label">My account</h2>
           <div className="admin-my-account-profile"><span className="admin-my-account-avatar">{initials}</span><div><strong title={user.name || "Admin"}>{user.name || "Admin"}</strong><small className="admin-my-account-email" title={user.email}>{user.email}</small></div></div>
-          {user.role === "OWNER" && <Link href="/admin/settings" className={`admin-account-link${pathname.startsWith("/admin/settings") ? " active" : ""}`} aria-current={pathname.startsWith("/admin/settings") ? "page" : undefined} onClick={() => setMobileOpen(false)}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="m9 3-1 3-3 1-2 5 2 5 3 1 1 3h6l1-3 3-1 2-5-2-5-3-1-1-3Z" /></svg><span>Settings</span></Link>}
           <button type="button" className="admin-account-link admin-account-logout" onClick={signOut}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H4v18h5M10 12h11m-5-5 5 5-5 5" /></svg><span>Log out</span></button>
         </section>
       </aside>
