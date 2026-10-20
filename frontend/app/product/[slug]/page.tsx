@@ -117,7 +117,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
       <div className="site-shell">
         <nav className="zpd-breadcrumb" aria-label="Breadcrumb">
-          <Link prefetch={false} href="/">Home</Link><span>›</span><Link prefetch={false} href="/shop">Shop</Link><span>›</span><span>{product.name}</span>
+          <Link href="/">Home</Link><span>›</span><Link href="/shop">Shop</Link><span>›</span><span>{product.name}</span>
         </nav>
         <ProductPreviewScreen
           slug={slug}
@@ -141,7 +141,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <h2>You may also like</h2>
                 <p>More from this category, plus customer favourites.</p>
               </div>
-              <Link prefetch={false} href={categoryHref} className="btn-outline pdp-related-view">View All</Link>
+              <Link href={categoryHref} className="btn-outline pdp-related-view">View All</Link>
             </div>
             <ProductGrid products={related.slice(0, 4)} />
           </div>

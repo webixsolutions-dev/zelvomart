@@ -29,12 +29,12 @@ export default async function Archive({collection='shop',category,searchParams={
     <label>Sort by<select name="sort" defaultValue={sort}><option value="newest">Newest first</option><option value="popular">Bestselling</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option></select></label>
     <label>Min. price<input type="number" min="0" name="minPrice" defaultValue={read('minPrice')}/></label><label>Max. price<input type="number" min="0" name="maxPrice" defaultValue={read('maxPrice')}/></label>
     <label className="launch-stock-check"><input name="availability" type="checkbox" value="instock" defaultChecked={read('availability')==='instock'}/> In stock only</label>
-    <button className="btn" type="submit">Apply filters</button><Link prefetch={false} className="btn ghost" href={category?`/category/${category}`:collection==='shop'?'/shop-all-products':collection==='deals'?'/deals-and-offers':'/'+collection}>Reset</Link>
+    <button className="btn" type="submit">Apply filters</button><Link className="btn ghost" href={category?`/category/${category}`:collection==='shop'?'/shop-all-products':collection==='deals'?'/deals-and-offers':'/'+collection}>Reset</Link>
    </form>
    <p role="status">{result.error?'Products are temporarily unavailable. Please try again.':`${result.data.total} products${read('q')?' matching your search':''}`}</p>
    <ProductGrid items={result.data.items}/>
    {!result.error&&!result.data.items.length&&<div className="empty-state"><h2>No products found</h2><p>Try a different search or remove a filter.</p></div>}
-   <nav className="launch-pagination" aria-label="Product pages">{result.data.page>1&&<Link prefetch={false} className="btn secondary" href={pageLink(result.data.page-1)}>Previous</Link>}<span>Page {result.data.page} of {Math.max(1,result.data.totalPages)}</span>{result.data.page<result.data.totalPages&&<Link prefetch={false} className="btn" href={pageLink(result.data.page+1)}>Next</Link>}</nav>
+   <nav className="launch-pagination" aria-label="Product pages">{result.data.page>1&&<Link className="btn secondary" href={pageLink(result.data.page-1)}>Previous</Link>}<span>Page {result.data.page} of {Math.max(1,result.data.totalPages)}</span>{result.data.page<result.data.totalPages&&<Link className="btn" href={pageLink(result.data.page+1)}>Next</Link>}</nav>
    <CollectionAbout name={cat?.name||title} text={cat?.about||info.sub}/>
   </div></section>
  </>;

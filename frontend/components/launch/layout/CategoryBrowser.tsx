@@ -57,7 +57,7 @@ const groups: Group[] = [
           <ul className="cat-list">
             {groups.map((x) => (
               <li key={x.key}>
-                <Link prefetch={false}
+                <Link
                   href={x.href}
                   role="menuitem"
                   className={x.key === active ? "active" : ""}
@@ -75,14 +75,14 @@ const groups: Group[] = [
           <div className="cat-preview">
             <div className="cat-preview-head">
               <span>{g.label}</span>
-              <Link prefetch={false} href={g.href} onClick={() => setOpen(false)}>
+              <Link href={g.href} onClick={() => setOpen(false)}>
                 View all <ArrowRight size={13} />
               </Link>
             </div>
             <ul>
               {g.items.slice(0, 6).map((p) => (
                 <li key={p.id}>
-                  <Link prefetch={false} href={`/product/${p.slug}/`} onClick={() => setOpen(false)}>
+                  <Link href={`/product/${p.slug}/`} onClick={() => setOpen(false)}>
                     <Image src={p.image} alt="" width={52} height={52} />
                     <span>
                       <strong>{p.name}</strong>

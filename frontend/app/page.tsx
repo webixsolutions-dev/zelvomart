@@ -131,10 +131,10 @@ export default async function HomePage() {
                 <h2>Need to know something before ordering?</h2>
                 <p>Ask about sizes, colours, delivery to your city or anything else — we&apos;ll reply with real information, not a script.</p>
                 <div className="support-actions">
-                  <Link prefetch={false} href="/contact-us/" className="btn secondary">
+                  <Link href="/contact-us/" className="btn secondary">
                     Contact our team <ArrowRight size={16} />
                   </Link>
-                  <Link prefetch={false} href="/faqs/" className="btn ghost">
+                  <Link href="/faqs/" className="btn ghost">
                     All FAQs
                   </Link>
                 </div>

@@ -33,7 +33,7 @@ export function ProductTabs({ tabs }: { tabs: Tab[] }) {
             ))}
           </div>
         </div>
-        <Link prefetch={false} className="pill" href={tab.href}>
+        <Link className="pill" href={tab.href}>
           View all {tab.label.toLowerCase()} <ArrowRight size={14} />
         </Link>
       </div>

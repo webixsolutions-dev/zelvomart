@@ -38,7 +38,7 @@ export function Hero({ desktop, mobile, alt = "", mobileImageFull = false, eyebr
           {buttons.length > 0 && (
             <div className="hero-buttons">
               {buttons.map((b, i) => (
-                <Link prefetch={false} key={b.href} className={`btn ${i ? "secondary" : ""}`} href={b.href}>
+                <Link key={b.href} className={`btn ${i ? "secondary" : ""}`} href={b.href}>
                   {b.label} <ArrowRight size={16} />
                 </Link>
               ))}

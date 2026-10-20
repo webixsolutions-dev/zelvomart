@@ -81,7 +81,7 @@ export default function ProductGrid({
             key={item.id}
             className="flex flex-col overflow-hidden bg-white border border-slate-200/90 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-200 group rounded-2xl"
           >
-            <Link prefetch={false}
+            <Link
               href={`/product/${item.slug}`}
               className="relative aspect-square w-full overflow-hidden bg-[#f3f5f7] block"
             >
@@ -102,7 +102,7 @@ export default function ProductGrid({
             </Link>
 
             <div className="flex flex-col gap-1 px-2.5 pt-2 pb-2.5">
-              <Link prefetch={false} href={`/product/${item.slug}`} className="block">
+              <Link href={`/product/${item.slug}`} className="block">
                 <h3 className="text-[13px] font-semibold text-slate-900 group-hover:text-sky-700 transition-colors line-clamp-2 leading-tight">
                   {item.name}
                 </h3>
@@ -138,7 +138,7 @@ export default function ProductGrid({
 
               <div className="pt-1">
                 {hasOptions ? (
-                  <Link prefetch={false}
+                  <Link
                     href={`/product/${item.slug}`}
                     className="w-full py-2 px-3 rounded-xl border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 font-bold text-[13px] flex items-center justify-center gap-1.5 transition active:scale-[0.98]"
                   >

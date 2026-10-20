@@ -101,7 +101,7 @@ export function PolicyLayout({ policy }: { policy: PolicyDocument }) {
       <div className={styles.tabsShell}>
         <nav className={`container ${styles.tabs}`} aria-label="Store policies">
           {navigation.map((item) => (
-            <Link prefetch={false} key={item.slug} href={`/${item.slug}/`} aria-current={item.slug === policy.slug ? "page" : undefined}>
+            <Link key={item.slug} href={`/${item.slug}/`} aria-current={item.slug === policy.slug ? "page" : undefined}>
               <Icon name={item.icon} /><span>{item.label}</span>
             </Link>
           ))}

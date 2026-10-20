@@ -11,15 +11,15 @@ export function MobileBottomNav() {
   const is = (p: string) => (p === "/" ? pathname === "/" : pathname.startsWith(p));
   return (
     <nav className="bottom-nav" aria-label="Quick navigation">
-      <Link prefetch={false} href="/" className={is("/") ? "active" : ""}>
+      <Link href="/" className={is("/") ? "active" : ""}>
         <House size={20} />
         Home
       </Link>
-      <Link prefetch={false} href="/shop-all-products/" className={is("/shop") || is("/category") ? "active" : ""}>
+      <Link href="/shop-all-products/" className={is("/shop") || is("/category") ? "active" : ""}>
         <LayoutGrid size={20} />
         Shop
       </Link>
-      <Link prefetch={false} href="/wishlist/" className={is("/wishlist") ? "active" : ""}>
+      <Link href="/wishlist/" className={is("/wishlist") ? "active" : ""}>
         <Heart size={20} />
         Saved
       </Link>
@@ -30,7 +30,7 @@ export function MobileBottomNav() {
         </span>
         Cart
       </button>
-      <Link prefetch={false} href="/my-account/" className={is("/account") ? "active" : ""}>
+      <Link href="/my-account/" className={is("/account") ? "active" : ""}>
         <User size={20} />
         Account
       </Link>

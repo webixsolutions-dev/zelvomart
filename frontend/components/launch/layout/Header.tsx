@@ -62,11 +62,11 @@ export function Header() {
             >
               <WhatsAppIcon size={21} />
             </a>
-            <Link prefetch={false} href="/my-account/" className="head-action only-desktop">
+            <Link href="/my-account/" className="head-action only-desktop">
               <User size={21} />
               <span>Account</span>
             </Link>
-            <Link prefetch={false} href="/wishlist/" className="head-action" aria-label="Wishlist">
+            <Link href="/wishlist/" className="head-action" aria-label="Wishlist">
               <span className="badge-wrap">
                 <Heart size={21} />
                 {ready && wishlist.length > 0 && <b className="count">{wishlist.length}</b>}
@@ -85,16 +85,16 @@ export function Header() {
         <nav className="nav-row only-desktop" aria-label="Categories">
           <div className="container nav-row-inner">
             {categories.map((c) => (
-              <Link prefetch={false} key={c.id} href={`/category/${c.slug}/`} className={active(`/category/${c.slug}/`) ? "active" : ""}>
+              <Link key={c.id} href={`/category/${c.slug}/`} className={active(`/category/${c.slug}/`) ? "active" : ""}>
                 <CategoryIcon id={c.id} size={17} />
                 {c.name}
               </Link>
             ))}
-            <Link prefetch={false} href="/new-arrivals/" className={`nav-new ${active("/new-arrivals/") ? "active" : ""}`}>
+            <Link href="/new-arrivals/" className={`nav-new ${active("/new-arrivals/") ? "active" : ""}`}>
               <Sparkle size={16} />
               New Arrivals
             </Link>
-            <Link prefetch={false} href="/deals-and-offers/" className="deal-link">
+            <Link href="/deals-and-offers/" className="deal-link">
               <BadgePercent size={17} />
               Deals & Offers
             </Link>
@@ -118,7 +118,7 @@ export function Header() {
           <ul className="drawer-cats">
             {categories.map((c) => (
               <li key={c.id}>
-                <Link prefetch={false} href={`/category/${c.slug}/`}>
+                <Link href={`/category/${c.slug}/`}>
                   <span className="drawer-cat-ico">
                     <CategoryIcon id={c.id} />
                   </span>
@@ -129,18 +129,18 @@ export function Header() {
           </ul>
           <p className="drawer-label">Explore</p>
           <ul className="drawer-links">
-            <li><Link prefetch={false} href="/shop-all-products/">All Products</Link></li>
-            <li><Link prefetch={false} href="/new-arrivals/">New Arrivals</Link></li>
-            <li><Link prefetch={false} href="/bestsellers/">Bestsellers</Link></li>
-            <li><Link prefetch={false} href="/deals-and-offers/" className="deal-link">Deals & Offers</Link></li>
+            <li><Link href="/shop-all-products/">All Products</Link></li>
+            <li><Link href="/new-arrivals/">New Arrivals</Link></li>
+            <li><Link href="/bestsellers/">Bestsellers</Link></li>
+            <li><Link href="/deals-and-offers/" className="deal-link">Deals & Offers</Link></li>
           </ul>
           <p className="drawer-label">Help</p>
           <ul className="drawer-links">
-            <li><Link prefetch={false} href="/my-account/">My Account</Link></li>
-            <li><Link prefetch={false} href="/track-your-order/">Track Order</Link></li>
-            <li><Link prefetch={false} href="/faqs/">FAQs</Link></li>
-            <li><Link prefetch={false} href="/about-us/">About Zelvomart</Link></li>
-            <li><Link prefetch={false} href="/contact-us/">Contact</Link></li>
+            <li><Link href="/my-account/">My Account</Link></li>
+            <li><Link href="/track-your-order/">Track Order</Link></li>
+            <li><Link href="/faqs/">FAQs</Link></li>
+            <li><Link href="/about-us/">About Zelvomart</Link></li>
+            <li><Link href="/contact-us/">Contact</Link></li>
           </ul>
           <a className="btn wa block" href={waLink(site.whatsappNumber)} target="_blank" rel="noopener noreferrer">
             <WhatsAppIcon /> Chat on WhatsApp

@@ -37,7 +37,7 @@ export default function ProductCard({ product }: { product: Product }) {
   return (
     <article className="mock-product-card">
       <div className="mock-product-media">
-        <Link prefetch={false} href={`/product/${product.slug}/`}>
+        <Link href={`/product/${product.slug}/`}>
           <Image
             src={imageSrc}
             alt={(imageSrc === product.image && product.imageAlt) || product.name}
@@ -54,7 +54,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
       <div className="mock-product-copy zm-product-copy">
         <div className="zm-product-title-block">
-          <Link prefetch={false} href={`/product/${product.slug}/`} className="mock-product-title zm-product-title">{product.name}</Link>
+          <Link href={`/product/${product.slug}/`} className="mock-product-title zm-product-title">{product.name}</Link>
         </div>
 
         <div className="mock-product-rating zm-product-rating">
@@ -100,7 +100,7 @@ export default function ProductCard({ product }: { product: Product }) {
               <span>Add to Cart</span>
             </button>
           ) : (
-            <Link prefetch={false} className="zm-product-cart-button" href={`/product/${product.slug}/`}>
+            <Link className="zm-product-cart-button" href={`/product/${product.slug}/`}>
               <svg
                 width="18"
                 height="18"

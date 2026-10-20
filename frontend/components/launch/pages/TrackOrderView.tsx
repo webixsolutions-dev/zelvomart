@@ -288,10 +288,10 @@ export function TrackOrderView() {
               Easy next steps.
             </h2>
             <p>Check the basics here, or ask our team for a little guidance.</p>
-            <Link prefetch={false} className={s.textLink} href="/contact-us/">
+            <Link className={s.textLink} href="/contact-us/">
               Visit customer care <ArrowRight size={16} />
             </Link>
-            <Link prefetch={false} className={s.guide} href="/shipping-policy/">
+            <Link className={s.guide} href="/shipping-policy/">
               <span className={s.guideIcon} aria-hidden="true">
                 <Truck size={20} />
               </span>
@@ -424,7 +424,7 @@ function OrderResult({ order }: { order: TrackedOrder }) {
                   </small>
                 </div>
                 {delivered && l.slug && (
-                  <Link prefetch={false} className={`btn ghost sm ${s.review}`} href={`/product/${l.slug}/#reviews`}>
+                  <Link className={`btn ghost sm ${s.review}`} href={`/product/${l.slug}/#reviews`}>
                     <Star size={15} /> Leave a review
                   </Link>
                 )}

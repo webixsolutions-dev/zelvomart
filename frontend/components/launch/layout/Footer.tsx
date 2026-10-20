@@ -22,7 +22,7 @@ const customerServiceLinks = [
 
 function FooterNavLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link prefetch={false} href={href} className={styles.navLink}>
+    <Link href={href} className={styles.navLink}>
       <ChevronRight size={15} strokeWidth={3} aria-hidden="true" focusable="false" />
       <span>{children}</span>
     </Link>
@@ -36,7 +36,7 @@ export function Footer() {
       <div className="container">
         <div className="footer-inner">
           <div className="footer-brand">
-            <Link prefetch={false} href="/" className={styles.logo} aria-label="Zelvomart — home">
+            <Link href="/" className={styles.logo} aria-label="Zelvomart — home">
               <Image src="/launch/brand/zelvomart-logo-white.png" alt="Zelvomart" width={320} height={211} />
             </Link>
             <p>

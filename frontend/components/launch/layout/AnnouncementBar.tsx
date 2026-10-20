@@ -32,8 +32,8 @@ export function AnnouncementBar() {
           </ul>
         </div>
         <div className="topbar-links">
-          <Link prefetch={false} href="/track-your-order/">Track order</Link>
-          <Link prefetch={false} href="/contact-us/">Contact us</Link>
+          <Link href="/track-your-order/">Track order</Link>
+          <Link href="/contact-us/">Contact us</Link>
           <a href={waLink(site.whatsappNumber)} target="_blank" rel="noopener noreferrer">
             <WhatsAppIcon size={13} /> {site.phoneDisplay}
           </a>

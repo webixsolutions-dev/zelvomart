@@ -20,7 +20,7 @@ export function ProductCard({ p, priority = false, featured = false }: { p: Prod
       <div className="product-meta">
         <div className="kicker">{p.categoryName}</div>
         <h3>
-          <Link prefetch={false} href={href}>{p.name}</Link>
+          <Link href={href}>{p.name}</Link>
         </h3>
         <Stars rating={p.rating} count={p.reviewCount} size={13} className="card-stars" />
         {featured && <p className="featured-blurb">{p.tagline}</p>}
@@ -37,7 +37,7 @@ export function ProductCard({ p, priority = false, featured = false }: { p: Prod
   return (
     <article className={featured ? "product-card product-card-featured" : "product-card"}>
       <div className="product-photo">
-        <Link prefetch={false} href={href} tabIndex={-1} aria-hidden="true">
+        <Link href={href} tabIndex={-1} aria-hidden="true">
           <Image
             src={p.image}
             alt={p.name}

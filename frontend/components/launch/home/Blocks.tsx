@@ -63,7 +63,7 @@ export function CategoryGrid() {
       {categories.map((category) => {
         const card = categoryCards.find(c=>c.id===categoryArtwork(category.slug).id) || {id:category.id,line:category.tagline,desc:category.intro,short:category.short};
         return (
-          <Link prefetch={false} className="category-card" href={`/category/${category.slug}/`} key={category.id}>
+          <Link className="category-card" href={`/category/${category.slug}/`} key={category.id}>
             <span className="category-media">
               <FillImage
                 src={category.image}
@@ -120,7 +120,7 @@ export function CollectionCards() {
   return (
     <div className="collection-grid">
       {promos.map((c) => (
-        <Link prefetch={false} href={categories.find(x=>categoryArtwork(x.slug).id===c.id)?`/category/${categories.find(x=>categoryArtwork(x.slug).id===c.id)!.slug}/`:"/shop-all-products/"} className="collection-card" key={c.id}>
+        <Link href={categories.find(x=>categoryArtwork(x.slug).id===c.id)?`/category/${categories.find(x=>categoryArtwork(x.slug).id===c.id)!.slug}/`:"/shop-all-products/"} className="collection-card" key={c.id}>
           <FillImage src={`${c.image}-900.webp`} srcSet={`${c.image}-600.webp 600w, ${c.image}-900.webp 900w`} sizes="(max-width:760px) 100vw, 420px" />
           <span className="collection-shade" aria-hidden="true" />
           <span className="collection-copy">
