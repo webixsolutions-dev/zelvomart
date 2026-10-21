@@ -107,7 +107,9 @@ async function main() {
   const deliveryValue = currentDelivery?.value as { mode?: string; flatRate?: number; freeAbove?: number } | null;
   const legacyFree =
     !deliveryValue ||
-    ((deliveryValue.mode || "FREE") === "FREE" && Number(deliveryValue.flatRate || 0) === 0 && Number(deliveryValue.freeAbove || 0) === 0);
+    ((deliveryValue.mode || "FREE") === "FREE" &&
+      Number(deliveryValue.flatRate || 0) === 0 &&
+      Number(deliveryValue.freeAbove || 0) === 0);
   if (legacyFree) {
     await prisma.setting.update({
       where: { key: "store.delivery" },

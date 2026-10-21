@@ -46,7 +46,9 @@ export function databaseSsl(): ConnectionOptions {
   if (process.env.DATABASE_SSL_VERIFY === "false") {
     if (!warned) {
       warned = true;
-      console.warn("[db] DATABASE_SSL_VERIFY=false: the database certificate is NOT verified. Remove it once the connection works.");
+      console.warn(
+        "[db] DATABASE_SSL_VERIFY=false: the database certificate is NOT verified. Remove it once the connection works.",
+      );
     }
     return { rejectUnauthorized: false };
   }

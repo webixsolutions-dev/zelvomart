@@ -1,4 +1,4 @@
-import {validateCoupon,couponCode} from './coupons';
+import { validateCoupon, couponCode } from "./coupons";
 import { Prisma, type OrderStatus } from "../generated/prisma/client";
 import { prisma } from "./db";
 import { getSetting } from "./settings";
@@ -13,7 +13,7 @@ const ORDER_TX_OPTIONS = { maxWait: 15_000, timeout: 90_000 };
 
 type CheckoutInput = {
   staffCreated?: boolean;
-  trackingAllowed?:boolean;
+  trackingAllowed?: boolean;
   idempotencyKey: string;
   fullName: string;
   phone: string;
@@ -28,9 +28,9 @@ type CheckoutInput = {
   source?: Record<string, unknown>;
   fbp?: string;
   fbc?: string;
-  ttp?:string;
-  ttclid?:string;
-  visitorId?:string;
+  ttp?: string;
+  ttclid?: string;
+  visitorId?: string;
   replaySessionId?: string;
   clientIp?: string;
   clientUserAgent?: string;
@@ -41,16 +41,21 @@ function decimal(value: number) {
   return new Prisma.Decimal(value.toFixed(2));
 }
 
-export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:boolean}={}) {
+export async function createOrder(input: CheckoutInput, options: { dispatchJobs?: boolean } = {}) {
   const existing = await prisma.order.findUnique({
     where: { idempotencyKey: input.idempotencyKey },
     include: { items: true },
   });
   if (existing) return existing;
 
-  const [deliveryRule,paymentMethods,bundleDiscount]=await Promise.all([getSetting<any>('store.delivery',{}),getSetting<string[]>('payments.methods',['COD']),getSetting<number>('store.bundleDefaultDiscountPercent',5)]);
-  if(!paymentMethods.includes(input.paymentMethod))throw new Error('PAYMENT_METHOD_DISABLED');
-  if(!input.fullName.trim()||!input.phone||!input.city.trim()||!input.address.trim())throw new Error('REQUIRED_FIELDS');
+  const [deliveryRule, paymentMethods, bundleDiscount] = await Promise.all([
+    getSetting<any>("store.delivery", {}),
+    getSetting<string[]>("payments.methods", ["COD"]),
+    getSetting<number>("store.bundleDefaultDiscountPercent", 5),
+  ]);
+  if (!paymentMethods.includes(input.paymentMethod)) throw new Error("PAYMENT_METHOD_DISABLED");
+  if (!input.fullName.trim() || !input.phone || !input.city.trim() || !input.address.trim())
+    throw new Error("REQUIRED_FIELDS");
 
   const productIds = [...new Set(input.cart.map((item) => item.productId))];
   const products = await prisma.product.findMany({
@@ -82,12 +87,16 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
     const product = productMap.get(item.productId);
     if (!product) throw new Error("PRODUCT_NOT_AVAILABLE");
 
-    const variant = item.variantId ? product.variants.find((row) => row.id === item.variantId && row.active) : undefined;
+    const variant = item.variantId
+      ? product.variants.find((row) => row.id === item.variantId && row.active)
+      : undefined;
     if (item.variantId && !variant) throw new Error("VARIANT_NOT_AVAILABLE");
     // A product with variations is bought as one of its variations.
     if (!variant && product.variants.some((row) => row.active)) throw new Error("VARIANT_REQUIRED");
 
-    const base = variantPriceSummary(priceSummary(product.price, product.salePrice), { priceOverride: variant?.priceOverride }).price;
+    const base = variantPriceSummary(priceSummary(product.price, product.salePrice), {
+      priceOverride: variant?.priceOverride,
+    }).price;
     const offerSize: 1 | 2 = item.bundleSize === 2 && product.bundleEnabled ? 2 : 1;
     const priced = bundleLineTotal(base, item.quantity, offerSize, Number(bundleDiscount));
     // Track ON: enough quantity. Track OFF: the stock status must be In stock.
@@ -123,7 +132,7 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const recent = await prisma.order.findMany({
     where: { phone: input.phone, createdAt: { gte: since } },
-    select: {id:true},
+    select: { id: true },
     take: 1,
   });
   const possibleDuplicate = recent.length > 0;
@@ -183,19 +192,24 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
       : [];
 
     const source = input.source || {};
-    const firstTouch = source.firstTouch && typeof source.firstTouch === "object" ? source.firstTouch as Record<string, unknown> : {};
-    const lastTouch = source.lastTouch && typeof source.lastTouch === "object" ? source.lastTouch as Record<string, unknown> : {};
+    const firstTouch =
+      source.firstTouch && typeof source.firstTouch === "object" ? (source.firstTouch as Record<string, unknown>) : {};
+    const lastTouch =
+      source.lastTouch && typeof source.lastTouch === "object" ? (source.lastTouch as Record<string, unknown>) : {};
     const rawSource = source.utm_source || lastTouch.utm_source || firstTouch.utm_source || "direct";
     const sourceName = (() => {
-      const value = String(rawSource || "direct").trim().toLowerCase();
+      const value = String(rawSource || "direct")
+        .trim()
+        .toLowerCase();
       if (["fb", "facebook"].includes(value) || value.includes("facebook")) return "facebook";
       if (["ig", "instagram"].includes(value) || value.includes("instagram")) return "instagram";
       if (value.includes("google")) return "google";
       if (value.includes("tiktok")) return "tiktok";
       return value || "direct";
     })();
-    if(input.couponCode)await tx.$queryRaw`SELECT "id" FROM "Coupon" WHERE "code"=${couponCode(input.couponCode)} FOR UPDATE`;
-    const coupon=await validateCoupon(input.couponCode,discountedSubtotal,tx);
+    if (input.couponCode)
+      await tx.$queryRaw`SELECT "id" FROM "Coupon" WHERE "code"=${couponCode(input.couponCode)} FOR UPDATE`;
+    const coupon = await validateCoupon(input.couponCode, discountedSubtotal, tx);
     const order = await tx.order.create({
       data: {
         orderNumber,
@@ -207,28 +221,29 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
         city: input.city,
         address: input.address,
         postcode: input.postcode || null,
-        notes: [input.orderNotes, !cityKnown ? "City entered as free text; review before booking." : null]
-          .filter(Boolean)
-          .join("\n") || null,
+        notes:
+          [input.orderNotes, !cityKnown ? "City entered as free text; review before booking." : null]
+            .filter(Boolean)
+            .join("\n") || null,
         status: initialStatus,
         paymentMethod: input.paymentMethod,
         subtotal: decimal(subtotal),
         bundleSaving: decimal(bundleSaving),
         deliveryFee: decimal(deliveryFee),
         codFee: decimal(0),
-        total: decimal(total-coupon.discount),
-        couponCode:coupon.code,
-        couponDiscount:decimal(coupon.discount),
+        total: decimal(total - coupon.discount),
+        couponCode: coupon.code,
+        couponDiscount: decimal(coupon.discount),
         source: sourceName,
         staffCreated: input.staffCreated === true,
-        test:input.trackingAllowed===false,
+        test: input.trackingAllowed === false,
         firstTouch: (source.firstTouch as any) || null,
-        lastTouch: (source.lastTouch as any) || source as any,
+        lastTouch: (source.lastTouch as any) || (source as any),
         fbp: input.fbp,
         fbc: input.fbc,
-        ttp:input.ttp,
-        ttclid:input.ttclid,
-        visitorId:input.visitorId,
+        ttp: input.ttp,
+        ttclid: input.ttclid,
+        visitorId: input.visitorId,
         replaySessionId: input.replaySessionId || null,
         clientIp: input.clientIp || null,
         clientUserAgent: input.clientUserAgent || null,
@@ -260,16 +275,26 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
       include: { items: true },
     });
 
-    if(coupon.code)await tx.coupon.update({where:{code:coupon.code},data:{usedCount:{increment:1}}});
+    if (coupon.code) await tx.coupon.update({ where: { code: coupon.code }, data: { usedCount: { increment: 1 } } });
     const phoneTail = input.phone.replace(/\D/g, "").slice(-10);
     if (phoneTail) {
       await tx.abandonedCheckout.updateMany({
-        where: { OR:[{phone:{endsWith:phoneTail}},...(input.email?[{email:input.email.trim().toLowerCase()}]:[])], convertedAt: null },
+        where: {
+          OR: [
+            { phone: { endsWith: phoneTail } },
+            ...(input.email ? [{ email: input.email.trim().toLowerCase() }] : []),
+          ],
+          convertedAt: null,
+        },
         data: { convertedAt: new Date() },
       });
     }
 
-    if(order.replaySessionId)await tx.sessionReplay.updateMany({where:{id:order.replaySessionId},data:{ordered:true,reachedCheckout:true}});
+    if (order.replaySessionId)
+      await tx.sessionReplay.updateMany({
+        where: { id: order.replaySessionId },
+        data: { ordered: true, reachedCheckout: true },
+      });
     const jobs = await Promise.all([
       tx.job.create({ data: { name: "order-team-email", orderId: order.id, payload: { orderId: order.id } } }),
       tx.job.create({ data: { name: "customer-order-email", orderId: order.id, payload: { orderId: order.id } } }),
@@ -284,7 +309,7 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
     return { order, jobIds: jobs.map((job) => job.id), soldOutSlugs };
   }, ORDER_TX_OPTIONS);
 
-  if(options.dispatchJobs!==false)await Promise.allSettled(result.jobIds.map((id) => dispatchJobRow(id)));
+  if (options.dispatchJobs !== false) await Promise.allSettled(result.jobIds.map((id) => dispatchJobRow(id)));
   return Object.assign(result.order, { jobIds: result.jobIds, soldOutSlugs: result.soldOutSlugs });
 }
 
@@ -299,46 +324,83 @@ export async function restoreOrderStock(orderId: string) {
   await prisma.$transaction(async (tx) => {
     for (const item of restock) {
       if (item.variantId) {
-        await tx.variant.updateMany({ where: { id: item.variantId, trackStock: true }, data: { stock: { increment: item.quantity } } });
+        await tx.variant.updateMany({
+          where: { id: item.variantId, trackStock: true },
+          data: { stock: { increment: item.quantity } },
+        });
       } else if (item.productId) {
-        await tx.product.updateMany({ where: { id: item.productId, trackStock: true }, data: { stock: { increment: item.quantity } } });
+        await tx.product.updateMany({
+          where: { id: item.productId, trackStock: true },
+          data: { stock: { increment: item.quantity } },
+        });
       }
     }
     // Put back once only: cancelling, reopening and cancelling the same order again must not add stock twice.
-    await tx.orderItem.updateMany({ where: { id: { in: restock.map((item) => item.id) } }, data: { stockReduced: false } });
+    await tx.orderItem.updateMany({
+      where: { id: { in: restock.map((item) => item.id) } },
+      data: { stockReduced: false },
+    });
   }, ORDER_TX_OPTIONS);
 }
 
 /** Status changes share the edit lock, so cancellation cannot race item edits. */
-export async function transitionOrder(orderId:string,next:OrderStatus,userId?:string,note?:string,tracking?:string|null){
- return prisma.$transaction(async tx=>{
-  await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${orderId}))`;
-  const order=await tx.order.findUniqueOrThrow({where:{id:orderId},include:{items:true}});
-  const closed=(status:string)=>['CANCELLED','RETURNED'].includes(status);
-  if(!closed(order.status)&&closed(next)){
-   for(const item of [...order.items].sort((a,b)=>(a.variantId||a.productId||'').localeCompare(b.variantId||b.productId||''))){
-    if(!item.stockReduced)continue;
-    if(item.variantId)await tx.variant.updateMany({where:{id:item.variantId},data:{stock:{increment:item.quantity}}});
-    else if(item.productId)await tx.product.updateMany({where:{id:item.productId},data:{stock:{increment:item.quantity}}});
-   }
-   await tx.orderItem.updateMany({where:{orderId},data:{stockReduced:false}});
-  }else if(closed(order.status)&&!closed(next)){
-   for(const item of [...order.items].sort((a,b)=>(a.variantId||a.productId||'').localeCompare(b.variantId||b.productId||''))){
-    if(item.stockReduced)continue;
-    const stock=item.variantId?await tx.variant.findUnique({where:{id:item.variantId}}):item.productId?await tx.product.findUnique({where:{id:item.productId}}):null;
-    if(!stock||!canSell(stock,item.quantity))throw new Error('This order cannot be reopened because an item is unavailable.');
-    if(!stock.trackStock)continue;
-    const where={id:stock.id,stock:{gte:item.quantity},trackStock:true};
-    const changed=item.variantId?await tx.variant.updateMany({where,data:{stock:{decrement:item.quantity}}}):await tx.product.updateMany({where,data:{stock:{decrement:item.quantity}}});
-    if(changed.count!==1)throw new Error('Not enough stock to reopen this order.');
-    await tx.orderItem.update({where:{id:item.id},data:{stockReduced:true}});
-   }
-  }
-  await tx.order.update({where:{id:orderId},data:{status:next,...(tracking!==undefined?{postexTracking:tracking}:{})}});
-  if(order.status!==next){
-   if(next==='RETURNED'&&order.customerId){const prior=await tx.orderStatusHistory.count({where:{orderId,to:'RETURNED'}});if(!prior)await tx.customer.update({where:{id:order.customerId},data:{refusalCount:{increment:1}}});}
-   await tx.orderStatusHistory.create({data:{orderId,from:order.status,to:next,userId,note:note||null}});
-  }
-  return order;
- },ORDER_TX_OPTIONS);
+export async function transitionOrder(
+  orderId: string,
+  next: OrderStatus,
+  userId?: string,
+  note?: string,
+  tracking?: string | null,
+) {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${orderId}))`;
+    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+    const closed = (status: string) => ["CANCELLED", "RETURNED"].includes(status);
+    if (!closed(order.status) && closed(next)) {
+      for (const item of [...order.items].sort((a, b) =>
+        (a.variantId || a.productId || "").localeCompare(b.variantId || b.productId || ""),
+      )) {
+        if (!item.stockReduced) continue;
+        if (item.variantId)
+          await tx.variant.updateMany({ where: { id: item.variantId }, data: { stock: { increment: item.quantity } } });
+        else if (item.productId)
+          await tx.product.updateMany({ where: { id: item.productId }, data: { stock: { increment: item.quantity } } });
+      }
+      await tx.orderItem.updateMany({ where: { orderId }, data: { stockReduced: false } });
+    } else if (closed(order.status) && !closed(next)) {
+      for (const item of [...order.items].sort((a, b) =>
+        (a.variantId || a.productId || "").localeCompare(b.variantId || b.productId || ""),
+      )) {
+        if (item.stockReduced) continue;
+        const stock = item.variantId
+          ? await tx.variant.findUnique({ where: { id: item.variantId } })
+          : item.productId
+            ? await tx.product.findUnique({ where: { id: item.productId } })
+            : null;
+        if (!stock || !canSell(stock, item.quantity))
+          throw new Error("This order cannot be reopened because an item is unavailable.");
+        if (!stock.trackStock) continue;
+        const where = { id: stock.id, stock: { gte: item.quantity }, trackStock: true };
+        const changed = item.variantId
+          ? await tx.variant.updateMany({ where, data: { stock: { decrement: item.quantity } } })
+          : await tx.product.updateMany({ where, data: { stock: { decrement: item.quantity } } });
+        if (changed.count !== 1) throw new Error("Not enough stock to reopen this order.");
+        await tx.orderItem.update({ where: { id: item.id }, data: { stockReduced: true } });
+      }
+    }
+    await tx.order.update({
+      where: { id: orderId },
+      data: { status: next, ...(tracking !== undefined ? { postexTracking: tracking } : {}) },
+    });
+    if (order.status !== next) {
+      if (next === "RETURNED" && order.customerId) {
+        const prior = await tx.orderStatusHistory.count({ where: { orderId, to: "RETURNED" } });
+        if (!prior)
+          await tx.customer.update({ where: { id: order.customerId }, data: { refusalCount: { increment: 1 } } });
+      }
+      await tx.orderStatusHistory.create({
+        data: { orderId, from: order.status, to: next, userId, note: note || null },
+      });
+    }
+    return order;
+  }, ORDER_TX_OPTIONS);
 }

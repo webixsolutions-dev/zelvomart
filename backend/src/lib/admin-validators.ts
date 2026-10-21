@@ -9,10 +9,19 @@ import { z } from "zod";
 const blank = (value: unknown) => value === "" || value === undefined || value === null;
 
 /** A money amount: a finite number ≥ 0; "" and null mean "not set". */
-const optionalAmount = z.preprocess((v) => (blank(v) ? null : Number(v)), z.number().finite().min(0).max(100_000_000).nullable());
-const amount = z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number({ error: "Enter a price." }).finite().min(0).max(100_000_000));
+const optionalAmount = z.preprocess(
+  (v) => (blank(v) ? null : Number(v)),
+  z.number().finite().min(0).max(100_000_000).nullable(),
+);
+const amount = z.preprocess(
+  (v) => (v === "" || v == null ? undefined : Number(v)),
+  z.number({ error: "Enter a price." }).finite().min(0).max(100_000_000),
+);
 const percent = z.preprocess((v) => (blank(v) ? null : Number(v)), z.number().finite().min(0).max(100).nullable());
-const wholeNumber = z.preprocess((v) => (blank(v) ? undefined : Number(v)), z.number().int().min(0).max(1_000_000).optional());
+const wholeNumber = z.preprocess(
+  (v) => (blank(v) ? undefined : Number(v)),
+  z.number().int().min(0).max(1_000_000).optional(),
+);
 const text = (max: number) => z.preprocess((v) => (blank(v) ? null : v), z.string().max(max).nullable());
 
 /** Lower-case letters, digits, hyphens and underscores (and %-encoded characters from WordPress imports). */
@@ -33,7 +42,8 @@ const isWebUrlOrPath = (value: string) => {
   }
 };
 /** A link the storefront may render: an absolute http(s) URL or a site path. Never javascript:/data:. */
-const webLink = (max = 2000) => z.string().trim().max(max).refine(isWebUrlOrPath, "Use a full https:// link or a path starting with /.");
+const webLink = (max = 2000) =>
+  z.string().trim().max(max).refine(isWebUrlOrPath, "Use a full https:// link or a path starting with /.");
 const optionalWebLink = (max = 2000) => z.preprocess((v) => (blank(v) ? null : v), webLink(max).nullable());
 
 const productStatus = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
@@ -96,7 +106,10 @@ export const productCreateSchema = z.looseObject(createShape).superRefine((value
 
 /** PATCH: every field optional; the sale/regular comparison is made in the route against the saved values. */
 export const productUpdateSchema = z.looseObject(
-  Object.fromEntries(Object.entries(productFields).map(([key, schema]) => [key, schema.optional()])) as Record<string, z.ZodType>,
+  Object.fromEntries(Object.entries(productFields).map(([key, schema]) => [key, schema.optional()])) as Record<
+    string,
+    z.ZodType
+  >,
 );
 
 export const variantCreateSchema = variant;
@@ -104,7 +117,10 @@ export const variantCreateSchema = variant;
 const categoryFields = {
   name: z.string().trim().min(1, "Add a category name.").max(100),
   slug,
-  sortOrder: z.preprocess((v) => (blank(v) ? undefined : Number(v)), z.number().int().min(-100_000).max(100_000).optional()),
+  sortOrder: z.preprocess(
+    (v) => (blank(v) ? undefined : Number(v)),
+    z.number().int().min(-100_000).max(100_000).optional(),
+  ),
   imageUrl: optionalWebLink(),
   description: text(5000),
   seoTitle: text(200),
@@ -117,7 +133,9 @@ export const categoryCreateSchema = z.looseObject({
   seoTitle: categoryFields.seoTitle.optional(),
   seoDescription: categoryFields.seoDescription.optional(),
 });
-export const categoryUpdateSchema = z.looseObject(Object.fromEntries(Object.entries(categoryFields).map(([k, s]) => [k, s.optional()])));
+export const categoryUpdateSchema = z.looseObject(
+  Object.fromEntries(Object.entries(categoryFields).map(([k, s]) => [k, s.optional()])),
+);
 
 export const redirectSchema = z.looseObject({
   sourcePath: z
@@ -125,7 +143,10 @@ export const redirectSchema = z.looseObject({
     .trim()
     .min(2, "Enter the old path, e.g. /old-page/.")
     .max(500)
-    .refine((v) => v.startsWith("/") && !v.startsWith("//") && !/\s/.test(v), "The old URL must be a path on this site, starting with /."),
+    .refine(
+      (v) => v.startsWith("/") && !v.startsWith("//") && !/\s/.test(v),
+      "The old URL must be a path on this site, starting with /.",
+    ),
   destination: webLink(2000),
   permanent: z.boolean().optional(),
 });
@@ -135,7 +156,11 @@ export const redirectSchema = z.looseObject({
  * issue, and returns false so the route stops. The route keeps using the original body: a PATCH must only
  * touch the fields that were sent, and the parsed output fills absent optional fields.
  */
-export function validAdminBody(schema: z.ZodType, body: unknown, res: { status: (code: number) => { json: (value: unknown) => unknown } }): boolean {
+export function validAdminBody(
+  schema: z.ZodType,
+  body: unknown,
+  res: { status: (code: number) => { json: (value: unknown) => unknown } },
+): boolean {
   const result = schema.safeParse(body ?? {});
   if (result.success) return true;
   const issues = result.error.issues.map((issue) => ({ field: issue.path.join("."), message: issue.message }));

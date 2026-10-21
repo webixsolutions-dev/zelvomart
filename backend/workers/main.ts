@@ -1,28 +1,36 @@
-import {trackingHealth} from "../src/lib/tracking-health";
+import { trackingHealth } from "../src/lib/tracking-health";
 import "dotenv/config";
 import { prisma } from "../src/lib/db";
 import { dispatchJobRow, getBoss, jobResultStatus } from "../src/lib/jobs";
-import { sendCustomerOrderEmail, sendCustomerStatusEmail, sendFailureAlert, sendOrderTeamEmail } from "../src/lib/email";
+import {
+  sendCustomerOrderEmail,
+  sendCustomerStatusEmail,
+  sendFailureAlert,
+  sendOrderTeamEmail,
+} from "../src/lib/email";
 import { sendMetaServerEvent } from "../src/lib/meta";
 import { sendTikTokServerEvent } from "../src/lib/tiktok";
 import { Resend } from "resend";
 import { money } from "../src/lib/format";
 import { setSetting, getSetting } from "../src/lib/settings";
-import {assertWorkerDatabase,expiredBacklog} from '../src/lib/launch-jobs';
+import { assertWorkerDatabase, expiredBacklog } from "../src/lib/launch-jobs";
 
 async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>) {
   if (jobLogId) {
-    const row=await prisma.job.findUnique({where:{id:jobLogId}});
-    if(!row||row.status==='SKIPPED'||row.status==='SUCCEEDED')return {skipped:'JOB_ALREADY_HANDLED'};
-    if(expiredBacklog(row.createdAt)){
-      await prisma.job.updateMany({where:{id:jobLogId,status:{in:['QUEUED','FAILED']}},data:{status:'SKIPPED',error:'STALE_BACKLOG: older than seven days.',finishedAt:new Date()}});
-      return {skipped:'STALE_BACKLOG'};
+    const row = await prisma.job.findUnique({ where: { id: jobLogId } });
+    if (!row || row.status === "SKIPPED" || row.status === "SUCCEEDED") return { skipped: "JOB_ALREADY_HANDLED" };
+    if (expiredBacklog(row.createdAt)) {
+      await prisma.job.updateMany({
+        where: { id: jobLogId, status: { in: ["QUEUED", "FAILED"] } },
+        data: { status: "SKIPPED", error: "STALE_BACKLOG: older than seven days.", finishedAt: new Date() },
+      });
+      return { skipped: "STALE_BACKLOG" };
     }
-    const claim=await prisma.job.updateMany({
-      where: { id: jobLogId, status:{in:['QUEUED','FAILED']} },
+    const claim = await prisma.job.updateMany({
+      where: { id: jobLogId, status: { in: ["QUEUED", "FAILED"] } },
       data: { status: "RUNNING", attempts: { increment: 1 }, startedAt: new Date(), error: null },
     });
-    if(!claim.count)return {skipped:'JOB_ALREADY_CLAIMED'};
+    if (!claim.count) return { skipped: "JOB_ALREADY_CLAIMED" };
   }
 
   try {
@@ -30,7 +38,11 @@ async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>)
     if (jobLogId) {
       await prisma.job.update({
         where: { id: jobLogId },
-        data: { status: jobResultStatus(result), error:result&&typeof result==="object"&&"skipped" in result?String(result.skipped):null,finishedAt: new Date() },
+        data: {
+          status: jobResultStatus(result),
+          error: result && typeof result === "object" && "skipped" in result ? String(result.skipped) : null,
+          finishedAt: new Date(),
+        },
       });
     }
     return result;
@@ -49,12 +61,33 @@ async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>)
 
 async function main() {
   assertWorkerDatabase(process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL);
-  if(process.env.WORKER_BACKLOG_REVIEWED!=='true')throw new Error('Run scripts/review-worker-backlog.ts, review the pending sends, then set WORKER_BACKLOG_REVIEWED=true before starting.');
+  if (process.env.WORKER_BACKLOG_REVIEWED !== "true")
+    throw new Error(
+      "Run scripts/review-worker-backlog.ts, review the pending sends, then set WORKER_BACKLOG_REVIEWED=true before starting.",
+    );
   const boss = await getBoss();
-  for(const name of ['order-team-email','customer-order-email','customer-status-email','meta-event','meta-purchase','tiktok-event','tiktok-purchase','daily-summary','tracking-health-check','abandoned-checkout-scan','rate-limit-cleanup','session-replay-retention-cleanup','job-recovery'])await boss.createQueue(name);
-  const heartbeat=()=>setSetting('worker.heartbeat',{at:new Date().toISOString(),pid:process.pid}).catch(error=>console.error('Worker heartbeat failed',error));
-  await heartbeat();setInterval(()=>void heartbeat(),30000);
-
+  for (const name of [
+    "order-team-email",
+    "customer-order-email",
+    "customer-status-email",
+    "meta-event",
+    "meta-purchase",
+    "tiktok-event",
+    "tiktok-purchase",
+    "daily-summary",
+    "tracking-health-check",
+    "abandoned-checkout-scan",
+    "rate-limit-cleanup",
+    "session-replay-retention-cleanup",
+    "job-recovery",
+  ])
+    await boss.createQueue(name);
+  const heartbeat = () =>
+    setSetting("worker.heartbeat", { at: new Date().toISOString(), pid: process.pid }).catch((error) =>
+      console.error("Worker heartbeat failed", error),
+    );
+  await heartbeat();
+  setInterval(() => void heartbeat(), 30000);
 
   await boss.work("order-team-email", async ([job]) => {
     const data = job.data as any;
@@ -73,18 +106,20 @@ async function main() {
 
   await boss.work("meta-event", async ([job]) => {
     const data = job.data as any;
-    return withJobLog(data.jobLogId, () => sendMetaServerEvent({
-      eventName: String(data.eventName),
-      eventId: String(data.eventId),
-      sourceUrl: data.sourceUrl || undefined,
-      userAgent: data.userAgent || undefined,
-      ip: data.ip || undefined,
-      fbp: data.fbp || undefined,
-      fbc: data.fbc || undefined,
-      eventTime:data.eventTime,
-      externalId:data.visitorId||undefined,
-      customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
-    }));
+    return withJobLog(data.jobLogId, () =>
+      sendMetaServerEvent({
+        eventName: String(data.eventName),
+        eventId: String(data.eventId),
+        sourceUrl: data.sourceUrl || undefined,
+        userAgent: data.userAgent || undefined,
+        ip: data.ip || undefined,
+        fbp: data.fbp || undefined,
+        fbc: data.fbc || undefined,
+        eventTime: data.eventTime,
+        externalId: data.visitorId || undefined,
+        customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
+      }),
+    );
   });
 
   await boss.work("meta-purchase", async ([job]) => {
@@ -94,14 +129,14 @@ async function main() {
         where: { id: data.orderId },
         include: { items: true },
       });
-      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return {skipped:"ORDER_EXCLUDED"};
+      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return { skipped: "ORDER_EXCLUDED" };
 
       const names = order.fullName.trim().split(/\s+/);
       return sendMetaServerEvent({
         eventName: data.eventName || "Purchase",
-        eventId: data.eventName?`${order.orderNumber}:${data.eventName}`:order.orderNumber,
+        eventId: data.eventName ? `${order.orderNumber}:${data.eventName}` : order.orderNumber,
         orderId: order.id,
-        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL||"https://zelvomart.vercel.app"}/checkout/success/${order.orderNumber}`,
+        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app"}/checkout/success/${order.orderNumber}`,
         fbp: order.fbp || undefined,
         fbc: order.fbc || undefined,
         ip: order.clientIp || undefined,
@@ -131,18 +166,20 @@ async function main() {
 
   await boss.work("tiktok-event", async ([job]) => {
     const data = job.data as any;
-    return withJobLog(data.jobLogId, () => sendTikTokServerEvent({
-      eventName: String(data.eventName),
-      eventId: String(data.eventId),
-      sourceUrl: data.sourceUrl || undefined,
-      userAgent: data.userAgent || undefined,
-      ip: data.ip || undefined,
-      ttp: data.ttp || undefined,
-      ttclid:data.ttclid||undefined,
-      eventTime:data.eventTime,
-      externalId:data.visitorId||undefined,
-      customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
-    }));
+    return withJobLog(data.jobLogId, () =>
+      sendTikTokServerEvent({
+        eventName: String(data.eventName),
+        eventId: String(data.eventId),
+        sourceUrl: data.sourceUrl || undefined,
+        userAgent: data.userAgent || undefined,
+        ip: data.ip || undefined,
+        ttp: data.ttp || undefined,
+        ttclid: data.ttclid || undefined,
+        eventTime: data.eventTime,
+        externalId: data.visitorId || undefined,
+        customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
+      }),
+    );
   });
 
   await boss.work("tiktok-purchase", async ([job]) => {
@@ -152,17 +189,17 @@ async function main() {
         where: { id: data.orderId },
         include: { items: true },
       });
-      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return {skipped:"ORDER_EXCLUDED"};
+      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return { skipped: "ORDER_EXCLUDED" };
 
       return sendTikTokServerEvent({
         eventName: data.eventName || "Purchase",
-        eventId: data.eventName?`${order.orderNumber}:${data.eventName}`:order.orderNumber,
+        eventId: data.eventName ? `${order.orderNumber}:${data.eventName}` : order.orderNumber,
         orderId: order.id,
-        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL||"https://zelvomart.vercel.app"}/checkout/success/${order.orderNumber}`,
+        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app"}/checkout/success/${order.orderNumber}`,
         ip: order.clientIp || undefined,
         userAgent: order.clientUserAgent || undefined,
-        ttp:order.ttp||undefined,
-        ttclid:order.ttclid||undefined,
+        ttp: order.ttp || undefined,
+        ttclid: order.ttclid || undefined,
         phone: order.phone,
         email: order.email || undefined,
         externalId: order.visitorId || order.customerId || undefined,
@@ -230,29 +267,41 @@ async function main() {
           productMap.set(item.title, productRow);
         }
       }
-      const sourceRows = [...sourceMap.entries()].sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,8)
-        .map(([name,row])=>`<tr><td>${name}</td><td>${row.orders}</td><td>${money(row.revenue)}</td></tr>`).join("");
-      const categoryRows = [...categoryMap.entries()].sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,10)
-        .map(([name,row])=>`<tr><td>${name}</td><td>${row.quantity}</td><td>${money(row.revenue)}</td></tr>`).join("");
-      const productRows = [...productMap.entries()].sort((a,b)=>b[1].revenue-a[1].revenue).slice(0,10)
-        .map(([name,row])=>`<tr><td>${name}</td><td>${row.quantity}</td><td>${money(row.revenue)}</td></tr>`).join("");
+      const sourceRows = [...sourceMap.entries()]
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .slice(0, 8)
+        .map(([name, row]) => `<tr><td>${name}</td><td>${row.orders}</td><td>${money(row.revenue)}</td></tr>`)
+        .join("");
+      const categoryRows = [...categoryMap.entries()]
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .slice(0, 10)
+        .map(([name, row]) => `<tr><td>${name}</td><td>${row.quantity}</td><td>${money(row.revenue)}</td></tr>`)
+        .join("");
+      const productRows = [...productMap.entries()]
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .slice(0, 10)
+        .map(([name, row]) => `<tr><td>${name}</td><td>${row.quantity}</td><td>${money(row.revenue)}</td></tr>`)
+        .join("");
       const recipients = await getSetting<string[]>(
         "notifications.orderRecipients",
-        (process.env.ORDER_ALERT_RECIPIENTS || "zelvomart@gmail.com").split(",").map((x) => x.trim()).filter(Boolean),
+        (process.env.ORDER_ALERT_RECIPIENTS || "zelvomart@gmail.com")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean),
       );
 
-      const health=await trackingHealth();
+      const health = await trackingHealth();
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
         from: process.env.EMAIL_FROM || "Zelvomart Orders <orders@zelvomart.com>",
         to: recipients,
         subject: `Zelvomart daily summary • ${start.toISOString().slice(0, 10)}`,
-        html: `<h2>Daily summary</h2><p>Tracking health: ${health.healthy?"Healthy":"ACTION REQUIRED"}</p><ul>${health.issues.map(issue=>`<li>${issue}</li>`).join("")}</ul>
+        html: `<h2>Daily summary</h2><p>Tracking health: ${health.healthy ? "Healthy" : "ACTION REQUIRED"}</p><ul>${health.issues.map((issue) => `<li>${issue}</li>`).join("")}</ul>
           <p>Orders: <b>${orders.length}</b> • Revenue: <b>${money(revenue)}</b> • Meta Purchase accepted: <b>${accepted}</b> • Failed jobs: <b>${failedJobs}</b></p>
-          <h3>Funnel</h3><p>PageView ${eventMap.get("PageView")||0} → ViewContent ${eventMap.get("ViewContent")||0} → AddToCart ${eventMap.get("AddToCart")||0} → InitiateCheckout ${eventMap.get("InitiateCheckout")||0} → Orders ${orders.length}</p>
-          <h3>By source</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Source</th><th>Orders</th><th>Revenue</th></tr>${sourceRows||"<tr><td colspan=3>No orders</td></tr>"}</table>
-          <h3>By category</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Category</th><th>Qty</th><th>Revenue</th></tr>${categoryRows||"<tr><td colspan=3>No orders</td></tr>"}</table>
-          <h3>Top products</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Product</th><th>Qty</th><th>Revenue</th></tr>${productRows||"<tr><td colspan=3>No orders</td></tr>"}</table>`,
+          <h3>Funnel</h3><p>PageView ${eventMap.get("PageView") || 0} → ViewContent ${eventMap.get("ViewContent") || 0} → AddToCart ${eventMap.get("AddToCart") || 0} → InitiateCheckout ${eventMap.get("InitiateCheckout") || 0} → Orders ${orders.length}</p>
+          <h3>By source</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Source</th><th>Orders</th><th>Revenue</th></tr>${sourceRows || "<tr><td colspan=3>No orders</td></tr>"}</table>
+          <h3>By category</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Category</th><th>Qty</th><th>Revenue</th></tr>${categoryRows || "<tr><td colspan=3>No orders</td></tr>"}</table>
+          <h3>Top products</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Product</th><th>Qty</th><th>Revenue</th></tr>${productRows || "<tr><td colspan=3>No orders</td></tr>"}</table>`,
       });
     });
   });
@@ -260,9 +309,8 @@ async function main() {
   await boss.work("tracking-health-check", async ([job]) => {
     const data = job.data as any;
     return withJobLog(data.jobLogId, async () => {
-      const health=await trackingHealth();
-      if(health.issues.length)await sendFailureAlert('Zelvomart tracking health alert',health.issues.join('\n'));
-
+      const health = await trackingHealth();
+      if (health.issues.length) await sendFailureAlert("Zelvomart tracking health alert", health.issues.join("\n"));
     });
   });
 
@@ -286,11 +334,14 @@ async function main() {
   });
 
   await boss.work("session-replay-retention-cleanup", async () => {
-    const settingDays = await getSetting<number | string | null>("tracking.sessionReplayRetentionDays", null).catch(() => null);
+    const settingDays = await getSetting<number | string | null>("tracking.sessionReplayRetentionDays", null).catch(
+      () => null,
+    );
     const parsedSettingDays = settingDays !== null && settingDays !== undefined ? Number(settingDays) : NaN;
-    const days = Number.isFinite(parsedSettingDays) && parsedSettingDays > 0
-      ? parsedSettingDays
-      : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
+    const days =
+      Number.isFinite(parsedSettingDays) && parsedSettingDays > 0
+        ? parsedSettingDays
+        : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
     if (!Number.isFinite(days) || days <= 0) return 0;
     const cutoff = new Date(Date.now() - days * 86400000);
     const result = await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } });

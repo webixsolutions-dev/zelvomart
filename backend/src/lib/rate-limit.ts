@@ -37,11 +37,15 @@ export async function consumeRateLimit(bucketKey: string, limit: number, windowM
 }
 
 export function requestIp(req: { ip?: string; headers: Record<string, unknown> | any }) {
-  const forwarded = String(req.headers?.["x-forwarded-for"] || "").split(",")[0]?.trim();
+  const forwarded = String(req.headers?.["x-forwarded-for"] || "")
+    .split(",")[0]
+    ?.trim();
   return forwarded || String(req.ip || req.headers?.["x-real-ip"] || "unknown");
 }
 
 export function isLikelyBot(userAgent: string | undefined) {
   if (!userAgent) return false;
-  return /(bot|crawler|spider|slurp|bingpreview|facebookexternalhit|facebot|googlebot|adsbot|headlesschrome|lighthouse|pagespeed|pingdom|uptimerobot|monitoring)/i.test(userAgent);
+  return /(bot|crawler|spider|slurp|bingpreview|facebookexternalhit|facebot|googlebot|adsbot|headlesschrome|lighthouse|pagespeed|pingdom|uptimerobot|monitoring)/i.test(
+    userAgent,
+  );
 }

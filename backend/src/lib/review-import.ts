@@ -28,10 +28,7 @@ export function readReviewCsv(buffer: Buffer): ReviewRow[] {
   const rows = parse(new TextDecoder("utf-8", { fatal: true }).decode(buffer), {
     bom: true,
     columns: (headers: string[]) => {
-      if (
-        new Set(headers).size !== headers.length ||
-        REVIEW_COLUMNS.some((c) => !headers.includes(c))
-      )
+      if (new Set(headers).size !== headers.length || REVIEW_COLUMNS.some((c) => !headers.includes(c)))
         throw new Error("Use the review CSV template with all column headers.");
       return headers;
     },
@@ -39,17 +36,14 @@ export function readReviewCsv(buffer: Buffer): ReviewRow[] {
     trim: true,
     max_record_size: 100000,
   }) as ReviewRow[];
-  if (!rows.length || rows.length > 500)
-    throw new Error("Upload between 1 and 500 reviews per CSV.");
+  if (!rows.length || rows.length > 500) throw new Error("Upload between 1 and 500 reviews per CSV.");
   return rows;
 }
 const normalized = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 export function matchProduct(row: ReviewRow, products: ProductMatch[]) {
   const matches = (field: "title" | "sku", value: string) => {
     const exact = products.filter((p) => p[field] === value);
-    return exact.length
-      ? exact
-      : products.filter((p) => normalized(p[field]) === normalized(value));
+    return exact.length ? exact : products.filter((p) => normalized(p[field]) === normalized(value));
   };
   const title = row.productTitle?.trim(),
     sku = row.productSku?.trim();
@@ -64,8 +58,7 @@ export function matchProduct(row: ReviewRow, products: ProductMatch[]) {
   const product = candidates[0];
   if (title && sku && !matches("title", title).some((p) => p.id === product.id))
     return {
-      error:
-        "Title and SKU refer to different products. Select the correct existing product.",
+      error: "Title and SKU refer to different products. Select the correct existing product.",
     };
   return { product };
 }
@@ -80,36 +73,22 @@ export function calendarDate(
 ) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const d = new Date(`${value}T00:00:00.000Z`);
-  return (
-    Number.isFinite(d.getTime()) &&
-    d.toISOString().slice(0, 10) === value &&
-    value <= today
-  );
+  return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === value && value <= today;
 }
 export function validateReview(row: ReviewRow, allowNoEmail = true) {
   const errors: string[] = [],
     warnings: string[] = [];
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(row.reviewRef || ""))
-    errors.push(
-      "reviewRef must be 1–100 letters, numbers, dots, underscores or hyphens.",
-    );
+    errors.push("reviewRef must be 1–100 letters, numbers, dots, underscores or hyphens.");
   if (!row.reviewerName?.trim() || row.reviewerName.length > 200)
     errors.push("Reviewer name is required (maximum 200 characters).");
   if (!row.reviewText?.trim() || row.reviewText.length > 20000)
     errors.push("Review text is required (maximum 20000 characters).");
-  if (!/^[1-5]$/.test(row.rating || ""))
-    errors.push("Rating must be a whole number from 1 to 5.");
-  if (!calendarDate(row.reviewDate || ""))
-    errors.push("Use a valid YYYY-MM-DD date that is not in the future.");
+  if (!/^[1-5]$/.test(row.rating || "")) errors.push("Rating must be a whole number from 1 to 5.");
+  if (!calendarDate(row.reviewDate || "")) errors.push("Use a valid YYYY-MM-DD date that is not in the future.");
   if (!row.reviewerEmail)
-    (allowNoEmail ? warnings : errors).push(
-      "Email missing. Import only genuine historical feedback.",
-    );
-  else if (
-    row.reviewerEmail.length > 254 ||
-    !/^\S+@\S+\.\S+$/.test(row.reviewerEmail)
-  )
-    errors.push("Invalid email.");
+    (allowNoEmail ? warnings : errors).push("Email missing. Import only genuine historical feedback.");
+  else if (row.reviewerEmail.length > 254 || !/^\S+@\S+\.\S+$/.test(row.reviewerEmail)) errors.push("Invalid email.");
   return { errors, warnings };
 }
 export function readMediaZip(buffer?: Buffer) {
@@ -119,14 +98,8 @@ export function readMediaZip(buffer?: Buffer) {
   return unzipSync(buffer, {
     filter: (file) => {
       if (file.name.endsWith("/")) return false;
-      if (
-        ++count > 3000 ||
-        (size += file.originalSize) > 100 * 1024 * 1024 ||
-        file.originalSize > VIDEO_LIMIT
-      )
-        throw new Error(
-          "ZIP exceeds 100 MB expanded, 3000 files or 20 MB per file.",
-        );
+      if (++count > 3000 || (size += file.originalSize) > 100 * 1024 * 1024 || file.originalSize > VIDEO_LIMIT)
+        throw new Error("ZIP exceeds 100 MB expanded, 3000 files or 20 MB per file.");
       if (!safePath(file.name)) throw new Error("Unsafe ZIP path.");
       return true;
     },
@@ -141,36 +114,19 @@ export function safePath(value: string) {
     value.split("/").every((p) => p && p !== "." && p !== "..")
   );
 }
-export async function inspectMedia(
-  bytes: Uint8Array,
-  name: string,
-  avatar = false,
-) {
+export async function inspectMedia(bytes: Uint8Array, name: string, avatar = false) {
   const ext = name.split(".").pop()?.toLowerCase();
   if (ext === "mp4" && !avatar) {
-    if (
-      bytes.length > VIDEO_LIMIT ||
-      bytes.length < 12 ||
-      Buffer.from(bytes.slice(4, 8)).toString() !== "ftyp"
-    )
+    if (bytes.length > VIDEO_LIMIT || bytes.length < 12 || Buffer.from(bytes.slice(4, 8)).toString() !== "ftyp")
       throw new Error("Video must be MP4, up to 20 MB.");
     return { type: "video", contentType: "video/mp4" };
   }
-  if (
-    !["jpg", "jpeg", "png", "webp"].includes(ext || "") ||
-    bytes.length > PHOTO_LIMIT
-  )
+  if (!["jpg", "jpeg", "png", "webp"].includes(ext || "") || bytes.length > PHOTO_LIMIT)
     throw new Error("Photos/avatar must be JPEG, PNG or WebP, up to 5 MB.");
   const meta = await sharp(bytes, { limitInputPixels: 40000000 }).metadata();
   if (
     !["jpeg", "png", "webp"].includes(meta.format || "") ||
-    meta.format !==
-      (
-        { jpg: "jpeg", jpeg: "jpeg", png: "png", webp: "webp" } as Record<
-          string,
-          string
-        >
-      )[ext!]
+    meta.format !== ({ jpg: "jpeg", jpeg: "jpeg", png: "png", webp: "webp" } as Record<string, string>)[ext!]
   )
     throw new Error("Image contents do not match the file type.");
   return { type: "image", contentType: `image/${meta.format}` };
@@ -179,20 +135,14 @@ export async function rowMedia(
   row: ReviewRow,
   files: Record<string, Uint8Array>,
   preview = false,
-  previewUrl?: (
-    bytes: Uint8Array,
-    path: string,
-    contentType: string,
-  ) => Promise<string>,
+  previewUrl?: (bytes: Uint8Array, path: string, contentType: string) => Promise<string>,
 ) {
   const paths = (row.mediaFiles || "")
     .split("|")
     .map((p) => p.trim())
     .filter(Boolean);
-  if (paths.length > 6)
-    throw new Error("Maximum 5 photos and 1 video per review.");
-  if (new Set(paths).size !== paths.length)
-    throw new Error("Duplicate media path.");
+  if (paths.length > 6) throw new Error("Maximum 5 photos and 1 video per review.");
+  if (new Set(paths).size !== paths.length) throw new Error("Duplicate media path.");
   const all = [...paths, ...(row.avatarFile ? [row.avatarFile] : [])];
   const media = [];
   for (const path of all) {
@@ -202,8 +152,7 @@ export async function rowMedia(
     const avatar = path === row.avatarFile;
     const info = await inspectMedia(files[path], path, avatar);
     let url: string | undefined;
-    if (preview && previewUrl)
-      url = await previewUrl(files[path], path, info.contentType);
+    if (preview && previewUrl) url = await previewUrl(files[path], path, info.contentType);
     else if (preview)
       url =
         info.type === "image"

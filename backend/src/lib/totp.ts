@@ -36,11 +36,12 @@ export function totpCode(secret: string, timestamp = Date.now(), stepSeconds = 3
   counterBuffer.writeBigUInt64BE(BigInt(counter));
   const digest = crypto.createHmac("sha1", base32Decode(secret)).update(counterBuffer).digest();
   const offset = digest[digest.length - 1] & 0x0f;
-  const binary = ((digest[offset] & 0x7f) << 24)
-    | ((digest[offset + 1] & 0xff) << 16)
-    | ((digest[offset + 2] & 0xff) << 8)
-    | (digest[offset + 3] & 0xff);
-  return String(binary % (10 ** digits)).padStart(digits, "0");
+  const binary =
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff);
+  return String(binary % 10 ** digits).padStart(digits, "0");
 }
 
 export function verifyTotp(secret: string, code: string, window = 1) {

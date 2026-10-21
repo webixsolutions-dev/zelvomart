@@ -40,7 +40,10 @@ async function main() {
     }
     const variations: any[] = Array.isArray(meta.variations) ? meta.variations : [];
     for (const variant of product.variants) {
-      const entry = variations.find((item) => (item?.sku && item.sku === variant.sku) || (item?.name && item.name === variant.name)) || {};
+      const entry =
+        variations.find(
+          (item) => (item?.sku && item.sku === variant.sku) || (item?.name && item.name === variant.name),
+        ) || {};
       // The old form's "Manage stock?" defaulted to OFF for variations.
       const variantTrack = Boolean(entry.trackStock);
       const attributes = (variant.attributes || {}) as Record<string, unknown>;
@@ -48,11 +51,17 @@ async function main() {
       if (variant.trackStock !== variantTrack || variant.stockStatus !== variantStatus) {
         variantChanges += 1;
         console.log(`  ${variant.sku}: track ${variantTrack ? "ON" : "OFF"}, ${variantStatus}, stock ${variant.stock}`);
-        if (apply) await prisma.variant.update({ where: { id: variant.id }, data: { trackStock: variantTrack, stockStatus: variantStatus } });
+        if (apply)
+          await prisma.variant.update({
+            where: { id: variant.id },
+            data: { trackStock: variantTrack, stockStatus: variantStatus },
+          });
       }
     }
   }
-  console.log(`\n${apply ? "Updated" : "Would update"} ${productChanges} product(s) and ${variantChanges} variation(s).`);
+  console.log(
+    `\n${apply ? "Updated" : "Would update"} ${productChanges} product(s) and ${variantChanges} variation(s).`,
+  );
   if (apply) await setSetting(FLAG, new Date().toISOString());
   else console.log("Dry run. Re-run with --apply to write.");
 }

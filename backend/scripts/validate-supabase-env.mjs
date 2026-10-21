@@ -23,7 +23,9 @@ if (!db) warn("DATABASE_URL is missing or not a valid postgresql URI.");
 if (!direct) warn("DIRECT_URL is missing or not a valid postgresql URI.");
 
 if (db?.host.startsWith("db.") && db.port === "5432") {
-  warn("DATABASE_URL uses direct host :5432 — often times out on Windows. Use Transaction pooler (6543) from Supabase.");
+  warn(
+    "DATABASE_URL uses direct host :5432 — often times out on Windows. Use Transaction pooler (6543) from Supabase.",
+  );
 }
 if (db?.host.startsWith("db.") && db.port === "6543" && db.user === "postgres") {
   console.warn(
@@ -34,5 +36,8 @@ if (db?.user === "postgres" && db.host.includes("pooler.supabase.com")) {
   warn("Pooler URLs usually need user postgres.<project-ref>, not postgres.");
 }
 
-if (ok && db) console.log("Env shape looks parseable. If connection fails, reset DB password in Supabase and paste both URIs again.");
+if (ok && db)
+  console.log(
+    "Env shape looks parseable. If connection fails, reset DB password in Supabase and paste both URIs again.",
+  );
 process.exitCode = ok ? 0 : 1;

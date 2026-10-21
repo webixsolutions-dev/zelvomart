@@ -16,7 +16,10 @@ let winner = null;
 for (const prefix of prefixes) {
   for (const region of regions) {
     const host = `${prefix}-${region}.pooler.supabase.com`;
-    for (const [port, mode] of [[6543, "transaction"], [5432, "session"]]) {
+    for (const [port, mode] of [
+      [6543, "transaction"],
+      [5432, "session"],
+    ]) {
       const user = `postgres.${ref}`;
       const client = new pg.Client({
         host,
@@ -49,10 +52,7 @@ if (!winner) {
 
 const enc = encodeURIComponent(password);
 const base = `postgresql://${winner.user}:${enc}@${winner.host}:${winner.port}/postgres`;
-const databaseUrl =
-  winner.port === 6543
-    ? `${base}?pgbouncer=true&connection_limit=5&pool_timeout=30`
-    : base;
+const databaseUrl = winner.port === 6543 ? `${base}?pgbouncer=true&connection_limit=5&pool_timeout=30` : base;
 
 // Prefer transaction pooler for DATABASE_URL; session/direct for DIRECT_URL
 let directUrl = base;

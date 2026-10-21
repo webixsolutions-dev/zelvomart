@@ -5,7 +5,10 @@ export type EmailKind = "orders" | "offers" | "support";
 export function emailIdentity(kind: EmailKind) {
   const fallback = `Zelvomart ${kind[0].toUpperCase() + kind.slice(1)} <${kind}@zelvomart.com>`;
   return {
-    from: process.env[`${kind.toUpperCase()}_EMAIL_FROM`] || (kind === "orders" ? process.env.EMAIL_FROM : undefined) || fallback,
+    from:
+      process.env[`${kind.toUpperCase()}_EMAIL_FROM`] ||
+      (kind === "orders" ? process.env.EMAIL_FROM : undefined) ||
+      fallback,
     replyTo: process.env.EMAIL_REPLY_TO || "support@zelvomart.com",
   };
 }
@@ -14,7 +17,8 @@ export function emailIdentity(kind: EmailKind) {
 export async function deliverEmail(payload: Parameters<Resend["emails"]["send"]>[0], idempotencyKey?: string) {
   if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
   const result = await new Resend(process.env.RESEND_API_KEY).emails.send(
-    payload, idempotencyKey ? { idempotencyKey } : undefined,
+    payload,
+    idempotencyKey ? { idempotencyKey } : undefined,
   );
   if (result.error) throw new Error(`Email delivery rejected: ${result.error.message}`);
   if (!result.data?.id) throw new Error("Email provider did not acknowledge delivery");

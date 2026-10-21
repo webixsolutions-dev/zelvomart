@@ -4,7 +4,8 @@ import assert from "node:assert/strict";
 process.env.JWT_SECRET ||= "test-secret-test-secret-test-secret-1234";
 
 test("a 2FA challenge is never accepted as a session, and a session never as a challenge", async () => {
-  const { signAdminToken, decodeAdminToken, signTwoFactorChallenge, decodeTwoFactorChallenge, ADMIN_TOKEN_SECONDS } = await import("./auth");
+  const { signAdminToken, decodeAdminToken, signTwoFactorChallenge, decodeTwoFactorChallenge, ADMIN_TOKEN_SECONDS } =
+    await import("./auth");
   const challenge = signTwoFactorChallenge("user-1", "verify");
   assert.deepEqual(decodeTwoFactorChallenge(challenge), { sub: "user-1", purpose: "verify" });
   assert.throws(() => decodeAdminToken(challenge));

@@ -1,2 +1,12 @@
-export const SITE_ORIGIN=(process.env.NEXT_PUBLIC_SITE_URL||'https://zelvomart.vercel.app').replace(/\/+$/,'');
-export function isStorefrontUrl(value:string){try{const url=new URL(value),site=new URL(SITE_ORIGIN);const hosts=['zelvomart.vercel.app','zelvomart.com','www.zelvomart.com'];if(site.protocol==='https:'&&site.hostname!=='localhost')hosts.push(site.hostname);return url.protocol==='https:'&&hosts.includes(url.hostname)&&!/^\/admin(?:\/|$)/.test(url.pathname)}catch{return false}}
+export const SITE_ORIGIN = (process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app").replace(/\/+$/, "");
+export function isStorefrontUrl(value: string) {
+  try {
+    const url = new URL(value),
+      site = new URL(SITE_ORIGIN);
+    const hosts = ["zelvomart.vercel.app", "zelvomart.com", "www.zelvomart.com"];
+    if (site.protocol === "https:" && site.hostname !== "localhost") hosts.push(site.hostname);
+    return url.protocol === "https:" && hosts.includes(url.hostname) && !/^\/admin(?:\/|$)/.test(url.pathname);
+  } catch {
+    return false;
+  }
+}

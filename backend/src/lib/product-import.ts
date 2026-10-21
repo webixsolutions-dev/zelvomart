@@ -21,24 +21,64 @@ export const IMPORT_COLUMNS: ImportColumn[] = [
   { key: "type", scope: "both", required: true, help: "simple (simple template) or variable (variable template)." },
   { key: "title", scope: "both", required: true, help: "Product name." },
   { key: "slug", scope: "both", help: "URL slug. Blank = made from the title." },
-  { key: "sku", scope: "both", required: true, help: "Unique product code. A SKU, slug or title that already exists in the shop is rejected as \"Already exists\"." },
-  { key: "category", scope: "both", required: true, help: "One of the store's categories (name or slug). Blank or wrong = choose it from the dropdown in the import preview." },
-  { key: "regularPrice", scope: "both", required: true, help: "Price in Rs, digits only. Variable products: one price for every variation." },
-  { key: "salePrice", scope: "both", help: "Lower than regularPrice. Any sale price puts the product on the Discount page." },
-  { key: "shortDescription", scope: "both", help: "Two lines of text, then 3-4 points: <p>...</p><ul><li>...</li><li>...</li><li>...</li></ul>. The points show with a tick icon in the buy box." },
-  { key: "descriptionHtml", scope: "both", help: "Full description with headings, paragraphs and lists. Use <h2>-<h6>: the product name is the page's <h1>, so any <h1> is saved as <h2>." },
+  {
+    key: "sku",
+    scope: "both",
+    required: true,
+    help: 'Unique product code. A SKU, slug or title that already exists in the shop is rejected as "Already exists".',
+  },
+  {
+    key: "category",
+    scope: "both",
+    required: true,
+    help: "One of the store's categories (name or slug). Blank or wrong = choose it from the dropdown in the import preview.",
+  },
+  {
+    key: "regularPrice",
+    scope: "both",
+    required: true,
+    help: "Price in Rs, digits only. Variable products: one price for every variation.",
+  },
+  {
+    key: "salePrice",
+    scope: "both",
+    help: "Lower than regularPrice. Any sale price puts the product on the Discount page.",
+  },
+  {
+    key: "shortDescription",
+    scope: "both",
+    help: "Two lines of text, then 3-4 points: <p>...</p><ul><li>...</li><li>...</li><li>...</li></ul>. The points show with a tick icon in the buy box.",
+  },
+  {
+    key: "descriptionHtml",
+    scope: "both",
+    help: "Full description with headings, paragraphs and lists. Use <h2>-<h6>: the product name is the page's <h1>, so any <h1> is saved as <h2>.",
+  },
   { key: "weight", scope: "both", help: "kg. Shown on the product page when filled." },
   { key: "length", scope: "both", help: "cm. Shown on the product page when filled." },
   { key: "width", scope: "both", help: "cm. Shown on the product page when filled." },
   { key: "height", scope: "both", help: "cm. Shown on the product page when filled." },
-  { key: "imageAlt", scope: "both", help: "One alt text, applied to every image of the product. Blank = product title." },
+  {
+    key: "imageAlt",
+    scope: "both",
+    help: "One alt text, applied to every image of the product. Blank = product title.",
+  },
   { key: "imageTitle", scope: "both", help: "One image title, applied to every image of the product." },
-  { key: "tags", scope: "both", help: `Separated by |: ${PRODUCT_TAG_IDS.join(", ")}. Other values are ignored with a warning.` },
+  {
+    key: "tags",
+    scope: "both",
+    help: `Separated by |: ${PRODUCT_TAG_IDS.join(", ")}. Other values are ignored with a warning.`,
+  },
   { key: "focusKeyword", scope: "both", help: "SEO focus keyword." },
   { key: "seoTitle", scope: "both", help: "Meta title, up to 60 characters." },
   { key: "seoDescription", scope: "both", help: "Meta description, up to 155 characters." },
   { key: "attribute1Name", scope: "variable", required: true, help: "First option name, e.g. Color." },
-  { key: "attribute1Values", scope: "variable", required: true, help: "Its values separated by |, e.g. Black | White." },
+  {
+    key: "attribute1Values",
+    scope: "variable",
+    required: true,
+    help: "Its values separated by |, e.g. Black | White.",
+  },
   { key: "attribute2Name", scope: "variable", help: "Second option, e.g. Size." },
   { key: "attribute2Values", scope: "variable", help: "e.g. S | M | L." },
   { key: "attribute3Name", scope: "variable", help: "Third option; rarely used." },
@@ -59,7 +99,9 @@ const HEADER_ALIASES: Record<string, string> = {
 };
 
 function headerKey(header: string) {
-  return String(header || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return String(header || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 // Columns of older files still read on old-style `variation` rows (one row per variation).
@@ -68,11 +110,46 @@ const LEGACY_VARIATION_COLUMNS = ["parentSku", "gtin", "variationEnabled"];
 // Columns removed from the template. Old files that still have them import; the values are
 // ignored with a warning. The owner sets these by hand in the product form.
 const RETIRED_COLUMNS = [
-  "categorySlug", "categoryDescription", "categoryImageUrl", "categorySortOrder", "categorySeoTitle", "categorySeoDescription",
-  "brand", "costPrice", "saleFrom", "saleTo", "trackStock", "stock", "quantity", "stockStatus", "shippingClass", "freeShipping",
-  "videoUrl", "imageUrls", "images", "image", "badge", "featured", "bundleEnabled", "deliveryDays", "deliveryNote", "purchaseNote", "menuOrder",
-  "canonicalUrl", "redirectFallback", "redirectUrl", "tabWhyChoose", "tabShippingProcess", "tabGeneralFaq",
-  "swatchesEnabled", "swatchShape", "swatchSize", "robotsIndex", "robotsNoFollow", "imageCaption", "imageDescription",
+  "categorySlug",
+  "categoryDescription",
+  "categoryImageUrl",
+  "categorySortOrder",
+  "categorySeoTitle",
+  "categorySeoDescription",
+  "brand",
+  "costPrice",
+  "saleFrom",
+  "saleTo",
+  "trackStock",
+  "stock",
+  "quantity",
+  "stockStatus",
+  "shippingClass",
+  "freeShipping",
+  "videoUrl",
+  "imageUrls",
+  "images",
+  "image",
+  "badge",
+  "featured",
+  "bundleEnabled",
+  "deliveryDays",
+  "deliveryNote",
+  "purchaseNote",
+  "menuOrder",
+  "canonicalUrl",
+  "redirectFallback",
+  "redirectUrl",
+  "tabWhyChoose",
+  "tabShippingProcess",
+  "tabGeneralFaq",
+  "swatchesEnabled",
+  "swatchShape",
+  "swatchSize",
+  "robotsIndex",
+  "robotsNoFollow",
+  "imageCaption",
+  "imageDescription",
 ];
 const RETIRED_KEYS = new Set(RETIRED_COLUMNS.map(headerKey));
 
@@ -103,14 +180,24 @@ export function validateHeaders(headers: string[]): { errors: string[]; warnings
     }
     const column = COLUMN_BY_HEADER.get(headerKey(header));
     if (!column) (RETIRED_KEYS.has(headerKey(header)) ? retired : unknown).push(header);
-    else if (seen.has(column)) errors.push(`Column "${header}" is repeated (it is the same column as "${seen.get(column)}"). Keep it once.`);
+    else if (seen.has(column))
+      errors.push(`Column "${header}" is repeated (it is the same column as "${seen.get(column)}"). Keep it once.`);
     else seen.set(column, header);
   }
-  if (retired.length) warnings.push(`Column${retired.length === 1 ? "" : "s"} no longer in the template, ignored: ${retired.join(", ")}. Set ${retired.length === 1 ? "it" : "these"} in the product form after import.`);
+  if (retired.length)
+    warnings.push(
+      `Column${retired.length === 1 ? "" : "s"} no longer in the template, ignored: ${retired.join(", ")}. Set ${retired.length === 1 ? "it" : "these"} in the product form after import.`,
+    );
   if (unknown.length) warnings.push(`Unknown column${unknown.length === 1 ? "" : "s"} ignored: ${unknown.join(", ")}.`);
-  if (blank) warnings.push(`${blank} column${blank === 1 ? " has" : "s have"} no name in the header row and ${blank === 1 ? "was" : "were"} ignored.`);
+  if (blank)
+    warnings.push(
+      `${blank} column${blank === 1 ? " has" : "s have"} no name in the header row and ${blank === 1 ? "was" : "were"} ignored.`,
+    );
   const missing = REQUIRED_HEADERS.filter((column) => !seen.has(column));
-  if (missing.length) errors.push(`Missing required column${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}. Start again from the template.`);
+  if (missing.length)
+    errors.push(
+      `Missing required column${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}. Start again from the template.`,
+    );
   return { errors, warnings };
 }
 
@@ -118,16 +205,21 @@ const NUMBER_COLUMNS = ["weight", "length", "width", "height"];
 
 // Format checks shared by product rows and old-style variation rows.
 function valueErrors(cells: Record<string, string>, label: string, errors: string[]) {
-  if (cells.type && !/^(simple|variable|variation)$/i.test(cells.type)) errors.push(`${label}type "${cells.type}" is not allowed. Use simple or variable.`);
+  if (cells.type && !/^(simple|variable|variation)$/i.test(cells.type))
+    errors.push(`${label}type "${cells.type}" is not allowed. Use simple or variable.`);
   for (const column of NUMBER_COLUMNS) {
     const value = parseNumber(cells[column]);
-    if (cells[column] && (value == null || value < 0)) errors.push(`${label}${column} "${cells[column]}" is not a number.`);
+    if (cells[column] && (value == null || value < 0))
+      errors.push(`${label}${column} "${cells[column]}" is not a number.`);
   }
-  if (cells.variationEnabled && !parseBoolStrict(cells.variationEnabled)) errors.push(`${label}variationEnabled "${cells.variationEnabled}" must be yes or no.`);
+  if (cells.variationEnabled && !parseBoolStrict(cells.variationEnabled))
+    errors.push(`${label}variationEnabled "${cells.variationEnabled}" must be yes or no.`);
 }
 
 export function templateColumns(kind: "simple" | "variable") {
-  return IMPORT_COLUMNS.filter((column) => column.scope === "both" || column.scope === kind).map((column) => column.key);
+  return IMPORT_COLUMNS.filter((column) => column.scope === "both" || column.scope === kind).map(
+    (column) => column.key,
+  );
 }
 
 function csvCell(value: unknown) {
@@ -143,8 +235,10 @@ const SIMPLE_EXAMPLES: Record<string, string>[] = [
     category: "Beauty & Personal Care",
     regularPrice: "900",
     salePrice: "700",
-    shortDescription: "<p>Long-lasting matte lipstick with a smooth, non-drying finish.<br>Rich colour in one swipe.</p><ul><li>Stays on for hours</li><li>Non-drying formula</li><li>Easy, precise bullet</li></ul>",
-    descriptionHtml: "<p>A richly pigmented matte lipstick that glides on smoothly and stays put for hours.</p><h2>Why you will love it</h2><ul><li>Long-lasting colour</li><li>Non-drying formula</li></ul>",
+    shortDescription:
+      "<p>Long-lasting matte lipstick with a smooth, non-drying finish.<br>Rich colour in one swipe.</p><ul><li>Stays on for hours</li><li>Non-drying formula</li><li>Easy, precise bullet</li></ul>",
+    descriptionHtml:
+      "<p>A richly pigmented matte lipstick that glides on smoothly and stays put for hours.</p><h2>Why you will love it</h2><ul><li>Long-lasting colour</li><li>Non-drying formula</li></ul>",
     weight: "0.2",
     imageAlt: "Matte Lipstick Rose Red",
     tags: "best-selling|new-arrival",
@@ -162,8 +256,10 @@ const VARIABLE_EXAMPLES: Record<string, string>[] = [
     category: "Fashion Accessories",
     regularPrice: "1500",
     salePrice: "1200",
-    shortDescription: "<p>Soft everyday cotton tee in two colours.<br>Breathable and easy to wash.</p><ul><li>100% cotton</li><li>Pre-shrunk fabric</li><li>Regular fit</li></ul>",
-    descriptionHtml: "<p>A breathable 100% cotton t-shirt made for daily wear.</p><h2>Details</h2><ul><li>Pre-shrunk fabric</li><li>Regular fit</li></ul>",
+    shortDescription:
+      "<p>Soft everyday cotton tee in two colours.<br>Breathable and easy to wash.</p><ul><li>100% cotton</li><li>Pre-shrunk fabric</li><li>Regular fit</li></ul>",
+    descriptionHtml:
+      "<p>A breathable 100% cotton t-shirt made for daily wear.</p><h2>Details</h2><ul><li>Pre-shrunk fabric</li><li>Regular fit</li></ul>",
     weight: "0.4",
     tags: "new-arrival",
     focusKeyword: "cotton t-shirt",
@@ -179,7 +275,10 @@ const VARIABLE_EXAMPLES: Record<string, string>[] = [
 export function templateCsv(kind: "simple" | "variable", withExamples = true) {
   const columns = templateColumns(kind);
   const examples = withExamples ? (kind === "simple" ? SIMPLE_EXAMPLES : VARIABLE_EXAMPLES) : [];
-  const lines = [columns.join(","), ...examples.map((row) => columns.map((column) => csvCell(row[column] ?? "")).join(","))];
+  const lines = [
+    columns.join(","),
+    ...examples.map((row) => columns.map((column) => csvCell(row[column] ?? "")).join(",")),
+  ];
   return `${lines.join("\r\n")}\r\n`;
 }
 
@@ -241,7 +340,9 @@ function parseBoolStrict(value: string) {
 }
 
 export function parseBool(value: unknown, fallback: boolean) {
-  const text = String(value ?? "").trim().toLowerCase();
+  const text = String(value ?? "")
+    .trim()
+    .toLowerCase();
   if (!text) return fallback;
   if (["1", "true", "yes", "y", "on"].includes(text)) return true;
   if (["0", "false", "no", "n", "off"].includes(text)) return false;
@@ -290,15 +391,19 @@ function rowType(cells: Record<string, string>) {
 function priceErrors(label: string, cells: Record<string, string>, errors: string[]) {
   const regular = parseNumber(cells.regularPrice);
   const sale = parseNumber(cells.salePrice);
-  if (cells.regularPrice && (regular == null || regular <= 0)) errors.push(`${label}regularPrice "${cells.regularPrice}" must be a number above 0.`);
-  if (cells.salePrice && (sale == null || sale < 0)) errors.push(`${label}salePrice "${cells.salePrice}" is not a number.`);
-  if (regular != null && sale != null && sale >= regular) errors.push(`${label}salePrice must be lower than regularPrice.`);
+  if (cells.regularPrice && (regular == null || regular <= 0))
+    errors.push(`${label}regularPrice "${cells.regularPrice}" must be a number above 0.`);
+  if (cells.salePrice && (sale == null || sale < 0))
+    errors.push(`${label}salePrice "${cells.salePrice}" is not a number.`);
+  if (regular != null && sale != null && sale >= regular)
+    errors.push(`${label}salePrice must be lower than regularPrice.`);
 }
 
 /** Every combination of the attribute values, in the order the product form builds them. */
 function combinations(attributes: { name: string; values: string[] }[]) {
   let rows: Record<string, string>[] = [{}];
-  for (const attribute of attributes) rows = rows.flatMap((row) => attribute.values.map((value) => ({ ...row, [attribute.name]: value })));
+  for (const attribute of attributes)
+    rows = rows.flatMap((row) => attribute.values.map((value) => ({ ...row, [attribute.name]: value })));
   return rows.filter((row) => Object.keys(row).length);
 }
 
@@ -352,24 +457,48 @@ export function planImport(rows: Record<string, unknown>[], firstRow = 2): Plann
     priceErrors("", cells, product.errors);
     if (cells.parentSku) product.errors.push("parentSku is only for old-style variation rows. Empty it.");
     if (type !== "variable") {
-      const stray = ["attribute1Name", "attribute1Values", "attribute2Name", "attribute2Values", "attribute3Name", "attribute3Values"].filter((column) => cells[column]);
-      if (stray.length) product.errors.push(`${stray.join(", ")} ${stray.length === 1 ? "is" : "are"} only for variable products. Set type to variable or empty ${stray.length === 1 ? "it" : "them"}.`);
+      const stray = [
+        "attribute1Name",
+        "attribute1Values",
+        "attribute2Name",
+        "attribute2Values",
+        "attribute3Name",
+        "attribute3Values",
+      ].filter((column) => cells[column]);
+      if (stray.length)
+        product.errors.push(
+          `${stray.join(", ")} ${stray.length === 1 ? "is" : "are"} only for variable products. Set type to variable or empty ${stray.length === 1 ? "it" : "them"}.`,
+        );
     }
     const unknownTags = parseList(cells.tags).filter((tag) => !PRODUCT_TAG_IDS.includes(slugify(tag)));
-    if (unknownTags.length) product.warnings.push(`Unknown tags ignored: ${unknownTags.join(", ")}. Allowed: ${PRODUCT_TAG_IDS.join(", ")}.`);
-    if (cells.seoTitle && cells.seoTitle.length > 60) product.warnings.push(`seoTitle is ${cells.seoTitle.length} characters; Google shows about 60.`);
-    if (cells.seoDescription && cells.seoDescription.length > 155) product.warnings.push(`seoDescription is ${cells.seoDescription.length} characters; Google shows about 155.`);
-    if (/<h1[\s>]/i.test(cells.descriptionHtml || "")) product.warnings.push("descriptionHtml has an <h1>; it is saved as <h2> (the product name is the page's only <h1>).");
+    if (unknownTags.length)
+      product.warnings.push(`Unknown tags ignored: ${unknownTags.join(", ")}. Allowed: ${PRODUCT_TAG_IDS.join(", ")}.`);
+    if (cells.seoTitle && cells.seoTitle.length > 60)
+      product.warnings.push(`seoTitle is ${cells.seoTitle.length} characters; Google shows about 60.`);
+    if (cells.seoDescription && cells.seoDescription.length > 155)
+      product.warnings.push(`seoDescription is ${cells.seoDescription.length} characters; Google shows about 155.`);
+    if (/<h1[\s>]/i.test(cells.descriptionHtml || ""))
+      product.warnings.push(
+        "descriptionHtml has an <h1>; it is saved as <h2> (the product name is the page's only <h1>).",
+      );
     if (product.productType === "variable") {
       for (const n of [1, 2, 3]) {
         const name = cells[`attribute${n}Name`];
-        const values = [...new Map(parseList(cells[`attribute${n}Values`]).map((value) => [value.toLowerCase(), value])).values()];
+        const values = [
+          ...new Map(parseList(cells[`attribute${n}Values`]).map((value) => [value.toLowerCase(), value])).values(),
+        ];
         if (name) product.attributes.push({ name, values, declared: values.length > 0 });
         else if (values.length) product.errors.push(`attribute${n}Values is filled but attribute${n}Name is empty.`);
         else continue;
-        if (name && n > 1 && !cells[`attribute${n - 1}Name`]) product.errors.push(`attribute${n}Name is filled but attribute${n - 1}Name is empty. Fill the attributes in order.`);
+        if (name && n > 1 && !cells[`attribute${n - 1}Name`])
+          product.errors.push(
+            `attribute${n}Name is filled but attribute${n - 1}Name is empty. Fill the attributes in order.`,
+          );
       }
-      if (new Set(product.attributes.map((attribute) => attribute.name.toLowerCase())).size !== product.attributes.length) product.errors.push("Two attributes have the same name.");
+      if (
+        new Set(product.attributes.map((attribute) => attribute.name.toLowerCase())).size !== product.attributes.length
+      )
+        product.errors.push("Two attributes have the same name.");
     }
     products.push(product);
     last = product;
@@ -392,7 +521,9 @@ export function planImport(rows: Record<string, unknown>[], firstRow = 2): Plann
       variations: [],
       legacyVariations: true,
       duplicates: [],
-      errors: [`Variation row: no variable product with sku "${orphan.cells.parentSku || ""}" in this file. Variable products now take one row; put the options in attribute1Name / attribute1Values.`],
+      errors: [
+        `Variation row: no variable product with sku "${orphan.cells.parentSku || ""}" in this file. Variable products now take one row; put the options in attribute1Name / attribute1Values.`,
+      ],
       warnings: [],
     });
   }
@@ -406,18 +537,25 @@ export function planImport(rows: Record<string, unknown>[], firstRow = 2): Plann
     if (product.variations.length) {
       // Old file: one row per variation. Imported as before, with a warning.
       product.legacyVariations = true;
-      product.warnings.push(`Old template: ${product.variations.length} variation row${product.variations.length === 1 ? "" : "s"} imported as before. New files use one row per product.`);
-      if (!product.attributes.length) product.errors.push("attribute1Name is required on the variable row (for example Color).");
+      product.warnings.push(
+        `Old template: ${product.variations.length} variation row${product.variations.length === 1 ? "" : "s"} imported as before. New files use one row per product.`,
+      );
+      if (!product.attributes.length)
+        product.errors.push("attribute1Name is required on the variable row (for example Color).");
       checkLegacyVariations(product);
       continue;
     }
     // New file: one row; every combination of the options, at the row's price.
     if (!product.cells.regularPrice) product.errors.push("regularPrice is required: one price for every variation.");
-    if (!product.attributes.length) product.errors.push("attribute1Name and attribute1Values are required (for example Color and Black | White).");
+    if (!product.attributes.length)
+      product.errors.push("attribute1Name and attribute1Values are required (for example Color and Black | White).");
     product.attributes.forEach((attribute, index) => {
-      if (!attribute.values.length) product.errors.push(`attribute${index + 1}Values is empty. List the ${attribute.name} values separated by |.`);
+      if (!attribute.values.length)
+        product.errors.push(`attribute${index + 1}Values is empty. List the ${attribute.name} values separated by |.`);
     });
-    const combos = product.attributes.every((attribute) => attribute.values.length) ? combinations(product.attributes) : [];
+    const combos = product.attributes.every((attribute) => attribute.values.length)
+      ? combinations(product.attributes)
+      : [];
     if (combos.length > MAX_COMBINATIONS) {
       product.errors.push(`The options make ${combos.length} variations; the limit is ${MAX_COMBINATIONS}.`);
       continue;
@@ -447,7 +585,8 @@ function checkLegacyVariations(product: PlannedProduct) {
   product.variations.forEach((variation, index) => {
     if (!variation.sku) variation.sku = `${product.sku}-V${index + 1}`;
     const label = `Row ${variation.row}: `;
-    if (seenSkus.has(variation.sku.toLowerCase())) product.errors.push(`${label}variation sku "${variation.sku}" is repeated.`);
+    if (seenSkus.has(variation.sku.toLowerCase()))
+      product.errors.push(`${label}variation sku "${variation.sku}" is repeated.`);
     seenSkus.add(variation.sku.toLowerCase());
     if (seenKeys.has(variation.key)) product.errors.push(`${label}the combination "${variation.name}" is repeated.`);
     seenKeys.add(variation.key);
@@ -455,11 +594,15 @@ function checkLegacyVariations(product: PlannedProduct) {
       const value = variation.attributes[attribute.name];
       if (!value) product.errors.push(`${label}missing a value for "${attribute.name}".`);
       else if (!attribute.values.some((item) => item.toLowerCase() === value.toLowerCase())) {
-        if (attribute.declared) product.errors.push(`${label}"${value}" is not one of the ${attribute.name} values listed on the variable row (${attribute.values.join(" | ")}).`);
+        if (attribute.declared)
+          product.errors.push(
+            `${label}"${value}" is not one of the ${attribute.name} values listed on the variable row (${attribute.values.join(" | ")}).`,
+          );
         else attribute.values.push(value);
       }
     }
-    if (variation.regularPrice <= 0) product.warnings.push(`${label}variation "${variation.name}" has no regularPrice and will not be sold.`);
+    if (variation.regularPrice <= 0)
+      product.warnings.push(`${label}variation "${variation.name}" has no regularPrice and will not be sold.`);
   });
 }
 
@@ -482,7 +625,9 @@ function flagFileDuplicates(products: PlannedProduct[]) {
       if (group.length < 2) continue;
       for (const product of group) {
         const others = group.filter((other) => other !== product).map((other) => other.row);
-        product.duplicates.push(`Same ${label} as row${others.length === 1 ? "" : "s"} ${others.join(", ")} in this file.`);
+        product.duplicates.push(
+          `Same ${label} as row${others.length === 1 ? "" : "s"} ${others.join(", ")} in this file.`,
+        );
       }
     }
   }
@@ -507,8 +652,12 @@ function addVariation(parent: PlannedProduct, row: number, cells: Record<string,
   priceErrors(label, cells, parent.errors);
   [1, 2, 3].forEach((n, index) => {
     const values = parseList(cells[`attribute${n}Values`]);
-    if (values.length > 1) parent.errors.push(`${label}a variation row takes one value in attribute${n}Values, not a list (${cells[`attribute${n}Values`]}).`);
-    if (values.length && !parent.attributes[index]) parent.errors.push(`${label}attribute${n}Values is filled but the variable row has no attribute${n}Name.`);
+    if (values.length > 1)
+      parent.errors.push(
+        `${label}a variation row takes one value in attribute${n}Values, not a list (${cells[`attribute${n}Values`]}).`,
+      );
+    if (values.length && !parent.attributes[index])
+      parent.errors.push(`${label}attribute${n}Values is filled but the variable row has no attribute${n}Name.`);
   });
   parent.variations.push({
     row,
@@ -526,7 +675,16 @@ function addVariation(parent: PlannedProduct, row: number, cells: Record<string,
 export type ProductWrite = {
   columns: Record<string, unknown>;
   meta: Record<string, unknown>;
-  variants: { name: string; sku: string; priceOverride: number | null; imageUrl: string | null; attributes: Record<string, string>; trackStock: boolean; stockStatus: string; active: boolean }[];
+  variants: {
+    name: string;
+    sku: string;
+    priceOverride: number | null;
+    imageUrl: string | null;
+    attributes: Record<string, string>;
+    trackStock: boolean;
+    stockStatus: string;
+    active: boolean;
+  }[];
   slug: string;
   explicitSlug: boolean;
 };
@@ -542,7 +700,9 @@ export function buildProductWrite(product: PlannedProduct): ProductWrite {
   const text = (key: string) => cells[key] || "";
   const regular = parseNumber(cells.regularPrice) ?? 0;
   const sale = has("salePrice") ? parseNumber(cells.salePrice) : null;
-  const tags = parseList(cells.tags).map(slugify).filter((tag, index, all) => PRODUCT_TAG_IDS.includes(tag) && all.indexOf(tag) === index);
+  const tags = parseList(cells.tags)
+    .map(slugify)
+    .filter((tag, index, all) => PRODUCT_TAG_IDS.includes(tag) && all.indexOf(tag) === index);
 
   const columns: Record<string, unknown> = {
     title: product.title,
@@ -581,7 +741,14 @@ export function buildProductWrite(product: PlannedProduct): ProductWrite {
     robotsIndex: "index",
     robotsNoFollow: false,
     customTabs: [],
-    imageMeta: { alt: text("imageAlt") || product.title, title: text("imageTitle"), fileName: "", fileSize: 0, width: 0, height: 0 },
+    imageMeta: {
+      alt: text("imageAlt") || product.title,
+      title: text("imageTitle"),
+      fileName: "",
+      fileSize: 0,
+      width: 0,
+      height: 0,
+    },
     attributes: [],
     variations: [],
   };

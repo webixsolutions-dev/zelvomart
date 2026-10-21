@@ -1,3 +1,38 @@
-import 'dotenv/config';import {Pool} from 'pg';
-import {databaseConnection} from '../src/lib/db-ssl';
-async function main(){const pool=new Pool({...databaseConnection(process.env.DATABASE_URL),connectionTimeoutMillis:15000,family:4,max:1});try{const result=await pool.query(`SELECT id,sku FROM "Product" WHERE title='QA admin brief fixture' AND sku ~ '^QA-[0-9a-f-]{36}$'`);console.log('Isolated QA products to remove:',result.rows);for(const row of result.rows){const matching=await pool.query(`SELECT COUNT(*)::int AS count FROM "OrderItem" WHERE "productId"=$1`,[row.id]);if(matching.rows[0].count)throw new Error('QA product has order items; retain for targeted order cleanup.');await pool.query(`DELETE FROM "AuditLog" WHERE "entityId" IN (SELECT id FROM "Coupon" WHERE code=$1)`,[row.sku.slice(0,35)]);await pool.query(`DELETE FROM "Coupon" WHERE code=$1`,[row.sku.slice(0,35)]);await pool.query(`DELETE FROM "Product" WHERE id=$1 AND sku=$2 AND title='QA admin brief fixture'`,[row.id,row.sku]);}console.log('QA cleanup complete.');}finally{await pool.end();}}main().catch(e=>{console.error(e.message);process.exitCode=1});
+import "dotenv/config";
+import { Pool } from "pg";
+import { databaseConnection } from "../src/lib/db-ssl";
+async function main() {
+  const pool = new Pool({
+    ...databaseConnection(process.env.DATABASE_URL),
+    connectionTimeoutMillis: 15000,
+    family: 4,
+    max: 1,
+  });
+  try {
+    const result = await pool.query(
+      `SELECT id,sku FROM "Product" WHERE title='QA admin brief fixture' AND sku ~ '^QA-[0-9a-f-]{36}$'`,
+    );
+    console.log("Isolated QA products to remove:", result.rows);
+    for (const row of result.rows) {
+      const matching = await pool.query(`SELECT COUNT(*)::int AS count FROM "OrderItem" WHERE "productId"=$1`, [
+        row.id,
+      ]);
+      if (matching.rows[0].count) throw new Error("QA product has order items; retain for targeted order cleanup.");
+      await pool.query(`DELETE FROM "AuditLog" WHERE "entityId" IN (SELECT id FROM "Coupon" WHERE code=$1)`, [
+        row.sku.slice(0, 35),
+      ]);
+      await pool.query(`DELETE FROM "Coupon" WHERE code=$1`, [row.sku.slice(0, 35)]);
+      await pool.query(`DELETE FROM "Product" WHERE id=$1 AND sku=$2 AND title='QA admin brief fixture'`, [
+        row.id,
+        row.sku,
+      ]);
+    }
+    console.log("QA cleanup complete.");
+  } finally {
+    await pool.end();
+  }
+}
+main().catch((e) => {
+  console.error(e.message);
+  process.exitCode = 1;
+});

@@ -18,7 +18,10 @@ function normalizeAdAccountId(value: string) {
 
 export async function getMetaMarketingConfig(): Promise<MetaConfig> {
   const [pixelId, adAccountId, pageId, instagramAccountId, savedToken] = await Promise.all([
-    getSetting<string>("tracking.metaPixelId", process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || ""),
+    getSetting<string>(
+      "tracking.metaPixelId",
+      process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "",
+    ),
     getSetting<string>("marketing.meta.adAccountId", process.env.META_AD_ACCOUNT_ID || ""),
     getSetting<string>("marketing.meta.pageId", process.env.META_PAGE_ID || ""),
     getSetting<string>("marketing.meta.instagramAccountId", process.env.META_INSTAGRAM_ACCOUNT_ID || ""),
@@ -84,7 +87,7 @@ export async function testMetaMarketingConnection() {
   return result;
 }
 
-export async function fetchMetaAds(range?:{from:string;to:string}) {
+export async function fetchMetaAds(range?: { from: string; to: string }) {
   const config = await getMetaMarketingConfig();
   if (!config.accessToken || !config.adAccountId) {
     return { configured: false, ads: [], currency: null, adAccountName: null };
@@ -100,7 +103,7 @@ export async function fetchMetaAds(range?:{from:string;to:string}) {
     }),
     graph(`${config.adAccountId}/insights`, config.accessToken, {
       level: "ad",
-      ...(range?{time_range:JSON.stringify({since:range.from,until:range.to})}:{date_preset:'last_30d'}),
+      ...(range ? { time_range: JSON.stringify({ since: range.from, until: range.to }) } : { date_preset: "last_30d" }),
       fields: "ad_id,ad_name,campaign_name,adset_name,spend,impressions,reach,clicks,cpc,ctr,actions",
       limit: "500",
     }),
@@ -125,7 +128,11 @@ export async function fetchMetaAds(range?:{from:string;to:string}) {
       cpc: Number(insight.cpc || 0),
       ctr: Number(insight.ctr || 0),
       purchases: actionCount(insight.actions, ["purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase"]),
-      leads: actionCount(insight.actions, ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead"]),
+      leads: actionCount(insight.actions, [
+        "lead",
+        "onsite_conversion.lead_grouped",
+        "offsite_conversion.fb_pixel_lead",
+      ]),
     };
   });
 

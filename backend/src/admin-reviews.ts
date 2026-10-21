@@ -1,10 +1,4 @@
-import {
-  Router,
-  type Request,
-  type Response,
-  type NextFunction,
-  type RequestHandler,
-} from "express";
+import { Router, type Request, type Response, type NextFunction, type RequestHandler } from "express";
 import multer from "multer";
 import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "./lib/db";
@@ -44,10 +38,7 @@ function checkedUpload(handler: RequestHandler): RequestHandler {
     handler(req, res, (error: any) => {
       if (error)
         return res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
-          error:
-            error.code === "LIMIT_FILE_SIZE"
-              ? "Upload exceeds the permitted file size."
-              : error.message,
+          error: error.code === "LIMIT_FILE_SIZE" ? "Upload exceeds the permitted file size." : error.message,
         });
       next();
     });
@@ -100,12 +91,7 @@ reviewRouter.post(
   "/upload-url",
   wrap(async (req, res) => res.json(await stageReviewUpload(req))),
 );
-const auditData = (
-  req: AuthedRequest,
-  action: string,
-  id: string,
-  details: object = {},
-) => ({
+const auditData = (req: AuthedRequest, action: string, id: string, details: object = {}) => ({
   userId: req.admin?.id,
   action,
   entity: "Review",
@@ -158,11 +144,7 @@ reviewRouter.get(
       .send(
         csv([
           [...REVIEW_COLUMNS, "row", "error"],
-          ...errors.map((e) => [
-            ...REVIEW_COLUMNS.map((k) => e.values[k]),
-            e.row,
-            e.error,
-          ]),
+          ...errors.map((e) => [...REVIEW_COLUMNS.map((k) => e.values[k]), e.row, e.error]),
         ]),
       );
   }),
@@ -170,14 +152,10 @@ reviewRouter.get(
 async function validateUpload(req: Request, preview: boolean) {
   const files = fileMap(req);
   if (!files.csv?.[0]) throw new Error("CSV is required.");
-  if (files.csv[0].size > 2 * 1024 * 1024)
-    throw new Error("CSV must be under 2 MB.");
+  if (files.csv[0].size > 2 * 1024 * 1024) throw new Error("CSV must be under 2 MB.");
   const rows = readReviewCsv(files.csv[0].buffer),
     mediaFiles = readMediaZip(files.zip?.[0]?.buffer);
-  const overrides = JSON.parse(String(req.body.overrides || "{}")) as Record<
-    string,
-    string
-  >;
+  const overrides = JSON.parse(String(req.body.overrides || "{}")) as Record<string, string>;
   const digest = createHash("sha256")
     .update(files.csv[0].buffer)
     .update(files.zip?.[0]?.buffer || "")
@@ -200,12 +178,8 @@ async function validateUpload(req: Request, preview: boolean) {
     const match = override
       ? { product: products.find((p) => p.id === override), error: undefined }
       : matchProduct(values, products);
-    if (!match.product)
-      errors.push(match.error || "Selected product no longer exists.");
-    if (existing.has(values.reviewRef))
-      errors.push(
-        "Duplicate reviewRef already exists (including deleted reviews).",
-      );
+    if (!match.product) errors.push(match.error || "Selected product no longer exists.");
+    if (existing.has(values.reviewRef)) errors.push("Duplicate reviewRef already exists (including deleted reviews).");
     if (seen.has(values.reviewRef)) errors.push("Duplicate reviewRef in CSV.");
     seen.add(values.reviewRef);
     let media: Awaited<ReturnType<typeof rowMedia>> = [];
@@ -251,9 +225,7 @@ reviewRouter.post(
   wrap(async (req, res) => {
     const validated = await validateUpload(req, false);
     if (req.body.digest !== validated.digest)
-      throw new Error(
-        "Files or product selections changed. Validate and preview again.",
-      );
+      throw new Error("Files or product selections changed. Validate and preview again.");
     const selected = JSON.parse(String(req.body.selected || "[]")) as number[];
     if (
       !Array.isArray(selected) ||
@@ -263,9 +235,7 @@ reviewRouter.post(
     )
       throw new Error("Explicitly select the rows to import.");
     if (selected.some((i) => validated.rows[i].errors.length))
-      throw new Error(
-        "Resolve errors or deselect invalid rows before importing.",
-      );
+      throw new Error("Resolve errors or deselect invalid rows before importing.");
     const batch = await prisma.reviewImportBatch.create({
       data: { filename: validated.filename, createdBy: req.admin?.id },
     });
@@ -359,9 +329,7 @@ reviewRouter.delete(
           where: { batchId: id, deletedAt: null },
         });
         if (req.body.confirmCount !== affected)
-          throw new Error(
-            `Batch now contains ${affected} reviews. Refresh and confirm again.`,
-          );
+          throw new Error(`Batch now contains ${affected} reviews. Refresh and confirm again.`);
         const now = new Date();
         await tx.reviewImportBatch.update({
           where: { id },
@@ -427,8 +395,7 @@ export async function storeReviewFiles(req: Request) {
     }
     checked.push({ f, avatar, info });
   }
-  if (photos > 5 || videos > 1)
-    throw new Error("Maximum 5 photos and 1 video.");
+  if (photos > 5 || videos > 1) throw new Error("Maximum 5 photos and 1 video.");
   for (const { f, avatar, info } of checked) {
     const url = await uploadReviewAsset(f.buffer, f.originalname, info.contentType);
     if (avatar) avatarUrl = url;
@@ -458,8 +425,7 @@ reviewRouter.post(
       where: { id: String(b.productId || "") },
     });
     if (!product) throw new Error("Select an existing product.");
-    if (!["PENDING", "APPROVED"].includes(b.status))
-      throw new Error("Choose Pending or Approved.");
+    if (!["PENDING", "APPROVED"].includes(b.status)) throw new Error("Choose Pending or Approved.");
     const { media, avatarUrl } = await storeReviewFiles(req);
     const row = await prisma.$transaction(async (tx) => {
       const review = await tx.review.create({
@@ -512,25 +478,17 @@ reviewRouter.patch(
   wrap(async (req, res) => {
     const id = String(req.params.id),
       b = req.body;
-    if (!["PENDING", "APPROVED", "REJECTED"].includes(b.status))
-      throw new Error("Invalid status.");
+    if (!["PENDING", "APPROVED", "REJECTED"].includes(b.status)) throw new Error("Invalid status.");
     const existing = await prisma.review.findUniqueOrThrow({
       where: { id },
       include: { batch: true },
     });
-    if (existing.deletedAt || existing.batch?.deletedAt)
-      throw new Error("Review is deleted.");
-    if (
-      b.isTest !== undefined &&
-      (b.isTest === true || b.isTest === "true") !==
-        (existing.origin === "TEST")
-    )
+    if (existing.deletedAt || existing.batch?.deletedAt) throw new Error("Review is deleted.");
+    if (b.isTest !== undefined && (b.isTest === true || b.isTest === "true") !== (existing.origin === "TEST"))
       throw new Error("The demo/genuine review type cannot be changed.");
     const productId = String(b.productId || existing.productId);
     if (productId !== existing.productId && existing.origin === "CUSTOMER")
-      throw new Error(
-        "A verified customer review must stay with its purchased product.",
-      );
+      throw new Error("A verified customer review must stay with its purchased product.");
     if (
       !(await prisma.product.findUnique({
         where: { id: productId },
@@ -545,11 +503,7 @@ reviewRouter.patch(
         : typeof b.retainMediaIds === "string"
           ? JSON.parse(b.retainMediaIds)
           : b.retainMediaIds;
-    if (
-      retain !== undefined &&
-      (!Array.isArray(retain) ||
-        retain.some((value: unknown) => typeof value !== "string"))
-    )
+    if (retain !== undefined && (!Array.isArray(retain) || retain.some((value: unknown) => typeof value !== "string")))
       throw new Error("Invalid media selection.");
     const row = await prisma.$transaction(
       async (tx) => {
@@ -557,42 +511,26 @@ reviewRouter.patch(
           where: { id },
           include: { batch: true, media: true },
         });
-        if (current.deletedAt || current.batch?.deletedAt)
-          throw new Error("Review is deleted.");
+        if (current.deletedAt || current.batch?.deletedAt) throw new Error("Review is deleted.");
         const values = {
           reviewRef: current.reviewRef || "LEGACY",
           reviewerName: String(b.name ?? current.name),
           reviewerEmail: String(b.email ?? current.email ?? ""),
           rating: String(b.rating ?? current.rating),
           reviewText: String(b.body ?? current.body),
-          reviewDate: String(
-            b.reviewDate ||
-              (current.reviewDate || current.createdAt)
-                .toISOString()
-                .slice(0, 10),
-          ),
+          reviewDate: String(b.reviewDate || (current.reviewDate || current.createdAt).toISOString().slice(0, 10)),
         };
         const { errors } = validateReview(values);
         if (errors.length) throw new Error(errors.join(" "));
-        if (
-          retain?.some(
-            (mediaId: string) => !current.media.some((m) => m.id === mediaId),
-          )
-        )
-          throw new Error(
-            "An attachment no longer exists. Refresh the review.",
-          );
-        const kept = current.media.filter(
-          (m) => retain === undefined || retain.includes(m.id),
-        );
+        if (retain?.some((mediaId: string) => !current.media.some((m) => m.id === mediaId)))
+          throw new Error("An attachment no longer exists. Refresh the review.");
+        const kept = current.media.filter((m) => retain === undefined || retain.includes(m.id));
         const combined = [...kept, ...uploaded.media];
         if (
           combined.filter((m) => m.type === "image").length > 5 ||
           combined.filter((m) => m.type === "video").length > 1
         )
-          throw new Error(
-            "Maximum 5 photos and 1 video, including existing attachments.",
-          );
+          throw new Error("Maximum 5 photos and 1 video, including existing attachments.");
         const updated = await tx.review.update({
           where: { id },
           data: {
@@ -604,13 +542,9 @@ reviewRouter.patch(
             reviewDate: new Date(`${values.reviewDate}T00:00:00Z`),
             productId: b.productId === undefined ? undefined : productId,
             avatarUrl:
-              uploaded.avatarUrl ||
-              (b.removeAvatar === true || b.removeAvatar === "true"
-                ? null
-                : current.avatarUrl),
+              uploaded.avatarUrl || (b.removeAvatar === true || b.removeAvatar === "true" ? null : current.avatarUrl),
             media: {
-              deleteMany:
-                retain === undefined ? undefined : { id: { notIn: retain } },
+              deleteMany: retain === undefined ? undefined : { id: { notIn: retain } },
               create: uploaded.media,
             },
           },

@@ -21,10 +21,7 @@ export const reviewChunkUpload: RequestHandler = (req, res, next) =>
     storage: multer.memoryStorage(),
     limits: { fileSize: CHUNK_SIZE, files: 1, fields: 15, fieldSize: 30000 },
   }).single("chunk")(req, res, (error) => {
-    if (error)
-      return res
-        .status(400)
-        .json({ error: "Upload chunks must be no larger than 2 MB." });
+    if (error) return res.status(400).json({ error: "Upload chunks must be no larger than 2 MB." });
     next();
   });
 function uploadFromToken(req: AuthedRequest, token: unknown) {
@@ -48,15 +45,10 @@ export async function writeReviewChunk(req: AuthedRequest) {
     !Number.isInteger(part) ||
     part < 0 ||
     part >= count ||
-    req.file?.buffer.length !==
-      Math.min(CHUNK_SIZE, upload.size - part * CHUNK_SIZE)
+    req.file?.buffer.length !== Math.min(CHUNK_SIZE, upload.size - part * CHUNK_SIZE)
   )
     throw new Error("Invalid upload chunk or size.");
-  await uploadObject(
-    `${upload.key}.parts/${part}`,
-    req.file.buffer,
-    "application/octet-stream",
-  );
+  await uploadObject(`${upload.key}.parts/${part}`, req.file.buffer, "application/octet-stream");
   return { ok: true };
 }
 export async function completeReviewChunks(req: AuthedRequest) {
@@ -80,9 +72,7 @@ function secret() {
 export function reviewUploadOwner(req: AuthedRequest) {
   return req.admin
     ? `admin:${req.admin.id}`
-    : `customer:${String(req.body.productId || "")}:${String(
-        req.body.orderNumber || "",
-      )
+    : `customer:${String(req.body.productId || "")}:${String(req.body.orderNumber || "")
         .trim()
         .toUpperCase()}:${String(req.body.phone || "")
         .replace(/\D/g, "")
@@ -94,31 +84,17 @@ export async function stageReviewUpload(req: AuthedRequest) {
       .replace(/^.*[\\/]/, "")
       .slice(0, 180),
     mime = String(contentType || "");
-  if (
-    !["zip", "media", "avatar"].includes(field) ||
-    (!req.admin && field !== "media")
-  )
+  if (!["zip", "media", "avatar"].includes(field) || (!req.admin && field !== "media"))
     throw new Error("Invalid review upload field.");
   const isZip = field === "zip",
     isVideo = field === "media" && mime === "video/mp4";
-  const maximum = isZip
-    ? 40 * 1024 * 1024
-    : isVideo
-      ? 20 * 1024 * 1024
-      : 5 * 1024 * 1024;
+  const maximum = isZip ? 40 * 1024 * 1024 : isVideo ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
   if (!name || !Number.isInteger(size) || size <= 0 || size > maximum)
-    throw new Error(
-      `File must be between 1 byte and ${maximum / 1024 / 1024} MB.`,
-    );
+    throw new Error(`File must be between 1 byte and ${maximum / 1024 / 1024} MB.`);
   if (
     isZip
       ? !/\.zip$/i.test(name)
-      : ![
-          "image/jpeg",
-          "image/png",
-          "image/webp",
-          ...(field === "media" ? ["video/mp4"] : []),
-        ].includes(mime)
+      : !["image/jpeg", "image/png", "image/webp", ...(field === "media" ? ["video/mp4"] : [])].includes(mime)
   )
     throw new Error("Unsupported review file type.");
   const data: Upload = {
@@ -137,15 +113,10 @@ export async function stageReviewUpload(req: AuthedRequest) {
   });
   return { url, token, contentType: data.mime };
 }
-export const hydrateReviewUploads: RequestHandler = async (
-  req: AuthedRequest,
-  res,
-  next,
-) => {
+export const hydrateReviewUploads: RequestHandler = async (req: AuthedRequest, res, next) => {
   try {
     const uploads = req.body.uploadTokens || [];
-    if (!Array.isArray(uploads) || uploads.length > 7)
-      throw new Error("Invalid staged uploads.");
+    if (!Array.isArray(uploads) || uploads.length > 7) throw new Error("Invalid staged uploads.");
     const files = (req.files || {}) as Record<string, Express.Multer.File[]>;
     for (const token of uploads) {
       const upload = jwt.verify(String(token), secret(), {
@@ -185,18 +156,12 @@ export const hydrateReviewUploads: RequestHandler = async (
         } as Express.Multer.File,
       ];
     }
-    if (
-      (files.zip?.length || 0) > 1 ||
-      (files.media?.length || 0) > 6 ||
-      (files.avatar?.length || 0) > 1
-    )
+    if ((files.zip?.length || 0) > 1 || (files.media?.length || 0) > 6 || (files.avatar?.length || 0) > 1)
       throw new Error("Too many review files.");
     req.files = files;
     next();
   } catch (error: any) {
-    res
-      .status(400)
-      .json({ error: error.message || "Unable to read staged upload." });
+    res.status(400).json({ error: error.message || "Unable to read staged upload." });
   }
 };
 export function reviewAssetKey(bytes: Uint8Array, name: string) {
@@ -209,6 +174,7 @@ export function reviewAssetKey(bytes: Uint8Array, name: string) {
  */
 export async function uploadReviewAsset(bytes: Buffer, name: string, contentType: string) {
   const site = await toSiteWebp(bytes, contentType);
-  const key = site.converted || site.ext === "webp" ? reviewAssetKey(bytes, `${name}.webp`) : reviewAssetKey(bytes, name);
+  const key =
+    site.converted || site.ext === "webp" ? reviewAssetKey(bytes, `${name}.webp`) : reviewAssetKey(bytes, name);
   return uploadObject(key, site.bytes, site.contentType);
 }

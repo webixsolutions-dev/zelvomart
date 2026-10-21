@@ -29,7 +29,11 @@ export function productBadges(catalog: Record<string, unknown> | null | undefine
       }
       // The % shown is worked out from the real sale price, never taken from the tag.
       const percent = Math.round(Number(sale?.discountPercent || 0));
-      if (sale?.onSale && percent > 0 && catalog.tags.some((tag) => typeof tag === "string" && PERCENT_OFF_TAGS.includes(tag))) {
+      if (
+        sale?.onSale &&
+        percent > 0 &&
+        catalog.tags.some((tag) => typeof tag === "string" && PERCENT_OFF_TAGS.includes(tag))
+      ) {
         push(`${percent}% off`);
       }
     }

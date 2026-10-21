@@ -35,22 +35,36 @@ export function passwordStamp(passwordHash: string) {
 
 export function signAdminToken(user: AdminIdentity, stamp: string) {
   const { id, name, email, role } = user;
-  return jwt.sign({ id, name, email, role, pv: stamp }, secret(), { expiresIn: ADMIN_TOKEN_SECONDS, issuer: ISSUER, audience: AUDIENCE });
+  return jwt.sign({ id, name, email, role, pv: stamp }, secret(), {
+    expiresIn: ADMIN_TOKEN_SECONDS,
+    issuer: ISSUER,
+    audience: AUDIENCE,
+  });
 }
 
 export function decodeAdminToken(token: string): AdminIdentity & { exp?: number; pv?: string } {
-  return jwt.verify(token, secret(), { issuer: ISSUER, audience: AUDIENCE }) as AdminIdentity & { exp?: number; pv?: string };
+  return jwt.verify(token, secret(), { issuer: ISSUER, audience: AUDIENCE }) as AdminIdentity & {
+    exp?: number;
+    pv?: string;
+  };
 }
 
 export type ChallengePurpose = "verify" | "enroll";
 
 /** Issued after a correct password when a code is still needed; only /api/auth/login/verify accepts it. */
 export function signTwoFactorChallenge(userId: string, purpose: ChallengePurpose) {
-  return jwt.sign({ sub: userId, purpose }, secret(), { expiresIn: CHALLENGE_SECONDS, issuer: ISSUER, audience: CHALLENGE_AUDIENCE });
+  return jwt.sign({ sub: userId, purpose }, secret(), {
+    expiresIn: CHALLENGE_SECONDS,
+    issuer: ISSUER,
+    audience: CHALLENGE_AUDIENCE,
+  });
 }
 
 export function decodeTwoFactorChallenge(token: string): { sub: string; purpose: ChallengePurpose } {
-  const value = jwt.verify(token, secret(), { issuer: ISSUER, audience: CHALLENGE_AUDIENCE }) as { sub?: string; purpose?: string };
+  const value = jwt.verify(token, secret(), { issuer: ISSUER, audience: CHALLENGE_AUDIENCE }) as {
+    sub?: string;
+    purpose?: string;
+  };
   if (!value.sub || (value.purpose !== "verify" && value.purpose !== "enroll")) throw new Error("INVALID_CHALLENGE");
   return { sub: value.sub, purpose: value.purpose };
 }
@@ -70,7 +84,16 @@ async function currentUser(userId: string) {
     where: { id: userId },
     select: { id: true, name: true, email: true, role: true, active: true, passwordHash: true },
   });
-  const user = row ? { id: row.id, name: row.name, email: row.email, role: row.role, active: row.active, stamp: passwordStamp(row.passwordHash) } : null;
+  const user = row
+    ? {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        role: row.role,
+        active: row.active,
+        stamp: passwordStamp(row.passwordHash),
+      }
+    : null;
   userChecks.set(userId, { at: Date.now(), user });
   if (userChecks.size > 500) userChecks.delete(userChecks.keys().next().value as string);
   return user;
