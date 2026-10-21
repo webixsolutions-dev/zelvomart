@@ -21,5 +21,5 @@ export function notifyError(error:unknown,status?:number){
  toast.error(message,{toastId:`app-error:${message}`});
 }
 export function userFacingRequest(url:string){
- try{const path=new URL(url,window.location.origin).pathname;return path.includes('/api/')&&!/\/api\/(events|session-replays\/(start|chunk|end)|checkout\/abandoned|admin-session\/logout|account\/cart)(\/|$)/.test(path);}catch{return false;}
+ try{const path=new URL(url,window.location.origin).pathname;return path.includes('/api/')&&!/\/api\/(events|session-replays\/(start|chunk|end)|checkout\/abandoned|admin-session\/(login|verify|logout)|admin-proxy\/api\/auth\/me|account\/cart)(\/|$)/.test(path);}catch{return false;}
 }

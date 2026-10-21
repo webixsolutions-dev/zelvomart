@@ -180,6 +180,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <section className="admin-my-account" aria-labelledby="admin-my-account-label">
           <h2 id="admin-my-account-label">My account</h2>
           <div className="admin-my-account-profile"><span className="admin-my-account-avatar">{initials}</span><div><strong title={user.name || "Admin"}>{user.name || "Admin"}</strong><small className="admin-my-account-email" title={user.email}>{user.email}</small></div></div>
+          <Link href="/admin/security" className={`admin-account-link${pathname === "/admin/security" ? " active" : ""}`}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></svg><span>Security</span></Link>
           <button type="button" className="admin-account-link admin-account-logout" onClick={signOut}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3H4v18h5M10 12h11m-5-5 5 5-5 5" /></svg><span>Log out</span></button>
         </section>
       </aside>
