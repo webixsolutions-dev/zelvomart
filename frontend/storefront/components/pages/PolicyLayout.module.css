@@ -131,3 +131,7 @@
   .card p { font-size: 14px; line-height: 1.9; }
   .callout { padding-left: 17px; }
 }
+
+/* Round 4: "Last updated" under the subtitle, and room between paragraphs of one card. */
+.heroCopy p.updated { margin-top: 12px; font-size: 13.5px; line-height: 1.6; font-weight: 650; color: #4f7388; }
+.card p + p { margin-top: 12px; }

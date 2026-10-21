@@ -7,7 +7,7 @@ import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 const icons = [Banknote, Truck, PackageCheck, ShieldCheck];
 
 export function AnnouncementBar() {
-  const items = announcements.map((a, i) => {
+  const items = announcements().map((a, i) => {
     const Icon = icons[i % icons.length];
     return (
       <li key={a}>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Mail } from "lucide-react";
+import { CircleCheck, Mail } from "lucide-react";
+import { trackStoreEvent } from "@/lib/client-tracking";
 import Link from "next/link";
 import { site } from "@store/lib/site";
 import { waLink } from "@store/lib/format";
@@ -36,14 +37,15 @@ export function TopicLink({ topic, className, children }: { topic: Topic; classN
   );
 }
 
-type Values = { name: string; phone: string; topic: Topic; order: string; message: string };
-type Errors = Partial<Record<"name" | "phone" | "message", string>>;
+type Values = { name: string; phone: string; email: string; topic: Topic; order: string; message: string; website: string };
+type Errors = Partial<Record<"name" | "phone" | "email" | "message", string>>;
 
-function validate(v: Values): Errors {
+function validate(v: Values, needEmail = true): Errors {
   const e: Errors = {};
   if (!v.name.trim()) e.name = "Please enter your name.";
   const digits = v.phone.replace(/\D/g, "");
   if (!/^\+?[\d\s()-]+$/.test(v.phone.trim()) || digits.length < 10 || digits.length > 15) e.phone = "Please enter a valid mobile number.";
+  if (needEmail && !/^\S+@\S+\.\S+$/.test(v.email.trim())) e.email = "Please enter a valid email address, so we can reply.";
   if (v.message.trim().length < 5) e.message = "Please add a little detail about your question.";
   return e;
 }
@@ -61,20 +63,40 @@ function compose(v: Values) {
   ].join("\n");
 }
 
+/** What the support inbox receives: topic, order number (if any), then the message. */
+function problem(v: Values) {
+  return [`Topic: ${v.topic}`, ...(v.order.trim() ? [`Order number: ${v.order.trim()}`] : []), "", v.message.trim()].join("\n");
+}
+
+/** The backend's own wording for each refusal (POST /api/contact). */
+const backendMessages: Record<string, string> = {
+  INVALID_NAME: "Please enter your name.",
+  INVALID_EMAIL: "Please enter a valid email address.",
+  INVALID_PHONE: "Please enter a valid phone number.",
+  INVALID_MESSAGE: "Please add a little more detail about the problem.",
+  CONTACT_DELIVERY_FAILED: "We could not send your message right now. Please use WhatsApp or try again shortly.",
+  RATE_LIMITED: "You’ve sent several messages in a short time. Please wait a little, or message us on WhatsApp.",
+};
+
 /**
- * No backend: nothing is sent to a server or saved. "Continue to WhatsApp" opens WhatsApp with the message
- * written out, and the email alternative opens the same message in the visitor's email app.
+ * Sends the message to support@zelvomart.com through POST /api/contact (store proxy, so the
+ * backend's rate limit sees the visitor's own address). WhatsApp stays available as the second option.
  */
 export function ContactForm() {
-  const [v, setV] = useState<Values>({ name: "", phone: "", topic: "Product question", order: "", message: "" });
+  const [v, setV] = useState<Values>({ name: "", phone: "", email: "", topic: "Product question", order: "", message: "", website: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState("");
+  const [failure, setFailure] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<{ name: string; email: string } | null>(null);
   const topicRef = useRef<HTMLSelectElement>(null);
+  const contactTracked = useRef(false);
 
   useEffect(() => {
     const onTopic = (e: Event) => {
       const t = (e as CustomEvent<Topic>).detail;
       if (topics.includes(t)) {
+        setSent(null);
         setV((x) => ({ ...x, topic: t }));
         setTimeout(() => topicRef.current?.focus({ preventScroll: true }), 400);
       }
@@ -88,30 +110,51 @@ export function ContactForm() {
     if (k in errors) setErrors({ ...errors, [k]: undefined });
   };
 
-  const check = () => {
-    const e = validate(v);
+  const check = (needEmail: boolean) => {
+    const e = validate(v, needEmail);
     setErrors(e);
-    const first = (["name", "phone", "message"] as const).find((k) => e[k]);
+    const first = (["name", "phone", "email", "message"] as const).find((k) => e[k]);
     if (first) {
       document.getElementById(`contact-${first}`)?.focus();
       setStatus("Please check the highlighted fields.");
       return false;
     }
+    setStatus("");
     return true;
   };
 
-  const toWhatsApp = (e: React.FormEvent) => {
+  const send = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!check()) return;
-    window.open(waLink(site.whatsappNumber, compose(v)), "_blank", "noopener");
-    setStatus("WhatsApp opened in a new tab. Tap Send there to finish.");
+    setFailure("");
+    if (sending || !check(true)) return;
+    setSending(true);
+    try {
+      const response = await fetch("/api/store-proxy/api/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: v.name.trim(), email: v.email.trim(), phone: v.phone.trim(), website: v.website, problem: problem(v) }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
+      if (!response.ok) {
+        setFailure(data.message || backendMessages[String(data.error)] || backendMessages.CONTACT_DELIVERY_FAILED);
+        return;
+      }
+      if (!contactTracked.current) {
+        contactTracked.current = true;
+        trackStoreEvent("Contact", { content_name: "contact_form", content_category: v.topic }).catch(() => undefined);
+      }
+      setSent({ name: v.name.trim().split(/\s+/)[0], email: v.email.trim() });
+    } catch {
+      setFailure(backendMessages.CONTACT_DELIVERY_FAILED);
+    } finally {
+      setSending(false);
+    }
   };
 
-  const toEmail = () => {
-    if (!check()) return;
-    const subject = `${v.topic}${v.order.trim() ? ` — ${v.order.trim()}` : ""}`;
-    window.location.href = `mailto:${site.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(compose(v))}`;
-    setStatus("Your email app should open with the message ready to send.");
+  const toWhatsApp = () => {
+    if (!check(false)) return;
+    window.open(waLink(site.whatsappNumber, compose(v)), "_blank", "noopener");
+    setStatus("WhatsApp opened in a new tab. Tap Send there to finish.");
   };
 
   const err = (k: keyof Errors) =>
@@ -121,8 +164,28 @@ export function ContactForm() {
       </span>
     ) : null;
 
+  if (sent) {
+    return (
+      <div className={s.sent} role="status">
+        <span className={s.sentIcon} aria-hidden="true">
+          <CircleCheck size={30} />
+        </span>
+        <h3>Message sent.</h3>
+        <p>
+          Thanks, {sent.name}. We’ve received your message and will reply to <strong>{sent.email}</strong>, usually within a few hours.
+        </p>
+        <p className={s.sentAlt}>
+          Need help sooner?{" "}
+          <a href={waLink(site.whatsappNumber, compose(v))} target="_blank" rel="noopener noreferrer">
+            Chat on WhatsApp
+          </a>
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <form className={s.form} onSubmit={toWhatsApp} noValidate>
+    <form className={s.form} onSubmit={send} noValidate aria-busy={sending}>
       <div className={s.fields}>
         <div className={s.field}>
           <label htmlFor="contact-name">
@@ -160,6 +223,25 @@ export function ContactForm() {
           />
           {err("phone")}
         </div>
+        <div className={`${s.field} ${s.full}`}>
+          <label htmlFor="contact-email">
+            Email address <span aria-hidden="true">*</span>
+          </label>
+          <input
+            id="contact-email"
+            className={errors.email ? s.invalid : undefined}
+            type="email"
+            inputMode="email"
+            value={v.email}
+            onChange={set("email")}
+            placeholder="you@example.com"
+            autoComplete="email"
+            required
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "contact-email-error" : undefined}
+          />
+          {err("email")}
+        </div>
         <div className={s.field}>
           <label htmlFor="contact-topic">How can we help?</label>
           <select id="contact-topic" ref={topicRef} value={v.topic} onChange={set("topic")}>
@@ -194,21 +276,33 @@ export function ContactForm() {
           />
           {err("message")}
         </div>
+        {/* Honeypot: people never see or fill it; bots usually do. */}
+        <div className={s.honeypot} aria-hidden="true">
+          <label htmlFor="contact-website">Website</label>
+          <input id="contact-website" name="website" tabIndex={-1} autoComplete="off" value={v.website} onChange={set("website")} />
+        </div>
       </div>
 
-      <button className={`btn wa block lg ${s.submit}`} type="submit">
-        <WhatsAppIcon size={19} /> Continue to WhatsApp
+      {failure && (
+        <p className={s.failure} role="alert">
+          {failure}{" "}
+          <button type="button" onClick={toWhatsApp}>
+            or send it on WhatsApp
+          </button>
+        </p>
+      )}
+      <button className={`btn block lg ${s.submit}`} type="submit" disabled={sending}>
+        <Mail size={19} /> {sending ? "Sending…" : "Send message"}
       </button>
-      <p className={s.formNote}>Your message opens in WhatsApp. Tap Send there to finish.</p>
-      <button className={s.emailAlt} type="button" onClick={toEmail}>
-        <Mail size={16} /> Prefer email? Open this message in your email app
+      <button className={s.emailAlt} type="button" onClick={toWhatsApp}>
+        <WhatsAppIcon size={16} /> Prefer WhatsApp? Send this message on WhatsApp
       </button>
       <p className={s.status} role="status">
         {status}
       </p>
       <p className={s.privacy}>
-        Nothing is sent or saved by this form. Please share order details only, never passwords or OTPs.{" "}
-        <Link href="/privacy-policy/">Privacy policy</Link>
+        We use these details only to reply to your message. Please never share passwords or OTPs.{" "}
+        <Link href="/privacy-policy/">Read our Privacy Policy.</Link>
       </p>
     </form>
   );

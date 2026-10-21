@@ -18,7 +18,7 @@ export function WishlistView() {
         </span>
         <h2>Save your favourite finds.</h2>
         <p>Tap the heart on any product to keep it here for later.</p>
-        <Link href="/shop-all-products/" className="btn">
+        <Link href="/shop/" className="btn">
           Explore products <ArrowRight size={16} />
         </Link>
       </div>

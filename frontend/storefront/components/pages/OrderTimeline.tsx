@@ -5,7 +5,7 @@ const steps = [
   { icon: ClipboardCheck, title: "Confirmed", sub: "We verify details with you." },
   { icon: PackageCheck, title: "Packed", sub: "Checked and packed with care." },
   { icon: Truck, title: "In transit", sub: "With our courier partner." },
-  { icon: House, title: "Delivered", sub: "Pay cash on delivery." },
+  { icon: House, title: "Delivered", sub: "At your door." },
 ];
 
 export function OrderTimeline({ step = -1 }: { step?: number }) {

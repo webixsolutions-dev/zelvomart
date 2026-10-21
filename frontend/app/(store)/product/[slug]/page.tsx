@@ -46,6 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!p) return {};
   const desc = productDescription(p);
   return {
+    ...(p.noindex ? { robots: { index: false, follow: true } } : {}),
     title: { absolute: productTitle(p) },
     description: desc,
     // Variant or tracking query strings all canonicalise to the plain product URL.

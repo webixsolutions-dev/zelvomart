@@ -169,6 +169,19 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
       }
     }
 
+    // Products whose stock this order took to zero: only their pages change from "in stock" to sold out.
+    const soldOut = new Set<string>();
+    for (const item of prepared) {
+      if (!item.tracked) continue;
+      const left = item.variantId
+        ? await tx.variant.findUnique({ where: { id: item.variantId }, select: { stock: true } })
+        : await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true } });
+      if (left && left.stock <= 0) soldOut.add(item.productId);
+    }
+    const soldOutSlugs = soldOut.size
+      ? (await tx.product.findMany({ where: { id: { in: [...soldOut] } }, select: { slug: true } })).map((p) => p.slug)
+      : [];
+
     const source = input.source || {};
     const firstTouch = source.firstTouch && typeof source.firstTouch === "object" ? source.firstTouch as Record<string, unknown> : {};
     const lastTouch = source.lastTouch && typeof source.lastTouch === "object" ? source.lastTouch as Record<string, unknown> : {};
@@ -268,11 +281,11 @@ export async function createOrder(input: CheckoutInput,options:{dispatchJobs?:bo
           ]),
     ]);
 
-    return { order, jobIds: jobs.map((job) => job.id) };
+    return { order, jobIds: jobs.map((job) => job.id), soldOutSlugs };
   }, ORDER_TX_OPTIONS);
 
   if(options.dispatchJobs!==false)await Promise.allSettled(result.jobIds.map((id) => dispatchJobRow(id)));
-  return result.order;
+  return Object.assign(result.order, { jobIds: result.jobIds, soldOutSlugs: result.soldOutSlugs });
 }
 
 export async function restoreOrderStock(orderId: string) {

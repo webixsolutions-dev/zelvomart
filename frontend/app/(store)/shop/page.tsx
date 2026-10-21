@@ -9,8 +9,8 @@ const c = collections["shop"];
 export const metadata: Metadata = {
   title: { absolute: c.seoTitle },
   description: c.seoDescription,
-  alternates: { canonical: "/shop-all-products/" },
-  ...shareMeta({ title: c.seoTitle, description: c.seoDescription, path: "/shop-all-products/", image: bannerOg(c.banner, c.title) }),
+  alternates: { canonical: "/shop/" },
+  ...shareMeta({ title: c.seoTitle, description: c.seoDescription, path: "/shop/", image: bannerOg(c.banner, c.title) }),
 };
 
 export const revalidate = 300;

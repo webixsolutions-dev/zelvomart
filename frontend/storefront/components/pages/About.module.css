@@ -1074,3 +1074,8 @@
     padding-bottom: 40px;
   }
 }
+
+/* The longer "Our story" copy is taller than the photo on desktop: keep the photo top-aligned. */
+.storyGrid.storyGrid {
+  align-items: start;
+}

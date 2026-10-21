@@ -31,8 +31,8 @@ export function resolveProductTabs(p: Product): ProductTab[] {
       points: [
         { title: "From our own stock", text: "Every product listed is in our own stock, ready to pack and ship. We don’t list anything we don’t actually have." },
         { title: "Checked before dispatch", text: "Each item is inspected and packed with care before it leaves us." },
-        { title: "Cash on Delivery", text: "Pay in cash when your parcel arrives, anywhere in Pakistan." },
-        { title: "Real people on WhatsApp", text: `Ask about size, colour or delivery before you order. Our team replies ${site.supportHours}.` },
+        { title: "Delivered across Pakistan", text: "Packed in Lahore and sent to your door, wherever you are in Pakistan." },
+        { title: "Real people on WhatsApp", text: `Ask about size, colour or delivery before you order. ${site.supportHours}, every day.` },
       ],
     },
     {
@@ -42,9 +42,9 @@ export function resolveProductTabs(p: Product): ProductTab[] {
         { title: "Order placed", text: "Place your order on the website or on WhatsApp." },
         { title: "Confirmation", text: "We call or WhatsApp you to confirm your address." },
         { title: "Dispatched", text: `Packed and handed to ${courier} within 24–48 hours.` },
-        { title: "Delivered", text: `Arrives in ${estimate}. Pay cash on delivery.` },
+        { title: "Delivered", text: `Arrives in ${estimate}.` },
       ],
-      note: `Delivery is Rs. ${flatFee} per order, or free on orders over ${free}. Please record a video while opening your parcel; it helps us sort out any issue quickly.`,
+      note: `Delivery is Rs. ${flatFee.toLocaleString("en-PK")} per order, or free on orders over ${free}. Please record a video while opening your parcel; it helps us sort out any issue quickly.`,
     },
     {
       id: "faq",
@@ -52,7 +52,7 @@ export function resolveProductTabs(p: Product): ProductTab[] {
       items: [
         { q: "Will the product I receive match the photos?", a: "Yes. It is the exact same product from our own stock, shown from different angles so you can see it before you decide." },
         { q: "How long does delivery take?", a: `Usually ${estimate} depending on your city, delivered through ${courier}.` },
-        { q: "Do I have to pay before delivery?", a: "No. With Cash on Delivery you pay only when your order arrives at your door." },
+        { q: "Do I have to pay before delivery?", a: "No. You pay only when your order arrives at your door." },
         { q: "What if something is wrong with my order?", a: `If an item arrives damaged, wrong or incomplete, message us within ${site.returns.windowDays} days of delivery with your opening video and we’ll refund or replace it.` },
       ],
     },

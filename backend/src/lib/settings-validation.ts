@@ -2,7 +2,7 @@ import {z} from 'zod';
 const percent=z.number().finite().min(0).max(100);
 const positive=z.number().finite().positive();
 const schemas:Record<string,z.ZodType>={
-  'store.info':z.object({name:z.string().trim().min(1).max(100),phone:z.string().trim().min(7).max(30),email:z.email(),whatsapp:z.string().trim().regex(/^\+?[\d\s()-]{10,25}$/),country:z.literal('Pakistan')}),
+  'store.info':z.object({name:z.string().trim().min(1).max(100),phone:z.string().trim().min(7).max(30),email:z.email(),whatsapp:z.string().trim().regex(/^\+?[\d\s()-]{10,25}$/),country:z.literal('Pakistan'),supportHours:z.string().trim().max(80).optional()}),
   'store.delivery':z.object({mode:z.literal('FREE_ABOVE'),flatRate:positive,freeAbove:positive}),
   'store.bundleDefaultDiscountPercent':percent,
   'tracking.sessionReplayRetentionDays':z.number().int().min(1).max(90),

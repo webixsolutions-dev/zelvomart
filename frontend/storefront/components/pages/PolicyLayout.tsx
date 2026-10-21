@@ -6,6 +6,7 @@ import {
   Copyright, Scale, ShieldCheck, Database, Share2, LockKeyhole, UserRound, RefreshCw,
 } from "lucide-react";
 import { site } from "@store/lib/site";
+import { POLICY_FILES_UPDATED } from "@store/lib/policies/html";
 import type { PolicyDocument, PolicyIcon, PolicySlug } from "@store/lib/policies/types";
 import styles from "./PolicyLayout.module.css";
 
@@ -18,9 +19,9 @@ const icons = {
 } satisfies Record<PolicyIcon, typeof Undo2>;
 
 const navigation: { slug: PolicySlug; label: string; icon: PolicyIcon }[] = [
-  { slug: "refund-and-return-policy", label: "Refund & Return Policy", icon: "return" },
+  { slug: "refund_returns", label: "Refund & Return Policy", icon: "return" },
   { slug: "shipping-policy", label: "Shipping Policy", icon: "truck" },
-  { slug: "terms-and-conditions", label: "Terms & Conditions", icon: "document" },
+  { slug: "terms-conditions", label: "Terms & Conditions", icon: "document" },
   { slug: "privacy-policy", label: "Privacy Policy", icon: "shield" },
 ];
 
@@ -50,6 +51,7 @@ function PolicyText({ text }: { text: string }) {
 
 export function PolicyLayout({ policy }: { policy: PolicyDocument }) {
   const url = `${site.url}/${policy.slug}/`;
+  const updated = new Date(policy.updatedAt || `${POLICY_FILES_UPDATED}T12:00:00+05:00`);
   const structuredData = {
     "@context": "https://schema.org",
     "@graph": [
@@ -60,6 +62,7 @@ export function PolicyLayout({ policy }: { policy: PolicyDocument }) {
         name: policy.title,
         description: policy.subtitle,
         inLanguage: "en-PK",
+        dateModified: updated.toISOString(),
         breadcrumb: { "@id": `${url}#breadcrumb` },
       },
       {
@@ -81,6 +84,9 @@ export function PolicyLayout({ policy }: { policy: PolicyDocument }) {
             <span className={styles.heroAccent} aria-hidden="true" />
             <h1 id="policy-title">{policy.title}</h1>
             <p>{policy.subtitle}</p>
+            <p className={styles.updated}>
+              Last updated: <time dateTime={updated.toISOString().slice(0, 10)}>{updated.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Karachi" })}</time>
+            </p>
           </div>
           <div className={styles.heroArt} aria-hidden="true">
             <span className={styles.artDisc} />
@@ -127,7 +133,9 @@ export function PolicyLayout({ policy }: { policy: PolicyDocument }) {
                   <span className={styles.sectionIcon}><Icon name={section.icon} /></span>
                   <h2 id={`${sectionId(index)}-heading`}>{section.heading}</h2>
                 </div>
-                <p><PolicyText text={section.body} /></p>
+                {section.body.split(/\n{2,}/).map((para, i) => (
+                  <p key={i}><PolicyText text={para} /></p>
+                ))}
               </section>
             ))}
           </article>

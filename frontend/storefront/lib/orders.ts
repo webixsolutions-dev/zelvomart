@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { trackStoreEvent } from "@/lib/client-tracking";
 import { getReplaySessionId } from "@/lib/session-replay-client";
 import { getProductById, type Product } from "./catalog";
-import { unitPrice, useShop, type CartLine, type Order } from "./store";
+import { PLACED_ORDER_KEY, unitPrice, useShop, type CartLine, type Order } from "./store";
 
 /**
  * Order and event hooks for the design's pages. They keep the previous storefront's behaviour:
@@ -68,21 +68,56 @@ function toDesignOrder(o: Confirmation): Order {
   };
 }
 
+type PlacedOrder = Order & { cartCleared?: boolean };
+
+/** The order this tab just placed (saved by placeOrder), if it is the one in the URL. */
+function placedOrder(orderNumber: string): PlacedOrder | null {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(PLACED_ORDER_KEY) || "null") as PlacedOrder | null;
+    return saved && saved.id === orderNumber ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Empties the cart once per placed order, so reopening the thank-you page later never clears a new cart. */
+function clearOnce(saved: PlacedOrder, completeOrder: () => void) {
+  if (saved.cartCleared) return;
+  completeOrder();
+  try {
+    sessionStorage.setItem(PLACED_ORDER_KEY, JSON.stringify({ ...saved, cartCleared: true }));
+  } catch {}
+}
+
 /**
- * The order on the thank-you page, from GET /api/orders/confirmation/:orderNumber?key=…
- * (the key is the private id only the browser that placed the order has). Fires Purchase once,
- * with the order number as the event id, exactly as PurchaseClient did.
+ * The order on the thank-you page. It renders at once from the copy placeOrder saved in this tab,
+ * then refreshes from GET /api/orders/confirmation/:orderNumber?key=… (the key is the private id only
+ * the browser that placed the order has) and replaces it. Purchase still fires only from the backend
+ * confirmation, once, with the order number as the event id, exactly as PurchaseClient did.
+ * Once the order is on screen the cart is emptied (completeOrder), never earlier.
  */
 export function useConfirmedOrder(orderNumber: string | null, key: string | null) {
+  const { completeOrder } = useShop();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    if (!orderNumber || !key) {
+    if (!orderNumber) {
+      setReady(true);
+      return;
+    }
+    const saved = placedOrder(orderNumber);
+    if (saved) {
+      setOrders([saved]);
+      setReady(true);
+      clearOnce(saved, completeOrder);
+    }
+    const orderKey = key || saved?.key;
+    if (!orderKey) {
       setReady(true);
       return;
     }
     const controller = new AbortController();
-    void fetch(`/api/store-proxy/api/orders/confirmation/${encodeURIComponent(orderNumber)}?key=${encodeURIComponent(key)}`, {
+    void fetch(`/api/store-proxy/api/orders/confirmation/${encodeURIComponent(orderNumber)}?key=${encodeURIComponent(orderKey)}`, {
       cache: "no-store",
       signal: controller.signal,
     })
@@ -97,7 +132,7 @@ export function useConfirmedOrder(orderNumber: string | null, key: string | null
       })
       .catch(() => setReady(true));
     return () => controller.abort();
-  }, [orderNumber, key]);
+  }, [orderNumber, key, completeOrder]);
   return { orders, ready };
 }
 

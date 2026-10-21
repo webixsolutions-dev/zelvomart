@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { loadSettings } from "@store/lib/backend";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, Bell, Clock, Heart, History, Mail, Truck, Wallet, Zap } from "lucide-react";
 import { site } from "@store/lib/site";
@@ -12,7 +13,7 @@ import { AccountAuth, AccountDashboard, AccountSnapshot } from "@store/component
 export const metadata: Metadata = { title: "My Account", robots: { index: false } };
 
 const trust = [
-  { icon: Wallet, label: "Cash on Delivery nationwide" },
+  { icon: Wallet, label: "Pay when it arrives" },
   { icon: Truck, label: site.fulfilment.dispatch },
   { icon: BadgeCheck, label: `${site.returns.windowDays}-day easy returns` },
 ];
@@ -24,9 +25,10 @@ const perks = [
   { icon: Bell, title: "First to know", sub: "Early word on new arrivals, restocks and member-only deals." },
 ];
 
-const accountFaqs = faqs.filter((f) => f.group === "Orders" || f.group === "Returns");
+const accountFaqs = () => faqs().filter((f) => f.group === "Orders" || f.group === "Returns");
 
-export default function Page() {
+export default async function Page() {
+  await loadSettings();
   return (
     <div className="account-page">
       {/* ── Hero ── */}
@@ -118,7 +120,7 @@ export default function Page() {
                 <Mail size={14} /> {site.email}
               </li>
               <li>
-                <Clock size={14} /> {site.supportHours}
+                <Clock size={14} /> {site.supportHours}, every day
               </li>
             </ul>
           </div>
@@ -131,7 +133,7 @@ export default function Page() {
                 All FAQs <ArrowRight size={14} />
               </Link>
             </div>
-            <FaqAccordion items={accountFaqs} />
+            <FaqAccordion items={accountFaqs()} />
           </div>
         </div>
       </section>

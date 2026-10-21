@@ -56,7 +56,7 @@ export function AccountSnapshot() {
           </Link>
         ))}
       </div>
-      <Link href="/shop-all-products/" className="btn secondary block">
+      <Link href="/shop/" className="btn secondary block">
         Continue shopping <ArrowRight size={16} />
       </Link>
     </aside>
@@ -258,7 +258,7 @@ export function AccountAuth() {
           <div className="acc-guest">
             <ShieldCheck size={18} />
             <p>
-              <strong>No account? No problem.</strong> Guest checkout with Cash on Delivery takes under a minute.
+              <strong>No account? No problem.</strong> Guest checkout takes under a minute.
             </p>
           </div>
         </>
@@ -271,7 +271,7 @@ const actions = [
   { icon: PackageSearch, title: "Track an order", sub: "Live status of your parcel", href: "/track-your-order/" },
   { icon: Heart, title: "Wishlist", sub: "Items you've saved", href: "/wishlist/", count: "wishlist" as const },
   { icon: ShoppingCart, title: "My cart", sub: "Ready when you are", href: "/cart/", count: "cart" as const },
-  { icon: RefreshCw, title: "Returns", sub: `${site.returns.windowDays}-day return window`, href: "/refund-and-return-policy/" },
+  { icon: RefreshCw, title: "Returns", sub: `${site.returns.windowDays}-day return window`, href: "/refund_returns/" },
   { icon: MapPin, title: "Delivery info", sub: "Areas, fees & timing", href: "/shipping-policy/" },
   { icon: Headset, title: "Support", sub: "Talk to our team", href: "/contact-us/" },
 ];
@@ -336,7 +336,7 @@ export function AccountDashboard() {
                       {items === 1 ? "item" : "items"} · {o.customer.city}
                     </small>
                   </span>
-                  <span className="acc-status">Confirmed · COD</span>
+                  <span className="acc-status">Confirmed · Cash on Delivery</span>
                   <span className="acc-order-right">
                     <b>{money(o.total)}</b>
                     <Link href={`/order-confirmed/?id=${o.id}`}>
@@ -354,7 +354,7 @@ export function AccountDashboard() {
             </span>
             <h3>No orders yet</h3>
             <p>When you place an order on this device, it&apos;ll show up here with its details and total.</p>
-            <Link href="/shop-all-products/" className="btn">
+            <Link href="/shop/" className="btn">
               Start shopping <ArrowRight size={16} />
             </Link>
           </div>

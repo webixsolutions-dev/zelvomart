@@ -22,7 +22,10 @@ test('restore links, coupon tokens and typed searches never enter recording URLs
 
 test('legacy storefront URLs have one destination without redirect chains',()=>{
  for(const [source,target]of Object.entries(launchRedirects)){assert.equal(launchRedirect(source+'/'),target);assert.equal(launchRedirect(target),null);}
- assert.equal(launchRedirect('/product-category/original-wp-slug/'),'/category/original-wp-slug');
+ // WordPress category URLs are the final URLs (decision of 21 Oct 2026); the design's /category/ links move to them.
+ assert.equal(launchRedirect('/product-category/original-wp-slug/'),null);
+ assert.equal(launchRedirect('/category/original-wp-slug/'),'/product-category/original-wp-slug');
+ assert.equal(launchRedirect('/category/home-and-living/'),'/product-category/home-living');
  assert.equal(launchRedirect('/product/original-wp-slug/'),null);
 });
 

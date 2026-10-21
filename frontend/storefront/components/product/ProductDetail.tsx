@@ -246,7 +246,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                   router.push("/checkout/");
                 }}
               >
-                Order now – Cash on Delivery
+                Order now
               </button>
               <p className="pd-order-note">Pay when your parcel arrives · Delivered by {site.shipping.courier}</p>
               <div className="pd-buy-secondary">

@@ -12,7 +12,7 @@ export function CollectionArchive({ k }: { k: CollectionKey }) {
       <Hero size="short" priority desktop={c.banner} mobile={c.bannerMobile} mobileImageFull breadcrumbs={[{ label: c.title }]} eyebrow={c.eyebrow} title={c.title} sub={c.sub} />
       <section className="section pt-sm">
         <div className="container">
-          <ArchiveView ids={items.map((p) => p.id)} />
+          <ArchiveView ids={items.map((p) => p.id)} name={c.title} />
           <CollectionAbout name={c.title} text={c.sub} />
         </div>
       </section>
@@ -35,7 +35,7 @@ export function CategoryArchive({ id }: { id: CategoryId }) {
         priority
         desktop={c.banner}
         mobile={c.bannerMobile}
-        breadcrumbs={[{ label: "Shop", href: "/shop-all-products/" }, { label: c.name }]}
+        breadcrumbs={[{ label: "Shop", href: "/shop/" }, { label: c.name }]}
         eyebrow="Shop by category"
         title={c.name}
         sub={c.intro}

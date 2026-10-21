@@ -1,4 +1,4 @@
-export type PolicySlug = "refund-and-return-policy" | "shipping-policy" | "terms-and-conditions" | "privacy-policy";
+export type PolicySlug = "refund_returns" | "shipping-policy" | "terms-conditions" | "privacy-policy";
 
 export type PolicyIcon =
   | "return" | "heart" | "video" | "check" | "cross" | "message"
@@ -8,7 +8,7 @@ export type PolicyIcon =
 
 export type PolicySection = {
   heading: string;
-  /** Supplied copy. Only Markdown links are interpreted; all other text is literal. */
+  /** Supplied copy. Only Markdown links are interpreted; all other text is literal. A blank line starts a new paragraph. */
   body: string;
   icon: PolicyIcon;
   half?: boolean;
@@ -21,4 +21,6 @@ export type PolicyDocument = {
   subtitle: string;
   icon: PolicyIcon;
   sections: PolicySection[];
+  /** When the Admin page was last saved (ISO); the file date is used when there is no page yet. */
+  updatedAt?: string;
 };

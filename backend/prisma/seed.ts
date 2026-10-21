@@ -1,6 +1,7 @@
 import { Prisma, Role } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
 import { prisma } from "../src/lib/db";
+import { seedPolicyPages } from "../scripts/seed-policy-pages";
 
 const categories = [
   ["Home & Living", "home-living", 10, "/images/categories/home-living.svg"],
@@ -16,7 +17,7 @@ const defaultSettings: Record<string, unknown> = {
   "store.info": {
     name: "Zelvomart",
     phone: "0300-2026711",
-    email: "zelvomart@gmail.com",
+    email: "support@zelvomart.com",
     whatsapp: "923002026711",
     country: "Pakistan",
   },
@@ -117,12 +118,6 @@ const defaultPages = [
       "<p>Return and exchange rules are managed by Zelvomart and should be reviewed before launch.</p>",
   },
   {
-    slug: "privacy-policy",
-    title: "Privacy Policy",
-    bodyHtml:
-      "<p>Zelvomart stores only the information needed to process orders, provide support, prevent fraud and improve the store.</p>",
-  },
-  {
     slug: "terms",
     title: "Terms & Conditions",
     bodyHtml:
@@ -184,6 +179,9 @@ async function main() {
       create: page,
     });
   }
+
+  // The four policy pages (privacy, terms, shipping, refunds), edited in Admin → Pages.
+  await seedPolicyPages();
 
   for (const name of cities) {
     await prisma.city.upsert({

@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ArrowRight, Banknote, CircleAlert, CreditCard, Lock, ShieldCheck, ShoppingBag } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, Banknote, CircleAlert, CreditCard, LoaderCircle, Lock, ShieldCheck, ShoppingBag } from "lucide-react";
 import { getProductById } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
 import { unitPrice, useShop } from "@store/lib/store";
@@ -36,6 +36,10 @@ export function CheckoutView() {
   const [terms, setTerms] = useState(false);
   const [termsError, setTermsError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // The thank-you page is ready before the order is, so the hand-over after "Place Order" is instant.
+  useEffect(() => {
+    router.prefetch("/order-confirmed/");
+  }, [router]);
 
   if (!ready) return <div className="container skeleton-block" />;
 
@@ -48,7 +52,7 @@ export function CheckoutView() {
           </span>
           <h2>Your cart is empty.</h2>
           <p>Add a few products to check out.</p>
-          <Link href="/shop-all-products/" className="btn">
+          <Link href="/shop/" className="btn">
             Browse products <ArrowRight size={16} />
           </Link>
         </div>
@@ -96,13 +100,21 @@ export function CheckoutView() {
       notify({ title: "We couldn't place your order", body: error instanceof Error ? error.message : "Please try again." });
       return;
     }
-    router.push(`/order-confirmed/?id=${encodeURIComponent(order.id)}&key=${encodeURIComponent(order.key || "")}`);
+    // replace: the back button returns to the cart, not to a checkout for an order already placed.
+    router.replace(`/order-confirmed/?id=${encodeURIComponent(order.id)}&key=${encodeURIComponent(order.key || "")}`);
   }
 
   return (
     <section className="section pt-sm">
       <div className="container checkout-grid">
-        <form className="form-card" onSubmit={submit} noValidate>
+        <form className="form-card" onSubmit={submit} noValidate aria-busy={submitting}>
+          {submitting && (
+            <div className="checkout-placing" role="status" aria-live="polite">
+              <LoaderCircle size={30} className="checkout-placing-spin" aria-hidden="true" />
+              <strong>Placing your order…</strong>
+              <span>Please keep this page open.</span>
+            </div>
+          )}
           <div className="form-step">
             <span className="step-no">1</span>
             <div>
@@ -187,7 +199,7 @@ export function CheckoutView() {
                 aria-describedby={termsError ? "err-terms" : undefined}
               />
               <span>
-                I agree to the <Link href="/terms-and-conditions/">Terms &amp; Conditions</Link> and <Link href="/privacy-policy/">Privacy Policy</Link>.
+                I agree to the <Link href="/terms-conditions/">Terms &amp; Conditions</Link> and <Link href="/privacy-policy/">Privacy Policy</Link>.
               </span>
             </label>
             {termsError && (

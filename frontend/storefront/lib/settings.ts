@@ -5,6 +5,7 @@ export type StoreSettings = {
   phone?: string;
   email?: string;
   whatsapp?: string;
+  supportHours?: string;
   flatFee?: number;
   freeOver?: number;
   /** City name (lower case) → [min, max] working days. */
@@ -24,11 +25,13 @@ export function applyStoreSettings(s: StoreSettings) {
     phoneDisplay: string;
     whatsappNumber: string;
     email: string;
+    supportHours: string;
     shipping: { flatFee: number; freeOver: number; cities?: Record<string, string> };
   };
   if (s.phone) target.phoneDisplay = phoneDisplay(s.phone);
   if (s.whatsapp) target.whatsappNumber = s.whatsapp;
   if (s.email) target.email = s.email;
+  if (s.supportHours) target.supportHours = s.supportHours;
   if (s.flatFee) target.shipping.flatFee = s.flatFee;
   if (s.freeOver) target.shipping.freeOver = s.freeOver;
   if (s.cities) {

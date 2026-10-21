@@ -1,6 +1,6 @@
 // Keep identical to frontend/lib/shipping.ts: the storefront shows the same fee the order saves.
 export const FREE_SHIPPING_ABOVE = 8000;
-export const DEFAULT_DELIVERY_CHARGE = 250;
+export const DEFAULT_DELIVERY_CHARGE = 190;
 
 export type DeliverySettings = {
   mode?: string;
