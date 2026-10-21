@@ -135,6 +135,16 @@ export type Experiment = Prisma.ExperimentModel
  */
 export type Review = Prisma.ReviewModel
 /**
+ * Model ReviewMedia
+ * 
+ */
+export type ReviewMedia = Prisma.ReviewMediaModel
+/**
+ * Model ReviewImportBatch
+ * 
+ */
+export type ReviewImportBatch = Prisma.ReviewImportBatchModel
+/**
  * Model AbandonedCheckout
  * 
  */

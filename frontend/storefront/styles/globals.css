@@ -10446,3 +10446,4 @@ body:has(.product-page) {
 .btn.pd-cart:hover {
   background: var(--blue-mist);
 }
+.rv-media button{padding:0;border:0;background:transparent;cursor:pointer;border-radius:8px;overflow:hidden}.rv-media button img{width:76px;height:76px;object-fit:cover}.rv-gallery{position:fixed;inset:0;margin:auto;max-width:min(94vw,960px);max-height:94vh;padding:18px;border:0;border-radius:16px;background:#fff;color:#17251e}.rv-gallery::backdrop{background:rgba(0,0,0,.8)}.rv-gallery>img,.rv-gallery>video{display:block;width:auto;height:auto;max-width:85vw;max-height:68vh;margin:12px auto;object-fit:contain}.rv-gallery-controls{display:flex;align-items:center;justify-content:space-between;gap:20px}

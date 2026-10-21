@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import {revalidatePath,revalidateTag} from 'next/cache';
 
 const SESSION_COOKIE = "zelvomart_admin_session";
+export const maxDuration = 300;
 
 function backendCandidates(request: NextRequest) {
   const values = [process.env.BACKEND_URL, process.env.NEXT_PUBLIC_API_URL]
@@ -63,6 +64,10 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
       if (upstream.status === 404 && candidates.length > 1) continue;
       if(upstream.ok&&['PUT','PATCH','POST'].includes(method)&&['/api/admin/settings','/api/admin/cities'].includes(backendPath)){
         for(const tag of ['settings','store','products','cities'])revalidateTag(tag,{expire:0});
+        revalidatePath('/','layout');
+      }
+      if(upstream.ok&&['POST','PATCH','DELETE'].includes(method)&&backendPath.startsWith('/api/admin/reviews')){
+        revalidateTag('products',{expire:0});
         revalidatePath('/','layout');
       }
 

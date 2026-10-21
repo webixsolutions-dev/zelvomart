@@ -409,6 +409,8 @@ export const ModelName = {
   AuditLog: 'AuditLog',
   Experiment: 'Experiment',
   Review: 'Review',
+  ReviewMedia: 'ReviewMedia',
+  ReviewImportBatch: 'ReviewImportBatch',
   AbandonedCheckout: 'AbandonedCheckout',
   City: 'City',
   RateLimitBucket: 'RateLimitBucket',
@@ -432,7 +434,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "category" | "product" | "variant" | "customer" | "order" | "orderItem" | "orderStatusHistory" | "eventLog" | "sessionReplay" | "sessionReplayChunk" | "job" | "page" | "setting" | "user" | "storeUser" | "storeSession" | "auditLog" | "experiment" | "review" | "abandonedCheckout" | "city" | "rateLimitBucket" | "sequence" | "redirect" | "coupon" | "orderNote" | "recoveryUnsubscribe"
+    modelProps: "category" | "product" | "variant" | "customer" | "order" | "orderItem" | "orderStatusHistory" | "eventLog" | "sessionReplay" | "sessionReplayChunk" | "job" | "page" | "setting" | "user" | "storeUser" | "storeSession" | "auditLog" | "experiment" | "review" | "reviewMedia" | "reviewImportBatch" | "abandonedCheckout" | "city" | "rateLimitBucket" | "sequence" | "redirect" | "coupon" | "orderNote" | "recoveryUnsubscribe"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1842,6 +1844,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    ReviewMedia: {
+      payload: Prisma.$ReviewMediaPayload<ExtArgs>
+      fields: Prisma.ReviewMediaFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ReviewMediaFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ReviewMediaFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>
+        }
+        findFirst: {
+          args: Prisma.ReviewMediaFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ReviewMediaFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>
+        }
+        findMany: {
+          args: Prisma.ReviewMediaFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>[]
+        }
+        create: {
+          args: Prisma.ReviewMediaCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>
+        }
+        createMany: {
+          args: Prisma.ReviewMediaCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ReviewMediaCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>[]
+        }
+        delete: {
+          args: Prisma.ReviewMediaDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>
+        }
+        update: {
+          args: Prisma.ReviewMediaUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>
+        }
+        deleteMany: {
+          args: Prisma.ReviewMediaDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ReviewMediaUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ReviewMediaUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>[]
+        }
+        upsert: {
+          args: Prisma.ReviewMediaUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewMediaPayload>
+        }
+        aggregate: {
+          args: Prisma.ReviewMediaAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateReviewMedia>
+        }
+        groupBy: {
+          args: Prisma.ReviewMediaGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReviewMediaGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ReviewMediaCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReviewMediaCountAggregateOutputType> | number
+        }
+      }
+    }
+    ReviewImportBatch: {
+      payload: Prisma.$ReviewImportBatchPayload<ExtArgs>
+      fields: Prisma.ReviewImportBatchFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ReviewImportBatchFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ReviewImportBatchFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>
+        }
+        findFirst: {
+          args: Prisma.ReviewImportBatchFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ReviewImportBatchFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>
+        }
+        findMany: {
+          args: Prisma.ReviewImportBatchFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>[]
+        }
+        create: {
+          args: Prisma.ReviewImportBatchCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>
+        }
+        createMany: {
+          args: Prisma.ReviewImportBatchCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ReviewImportBatchCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>[]
+        }
+        delete: {
+          args: Prisma.ReviewImportBatchDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>
+        }
+        update: {
+          args: Prisma.ReviewImportBatchUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>
+        }
+        deleteMany: {
+          args: Prisma.ReviewImportBatchDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ReviewImportBatchUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ReviewImportBatchUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>[]
+        }
+        upsert: {
+          args: Prisma.ReviewImportBatchUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewImportBatchPayload>
+        }
+        aggregate: {
+          args: Prisma.ReviewImportBatchAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateReviewImportBatch>
+        }
+        groupBy: {
+          args: Prisma.ReviewImportBatchGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReviewImportBatchGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ReviewImportBatchCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReviewImportBatchCountAggregateOutputType> | number
+        }
+      }
+    }
     AbandonedCheckout: {
       payload: Prisma.$AbandonedCheckoutPayload<ExtArgs>
       fields: Prisma.AbandonedCheckoutFieldRefs
@@ -2823,6 +2973,13 @@ export const ReviewScalarFieldEnum = {
   orderId: 'orderId',
   customerId: 'customerId',
   name: 'name',
+  email: 'email',
+  reviewRef: 'reviewRef',
+  origin: 'origin',
+  reviewDate: 'reviewDate',
+  avatarUrl: 'avatarUrl',
+  deletedAt: 'deletedAt',
+  batchId: 'batchId',
   rating: 'rating',
   body: 'body',
   images: 'images',
@@ -2833,6 +2990,32 @@ export const ReviewScalarFieldEnum = {
 } as const
 
 export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof ReviewScalarFieldEnum]
+
+
+export const ReviewMediaScalarFieldEnum = {
+  id: 'id',
+  reviewId: 'reviewId',
+  type: 'type',
+  url: 'url',
+  path: 'path'
+} as const
+
+export type ReviewMediaScalarFieldEnum = (typeof ReviewMediaScalarFieldEnum)[keyof typeof ReviewMediaScalarFieldEnum]
+
+
+export const ReviewImportBatchScalarFieldEnum = {
+  id: 'id',
+  filename: 'filename',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  deletedAt: 'deletedAt',
+  imported: 'imported',
+  skipped: 'skipped',
+  failed: 'failed',
+  errors: 'errors'
+} as const
+
+export type ReviewImportBatchScalarFieldEnum = (typeof ReviewImportBatchScalarFieldEnum)[keyof typeof ReviewImportBatchScalarFieldEnum]
 
 
 export const AbandonedCheckoutScalarFieldEnum = {
@@ -3285,6 +3468,8 @@ export type GlobalOmitConfig = {
   auditLog?: Prisma.AuditLogOmit
   experiment?: Prisma.ExperimentOmit
   review?: Prisma.ReviewOmit
+  reviewMedia?: Prisma.ReviewMediaOmit
+  reviewImportBatch?: Prisma.ReviewImportBatchOmit
   abandonedCheckout?: Prisma.AbandonedCheckoutOmit
   city?: Prisma.CityOmit
   rateLimitBucket?: Prisma.RateLimitBucketOmit

@@ -1,3 +1,5 @@
+import { reviewRouter, customerReviewUpload, storeReviewFiles } from './admin-reviews';
+import {stageReviewUpload,hydrateReviewUploads,reviewChunkUpload,writeReviewChunk,completeReviewChunks} from './lib/review-staging';
 import {validateSettingsUpdate,validateCitySettings} from './lib/settings-validation';
 import {orderEditRouter,orderExtras} from './admin-order-edit';
 import {registerRecovery} from './recovery';
@@ -231,7 +233,7 @@ function jsonProduct(row: any, bundleDiscount = BUY_TWO_DISCOUNT_PERCENT) {
   const catalog = readCatalogMeta(row.sourceUrl) || {};
   const imageAlt = String(catalog.imageMeta?.alt || row.title || '');
   const imageTitle = String(catalog.imageMeta?.title || '').trim() || null;
-  const reviews = (row.reviews || []).map((review: any) => ({ id: review.id, name: review.name, rating: review.rating, body: review.body, verified: review.verified, createdAt: review.createdAt?.toISOString?.() || review.createdAt }));
+  const reviews = (row.reviews || []).filter((r:any)=>r.status==='APPROVED'&&!r.deletedAt&&r.origin!=='TEST').map((review: any) => ({ id: review.id, name: review.name, rating: review.rating, body: review.body, verified: review.verified, avatarUrl:review.avatarUrl, media:review.media||[], images:review.images, createdAt: (review.reviewDate||review.createdAt)?.toISOString?.() || review.createdAt }));
   const averageRating = reviews.length ? reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviews.length : undefined;
   return {
     id: row.id, slug: row.slug, name: row.title, title: row.title, sku: row.sku, orderCount:row._count?.orderItems||0,
@@ -279,14 +281,14 @@ function jsonProduct(row: any, bundleDiscount = BUY_TWO_DISCOUNT_PERCENT) {
   };
 }
 
-const productInclude = { category: true, variants: { where: { active: true }, orderBy: { createdAt: 'asc' as const } }, reviews: { where: { status: 'APPROVED' as const }, orderBy: { createdAt: 'desc' as const } } };
+const productInclude = { category: true, variants: { where: { active: true }, orderBy: { createdAt: 'asc' as const } }, reviews: { where: { status: 'APPROVED' as const, deletedAt:null, origin:{not:'TEST'} }, include:{media:true}, orderBy: { createdAt: 'desc' as const } } };
 
 const productListSelect = {
   id: true, slug: true, title: true, sku: true, images: true, price: true, salePrice: true, stock: true, trackStock: true, stockStatus: true, featured: true, sourceUrl: true,
   shortDescription: true, bundleEnabled: true, bundleDiscountPercent: true, createdAt:true,updatedAt:true,
   category: { select: { id: true, name: true, slug: true, description: true, imageUrl: true, seoTitle: true, seoDescription: true } },
   variants: { where: { active: true }, select: { id: true, sku: true, name: true, stock: true, trackStock: true, stockStatus: true, active: true, priceOverride: true, imageUrl: true, attributes: true } },
-  reviews: { where: { status: 'APPROVED' as const }, select: { rating: true } },
+  reviews: { where: { status: 'APPROVED' as const, deletedAt:null, origin:{not:'TEST'} }, select: { rating: true } },
 } satisfies Prisma.ProductSelect;
 
 function jsonProductSummary(row: any, bundleDiscount = BUY_TWO_DISCOUNT_PERCENT) {
@@ -586,20 +588,44 @@ registerRecovery(app,findStoreSession);
 app.use('/api/admin/coupons',couponRouter);
 app.use('/api/admin/orders',orderEditRouter);
 app.use('/api/admin/overview',overviewRouter);
+app.use('/api/admin/reviews',reviewRouter);
 app.post('/api/checkout/coupon',async(req,res)=>{if(!(await allowRequest(req,res,'coupon',20,60000)))return;try{const cart=Array.isArray(req.body.cart)?req.body.cart:[];if(!cart.length||cart.length>50)throw new Error('Your cart is empty.');const products=await prisma.product.findMany({where:{id:{in:cart.map((i:any)=>String(i.productId))},status:'PUBLISHED'},include:{variants:true}});const discount=Number(await getSetting('store.bundleDefaultDiscountPercent',5));let subtotal=0;for(const item of cart){if(!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>20)throw new Error('Invalid quantity.');const p=products.find(p=>p.id===item.productId);if(!p)throw new Error('Product unavailable.');const v=item.variantId?p.variants.find(v=>v.id===item.variantId&&v.active):undefined;if(item.variantId&&!v||!v&&p.variants.some(v=>v.active))throw new Error('Choose a valid variation.');const price=variantPriceSummary(priceSummary(p.price,p.salePrice),{priceOverride:v?.priceOverride}).price;subtotal+=bundleLineTotal(price,item.quantity,item.bundleSize===2&&p.bundleEnabled?2:1,discount).total;}res.json(await validateCoupon(req.body.code,subtotal));}catch(e:any){res.status(400).json({error:e.message});} });
 
-app.post('/api/reviews', async (req,res) => {
-  if (!(await allowRequest(req, res, 'review', 10, 24 * 60 * 60 * 1000))) return;
+app.post('/api/reviews/upload-chunk',reviewChunkUpload,async(req,res)=>{if(!(await allowRequest(req,res,'review-upload-part',120,24*60*60*1000)))return;try{res.json(await writeReviewChunk(req));}catch(error:any){res.status(400).json({error:error.message});}});
+app.post('/api/reviews/upload-complete',async(req,res)=>{if(!(await allowRequest(req,res,'review-upload-part',120,24*60*60*1000)))return;try{res.json(await completeReviewChunks(req));}catch(error:any){res.status(400).json({error:error.message});}});
+app.post('/api/reviews/upload-url',async(req,res)=>{
+  if(!(await allowRequest(req,res,'review-upload',60,24*60*60*1000)))return;
+  try{
+    const productId=String(req.body.productId||''),orderNumber=String(req.body.orderNumber||'').trim().toUpperCase(),phone=String(req.body.phone||'').replace(/\D/g,'').slice(-10);
+    if(!productId||!orderNumber||phone.length!==10)return res.status(400).json({error:'Enter the delivered order number and checkout phone.'});
+    const order=await prisma.order.findFirst({where:{orderNumber,status:'DELIVERED',phone:{endsWith:phone},items:{some:{productId}}},select:{id:true}});
+    if(!order)return res.status(403).json({error:'Use the delivered order number and phone used at checkout.'});
+    res.json(await stageReviewUpload(req));
+  }catch(error:any){res.status(400).json({error:error.message});}
+});
+app.post('/api/reviews', async(req,res,next)=>{
+  try{if(await allowRequest(req,res,'review',10,24*60*60*1000))next();}catch(error){next(error);}
+}, customerReviewUpload, hydrateReviewUploads, async (req,res) => {
+  try {
   if(String(req.body.honeypot||''))return res.status(201).json({ok:true});
   const productId=String(req.body.productId||''); const name=String(req.body.name||'').trim(); const body=String(req.body.body||'').trim(); const rating=Number(req.body.rating||0);
+  const email=String(req.body.email||'').trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)||email.length>254||name.length>200||body.length>20000||!Number.isInteger(rating))return res.status(400).json({error:'Invalid name, private email, review text or rating.'});
   const orderNumber=String(req.body.orderNumber||'').trim().toUpperCase(); const phone=String(req.body.phone||'').replace(/\D/g,'').slice(-10);
   if(!productId||!name||!body||rating<1||rating>5||!orderNumber||phone.length!==10)return res.status(400).json({error:'DELIVERED_ORDER_REQUIRED'});
   const order=await prisma.order.findFirst({where:{orderNumber,status:'DELIVERED',phone:{endsWith:phone},items:{some:{productId}}},select:{id:true,customerId:true}});
   if(!order)return res.status(403).json({error:'REVIEW_NOT_VERIFIED',message:'Use the delivered order number and phone used at checkout.'});
   const existing=await prisma.review.findFirst({where:{productId,orderId:order.id}});
   if(existing)return res.status(409).json({error:'REVIEW_ALREADY_SUBMITTED'});
-  const review=await prisma.review.create({data:{productId,orderId:order.id,customerId:order.customerId,name,body,rating,verified:true,status:'PENDING'}});
+  const {media}=await storeReviewFiles(req);
+  const review=await prisma.$transaction(async tx=>{
+    // Lock the delivered order to serialize concurrent submissions for this purchase.
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${order.id} FOR UPDATE`;
+    if(await tx.review.findFirst({where:{productId,orderId:order.id}}))throw new Error('REVIEW_ALREADY_SUBMITTED');
+    return tx.review.create({data:{productId,orderId:order.id,customerId:order.customerId,name,email,body,rating,verified:true,status:'PENDING',reviewRef:`CUSTOMER-${crypto.randomUUID()}`,media:{create:media}}});
+  });
   res.status(201).json({ok:true,id:review.id,verified:true});
+  }catch(e:any){res.status(e.code==='P2002'||e.message==='REVIEW_ALREADY_SUBMITTED'?409:400).json({error:e.message||'Review submission failed.'});}
 });
 app.post('/api/events', async (req,res) => {
   const userAgent = req.get('user-agent') || undefined;
@@ -1137,8 +1163,6 @@ app.get('/api/admin/users', requireAuth('users.write'), async (_req,res)=>res.js
 app.post('/api/admin/users', requireAuth('users.write'), async (req:AuthedRequest,res)=>{const password=String(req.body.password||'');if(password.length<8)return res.status(400).json({error:'PASSWORD_TOO_SHORT'});const row=await prisma.user.create({data:{name:String(req.body.name),email:String(req.body.email).toLowerCase(),passwordHash:await bcrypt.hash(password,12),role:(req.body.role||'ORDER_AGENT') as Role,active:req.body.active!==false}});await audit(req,'create','User',row.id);res.status(201).json({id:row.id,name:row.name,email:row.email,role:row.role,active:row.active});});
 app.patch('/api/admin/users/:id', requireAuth('users.write'), async (req:AuthedRequest,res)=>{const data:any={};for(const k of ['name','email','role','active'])if(k in req.body)data[k]=req.body[k];if(req.body.password){const nextPassword=String(req.body.password);if(nextPassword.length<8)return res.status(400).json({error:'PASSWORD_TOO_SHORT'});data.passwordHash=await bcrypt.hash(nextPassword,12);}const row=await prisma.user.update({where:{id:routeParam(req, 'id')},data});await audit(req,'update','User',row.id);res.json({id:row.id,name:row.name,email:row.email,role:row.role,active:row.active});});
 
-app.get('/api/admin/reviews', requireAuth('content.write'), async (_req,res)=>res.json(await prisma.review.findMany({include:{product:{select:{title:true,sku:true}}},orderBy:{createdAt:'desc'}})));
-app.patch('/api/admin/reviews/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const status=String(req.body.status) as ReviewStatus;if(!Object.values(ReviewStatus).includes(status))return res.status(400).json({error:'INVALID_STATUS'});const row=await prisma.review.update({where:{id:routeParam(req, 'id')},data:{status}});await audit(req,'review_status','Review',row.id,{status});await invalidateFrontendCache(['products']);res.json(row);});
 app.get('/api/admin/redirects', requireAuth('settings.write'), async (_req,res)=>res.json(await prisma.redirect.findMany({orderBy:{sourcePath:'asc'}})));
 app.post('/api/admin/redirects', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{const row=await prisma.redirect.upsert({where:{sourcePath:String(req.body.sourcePath)},update:{destination:String(req.body.destination),permanent:req.body.permanent!==false},create:{sourcePath:String(req.body.sourcePath),destination:String(req.body.destination),permanent:req.body.permanent!==false}});await audit(req,'upsert','Redirect',row.id);await invalidateFrontendCache(['redirects']);res.json(row);});
 app.delete('/api/admin/redirects/:id', requireAuth('settings.write'), async (req:AuthedRequest,res)=>{await prisma.redirect.delete({where:{id:routeParam(req, 'id')}});await audit(req,'delete','Redirect',routeParam(req, 'id'));await invalidateFrontendCache(['redirects']);res.json({ok:true});});

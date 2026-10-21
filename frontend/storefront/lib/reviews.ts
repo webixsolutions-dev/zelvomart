@@ -3,7 +3,7 @@ import { getProductById } from "./catalog";
 /**
  * Product reviews. Only approved reviews are ever shown or put into schema: they come with the
  * product from the backend (GET /api/products/slug/:slug returns approved reviews only).
- * Writing a review and the email subscribe stay static for now: see lib/api-gaps.ts.
+ * Customer submissions go to the backend and require a delivered order.
  */
 
 export type ReviewMedia = { type: "image" | "video"; url: string };
@@ -17,6 +17,7 @@ export type Review = {
   createdAt: string;
   verified?: boolean;
   media?: ReviewMedia[];
+  avatarUrl?: string;
 };
 
 export function approvedReviews(productId: string): Review[] {
@@ -29,20 +30,6 @@ export function reviewSummary(list: Review[]) {
   const average = count ? list.reduce((s, r) => s + r.rating, 0) / count : 0;
   const bars = [5, 4, 3, 2, 1].map((star) => ({ star, count: list.filter((r) => Math.round(r.rating) === star).length }));
   return { count, average, bars };
-}
-
-export type PendingReview = Omit<Review, "id" | "createdAt" | "media"> & { email?: string; mediaCount: number };
-
-/** Saves a submitted review on this device as pending (never shown until approved). */
-export function savePendingReview(r: PendingReview) {
-  try {
-    const key = "zlv-reviews-pending";
-    const all = JSON.parse(localStorage.getItem(key) || "[]");
-    all.push({ ...r, id: `rv-${Date.now()}`, createdAt: new Date().toISOString(), status: "PENDING" });
-    localStorage.setItem(key, JSON.stringify(all));
-  } catch {
-    /* storage unavailable — the thank-you screen still shows */
-  }
 }
 
 /** Email updates: saved with the time consent was given; sending is handled by the backend later. */

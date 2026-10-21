@@ -40,6 +40,13 @@ export type ReviewMinAggregateOutputType = {
   orderId: string | null
   customerId: string | null
   name: string | null
+  email: string | null
+  reviewRef: string | null
+  origin: string | null
+  reviewDate: Date | null
+  avatarUrl: string | null
+  deletedAt: Date | null
+  batchId: string | null
   rating: number | null
   body: string | null
   verified: boolean | null
@@ -54,6 +61,13 @@ export type ReviewMaxAggregateOutputType = {
   orderId: string | null
   customerId: string | null
   name: string | null
+  email: string | null
+  reviewRef: string | null
+  origin: string | null
+  reviewDate: Date | null
+  avatarUrl: string | null
+  deletedAt: Date | null
+  batchId: string | null
   rating: number | null
   body: string | null
   verified: boolean | null
@@ -68,6 +82,13 @@ export type ReviewCountAggregateOutputType = {
   orderId: number
   customerId: number
   name: number
+  email: number
+  reviewRef: number
+  origin: number
+  reviewDate: number
+  avatarUrl: number
+  deletedAt: number
+  batchId: number
   rating: number
   body: number
   images: number
@@ -93,6 +114,13 @@ export type ReviewMinAggregateInputType = {
   orderId?: true
   customerId?: true
   name?: true
+  email?: true
+  reviewRef?: true
+  origin?: true
+  reviewDate?: true
+  avatarUrl?: true
+  deletedAt?: true
+  batchId?: true
   rating?: true
   body?: true
   verified?: true
@@ -107,6 +135,13 @@ export type ReviewMaxAggregateInputType = {
   orderId?: true
   customerId?: true
   name?: true
+  email?: true
+  reviewRef?: true
+  origin?: true
+  reviewDate?: true
+  avatarUrl?: true
+  deletedAt?: true
+  batchId?: true
   rating?: true
   body?: true
   verified?: true
@@ -121,6 +156,13 @@ export type ReviewCountAggregateInputType = {
   orderId?: true
   customerId?: true
   name?: true
+  email?: true
+  reviewRef?: true
+  origin?: true
+  reviewDate?: true
+  avatarUrl?: true
+  deletedAt?: true
+  batchId?: true
   rating?: true
   body?: true
   images?: true
@@ -223,6 +265,13 @@ export type ReviewGroupByOutputType = {
   orderId: string | null
   customerId: string | null
   name: string
+  email: string | null
+  reviewRef: string | null
+  origin: string
+  reviewDate: Date | null
+  avatarUrl: string | null
+  deletedAt: Date | null
+  batchId: string | null
   rating: number
   body: string
   images: runtime.JsonValue
@@ -261,6 +310,13 @@ export type ReviewWhereInput = {
   orderId?: Prisma.StringNullableFilter<"Review"> | string | null
   customerId?: Prisma.StringNullableFilter<"Review"> | string | null
   name?: Prisma.StringFilter<"Review"> | string
+  email?: Prisma.StringNullableFilter<"Review"> | string | null
+  reviewRef?: Prisma.StringNullableFilter<"Review"> | string | null
+  origin?: Prisma.StringFilter<"Review"> | string
+  reviewDate?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  avatarUrl?: Prisma.StringNullableFilter<"Review"> | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  batchId?: Prisma.StringNullableFilter<"Review"> | string | null
   rating?: Prisma.IntFilter<"Review"> | number
   body?: Prisma.StringFilter<"Review"> | string
   images?: Prisma.JsonFilter<"Review">
@@ -271,6 +327,8 @@ export type ReviewWhereInput = {
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
   order?: Prisma.XOR<Prisma.OrderNullableScalarRelationFilter, Prisma.OrderWhereInput> | null
   customer?: Prisma.XOR<Prisma.CustomerNullableScalarRelationFilter, Prisma.CustomerWhereInput> | null
+  batch?: Prisma.XOR<Prisma.ReviewImportBatchNullableScalarRelationFilter, Prisma.ReviewImportBatchWhereInput> | null
+  media?: Prisma.ReviewMediaListRelationFilter
 }
 
 export type ReviewOrderByWithRelationInput = {
@@ -279,6 +337,13 @@ export type ReviewOrderByWithRelationInput = {
   orderId?: Prisma.SortOrderInput | Prisma.SortOrder
   customerId?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
+  email?: Prisma.SortOrderInput | Prisma.SortOrder
+  reviewRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  origin?: Prisma.SortOrder
+  reviewDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  avatarUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  batchId?: Prisma.SortOrderInput | Prisma.SortOrder
   rating?: Prisma.SortOrder
   body?: Prisma.SortOrder
   images?: Prisma.SortOrder
@@ -289,10 +354,13 @@ export type ReviewOrderByWithRelationInput = {
   product?: Prisma.ProductOrderByWithRelationInput
   order?: Prisma.OrderOrderByWithRelationInput
   customer?: Prisma.CustomerOrderByWithRelationInput
+  batch?: Prisma.ReviewImportBatchOrderByWithRelationInput
+  media?: Prisma.ReviewMediaOrderByRelationAggregateInput
 }
 
 export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  reviewRef?: string
   AND?: Prisma.ReviewWhereInput | Prisma.ReviewWhereInput[]
   OR?: Prisma.ReviewWhereInput[]
   NOT?: Prisma.ReviewWhereInput | Prisma.ReviewWhereInput[]
@@ -300,6 +368,12 @@ export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   orderId?: Prisma.StringNullableFilter<"Review"> | string | null
   customerId?: Prisma.StringNullableFilter<"Review"> | string | null
   name?: Prisma.StringFilter<"Review"> | string
+  email?: Prisma.StringNullableFilter<"Review"> | string | null
+  origin?: Prisma.StringFilter<"Review"> | string
+  reviewDate?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  avatarUrl?: Prisma.StringNullableFilter<"Review"> | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  batchId?: Prisma.StringNullableFilter<"Review"> | string | null
   rating?: Prisma.IntFilter<"Review"> | number
   body?: Prisma.StringFilter<"Review"> | string
   images?: Prisma.JsonFilter<"Review">
@@ -310,7 +384,9 @@ export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   product?: Prisma.XOR<Prisma.ProductScalarRelationFilter, Prisma.ProductWhereInput>
   order?: Prisma.XOR<Prisma.OrderNullableScalarRelationFilter, Prisma.OrderWhereInput> | null
   customer?: Prisma.XOR<Prisma.CustomerNullableScalarRelationFilter, Prisma.CustomerWhereInput> | null
-}, "id">
+  batch?: Prisma.XOR<Prisma.ReviewImportBatchNullableScalarRelationFilter, Prisma.ReviewImportBatchWhereInput> | null
+  media?: Prisma.ReviewMediaListRelationFilter
+}, "id" | "reviewRef">
 
 export type ReviewOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -318,6 +394,13 @@ export type ReviewOrderByWithAggregationInput = {
   orderId?: Prisma.SortOrderInput | Prisma.SortOrder
   customerId?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
+  email?: Prisma.SortOrderInput | Prisma.SortOrder
+  reviewRef?: Prisma.SortOrderInput | Prisma.SortOrder
+  origin?: Prisma.SortOrder
+  reviewDate?: Prisma.SortOrderInput | Prisma.SortOrder
+  avatarUrl?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  batchId?: Prisma.SortOrderInput | Prisma.SortOrder
   rating?: Prisma.SortOrder
   body?: Prisma.SortOrder
   images?: Prisma.SortOrder
@@ -341,6 +424,13 @@ export type ReviewScalarWhereWithAggregatesInput = {
   orderId?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   customerId?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   name?: Prisma.StringWithAggregatesFilter<"Review"> | string
+  email?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
+  reviewRef?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
+  origin?: Prisma.StringWithAggregatesFilter<"Review"> | string
+  reviewDate?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
+  avatarUrl?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
+  deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
+  batchId?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   rating?: Prisma.IntWithAggregatesFilter<"Review"> | number
   body?: Prisma.StringWithAggregatesFilter<"Review"> | string
   images?: Prisma.JsonWithAggregatesFilter<"Review">
@@ -353,6 +443,12 @@ export type ReviewScalarWhereWithAggregatesInput = {
 export type ReviewCreateInput = {
   id?: string
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -363,6 +459,8 @@ export type ReviewCreateInput = {
   product: Prisma.ProductCreateNestedOneWithoutReviewsInput
   order?: Prisma.OrderCreateNestedOneWithoutReviewsInput
   customer?: Prisma.CustomerCreateNestedOneWithoutReviewsInput
+  batch?: Prisma.ReviewImportBatchCreateNestedOneWithoutReviewsInput
+  media?: Prisma.ReviewMediaCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUncheckedCreateInput = {
@@ -371,6 +469,13 @@ export type ReviewUncheckedCreateInput = {
   orderId?: string | null
   customerId?: string | null
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -378,11 +483,18 @@ export type ReviewUncheckedCreateInput = {
   status?: $Enums.ReviewStatus
   createdAt?: Date | string
   updatedAt?: Date | string
+  media?: Prisma.ReviewMediaUncheckedCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -393,6 +505,8 @@ export type ReviewUpdateInput = {
   product?: Prisma.ProductUpdateOneRequiredWithoutReviewsNestedInput
   order?: Prisma.OrderUpdateOneWithoutReviewsNestedInput
   customer?: Prisma.CustomerUpdateOneWithoutReviewsNestedInput
+  batch?: Prisma.ReviewImportBatchUpdateOneWithoutReviewsNestedInput
+  media?: Prisma.ReviewMediaUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateInput = {
@@ -401,6 +515,13 @@ export type ReviewUncheckedUpdateInput = {
   orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -408,6 +529,7 @@ export type ReviewUncheckedUpdateInput = {
   status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  media?: Prisma.ReviewMediaUncheckedUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewCreateManyInput = {
@@ -416,6 +538,13 @@ export type ReviewCreateManyInput = {
   orderId?: string | null
   customerId?: string | null
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -428,6 +557,12 @@ export type ReviewCreateManyInput = {
 export type ReviewUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -443,6 +578,13 @@ export type ReviewUncheckedUpdateManyInput = {
   orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -468,6 +610,13 @@ export type ReviewCountOrderByAggregateInput = {
   orderId?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  email?: Prisma.SortOrder
+  reviewRef?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
+  reviewDate?: Prisma.SortOrder
+  avatarUrl?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
+  batchId?: Prisma.SortOrder
   rating?: Prisma.SortOrder
   body?: Prisma.SortOrder
   images?: Prisma.SortOrder
@@ -487,6 +636,13 @@ export type ReviewMaxOrderByAggregateInput = {
   orderId?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  email?: Prisma.SortOrder
+  reviewRef?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
+  reviewDate?: Prisma.SortOrder
+  avatarUrl?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
+  batchId?: Prisma.SortOrder
   rating?: Prisma.SortOrder
   body?: Prisma.SortOrder
   verified?: Prisma.SortOrder
@@ -501,6 +657,13 @@ export type ReviewMinOrderByAggregateInput = {
   orderId?: Prisma.SortOrder
   customerId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  email?: Prisma.SortOrder
+  reviewRef?: Prisma.SortOrder
+  origin?: Prisma.SortOrder
+  reviewDate?: Prisma.SortOrder
+  avatarUrl?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
+  batchId?: Prisma.SortOrder
   rating?: Prisma.SortOrder
   body?: Prisma.SortOrder
   verified?: Prisma.SortOrder
@@ -511,6 +674,11 @@ export type ReviewMinOrderByAggregateInput = {
 
 export type ReviewSumOrderByAggregateInput = {
   rating?: Prisma.SortOrder
+}
+
+export type ReviewScalarRelationFilter = {
+  is?: Prisma.ReviewWhereInput
+  isNot?: Prisma.ReviewWhereInput
 }
 
 export type ReviewCreateNestedManyWithoutProductInput = {
@@ -643,9 +811,71 @@ export type EnumReviewStatusFieldUpdateOperationsInput = {
   set?: $Enums.ReviewStatus
 }
 
+export type ReviewCreateNestedOneWithoutMediaInput = {
+  create?: Prisma.XOR<Prisma.ReviewCreateWithoutMediaInput, Prisma.ReviewUncheckedCreateWithoutMediaInput>
+  connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutMediaInput
+  connect?: Prisma.ReviewWhereUniqueInput
+}
+
+export type ReviewUpdateOneRequiredWithoutMediaNestedInput = {
+  create?: Prisma.XOR<Prisma.ReviewCreateWithoutMediaInput, Prisma.ReviewUncheckedCreateWithoutMediaInput>
+  connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutMediaInput
+  upsert?: Prisma.ReviewUpsertWithoutMediaInput
+  connect?: Prisma.ReviewWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ReviewUpdateToOneWithWhereWithoutMediaInput, Prisma.ReviewUpdateWithoutMediaInput>, Prisma.ReviewUncheckedUpdateWithoutMediaInput>
+}
+
+export type ReviewCreateNestedManyWithoutBatchInput = {
+  create?: Prisma.XOR<Prisma.ReviewCreateWithoutBatchInput, Prisma.ReviewUncheckedCreateWithoutBatchInput> | Prisma.ReviewCreateWithoutBatchInput[] | Prisma.ReviewUncheckedCreateWithoutBatchInput[]
+  connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutBatchInput | Prisma.ReviewCreateOrConnectWithoutBatchInput[]
+  createMany?: Prisma.ReviewCreateManyBatchInputEnvelope
+  connect?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+}
+
+export type ReviewUncheckedCreateNestedManyWithoutBatchInput = {
+  create?: Prisma.XOR<Prisma.ReviewCreateWithoutBatchInput, Prisma.ReviewUncheckedCreateWithoutBatchInput> | Prisma.ReviewCreateWithoutBatchInput[] | Prisma.ReviewUncheckedCreateWithoutBatchInput[]
+  connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutBatchInput | Prisma.ReviewCreateOrConnectWithoutBatchInput[]
+  createMany?: Prisma.ReviewCreateManyBatchInputEnvelope
+  connect?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+}
+
+export type ReviewUpdateManyWithoutBatchNestedInput = {
+  create?: Prisma.XOR<Prisma.ReviewCreateWithoutBatchInput, Prisma.ReviewUncheckedCreateWithoutBatchInput> | Prisma.ReviewCreateWithoutBatchInput[] | Prisma.ReviewUncheckedCreateWithoutBatchInput[]
+  connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutBatchInput | Prisma.ReviewCreateOrConnectWithoutBatchInput[]
+  upsert?: Prisma.ReviewUpsertWithWhereUniqueWithoutBatchInput | Prisma.ReviewUpsertWithWhereUniqueWithoutBatchInput[]
+  createMany?: Prisma.ReviewCreateManyBatchInputEnvelope
+  set?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+  disconnect?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+  delete?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+  connect?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+  update?: Prisma.ReviewUpdateWithWhereUniqueWithoutBatchInput | Prisma.ReviewUpdateWithWhereUniqueWithoutBatchInput[]
+  updateMany?: Prisma.ReviewUpdateManyWithWhereWithoutBatchInput | Prisma.ReviewUpdateManyWithWhereWithoutBatchInput[]
+  deleteMany?: Prisma.ReviewScalarWhereInput | Prisma.ReviewScalarWhereInput[]
+}
+
+export type ReviewUncheckedUpdateManyWithoutBatchNestedInput = {
+  create?: Prisma.XOR<Prisma.ReviewCreateWithoutBatchInput, Prisma.ReviewUncheckedCreateWithoutBatchInput> | Prisma.ReviewCreateWithoutBatchInput[] | Prisma.ReviewUncheckedCreateWithoutBatchInput[]
+  connectOrCreate?: Prisma.ReviewCreateOrConnectWithoutBatchInput | Prisma.ReviewCreateOrConnectWithoutBatchInput[]
+  upsert?: Prisma.ReviewUpsertWithWhereUniqueWithoutBatchInput | Prisma.ReviewUpsertWithWhereUniqueWithoutBatchInput[]
+  createMany?: Prisma.ReviewCreateManyBatchInputEnvelope
+  set?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+  disconnect?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+  delete?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+  connect?: Prisma.ReviewWhereUniqueInput | Prisma.ReviewWhereUniqueInput[]
+  update?: Prisma.ReviewUpdateWithWhereUniqueWithoutBatchInput | Prisma.ReviewUpdateWithWhereUniqueWithoutBatchInput[]
+  updateMany?: Prisma.ReviewUpdateManyWithWhereWithoutBatchInput | Prisma.ReviewUpdateManyWithWhereWithoutBatchInput[]
+  deleteMany?: Prisma.ReviewScalarWhereInput | Prisma.ReviewScalarWhereInput[]
+}
+
 export type ReviewCreateWithoutProductInput = {
   id?: string
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -655,6 +885,8 @@ export type ReviewCreateWithoutProductInput = {
   updatedAt?: Date | string
   order?: Prisma.OrderCreateNestedOneWithoutReviewsInput
   customer?: Prisma.CustomerCreateNestedOneWithoutReviewsInput
+  batch?: Prisma.ReviewImportBatchCreateNestedOneWithoutReviewsInput
+  media?: Prisma.ReviewMediaCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUncheckedCreateWithoutProductInput = {
@@ -662,6 +894,13 @@ export type ReviewUncheckedCreateWithoutProductInput = {
   orderId?: string | null
   customerId?: string | null
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -669,6 +908,7 @@ export type ReviewUncheckedCreateWithoutProductInput = {
   status?: $Enums.ReviewStatus
   createdAt?: Date | string
   updatedAt?: Date | string
+  media?: Prisma.ReviewMediaUncheckedCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewCreateOrConnectWithoutProductInput = {
@@ -706,6 +946,13 @@ export type ReviewScalarWhereInput = {
   orderId?: Prisma.StringNullableFilter<"Review"> | string | null
   customerId?: Prisma.StringNullableFilter<"Review"> | string | null
   name?: Prisma.StringFilter<"Review"> | string
+  email?: Prisma.StringNullableFilter<"Review"> | string | null
+  reviewRef?: Prisma.StringNullableFilter<"Review"> | string | null
+  origin?: Prisma.StringFilter<"Review"> | string
+  reviewDate?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  avatarUrl?: Prisma.StringNullableFilter<"Review"> | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  batchId?: Prisma.StringNullableFilter<"Review"> | string | null
   rating?: Prisma.IntFilter<"Review"> | number
   body?: Prisma.StringFilter<"Review"> | string
   images?: Prisma.JsonFilter<"Review">
@@ -718,6 +965,12 @@ export type ReviewScalarWhereInput = {
 export type ReviewCreateWithoutCustomerInput = {
   id?: string
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -727,6 +980,8 @@ export type ReviewCreateWithoutCustomerInput = {
   updatedAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutReviewsInput
   order?: Prisma.OrderCreateNestedOneWithoutReviewsInput
+  batch?: Prisma.ReviewImportBatchCreateNestedOneWithoutReviewsInput
+  media?: Prisma.ReviewMediaCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUncheckedCreateWithoutCustomerInput = {
@@ -734,6 +989,13 @@ export type ReviewUncheckedCreateWithoutCustomerInput = {
   productId: string
   orderId?: string | null
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -741,6 +1003,7 @@ export type ReviewUncheckedCreateWithoutCustomerInput = {
   status?: $Enums.ReviewStatus
   createdAt?: Date | string
   updatedAt?: Date | string
+  media?: Prisma.ReviewMediaUncheckedCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewCreateOrConnectWithoutCustomerInput = {
@@ -772,6 +1035,12 @@ export type ReviewUpdateManyWithWhereWithoutCustomerInput = {
 export type ReviewCreateWithoutOrderInput = {
   id?: string
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -781,6 +1050,8 @@ export type ReviewCreateWithoutOrderInput = {
   updatedAt?: Date | string
   product: Prisma.ProductCreateNestedOneWithoutReviewsInput
   customer?: Prisma.CustomerCreateNestedOneWithoutReviewsInput
+  batch?: Prisma.ReviewImportBatchCreateNestedOneWithoutReviewsInput
+  media?: Prisma.ReviewMediaCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewUncheckedCreateWithoutOrderInput = {
@@ -788,6 +1059,13 @@ export type ReviewUncheckedCreateWithoutOrderInput = {
   productId: string
   customerId?: string | null
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -795,6 +1073,7 @@ export type ReviewUncheckedCreateWithoutOrderInput = {
   status?: $Enums.ReviewStatus
   createdAt?: Date | string
   updatedAt?: Date | string
+  media?: Prisma.ReviewMediaUncheckedCreateNestedManyWithoutReviewInput
 }
 
 export type ReviewCreateOrConnectWithoutOrderInput = {
@@ -823,11 +1102,192 @@ export type ReviewUpdateManyWithWhereWithoutOrderInput = {
   data: Prisma.XOR<Prisma.ReviewUpdateManyMutationInput, Prisma.ReviewUncheckedUpdateManyWithoutOrderInput>
 }
 
+export type ReviewCreateWithoutMediaInput = {
+  id?: string
+  name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  rating: number
+  body: string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: boolean
+  status?: $Enums.ReviewStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  product: Prisma.ProductCreateNestedOneWithoutReviewsInput
+  order?: Prisma.OrderCreateNestedOneWithoutReviewsInput
+  customer?: Prisma.CustomerCreateNestedOneWithoutReviewsInput
+  batch?: Prisma.ReviewImportBatchCreateNestedOneWithoutReviewsInput
+}
+
+export type ReviewUncheckedCreateWithoutMediaInput = {
+  id?: string
+  productId: string
+  orderId?: string | null
+  customerId?: string | null
+  name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
+  rating: number
+  body: string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: boolean
+  status?: $Enums.ReviewStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type ReviewCreateOrConnectWithoutMediaInput = {
+  where: Prisma.ReviewWhereUniqueInput
+  create: Prisma.XOR<Prisma.ReviewCreateWithoutMediaInput, Prisma.ReviewUncheckedCreateWithoutMediaInput>
+}
+
+export type ReviewUpsertWithoutMediaInput = {
+  update: Prisma.XOR<Prisma.ReviewUpdateWithoutMediaInput, Prisma.ReviewUncheckedUpdateWithoutMediaInput>
+  create: Prisma.XOR<Prisma.ReviewCreateWithoutMediaInput, Prisma.ReviewUncheckedCreateWithoutMediaInput>
+  where?: Prisma.ReviewWhereInput
+}
+
+export type ReviewUpdateToOneWithWhereWithoutMediaInput = {
+  where?: Prisma.ReviewWhereInput
+  data: Prisma.XOR<Prisma.ReviewUpdateWithoutMediaInput, Prisma.ReviewUncheckedUpdateWithoutMediaInput>
+}
+
+export type ReviewUpdateWithoutMediaInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rating?: Prisma.IntFieldUpdateOperationsInput | number
+  body?: Prisma.StringFieldUpdateOperationsInput | string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  product?: Prisma.ProductUpdateOneRequiredWithoutReviewsNestedInput
+  order?: Prisma.OrderUpdateOneWithoutReviewsNestedInput
+  customer?: Prisma.CustomerUpdateOneWithoutReviewsNestedInput
+  batch?: Prisma.ReviewImportBatchUpdateOneWithoutReviewsNestedInput
+}
+
+export type ReviewUncheckedUpdateWithoutMediaInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  rating?: Prisma.IntFieldUpdateOperationsInput | number
+  body?: Prisma.StringFieldUpdateOperationsInput | string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type ReviewCreateWithoutBatchInput = {
+  id?: string
+  name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  rating: number
+  body: string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: boolean
+  status?: $Enums.ReviewStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  product: Prisma.ProductCreateNestedOneWithoutReviewsInput
+  order?: Prisma.OrderCreateNestedOneWithoutReviewsInput
+  customer?: Prisma.CustomerCreateNestedOneWithoutReviewsInput
+  media?: Prisma.ReviewMediaCreateNestedManyWithoutReviewInput
+}
+
+export type ReviewUncheckedCreateWithoutBatchInput = {
+  id?: string
+  productId: string
+  orderId?: string | null
+  customerId?: string | null
+  name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  rating: number
+  body: string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: boolean
+  status?: $Enums.ReviewStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  media?: Prisma.ReviewMediaUncheckedCreateNestedManyWithoutReviewInput
+}
+
+export type ReviewCreateOrConnectWithoutBatchInput = {
+  where: Prisma.ReviewWhereUniqueInput
+  create: Prisma.XOR<Prisma.ReviewCreateWithoutBatchInput, Prisma.ReviewUncheckedCreateWithoutBatchInput>
+}
+
+export type ReviewCreateManyBatchInputEnvelope = {
+  data: Prisma.ReviewCreateManyBatchInput | Prisma.ReviewCreateManyBatchInput[]
+  skipDuplicates?: boolean
+}
+
+export type ReviewUpsertWithWhereUniqueWithoutBatchInput = {
+  where: Prisma.ReviewWhereUniqueInput
+  update: Prisma.XOR<Prisma.ReviewUpdateWithoutBatchInput, Prisma.ReviewUncheckedUpdateWithoutBatchInput>
+  create: Prisma.XOR<Prisma.ReviewCreateWithoutBatchInput, Prisma.ReviewUncheckedCreateWithoutBatchInput>
+}
+
+export type ReviewUpdateWithWhereUniqueWithoutBatchInput = {
+  where: Prisma.ReviewWhereUniqueInput
+  data: Prisma.XOR<Prisma.ReviewUpdateWithoutBatchInput, Prisma.ReviewUncheckedUpdateWithoutBatchInput>
+}
+
+export type ReviewUpdateManyWithWhereWithoutBatchInput = {
+  where: Prisma.ReviewScalarWhereInput
+  data: Prisma.XOR<Prisma.ReviewUpdateManyMutationInput, Prisma.ReviewUncheckedUpdateManyWithoutBatchInput>
+}
+
 export type ReviewCreateManyProductInput = {
   id?: string
   orderId?: string | null
   customerId?: string | null
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -840,6 +1300,12 @@ export type ReviewCreateManyProductInput = {
 export type ReviewUpdateWithoutProductInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -849,6 +1315,8 @@ export type ReviewUpdateWithoutProductInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   order?: Prisma.OrderUpdateOneWithoutReviewsNestedInput
   customer?: Prisma.CustomerUpdateOneWithoutReviewsNestedInput
+  batch?: Prisma.ReviewImportBatchUpdateOneWithoutReviewsNestedInput
+  media?: Prisma.ReviewMediaUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateWithoutProductInput = {
@@ -856,6 +1324,13 @@ export type ReviewUncheckedUpdateWithoutProductInput = {
   orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -863,6 +1338,7 @@ export type ReviewUncheckedUpdateWithoutProductInput = {
   status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  media?: Prisma.ReviewMediaUncheckedUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateManyWithoutProductInput = {
@@ -870,6 +1346,13 @@ export type ReviewUncheckedUpdateManyWithoutProductInput = {
   orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -884,6 +1367,13 @@ export type ReviewCreateManyCustomerInput = {
   productId: string
   orderId?: string | null
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -896,6 +1386,12 @@ export type ReviewCreateManyCustomerInput = {
 export type ReviewUpdateWithoutCustomerInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -905,6 +1401,8 @@ export type ReviewUpdateWithoutCustomerInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutReviewsNestedInput
   order?: Prisma.OrderUpdateOneWithoutReviewsNestedInput
+  batch?: Prisma.ReviewImportBatchUpdateOneWithoutReviewsNestedInput
+  media?: Prisma.ReviewMediaUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateWithoutCustomerInput = {
@@ -912,6 +1410,13 @@ export type ReviewUncheckedUpdateWithoutCustomerInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -919,6 +1424,7 @@ export type ReviewUncheckedUpdateWithoutCustomerInput = {
   status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  media?: Prisma.ReviewMediaUncheckedUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateManyWithoutCustomerInput = {
@@ -926,6 +1432,13 @@ export type ReviewUncheckedUpdateManyWithoutCustomerInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -940,6 +1453,13 @@ export type ReviewCreateManyOrderInput = {
   productId: string
   customerId?: string | null
   name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  batchId?: string | null
   rating: number
   body: string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -952,6 +1472,12 @@ export type ReviewCreateManyOrderInput = {
 export type ReviewUpdateWithoutOrderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -961,6 +1487,8 @@ export type ReviewUpdateWithoutOrderInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   product?: Prisma.ProductUpdateOneRequiredWithoutReviewsNestedInput
   customer?: Prisma.CustomerUpdateOneWithoutReviewsNestedInput
+  batch?: Prisma.ReviewImportBatchUpdateOneWithoutReviewsNestedInput
+  media?: Prisma.ReviewMediaUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateWithoutOrderInput = {
@@ -968,6 +1496,13 @@ export type ReviewUncheckedUpdateWithoutOrderInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -975,6 +1510,7 @@ export type ReviewUncheckedUpdateWithoutOrderInput = {
   status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  media?: Prisma.ReviewMediaUncheckedUpdateManyWithoutReviewNestedInput
 }
 
 export type ReviewUncheckedUpdateManyWithoutOrderInput = {
@@ -982,6 +1518,13 @@ export type ReviewUncheckedUpdateManyWithoutOrderInput = {
   productId?: Prisma.StringFieldUpdateOperationsInput | string
   customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  batchId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rating?: Prisma.IntFieldUpdateOperationsInput | number
   body?: Prisma.StringFieldUpdateOperationsInput | string
   images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -991,6 +1534,121 @@ export type ReviewUncheckedUpdateManyWithoutOrderInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type ReviewCreateManyBatchInput = {
+  id?: string
+  productId: string
+  orderId?: string | null
+  customerId?: string | null
+  name: string
+  email?: string | null
+  reviewRef?: string | null
+  origin?: string
+  reviewDate?: Date | string | null
+  avatarUrl?: string | null
+  deletedAt?: Date | string | null
+  rating: number
+  body: string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: boolean
+  status?: $Enums.ReviewStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type ReviewUpdateWithoutBatchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rating?: Prisma.IntFieldUpdateOperationsInput | number
+  body?: Prisma.StringFieldUpdateOperationsInput | string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  product?: Prisma.ProductUpdateOneRequiredWithoutReviewsNestedInput
+  order?: Prisma.OrderUpdateOneWithoutReviewsNestedInput
+  customer?: Prisma.CustomerUpdateOneWithoutReviewsNestedInput
+  media?: Prisma.ReviewMediaUpdateManyWithoutReviewNestedInput
+}
+
+export type ReviewUncheckedUpdateWithoutBatchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rating?: Prisma.IntFieldUpdateOperationsInput | number
+  body?: Prisma.StringFieldUpdateOperationsInput | string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  media?: Prisma.ReviewMediaUncheckedUpdateManyWithoutReviewNestedInput
+}
+
+export type ReviewUncheckedUpdateManyWithoutBatchInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  productId?: Prisma.StringFieldUpdateOperationsInput | string
+  orderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  reviewRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  origin?: Prisma.StringFieldUpdateOperationsInput | string
+  reviewDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  rating?: Prisma.IntFieldUpdateOperationsInput | number
+  body?: Prisma.StringFieldUpdateOperationsInput | string
+  images?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  status?: Prisma.EnumReviewStatusFieldUpdateOperationsInput | $Enums.ReviewStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+
+/**
+ * Count Type ReviewCountOutputType
+ */
+
+export type ReviewCountOutputType = {
+  media: number
+}
+
+export type ReviewCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  media?: boolean | ReviewCountOutputTypeCountMediaArgs
+}
+
+/**
+ * ReviewCountOutputType without action
+ */
+export type ReviewCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ReviewCountOutputType
+   */
+  select?: Prisma.ReviewCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ReviewCountOutputType without action
+ */
+export type ReviewCountOutputTypeCountMediaArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.ReviewMediaWhereInput
+}
 
 
 export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -999,6 +1657,13 @@ export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   orderId?: boolean
   customerId?: boolean
   name?: boolean
+  email?: boolean
+  reviewRef?: boolean
+  origin?: boolean
+  reviewDate?: boolean
+  avatarUrl?: boolean
+  deletedAt?: boolean
+  batchId?: boolean
   rating?: boolean
   body?: boolean
   images?: boolean
@@ -1009,6 +1674,9 @@ export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   order?: boolean | Prisma.Review$orderArgs<ExtArgs>
   customer?: boolean | Prisma.Review$customerArgs<ExtArgs>
+  batch?: boolean | Prisma.Review$batchArgs<ExtArgs>
+  media?: boolean | Prisma.Review$mediaArgs<ExtArgs>
+  _count?: boolean | Prisma.ReviewCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["review"]>
 
 export type ReviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1017,6 +1685,13 @@ export type ReviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   orderId?: boolean
   customerId?: boolean
   name?: boolean
+  email?: boolean
+  reviewRef?: boolean
+  origin?: boolean
+  reviewDate?: boolean
+  avatarUrl?: boolean
+  deletedAt?: boolean
+  batchId?: boolean
   rating?: boolean
   body?: boolean
   images?: boolean
@@ -1027,6 +1702,7 @@ export type ReviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   order?: boolean | Prisma.Review$orderArgs<ExtArgs>
   customer?: boolean | Prisma.Review$customerArgs<ExtArgs>
+  batch?: boolean | Prisma.Review$batchArgs<ExtArgs>
 }, ExtArgs["result"]["review"]>
 
 export type ReviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1035,6 +1711,13 @@ export type ReviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   orderId?: boolean
   customerId?: boolean
   name?: boolean
+  email?: boolean
+  reviewRef?: boolean
+  origin?: boolean
+  reviewDate?: boolean
+  avatarUrl?: boolean
+  deletedAt?: boolean
+  batchId?: boolean
   rating?: boolean
   body?: boolean
   images?: boolean
@@ -1045,6 +1728,7 @@ export type ReviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   order?: boolean | Prisma.Review$orderArgs<ExtArgs>
   customer?: boolean | Prisma.Review$customerArgs<ExtArgs>
+  batch?: boolean | Prisma.Review$batchArgs<ExtArgs>
 }, ExtArgs["result"]["review"]>
 
 export type ReviewSelectScalar = {
@@ -1053,6 +1737,13 @@ export type ReviewSelectScalar = {
   orderId?: boolean
   customerId?: boolean
   name?: boolean
+  email?: boolean
+  reviewRef?: boolean
+  origin?: boolean
+  reviewDate?: boolean
+  avatarUrl?: boolean
+  deletedAt?: boolean
+  batchId?: boolean
   rating?: boolean
   body?: boolean
   images?: boolean
@@ -1062,21 +1753,26 @@ export type ReviewSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "orderId" | "customerId" | "name" | "rating" | "body" | "images" | "verified" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
+export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "productId" | "orderId" | "customerId" | "name" | "email" | "reviewRef" | "origin" | "reviewDate" | "avatarUrl" | "deletedAt" | "batchId" | "rating" | "body" | "images" | "verified" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
 export type ReviewInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   order?: boolean | Prisma.Review$orderArgs<ExtArgs>
   customer?: boolean | Prisma.Review$customerArgs<ExtArgs>
+  batch?: boolean | Prisma.Review$batchArgs<ExtArgs>
+  media?: boolean | Prisma.Review$mediaArgs<ExtArgs>
+  _count?: boolean | Prisma.ReviewCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ReviewIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   order?: boolean | Prisma.Review$orderArgs<ExtArgs>
   customer?: boolean | Prisma.Review$customerArgs<ExtArgs>
+  batch?: boolean | Prisma.Review$batchArgs<ExtArgs>
 }
 export type ReviewIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   product?: boolean | Prisma.ProductDefaultArgs<ExtArgs>
   order?: boolean | Prisma.Review$orderArgs<ExtArgs>
   customer?: boolean | Prisma.Review$customerArgs<ExtArgs>
+  batch?: boolean | Prisma.Review$batchArgs<ExtArgs>
 }
 
 export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1085,6 +1781,8 @@ export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     product: Prisma.$ProductPayload<ExtArgs>
     order: Prisma.$OrderPayload<ExtArgs> | null
     customer: Prisma.$CustomerPayload<ExtArgs> | null
+    batch: Prisma.$ReviewImportBatchPayload<ExtArgs> | null
+    media: Prisma.$ReviewMediaPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1092,6 +1790,13 @@ export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     orderId: string | null
     customerId: string | null
     name: string
+    email: string | null
+    reviewRef: string | null
+    origin: string
+    reviewDate: Date | null
+    avatarUrl: string | null
+    deletedAt: Date | null
+    batchId: string | null
     rating: number
     body: string
     images: runtime.JsonValue
@@ -1496,6 +2201,8 @@ export interface Prisma__ReviewClient<T, Null = never, ExtArgs extends runtime.T
   product<T extends Prisma.ProductDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ProductDefaultArgs<ExtArgs>>): Prisma.Prisma__ProductClient<runtime.Types.Result.GetResult<Prisma.$ProductPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   order<T extends Prisma.Review$orderArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Review$orderArgs<ExtArgs>>): Prisma.Prisma__OrderClient<runtime.Types.Result.GetResult<Prisma.$OrderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   customer<T extends Prisma.Review$customerArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Review$customerArgs<ExtArgs>>): Prisma.Prisma__CustomerClient<runtime.Types.Result.GetResult<Prisma.$CustomerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  batch<T extends Prisma.Review$batchArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Review$batchArgs<ExtArgs>>): Prisma.Prisma__ReviewImportBatchClient<runtime.Types.Result.GetResult<Prisma.$ReviewImportBatchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  media<T extends Prisma.Review$mediaArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Review$mediaArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ReviewMediaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1530,6 +2237,13 @@ export interface ReviewFieldRefs {
   readonly orderId: Prisma.FieldRef<"Review", 'String'>
   readonly customerId: Prisma.FieldRef<"Review", 'String'>
   readonly name: Prisma.FieldRef<"Review", 'String'>
+  readonly email: Prisma.FieldRef<"Review", 'String'>
+  readonly reviewRef: Prisma.FieldRef<"Review", 'String'>
+  readonly origin: Prisma.FieldRef<"Review", 'String'>
+  readonly reviewDate: Prisma.FieldRef<"Review", 'DateTime'>
+  readonly avatarUrl: Prisma.FieldRef<"Review", 'String'>
+  readonly deletedAt: Prisma.FieldRef<"Review", 'DateTime'>
+  readonly batchId: Prisma.FieldRef<"Review", 'String'>
   readonly rating: Prisma.FieldRef<"Review", 'Int'>
   readonly body: Prisma.FieldRef<"Review", 'String'>
   readonly images: Prisma.FieldRef<"Review", 'Json'>
@@ -1968,6 +2682,49 @@ export type Review$customerArgs<ExtArgs extends runtime.Types.Extensions.Interna
    */
   include?: Prisma.CustomerInclude<ExtArgs> | null
   where?: Prisma.CustomerWhereInput
+}
+
+/**
+ * Review.batch
+ */
+export type Review$batchArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ReviewImportBatch
+   */
+  select?: Prisma.ReviewImportBatchSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ReviewImportBatch
+   */
+  omit?: Prisma.ReviewImportBatchOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ReviewImportBatchInclude<ExtArgs> | null
+  where?: Prisma.ReviewImportBatchWhereInput
+}
+
+/**
+ * Review.media
+ */
+export type Review$mediaArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ReviewMedia
+   */
+  select?: Prisma.ReviewMediaSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the ReviewMedia
+   */
+  omit?: Prisma.ReviewMediaOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ReviewMediaInclude<ExtArgs> | null
+  where?: Prisma.ReviewMediaWhereInput
+  orderBy?: Prisma.ReviewMediaOrderByWithRelationInput | Prisma.ReviewMediaOrderByWithRelationInput[]
+  cursor?: Prisma.ReviewMediaWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.ReviewMediaScalarFieldEnum | Prisma.ReviewMediaScalarFieldEnum[]
 }
 
 /**

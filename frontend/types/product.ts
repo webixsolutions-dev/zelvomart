@@ -52,6 +52,8 @@ export type Review = {
   body: string;
   verified: boolean;
   createdAt: string;
+  avatarUrl?: string;
+  media?: { type: "image" | "video"; url: string }[];
 };
 
 export type Product = {

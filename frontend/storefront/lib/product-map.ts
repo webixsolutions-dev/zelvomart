@@ -125,7 +125,8 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
             text: r.body,
             createdAt: r.createdAt,
             verified: r.verified,
-            media: (((r as unknown as { images?: unknown[] }).images || []) as unknown[])
+            avatarUrl: r.avatarUrl,
+            media: r.media?.length ? r.media : (((r as unknown as { images?: unknown[] }).images || []) as unknown[])
               .map((u) => String(u))
               .filter(Boolean)
               .map((url) => ({ type: /\.(mp4|webm|mov)(\?|$)/i.test(url) ? ("video" as const) : ("image" as const), url })),

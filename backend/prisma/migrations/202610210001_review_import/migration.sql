@@ -1,0 +1,10 @@
+BEGIN;
+ALTER TABLE "Review" ADD COLUMN "email" TEXT, ADD COLUMN "reviewRef" TEXT, ADD COLUMN "origin" TEXT NOT NULL DEFAULT 'CUSTOMER', ADD COLUMN "reviewDate" DATE, ADD COLUMN "avatarUrl" TEXT, ADD COLUMN "deletedAt" TIMESTAMP(3), ADD COLUMN "batchId" TEXT;
+CREATE UNIQUE INDEX "Review_reviewRef_key" ON "Review"("reviewRef");
+CREATE INDEX "Review_batchId_deletedAt_idx" ON "Review"("batchId","deletedAt");
+CREATE TABLE "ReviewImportBatch" ("id" TEXT PRIMARY KEY,"filename" TEXT NOT NULL,"createdBy" TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"deletedAt" TIMESTAMP(3),"imported" INTEGER NOT NULL DEFAULT 0,"skipped" INTEGER NOT NULL DEFAULT 0,"failed" INTEGER NOT NULL DEFAULT 0,"errors" JSONB NOT NULL DEFAULT '[]');
+ALTER TABLE "Review" ADD CONSTRAINT "Review_batchId_fkey" FOREIGN KEY ("batchId") REFERENCES "ReviewImportBatch"("id") ON DELETE RESTRICT;
+CREATE TABLE "ReviewMedia" ("id" TEXT PRIMARY KEY,"reviewId" TEXT NOT NULL REFERENCES "Review"("id") ON DELETE CASCADE,"type" TEXT NOT NULL,"url" TEXT NOT NULL,"path" TEXT);
+CREATE INDEX "ReviewMedia_reviewId_idx" ON "ReviewMedia"("reviewId");
+CREATE UNIQUE INDEX "Review_customer_order_product_key" ON "Review"("orderId","productId") WHERE "orderId" IS NOT NULL;
+COMMIT;

@@ -68,6 +68,8 @@ export const ModelName = {
   AuditLog: 'AuditLog',
   Experiment: 'Experiment',
   Review: 'Review',
+  ReviewMedia: 'ReviewMedia',
+  ReviewImportBatch: 'ReviewImportBatch',
   AbandonedCheckout: 'AbandonedCheckout',
   City: 'City',
   RateLimitBucket: 'RateLimitBucket',
@@ -444,6 +446,13 @@ export const ReviewScalarFieldEnum = {
   orderId: 'orderId',
   customerId: 'customerId',
   name: 'name',
+  email: 'email',
+  reviewRef: 'reviewRef',
+  origin: 'origin',
+  reviewDate: 'reviewDate',
+  avatarUrl: 'avatarUrl',
+  deletedAt: 'deletedAt',
+  batchId: 'batchId',
   rating: 'rating',
   body: 'body',
   images: 'images',
@@ -454,6 +463,32 @@ export const ReviewScalarFieldEnum = {
 } as const
 
 export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof ReviewScalarFieldEnum]
+
+
+export const ReviewMediaScalarFieldEnum = {
+  id: 'id',
+  reviewId: 'reviewId',
+  type: 'type',
+  url: 'url',
+  path: 'path'
+} as const
+
+export type ReviewMediaScalarFieldEnum = (typeof ReviewMediaScalarFieldEnum)[keyof typeof ReviewMediaScalarFieldEnum]
+
+
+export const ReviewImportBatchScalarFieldEnum = {
+  id: 'id',
+  filename: 'filename',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  deletedAt: 'deletedAt',
+  imported: 'imported',
+  skipped: 'skipped',
+  failed: 'failed',
+  errors: 'errors'
+} as const
+
+export type ReviewImportBatchScalarFieldEnum = (typeof ReviewImportBatchScalarFieldEnum)[keyof typeof ReviewImportBatchScalarFieldEnum]
 
 
 export const AbandonedCheckoutScalarFieldEnum = {

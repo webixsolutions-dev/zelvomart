@@ -5,24 +5,36 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, ImagePlus, Play, X } from "lucide-react";
 import type { Product } from "@store/lib/catalog";
-import { reviewSummary, timeAgo, type Review } from "@store/lib/reviews";
-import { submitReview as savePendingReview, subscribeToUpdates as saveSubscriber } from "@store/lib/api-gaps";
+import { reviewSummary, type Review } from "@store/lib/reviews";
+import { subscribeToUpdates as saveSubscriber } from "@store/lib/api-gaps";
 import { Stars } from "@store/components/ui/Stars";
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join("");
+import { uploadReviewFile } from "@/lib/review-upload";
 
 export function ReviewCard({ r }: { r: Review }) {
+  const [active, setActive] = useState<number | null>(null);
+  const gallery = useRef<HTMLDialogElement>(null);
+  function openMedia(index: number) {
+    setActive(index);
+    gallery.current?.showModal();
+  }
   return (
     <article className="rv-card">
       <header>
         <span className="rv-avatar" aria-hidden="true">
-          {initials(r.name)}
+          {r.avatarUrl ? (
+            <img
+              src={r.avatarUrl}
+              alt=""
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                borderRadius: "50%",
+              }}
+            />
+          ) : (
+            r.name.trim().charAt(0).toUpperCase()
+          )}
         </span>
         <span className="rv-who">
           <strong>{r.name}</strong>
@@ -35,14 +47,29 @@ export function ReviewCard({ r }: { r: Review }) {
         )}
       </header>
       <div className="rv-meta">
-        <Stars rating={r.rating} count={1} size={14} bare className="rv-stars" />
-        <small>{timeAgo(r.createdAt)}</small>
+        <Stars
+          rating={r.rating}
+          count={1}
+          size={14}
+          bare
+          className="rv-stars"
+        />
+        <small>
+          <time dateTime={r.createdAt.slice(0, 10)}>
+            {r.createdAt.slice(0, 10)}
+          </time>
+        </small>
       </div>
       <p>{r.text}</p>
       {!!r.media?.length && (
         <div className="rv-media">
-          {r.media.map((m) => (
-            <a key={m.url} href={m.url} target="_blank" rel="noopener noreferrer" aria-label={m.type === "video" ? "Open video" : "Open photo"}>
+          {r.media.map((m, index) => (
+            <button
+              type="button"
+              key={m.url}
+              onClick={() => openMedia(index)}
+              aria-label={m.type === "video" ? "Open video" : "Open photo"}
+            >
               {m.type === "video" ? (
                 <span className="rv-video">
                   <Play size={18} />
@@ -50,17 +77,81 @@ export function ReviewCard({ r }: { r: Review }) {
               ) : (
                 <img src={m.url} alt="" loading="lazy" />
               )}
-            </a>
+            </button>
           ))}
         </div>
       )}
+      <dialog
+        ref={gallery}
+        className="rv-gallery"
+        aria-label={`Media from ${r.name}'s review`}
+        onClose={() => setActive(null)}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) gallery.current?.close();
+        }}
+      >
+        <button
+          type="button"
+          className="btn ghost"
+          onClick={() => gallery.current?.close()}
+          aria-label="Close gallery"
+        >
+          <X />
+        </button>
+        {active !== null &&
+          r.media?.[active] &&
+          (r.media[active].type === "video" ? (
+            <video
+              key={r.media[active].url}
+              src={r.media[active].url}
+              controls
+              autoPlay
+            />
+          ) : (
+            <img
+              src={r.media[active].url}
+              alt={`Photo from ${r.name}'s review`}
+            />
+          ))}
+        <div className="rv-gallery-controls">
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={active === null || active === 0}
+            onClick={() => setActive((i) => Math.max(0, (i || 0) - 1))}
+          >
+            Previous
+          </button>
+          <span>
+            {active === null ? 0 : active + 1} / {r.media?.length || 0}
+          </span>
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={active === null || active === (r.media?.length || 0) - 1}
+            onClick={() =>
+              setActive((i) =>
+                Math.min((r.media?.length || 1) - 1, (i || 0) + 1),
+              )
+            }
+          >
+            Next
+          </button>
+        </div>
+      </dialog>
     </article>
   );
 }
 
 type Filter = "all" | "media" | "recent";
 
-export function ProductReviews({ product, reviews }: { product: Product; reviews: Review[] }) {
+export function ProductReviews({
+  product,
+  reviews,
+}: {
+  product: Product;
+  reviews: Review[];
+}) {
   const { count, average, bars } = reviewSummary(reviews);
   const [filter, setFilter] = useState<Filter>("all");
   const [shown, setShown] = useState(3);
@@ -69,12 +160,17 @@ export function ProductReviews({ product, reviews }: { product: Product; reviews
   const list = useMemo(() => {
     let l = reviews;
     if (filter === "media") l = l.filter((r) => r.media?.length);
-    if (filter === "recent") l = [...l].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (filter === "recent")
+      l = [...l].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return l;
   }, [reviews, filter]);
 
   return (
-    <section className="section rv-section" id="reviews" aria-labelledby="reviews-title">
+    <section
+      className="section rv-section"
+      id="reviews"
+      aria-labelledby="reviews-title"
+    >
       <div className="container">
         <div className="rv-head">
           <span className="eyebrow">Reviews</span>
@@ -82,21 +178,40 @@ export function ProductReviews({ product, reviews }: { product: Product; reviews
         </div>
         <div className="rv-layout">
           <aside className="rv-summary">
-            <strong className="rv-avg">{count ? average.toFixed(1) : "0"}</strong>
-            <Stars rating={average} count={count} size={20} showAverage={false} />
-            <p>{count ? `Based on ${count} review${count === 1 ? "" : "s"}` : "No reviews yet"}</p>
+            <strong className="rv-avg">
+              {count ? average.toFixed(1) : "0"}
+            </strong>
+            <Stars
+              rating={average}
+              count={count}
+              size={20}
+              showAverage={false}
+            />
+            <p>
+              {count
+                ? `Based on ${count} review${count === 1 ? "" : "s"}`
+                : "No reviews yet"}
+            </p>
             <ul className="rv-bars">
               {bars.map((b) => (
                 <li key={b.star}>
                   <span>{b.star}★</span>
                   <span className="rv-bar">
-                    <span style={{ width: count ? `${(b.count / count) * 100}%` : 0 }} />
+                    <span
+                      style={{
+                        width: count ? `${(b.count / count) * 100}%` : 0,
+                      }}
+                    />
                   </span>
                   <span>{b.count}</span>
                 </li>
               ))}
             </ul>
-            <button type="button" className="btn block" onClick={() => setWriting(true)}>
+            <button
+              type="button"
+              className="btn block"
+              onClick={() => setWriting(true)}
+            >
               Write a review
             </button>
           </aside>
@@ -105,7 +220,11 @@ export function ProductReviews({ product, reviews }: { product: Product; reviews
             {count > 0 ? (
               <>
                 <div className="rv-filters">
-                  <div className="rv-chips" role="group" aria-label="Filter reviews">
+                  <div
+                    className="rv-chips"
+                    role="group"
+                    aria-label="Filter reviews"
+                  >
                     {(
                       [
                         ["all", "All"],
@@ -113,13 +232,23 @@ export function ProductReviews({ product, reviews }: { product: Product; reviews
                         ["recent", "Most recent"],
                       ] as const
                     ).map(([k, l]) => (
-                      <button key={k} type="button" className={filter === k ? "active" : ""} aria-pressed={filter === k} onClick={() => (setFilter(k), setShown(3))}>
+                      <button
+                        key={k}
+                        type="button"
+                        className={filter === k ? "active" : ""}
+                        aria-pressed={filter === k}
+                        onClick={() => (setFilter(k), setShown(3))}
+                      >
                         {l}
                       </button>
                     ))}
                   </div>
                   {list.length > shown && (
-                    <button type="button" className="link-btn" onClick={() => setShown(list.length)}>
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={() => setShown(list.length)}
+                    >
                       See all →
                     </button>
                   )}
@@ -130,7 +259,11 @@ export function ProductReviews({ product, reviews }: { product: Product; reviews
                   ))}
                 </div>
                 {list.length > shown && (
-                  <button type="button" className="btn ghost rv-more" onClick={() => setShown((n) => n + 10)}>
+                  <button
+                    type="button"
+                    className="btn ghost rv-more"
+                    onClick={() => setShown((n) => n + 10)}
+                  >
                     See all reviews
                   </button>
                 )}
@@ -139,7 +272,11 @@ export function ProductReviews({ product, reviews }: { product: Product; reviews
               <div className="rv-empty">
                 <Stars count={0} size={22} />
                 <p>No reviews yet. Be the first to share your experience.</p>
-                <button type="button" className="btn" onClick={() => setWriting(true)}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setWriting(true)}
+                >
                   Write a review
                 </button>
               </div>
@@ -147,27 +284,47 @@ export function ProductReviews({ product, reviews }: { product: Product; reviews
           </div>
         </div>
       </div>
-      {writing && <WriteReviewModal product={product} onClose={() => setWriting(false)} />}
+      {writing && (
+        <WriteReviewModal product={product} onClose={() => setWriting(false)} />
+      )}
     </section>
   );
 }
 
 const MAX_PHOTOS = 5;
 
-function WriteReviewModal({ product, onClose }: { product: Product; onClose: () => void }) {
+function WriteReviewModal({
+  product,
+  onClose,
+}: {
+  product: Product;
+  onClose: () => void;
+}) {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [text, setText] = useState("");
-  const [files, setFiles] = useState<{ file: File; url: string; type: "image" | "video" }[]>([]);
+  const [files, setFiles] = useState<
+    { file: File; url: string; type: "image" | "video" }[]
+  >([]);
   const [mediaError, setMediaError] = useState("");
   const [done, setDone] = useState(false);
   const [subEmail, setSubEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
 
-  const valid = rating > 0 && name.trim().length > 1 && text.trim().length >= 10;
+  const valid =
+    rating > 0 &&
+    name.trim().length > 1 &&
+    text.trim().length >= 10 &&
+    /^\S+@\S+\.\S+$/.test(email) &&
+    !!orderNumber.trim() &&
+    phone.replace(/\D/g, "").length >= 10;
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
@@ -182,7 +339,14 @@ function WriteReviewModal({ product, onClose }: { product: Product; onClose: () 
     };
   }, [onClose]);
 
-  useEffect(() => () => files.forEach((f) => URL.revokeObjectURL(f.url)), [files]);
+  const fileRef = useRef(files);
+  useEffect(() => {
+    fileRef.current = files;
+  }, [files]);
+  useEffect(
+    () => () => fileRef.current.forEach((f) => URL.revokeObjectURL(f.url)),
+    [],
+  );
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -196,35 +360,108 @@ function WriteReviewModal({ product, onClose }: { product: Product; onClose: () 
           continue;
         }
         if (file.type !== "video/mp4" || file.size > 20 * 1024 * 1024) {
-          setMediaError("Videos must be MP4, up to 30 seconds and 20 MB.");
+          setMediaError("Videos must be MP4, up to 20 MB.");
           continue;
         }
-      } else if (file.type.startsWith("image/")) {
+      } else if (
+        ["image/jpeg", "image/png", "image/webp"].includes(file.type)
+      ) {
+        if (file.size > 5 * 1024 * 1024) {
+          setMediaError("Photos must be up to 5 MB.");
+          continue;
+        }
         if (next.filter((f) => f.type === "image").length >= MAX_PHOTOS) {
           setMediaError(`You can add up to ${MAX_PHOTOS} photos.`);
           continue;
         }
-      } else continue;
-      next.push({ file, url: URL.createObjectURL(file), type: isVideo ? "video" : "image" });
+      } else {
+        setMediaError("Use JPEG, PNG, WebP photos or an MP4 video.");
+        continue;
+      }
+      next.push({
+        file,
+        url: URL.createObjectURL(file),
+        type: isVideo ? "video" : "image",
+      });
     }
     setFiles(next);
   };
 
-  const publish = (e: React.FormEvent) => {
+  const publish = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
-    savePendingReview({ productId: product.id, name: name.trim(), email: email.trim() || undefined, rating, text: text.trim(), mediaCount: files.length });
-    setSubEmail(email.trim());
-    setDone(true);
+    if (!valid || submitting) return;
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const values = {
+        productId: product.id,
+        name: name.trim(),
+        email: email.trim(),
+        rating: String(rating),
+        body: text.trim(),
+        orderNumber: orderNumber.trim(),
+        phone,
+      };
+      const uploadTokens: string[] = [];
+      for (const file of files)
+        uploadTokens.push(
+          await uploadReviewFile(file.file, "media", false, values),
+        );
+      const response = await fetch("/api/store-proxy/api/reviews", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...values, uploadTokens }),
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(
+          result.message ||
+            (
+              {
+                DELIVERED_ORDER_REQUIRED:
+                  "Enter the delivered order number and checkout phone.",
+                REVIEW_NOT_VERIFIED:
+                  "Use the delivered order number and phone used at checkout.",
+                REVIEW_ALREADY_SUBMITTED:
+                  "A review has already been submitted for this purchase.",
+              } as Record<string, string>
+            )[result.error] ||
+            result.error ||
+            "Unable to submit review.",
+        );
+      setSubEmail(email.trim());
+      setDone(true);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Unable to submit review.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const first = name.trim().split(/\s+/)[0] ?? "";
   const display = first ? first[0]!.toUpperCase() + first.slice(1) : "";
 
   return (
-    <div className="rv-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="rv-modal" role="dialog" aria-modal="true" aria-labelledby="rv-modal-title" tabIndex={-1} ref={dialog}>
-        <button type="button" className="rv-close" aria-label="Close" onClick={onClose}>
+    <div
+      className="rv-overlay"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="rv-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rv-modal-title"
+        tabIndex={-1}
+        ref={dialog}
+      >
+        <button
+          type="button"
+          className="rv-close"
+          aria-label="Close"
+          onClick={onClose}
+        >
           <X size={20} />
         </button>
         {!done ? (
@@ -237,7 +474,12 @@ function WriteReviewModal({ product, onClose }: { product: Product; onClose: () 
               </span>
             </div>
 
-            <div className="rv-rate" role="radiogroup" aria-label="Your rating" onMouseLeave={() => setHover(0)}>
+            <div
+              className="rv-rate"
+              role="radiogroup"
+              aria-label="Your rating"
+              onMouseLeave={() => setHover(0)}
+            >
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={n}
@@ -249,7 +491,12 @@ function WriteReviewModal({ product, onClose }: { product: Product; onClose: () 
                   onMouseEnter={() => setHover(n)}
                   onClick={() => setRating(n)}
                 >
-                  <svg viewBox="0 0 20 20" width="34" height="34" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 20 20"
+                    width="34"
+                    height="34"
+                    aria-hidden="true"
+                  >
                     <path d="M10 1.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.6 7.7l5.8-.8z" />
                   </svg>
                 </button>
@@ -259,32 +506,96 @@ function WriteReviewModal({ product, onClose }: { product: Product; onClose: () 
             <div className="rv-fields">
               <label>
                 <span>Full name *</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required />
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                  required
+                />
               </label>
               <label>
-                <span>Email</span>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" inputMode="email" />
+                <span>Private email *</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  inputMode="email"
+                  required
+                />
+              </label>
+              <label>
+                <span>Delivered order number *</span>
+                <input
+                  value={orderNumber}
+                  onChange={(e) => setOrderNumber(e.target.value)}
+                  required
+                  placeholder="Order number"
+                />
+              </label>
+              <label>
+                <span>Checkout phone *</span>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  autoComplete="tel"
+                />
               </label>
             </div>
             <label className="rv-text">
               <span className="sr-only">Your review</span>
-              <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Share your experience with this product" rows={5} required minLength={10} />
-              {text.length > 0 && text.trim().length < 10 && <small className="rv-hint">Please write at least 10 characters.</small>}
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Share your experience with this product"
+                rows={5}
+                required
+                minLength={10}
+              />
+              {text.length > 0 && text.trim().length < 10 && (
+                <small className="rv-hint">
+                  Please write at least 10 characters.
+                </small>
+              )}
             </label>
 
             <div className="rv-upload">
               <label className="rv-add">
                 <ImagePlus size={18} /> Add photos &amp; videos
-                <input type="file" accept="image/*,video/mp4" multiple onChange={(e) => (addFiles(e.target.files), (e.target.value = ""))} />
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,video/mp4"
+                  multiple
+                  onChange={(e) => (
+                    addFiles(e.target.files),
+                    (e.target.value = "")
+                  )}
+                />
               </label>
-              <small>Up to 5 photos and 1 video</small>
+              <small>
+                Up to 5 JPEG, PNG or WebP photos (5 MB each) and 1 MP4 video (20
+                MB)
+              </small>
               {mediaError && <small className="rv-hint">{mediaError}</small>}
               {!!files.length && (
                 <div className="rv-previews">
                   {files.map((f, i) => (
                     <span key={f.url}>
-                      {f.type === "image" ? <img src={f.url} alt="" /> : <video src={f.url} muted />}
-                      <button type="button" aria-label="Remove" onClick={() => setFiles((all) => all.filter((_, j) => j !== i))}>
+                      {f.type === "image" ? (
+                        <img src={f.url} alt="" />
+                      ) : (
+                        <video src={f.url} muted />
+                      )}
+                      <button
+                        type="button"
+                        aria-label="Remove"
+                        onClick={() => {
+                          URL.revokeObjectURL(f.url);
+                          setFiles((all) => all.filter((_, j) => j !== i));
+                        }}
+                      >
                         <X size={12} />
                       </button>
                     </span>
@@ -292,13 +603,21 @@ function WriteReviewModal({ product, onClose }: { product: Product; onClose: () 
                 </div>
               )}
             </div>
-
+            {submitError && (
+              <p role="alert" className="rv-hint">
+                {submitError}
+              </p>
+            )}
             <div className="rv-actions">
               <button type="button" className="btn ghost" onClick={onClose}>
                 Cancel
               </button>
-              <button type="submit" className="btn" disabled={!valid}>
-                Publish
+              <button
+                type="submit"
+                className="btn"
+                disabled={!valid || submitting}
+              >
+                {submitting ? "Submitting…" : "Submit for approval"}
               </button>
             </div>
           </form>
@@ -324,7 +643,13 @@ function WriteReviewModal({ product, onClose }: { product: Product; onClose: () 
                     setSubscribed(true);
                   }}
                 >
-                  <input type="email" value={subEmail} onChange={(e) => setSubEmail(e.target.value)} placeholder="Your email" aria-label="Email for updates" />
+                  <input
+                    type="email"
+                    value={subEmail}
+                    onChange={(e) => setSubEmail(e.target.value)}
+                    placeholder="Your email"
+                    aria-label="Email for updates"
+                  />
                   <button type="submit" className="btn secondary">
                     Subscribe
                   </button>

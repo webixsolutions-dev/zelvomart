@@ -19,7 +19,10 @@
     "qa:urls": "tsx scripts/check-urls.ts",
     "migrate:urls": "tsx scripts/migration/export-wordpress-urls.ts",
     "postinstall": "prisma generate --schema=prisma/schema.prisma",
-    "setup": "prisma generate --schema=prisma/schema.prisma && prisma db push --schema=prisma/schema.prisma"
+    "setup": "prisma generate --schema=prisma/schema.prisma && prisma db push --schema=prisma/schema.prisma",
+    "test:reviews": "node --import tsx --test src/lib/review-import.test.ts",
+    "test:reviews:integration": "node --import tsx scripts/review-system.integration.mts",
+    "db:deploy": "prisma migrate deploy --schema=prisma/schema.prisma"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.890.0",
@@ -28,8 +31,10 @@
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
+    "csv-parse": "^7.0.3",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "fflate": "^0.8.3",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "pg": "^8.16.3",
@@ -40,6 +45,8 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite-socket": "^0.2.13",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
