@@ -22,7 +22,20 @@ export function productHasFreeShipping(sourceUrl: unknown) {
 // Fields the product form used to save that nothing reads (orders, shop, feed, schema).
 // trackStock / stockStatus / quantity now live in real Product and Variant columns (lib/stock.ts);
 // shippingClass became the freeShipping flag; the Social SEO tab was removed.
-const DROPPED_META_KEYS = ["virtual", "downloadable", "taxStatus", "taxClass", "purchaseNote", "menuOrder", "brand", "trackStock", "stockStatus", "shippingClass", "socialTitle", "socialDescription"];
+const DROPPED_META_KEYS = [
+  "virtual",
+  "downloadable",
+  "taxStatus",
+  "taxClass",
+  "purchaseNote",
+  "menuOrder",
+  "brand",
+  "trackStock",
+  "stockStatus",
+  "shippingClass",
+  "socialTitle",
+  "socialDescription",
+];
 const DROPPED_VARIATION_KEYS = ["virtual", "downloadable", "trackStock", "stockStatus", "quantity", "shippingClass"];
 const DROPPED_IMAGE_META_KEYS = ["caption", "description", "excludeFromSitemap"];
 

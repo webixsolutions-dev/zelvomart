@@ -8,7 +8,10 @@ export const OG_HOME: OgImage = { url: "/brand/og-home.jpg", width: 1200, height
 
 /** A page's desktop banner, cropped to 1200 × 630 JPG (see /public/images/og). */
 export function bannerOg(banner: string, alt: string): OgImage {
-  const name = banner.split("/").pop()!.replace(/\.\w+$/, "");
+  // The listing banners are named "<page>-desktop.webp" (and "all-products" for /shop/); their share images
+  // are /images/og/<page>.jpg ("shop.jpg"). Category banners already match ("category-home-living").
+  const file = banner.split("/").pop()!.replace(/\.\w+$/, "").replace(/-desktop$/, "");
+  const name = file === "all-products" ? "shop" : file;
   return { url: `/images/og/${name}.jpg`, width: 1200, height: 630, alt };
 }
 

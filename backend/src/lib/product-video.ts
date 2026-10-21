@@ -12,7 +12,8 @@ export type ProductVideo = {
   thumbnailUrl: string | null;
 };
 
-export const VIDEO_URL_ERROR = "Paste a YouTube link (youtube.com/watch, youtu.be or youtube.com/shorts) or a Vimeo link.";
+export const VIDEO_URL_ERROR =
+  "Paste a YouTube link (youtube.com/watch, youtu.be or youtube.com/shorts) or a Vimeo link.";
 
 export function parseVideoUrl(input: unknown): ProductVideo | null {
   const raw = String(input ?? "").trim();

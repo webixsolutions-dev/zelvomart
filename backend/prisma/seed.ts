@@ -53,16 +53,6 @@ const defaultSettings: Record<string, unknown> = {
         "<p><strong>Can I check the product before paying?</strong><br/>Riders in major cities can let you inspect the parcel. We also offer a 7-day replacement window.</p><p><strong>What if I receive a damaged product?</strong><br/>Share photos on WhatsApp within 7 days and we will arrange a replacement.</p><p><strong>When is shipping free?</strong><br/>Shipping is free on an order above Rs 8,000, and on any product whose free-shipping option is turned on.</p>",
     },
   },
-  "checkout.requiredFields": {
-    fullName: true,
-    phone: true,
-    email: true,
-    city: true,
-    address: true,
-    postcode: true,
-    orderNotes: false,
-    terms: true,
-  },
   "payments.methods": ["COD"],
   "tracking.metaPixelId": "1645715973642563",
   "tracking.clarityId": "",
@@ -117,7 +107,9 @@ async function main() {
   const deliveryValue = currentDelivery?.value as { mode?: string; flatRate?: number; freeAbove?: number } | null;
   const legacyFree =
     !deliveryValue ||
-    ((deliveryValue.mode || "FREE") === "FREE" && Number(deliveryValue.flatRate || 0) === 0 && Number(deliveryValue.freeAbove || 0) === 0);
+    ((deliveryValue.mode || "FREE") === "FREE" &&
+      Number(deliveryValue.flatRate || 0) === 0 &&
+      Number(deliveryValue.freeAbove || 0) === 0);
   if (legacyFree) {
     await prisma.setting.update({
       where: { key: "store.delivery" },

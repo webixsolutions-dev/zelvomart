@@ -1,15 +1,49 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { productCreateSchema, productUpdateSchema, categoryCreateSchema, redirectSchema, salePriceProblem } from "./admin-validators";
+import {
+  productCreateSchema,
+  productUpdateSchema,
+  categoryCreateSchema,
+  redirectSchema,
+  salePriceProblem,
+} from "./admin-validators";
 
 // The shape Admin → Products → Save sends (components/admin/ProductForm.tsx).
 const formPayload = {
-  title: "Rhinestone Watch and Bracelet Set", slug: "rhinestone-watch-set", sku: "ZM-WATCH-01", categoryId: "cat_1",
-  price: 2999, salePrice: 2399, trackStock: true, stockStatus: "instock", stock: 12, status: "PUBLISHED", featured: false,
-  previousSlug: undefined, redirectFallback: true, bundleEnabled: true, bundleDiscountPercent: 5,
-  shortDescription: "<ul><li>Gift box</li></ul>", descriptionHtml: "<p>Details</p>",
-  images: ["https://pub-1.r2.dev/a.webp", "/images/products/legacy/b.webp"], seoTitle: null, seoDescription: null, canonicalUrl: null, videoUrl: null,
-  variants: [{ name: "Silver", sku: "ZM-WATCH-01-S", trackStock: true, stockStatus: "instock", stock: 4, priceOverride: 2399, imageUrl: null, attributes: { Colour: "Silver" } }],
+  title: "Rhinestone Watch and Bracelet Set",
+  slug: "rhinestone-watch-set",
+  sku: "ZM-WATCH-01",
+  categoryId: "cat_1",
+  price: 2999,
+  salePrice: 2399,
+  trackStock: true,
+  stockStatus: "instock",
+  stock: 12,
+  status: "PUBLISHED",
+  featured: false,
+  previousSlug: undefined,
+  redirectFallback: true,
+  bundleEnabled: true,
+  bundleDiscountPercent: 5,
+  shortDescription: "<ul><li>Gift box</li></ul>",
+  descriptionHtml: "<p>Details</p>",
+  images: ["https://pub-1.r2.dev/a.webp", "/images/products/legacy/b.webp"],
+  seoTitle: null,
+  seoDescription: null,
+  canonicalUrl: null,
+  videoUrl: null,
+  variants: [
+    {
+      name: "Silver",
+      sku: "ZM-WATCH-01-S",
+      trackStock: true,
+      stockStatus: "instock",
+      stock: 4,
+      priceOverride: 2399,
+      imageUrl: null,
+      attributes: { Colour: "Silver" },
+    },
+  ],
   catalogMeta: { productType: "variable", robotsIndex: "index", tags: ["best-selling"] },
 };
 
@@ -49,10 +83,19 @@ test("sale price must be lower than the regular price", () => {
 });
 
 test("categories and redirects", () => {
-  assert.equal(categoryCreateSchema.safeParse({ name: "Home & Living", slug: "home-living", sortOrder: "10" }).success, true);
+  assert.equal(
+    categoryCreateSchema.safeParse({ name: "Home & Living", slug: "home-living", sortOrder: "10" }).success,
+    true,
+  );
   assert.equal(categoryCreateSchema.safeParse({ name: "", slug: "home-living" }).success, false);
-  assert.equal(redirectSchema.safeParse({ sourcePath: "/old-page/", destination: "/shop/", permanent: true }).success, true);
-  assert.equal(redirectSchema.safeParse({ sourcePath: "/x/", destination: "https://zelvomart.com/shop/" }).success, true);
+  assert.equal(
+    redirectSchema.safeParse({ sourcePath: "/old-page/", destination: "/shop/", permanent: true }).success,
+    true,
+  );
+  assert.equal(
+    redirectSchema.safeParse({ sourcePath: "/x/", destination: "https://zelvomart.com/shop/" }).success,
+    true,
+  );
   assert.equal(redirectSchema.safeParse({ sourcePath: "old-page", destination: "/shop/" }).success, false);
   assert.equal(redirectSchema.safeParse({ sourcePath: "/x/", destination: "javascript:alert(1)" }).success, false);
 });

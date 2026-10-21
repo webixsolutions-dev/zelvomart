@@ -9,7 +9,9 @@ const knownQueues = new Set<string>();
 /** The worker's full pg-boss: maintenance, schedules and its own connection pool. Started by workers/main.ts. */
 export async function getBoss() {
   if (!boss) {
-    boss = new PgBoss({ ...databaseConnection(process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL!) });
+    boss = new PgBoss({
+      ...databaseConnection(process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL!),
+    });
     boss.on("error", (error) => console.error("pg-boss", error));
     await boss.start();
   }
@@ -71,4 +73,6 @@ export async function enqueueJob(name: string, payload: Record<string, unknown>,
   return row;
 }
 
-export function jobResultStatus(result:unknown){return result&&typeof result==='object'&&'skipped' in result?'SKIPPED' as const:'SUCCEEDED' as const}
+export function jobResultStatus(result: unknown) {
+  return result && typeof result === "object" && "skipped" in result ? ("SKIPPED" as const) : ("SUCCEEDED" as const);
+}

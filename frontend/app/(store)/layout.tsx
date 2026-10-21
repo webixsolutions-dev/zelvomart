@@ -11,13 +11,12 @@ import { MobileBottomNav } from "@store/components/layout/MobileBottomNav";
 import { Toaster } from "@store/components/layout/Toaster";
 // Platform providers (non-visual): settings bootstrap, Meta/TikTok pixels, GA4, tracking events and session replays.
 import { Suspense } from "react";
-import { getStoreBootstrap } from "@/lib/store";
 import TrackingProvider from "@/components/TrackingProvider";
 import SessionReplayProvider from "@/components/SessionReplayProvider";
 import MetaPixelScript from "@/components/MetaPixelScript";
 import TikTokPixelScript from "@/components/TikTokPixelScript";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
-import { loadStore, slimProduct } from "@store/lib/backend";
+import { loadStore, slimProduct, loadPublicSettings } from "@store/lib/backend";
 import { CatalogBridge } from "@store/lib/bridge";
 
 const manrope = Manrope({
@@ -89,10 +88,10 @@ const orgJsonLd = () => ({
 export const revalidate = 300;
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [bootstrap, store] = await Promise.all([getStoreBootstrap().catch(() => null), loadStore()]);
-  const settings = (bootstrap?.settings || {}) as Record<string, unknown>;
+  const [publicSettings, store] = await Promise.all([loadPublicSettings().catch(() => null), loadStore()]);
+  const settings = publicSettings || {};
   // No answer from the backend at all (and no earlier one): load no pixels or recorder rather than guess.
-  const enabled = (key: string) => Boolean(bootstrap) && settings[key] !== false && settings[key] !== "false";
+  const enabled = (key: string) => Boolean(publicSettings) && settings[key] !== false && settings[key] !== "false";
   const pixelId = String(settings["tracking.metaPixelId"] || "");
   const tiktokPixelId = String(settings["tracking.tiktokPixelId"] || "");
   return (

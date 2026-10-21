@@ -39,8 +39,14 @@ async function collect(url: string, seen = new Set<string>()): Promise<string[]>
 async function main() {
   const urls = [...new Set(await collect(start))].sort();
   await fs.mkdir(outDir, { recursive: true });
-  await fs.writeFile(path.join(outDir, "wordpress-urls.json"), JSON.stringify({ source, exportedAt: new Date().toISOString(), urls }, null, 2));
-  await fs.writeFile(path.join(outDir, "wordpress-urls.csv"), `url\n${urls.map((url) => `"${url.replace(/"/g, '""')}"`).join("\n")}\n`);
+  await fs.writeFile(
+    path.join(outDir, "wordpress-urls.json"),
+    JSON.stringify({ source, exportedAt: new Date().toISOString(), urls }, null, 2),
+  );
+  await fs.writeFile(
+    path.join(outDir, "wordpress-urls.csv"),
+    `url\n${urls.map((url) => `"${url.replace(/"/g, '""')}"`).join("\n")}\n`,
+  );
   console.log(`Exported ${urls.length} WordPress URLs to migration/wordpress-urls.json and .csv`);
 }
 

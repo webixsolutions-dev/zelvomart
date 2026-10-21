@@ -1,3 +1,30 @@
-import 'dotenv/config';
-import {prisma} from '../src/lib/db';import {signAdminToken,passwordStamp} from '../src/lib/auth';
-async function main(){const owner=await prisma.user.findFirstOrThrow({where:{role:'OWNER'},select:{id:true,name:true,email:true,role:true,passwordHash:true}}),token=signAdminToken(owner,passwordStamp(owner.passwordHash));for(const name of ['kpis','sales','funnel','sources','products','recovery','health','tips','ads']){const r=await fetch('http://localhost:4000/api/admin/overview/'+name+'?from=2026-10-01&to=2026-10-18',{headers:{authorization:'Bearer '+token},signal:AbortSignal.timeout(45000)});const d=await r.json();console.log(name,r.status,r.ok?'OK':d.error+' '+(d.message||''));}console.log('QA fixtures',await prisma.product.findMany({where:{title:'QA admin brief fixture',sku:{startsWith:'QA-'}},select:{id:true,sku:true}}));await prisma.$disconnect();}main().catch(e=>{console.error(e.message);process.exitCode=1});
+import "dotenv/config";
+import { prisma } from "../src/lib/db";
+import { signAdminToken, passwordStamp } from "../src/lib/auth";
+async function main() {
+  const owner = await prisma.user.findFirstOrThrow({
+      where: { role: "OWNER" },
+      select: { id: true, name: true, email: true, role: true, passwordHash: true },
+    }),
+    token = signAdminToken(owner, passwordStamp(owner.passwordHash));
+  for (const name of ["kpis", "sales", "funnel", "sources", "products", "recovery", "health", "tips", "ads"]) {
+    const r = await fetch("http://localhost:4000/api/admin/overview/" + name + "?from=2026-10-01&to=2026-10-18", {
+      headers: { authorization: "Bearer " + token },
+      signal: AbortSignal.timeout(45000),
+    });
+    const d = await r.json();
+    console.log(name, r.status, r.ok ? "OK" : d.error + " " + (d.message || ""));
+  }
+  console.log(
+    "QA fixtures",
+    await prisma.product.findMany({
+      where: { title: "QA admin brief fixture", sku: { startsWith: "QA-" } },
+      select: { id: true, sku: true },
+    }),
+  );
+  await prisma.$disconnect();
+}
+main().catch((e) => {
+  console.error(e.message);
+  process.exitCode = 1;
+});

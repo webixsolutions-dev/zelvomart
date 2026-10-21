@@ -14,9 +14,7 @@ function fix(key, withPgbouncer) {
   if (!m) return;
   const pw = m[1];
   const host = m[2];
-  const suffix = withPgbouncer
-    ? "?pgbouncer=true&connection_limit=5&pool_timeout=30"
-    : "";
+  const suffix = withPgbouncer ? "?pgbouncer=true&connection_limit=5&pool_timeout=30" : "";
   s = s.replace(re, `${key}="postgresql://postgres:${pw}@${host}:6543/postgres${suffix}"`);
 }
 

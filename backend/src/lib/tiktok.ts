@@ -1,4 +1,4 @@
-import {tiktokProperties} from "./tracking-payload";
+import { tiktokProperties } from "./tracking-payload";
 import { prisma } from "./db";
 import { sha256 } from "./security";
 import { getSetting } from "./settings";
@@ -11,7 +11,7 @@ export type TikTokServerEvent = {
   userAgent?: string;
   ip?: string;
   ttp?: string;
-  ttclid?:string;
+  ttclid?: string;
   phone?: string;
   email?: string;
   externalId?: string;
@@ -30,12 +30,12 @@ const TIKTOK_EVENT_MAP: Record<string, string> = {
   Lead: "Lead",
 };
 
-export function tiktokUserData(event:TikTokServerEvent){
+export function tiktokUserData(event: TikTokServerEvent) {
   const userData: Record<string, unknown> = {
     ip: event.ip || undefined,
     user_agent: event.userAgent || undefined,
     ttp: event.ttp || undefined,
-    ttclid:event.ttclid||undefined,
+    ttclid: event.ttclid || undefined,
     phone: event.phone ? sha256(`+${event.phone.replace(/\D/g, "")}`) : undefined,
     email: event.email ? sha256(event.email.trim().toLowerCase()) : undefined,
     external_id: event.externalId ? sha256(event.externalId) : undefined,
@@ -56,12 +56,19 @@ export async function sendTikTokServerEvent(event: TikTokServerEvent) {
     "tracking.tiktokPixelId",
     process.env.TIKTOK_PIXEL_ID || process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID || "",
   );
-  const pixelId = String(configuredPixelId || process.env.TIKTOK_PIXEL_ID || process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID || "").trim();
+  const pixelId = String(
+    configuredPixelId || process.env.TIKTOK_PIXEL_ID || process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID || "",
+  ).trim();
   const configuredToken = await getSetting<string>(
     "tracking.tiktokEventsApiToken",
-    await getSetting<string>("tracking.tiktokAccessToken", process.env.TIKTOK_EVENTS_API_TOKEN || process.env.TIKTOK_ACCESS_TOKEN || ""),
+    await getSetting<string>(
+      "tracking.tiktokAccessToken",
+      process.env.TIKTOK_EVENTS_API_TOKEN || process.env.TIKTOK_ACCESS_TOKEN || "",
+    ),
   );
-  const token = String(configuredToken || process.env.TIKTOK_EVENTS_API_TOKEN || process.env.TIKTOK_ACCESS_TOKEN || "").trim();
+  const token = String(
+    configuredToken || process.env.TIKTOK_EVENTS_API_TOKEN || process.env.TIKTOK_ACCESS_TOKEN || "",
+  ).trim();
 
   if (!pixelId || !token) {
     // If TikTok Events API credentials are not yet configured, skip silently without failing background workers.
@@ -70,7 +77,7 @@ export async function sendTikTokServerEvent(event: TikTokServerEvent) {
 
   const ttEvent = TIKTOK_EVENT_MAP[event.eventName] || event.eventName;
 
-  const userData=tiktokUserData(event);
+  const userData = tiktokUserData(event);
 
   const properties: Record<string, unknown> = {
     ...tiktokProperties(event.customData || {}),
@@ -110,7 +117,7 @@ export async function sendTikTokServerEvent(event: TikTokServerEvent) {
         "access-token": token,
       },
       body: JSON.stringify(payload),
-      signal:AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(15000),
     });
     body = await response.json().catch(() => ({ status: response.status }));
   } catch (error) {
@@ -130,7 +137,7 @@ export async function sendTikTokServerEvent(event: TikTokServerEvent) {
     throw error;
   }
 
-  const isAccepted = response.ok && (body?.code === 0);
+  const isAccepted = response.ok && body?.code === 0;
 
   await prisma.eventLog.create({
     data: {

@@ -38,10 +38,7 @@ const storage = http.createServer((req, res) => {
     });
   } else {
     const object = objects.get(pathname) || objects.get("/qa" + pathname);
-    res.writeHead(
-      object ? 200 : 404,
-      object ? { "content-length": object.length } : {},
-    );
+    res.writeHead(object ? 200 : 404, object ? { "content-length": object.length } : {});
     res.end(object);
   }
 });
@@ -65,9 +62,7 @@ const { Pool } = require("pg");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("../src/generated/prisma/client.ts");
 globalThis.prisma = new PrismaClient({
-  adapter: new PrismaPg(
-    new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }),
-  ),
+  adapter: new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL, max: 1 })),
 });
 const { prisma } = require("../src/lib/db.ts");
 const { signAdminToken, passwordStamp } = require("../src/lib/auth.ts");
@@ -100,21 +95,22 @@ for (const [id, title, sku] of [
       status: "PUBLISHED",
     },
   });
-const token = signAdminToken({
-  id: "qa-owner",
-  name: "QA Owner",
-  email: "qa@example.invalid",
-  role: "OWNER",
-}, passwordStamp(qaOwnerHash));
+const token = signAdminToken(
+  {
+    id: "qa-owner",
+    name: "QA Owner",
+    email: "qa@example.invalid",
+    role: "OWNER",
+  },
+  passwordStamp(qaOwnerHash),
+);
 const api = app.listen(55441, "127.0.0.1");
 async function call(path, options = {}, auth = true) {
   const response = await fetch("http://127.0.0.1:55441" + path, {
     ...options,
     headers: {
       ...(auth ? { authorization: "Bearer " + token } : {}),
-      ...(options.body instanceof FormData
-        ? {}
-        : { "content-type": "application/json" }),
+      ...(options.body instanceof FormData ? {} : { "content-type": "application/json" }),
       ...options.headers,
     },
   });
@@ -150,21 +146,14 @@ const rows = [
 const zipped = zipSync({
   "QA-001/photo.png": png,
   "QA-001/avatar.png": png,
-  "QA-001/video.mp4": readFileSync(
-    new URL("./fixtures/review-test.mp4", import.meta.url),
-  ),
+  "QA-001/video.mp4": readFileSync(new URL("./fixtures/review-test.mp4", import.meta.url)),
   "unassigned.png": png,
 });
 function form(records = rows, zip = zipped) {
   const data = new FormData();
   data.append(
     "csv",
-    new Blob([
-      csv([
-        REVIEW_COLUMNS,
-        ...records.map((r) => REVIEW_COLUMNS.map((k) => r[k] || "")),
-      ]),
-    ]),
+    new Blob([csv([REVIEW_COLUMNS, ...records.map((r) => REVIEW_COLUMNS.map((k) => r[k] || ""))])]),
     "qa-only.csv",
   );
   data.append("zip", new Blob([zip]), "qa-only.zip");
@@ -195,10 +184,7 @@ try {
     200,
   );
   const directPayload = {
-    csvContent: csv([
-      REVIEW_COLUMNS,
-      ...rows.map((r) => REVIEW_COLUMNS.map((k) => r[k] || "")),
-    ]),
+    csvContent: csv([REVIEW_COLUMNS, ...rows.map((r) => REVIEW_COLUMNS.map((k) => r[k] || ""))]),
     csvFilename: "qa-only.csv",
     uploadTokens: [zipTicket.token],
     overrides: "{}",
@@ -211,12 +197,15 @@ try {
         headers: {
           authorization:
             "Bearer " +
-            signAdminToken({
-              id: "qa-other-owner",
-              name: "Other",
-              email: "other@example.invalid",
-              role: "OWNER",
-            }, "no-such-account"),
+            signAdminToken(
+              {
+                id: "qa-other-owner",
+                name: "Other",
+                email: "other@example.invalid",
+                role: "OWNER",
+              },
+              "no-such-account",
+            ),
         },
       })
     ).status,
@@ -238,10 +227,7 @@ try {
     digest: preview.digest,
     selected: "[0,1,2,3]",
   });
-  const batch = ok(
-    await call("/api/admin/reviews/import", { method: "POST", body: commit }),
-    201,
-  );
+  const batch = ok(await call("/api/admin/reviews/import", { method: "POST", body: commit }), 201);
   assert.equal(batch.imported, 4);
   assert.equal(batch.failed, 0);
   let product = ok(await call("/api/products/slug/p1", {}, false));
@@ -253,11 +239,7 @@ try {
   assert.equal(imported.verified, false);
   assert.equal(imported.media.length, 2);
   assert.ok(imported.avatarUrl);
-  assert.equal(
-    [...objects.keys()].filter((key) => key.includes("/reviews/assets/"))
-      .length,
-    2,
-  );
+  assert.equal([...objects.keys()].filter((key) => key.includes("/reviews/assets/")).length, 2);
   ok(
     await call("/api/admin/reviews/" + imported.id, {
       method: "PATCH",
@@ -273,12 +255,8 @@ try {
   assert.ok(!JSON.stringify(product).includes("private-"));
   assert.ok(!("email" in product.reviews[0]));
   console.log("PASS: approval, original date, media, rating and email privacy");
-  const duplicates = ok(
-    await call("/api/admin/reviews/preview", { method: "POST", body: form() }),
-  );
-  assert.ok(
-    duplicates.rows.every((r) => r.errors.some((e) => e.includes("Duplicate"))),
-  );
+  const duplicates = ok(await call("/api/admin/reviews/preview", { method: "POST", body: form() }));
+  assert.ok(duplicates.rows.every((r) => r.errors.some((e) => e.includes("Duplicate"))));
   const invalid = [
     {
       ...rows[0],
@@ -306,19 +284,14 @@ try {
     status: "APPROVED",
   }))
     manual.append(key, value);
-  const manualReview = ok(
-    await call("/api/admin/reviews", { method: "POST", body: manual }),
-    201,
-  );
+  const manualReview = ok(await call("/api/admin/reviews", { method: "POST", body: manual }), 201);
   assert.equal(manualReview.origin, "MANUAL");
   assert.equal(manualReview.verified, false);
   product = ok(await call("/api/products/slug/p1", {}, false));
   assert.equal(product.reviewCount, 2);
   assert.equal(product.averageRating, 4);
   console.log("PASS: manual review and aggregate updates");
-  const otherRows = [
-    { ...rows[2], reviewRef: "QA-OTHER", mediaFiles: "", avatarFile: "" },
-  ];
+  const otherRows = [{ ...rows[2], reviewRef: "QA-OTHER", mediaFiles: "", avatarFile: "" }];
   const otherPreview = ok(
     await call("/api/admin/reviews/preview", {
       method: "POST",
@@ -348,22 +321,15 @@ try {
   product = ok(await call("/api/products/slug/p1", {}, false));
   assert.equal(product.reviewCount, 1);
   assert.equal(product.averageRating, 3);
-  const tombstones = ok(
-    await call("/api/admin/reviews/preview", { method: "POST", body: form() }),
-  );
-  assert.ok(
-    tombstones.rows.every((r) => r.errors.some((e) => e.includes("Duplicate"))),
-  );
+  const tombstones = ok(await call("/api/admin/reviews/preview", { method: "POST", body: form() }));
+  assert.ok(tombstones.rows.every((r) => r.errors.some((e) => e.includes("Duplicate"))));
   ok(
     await call("/api/admin/reviews/batches/" + batch.id + "/restore", {
       method: "POST",
     }),
   );
   all = ok(await call("/api/admin/reviews"));
-  assert.equal(
-    all.filter((r) => r.batchId === batch.id && r.status === "PENDING").length,
-    4,
-  );
+  assert.equal(all.filter((r) => r.batchId === batch.id && r.status === "PENDING").length, 4);
   const audit = await prisma.auditLog.count({
     where: {
       action: {
@@ -372,9 +338,7 @@ try {
     },
   });
   assert.ok(audit >= 4);
-  console.log(
-    "PASS: isolated batch deletion, reserved references, restore as Pending and audit trail",
-  );
+  console.log("PASS: isolated batch deletion, reserved references, restore as Pending and audit trail");
 
   await prisma.order.create({
     data: {
@@ -468,10 +432,7 @@ try {
     ...customerPayload,
     uploadTokens: [photoTicket.token],
   });
-  const customer = ok(
-    await call("/api/reviews", { method: "POST", body: customerForm }, false),
-    201,
-  );
+  const customer = ok(await call("/api/reviews", { method: "POST", body: customerForm }, false), 201);
   assert.equal(customer.verified, true);
   const storedCustomer = await prisma.review.findUnique({
     where: { id: customer.id },
@@ -483,13 +444,7 @@ try {
   assert.equal(storedCustomer.media.length, 1);
   assert.ok(Math.abs(Date.now() - storedCustomer.createdAt.getTime()) < 10000);
   assert.equal(
-    (
-      await call(
-        "/api/reviews",
-        { method: "POST", body: JSON.stringify(customerPayload) },
-        false,
-      )
-    ).status,
+    (await call("/api/reviews", { method: "POST", body: JSON.stringify(customerPayload) }, false)).status,
     409,
   );
   console.log(
@@ -523,12 +478,9 @@ try {
   );
   assert.equal(errorBatch.skipped, 1);
   const errorCsv = await (
-    await fetch(
-      "http://127.0.0.1:55441/api/admin/reviews/batches/" +
-        errorBatch.id +
-        "/errors",
-      { headers: { authorization: "Bearer " + token } },
-    )
+    await fetch("http://127.0.0.1:55441/api/admin/reviews/batches/" + errorBatch.id + "/errors", {
+      headers: { authorization: "Bearer " + token },
+    })
   ).text();
   assert.ok(errorCsv.includes("QA-SKIP"));
   assert.ok(errorCsv.includes("own reviewRef"));
@@ -540,9 +492,7 @@ try {
     }),
   );
   assert.equal(retryPreview.rows[0].errors.length, 0);
-  console.log(
-    "PASS: error CSV, skipped totals and corrected rows can be retried",
-  );
+  console.log("PASS: error CSV, skipped totals and corrected rows can be retried");
   const publicBeforeDemo = ok(await call("/api/products/slug/p1", {}, false));
   const demoForm = new FormData();
   for (const [key, value] of Object.entries({
@@ -557,15 +507,8 @@ try {
   }))
     demoForm.append(key, value);
   demoForm.append("media", new Blob([png], { type: "image/png" }), "photo.png");
-  demoForm.append(
-    "avatar",
-    new Blob([png], { type: "image/png" }),
-    "avatar.png",
-  );
-  const demoReview = ok(
-    await call("/api/admin/reviews", { method: "POST", body: demoForm }),
-    201,
-  );
+  demoForm.append("avatar", new Blob([png], { type: "image/png" }), "avatar.png");
+  const demoReview = ok(await call("/api/admin/reviews", { method: "POST", body: demoForm }), 201);
   assert.equal(demoReview.origin, "TEST");
   assert.equal(demoReview.status, "APPROVED");
   assert.equal(demoReview.media.length, 1);
@@ -597,10 +540,7 @@ try {
     editDemo.append(key, value);
   editDemo.append(
     "media",
-    new Blob(
-      [readFileSync(new URL("./fixtures/review-test.mp4", import.meta.url))],
-      { type: "video/mp4" },
-    ),
+    new Blob([readFileSync(new URL("./fixtures/review-test.mp4", import.meta.url))], { type: "video/mp4" }),
     "new-video.mp4",
   );
   const editedDemo = ok(
@@ -657,12 +597,7 @@ try {
     form.append("part", String(part));
     form.append(
       "chunk",
-      new Blob([
-        chunkBytes.subarray(
-          part * 2 * 1024 * 1024,
-          (part + 1) * 2 * 1024 * 1024,
-        ),
-      ]),
+      new Blob([chunkBytes.subarray(part * 2 * 1024 * 1024, (part + 1) * 2 * 1024 * 1024)]),
       "chunk.bin",
     );
     ok(
@@ -693,18 +628,11 @@ try {
     400,
   );
   const customerChunk = new FormData();
-  for (const [key, value] of Object.entries(customerPayload))
-    customerChunk.append(key, String(value));
+  for (const [key, value] of Object.entries(customerPayload)) customerChunk.append(key, String(value));
   customerChunk.append("uploadToken", photoTicket.token);
   customerChunk.append("part", "0");
   customerChunk.append("chunk", new Blob([png]), "chunk.bin");
-  ok(
-    await call(
-      "/api/reviews/upload-chunk",
-      { method: "POST", body: customerChunk },
-      false,
-    ),
-  );
+  ok(await call("/api/reviews/upload-chunk", { method: "POST", body: customerChunk }, false));
   ok(
     await call(
       "/api/reviews/upload-complete",
@@ -718,9 +646,7 @@ try {
       false,
     ),
   );
-  console.log(
-    "PASS: authenticated 2 MB chunk upload, exact assembly, invalid part rejection and customer relay",
-  );
+  console.log("PASS: authenticated 2 MB chunk upload, exact assembly, invalid part rejection and customer relay");
   console.log("ALL ISOLATED INTEGRATION CHECKS PASSED");
 } finally {
   await prisma.$disconnect();

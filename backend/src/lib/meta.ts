@@ -24,7 +24,7 @@ export type MetaServerEvent = {
   orderId?: string;
 };
 
-export function metaUserData(event:MetaServerEvent){
+export function metaUserData(event: MetaServerEvent) {
   const userData: Record<string, unknown> = {
     client_ip_address: event.ip,
     client_user_agent: event.userAgent,
@@ -55,17 +55,16 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
     "tracking.metaPixelId",
     process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "",
   );
-  const pixelId = String(configuredPixelId || process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
-  const configuredToken = await getSetting<string>(
-    "tracking.metaCapiToken",
-    process.env.META_CAPI_TOKEN || "",
-  );
+  const pixelId = String(
+    configuredPixelId || process.env.META_PIXEL_ID || process.env.NEXT_PUBLIC_META_PIXEL_ID || "",
+  ).trim();
+  const configuredToken = await getSetting<string>("tracking.metaCapiToken", process.env.META_CAPI_TOKEN || "");
   const token = String(configuredToken || process.env.META_CAPI_TOKEN || "").trim();
   if (!pixelId || !token) {
     return { ok: false, skipped: "META_CAPI_NOT_CONFIGURED" };
   }
 
-  const userData=metaUserData(event);
+  const userData = metaUserData(event);
 
   const payload: Record<string, unknown> = {
     data: [
@@ -93,15 +92,12 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
   let response: Response;
   let body: any;
   try {
-    response = await fetch(
-      `https://graph.facebook.com/${graphVersion}/${pixelId}/events`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json",authorization:`Bearer ${token}` },
-        body: JSON.stringify(payload),
-        signal:AbortSignal.timeout(15000),
-      },
-    );
+    response = await fetch(`https://graph.facebook.com/${graphVersion}/${pixelId}/events`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
     body = await response.json().catch(() => ({ status: response.status }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -129,7 +125,7 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
       sourceUrl: event.sourceUrl,
       payload: payload as any,
       response: body as any,
-      accepted: response.ok && Number(body?.events_received)>0,
+      accepted: response.ok && Number(body?.events_received) > 0,
       error: response.ok ? undefined : JSON.stringify(body),
     },
   });

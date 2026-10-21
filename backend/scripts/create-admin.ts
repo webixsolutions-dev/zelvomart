@@ -22,7 +22,10 @@ function prompter() {
   const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: tty });
   const out = rl as unknown as { _writeToOutput?: (s: string) => void; output: NodeJS.WritableStream };
   let asking = "";
-  if (tty) out._writeToOutput = (s: string) => { if (s.includes(asking)) out.output.write(s); };
+  if (tty)
+    out._writeToOutput = (s: string) => {
+      if (s.includes(asking)) out.output.write(s);
+    };
   const lines: string[] = [];
   const waiting: ((line: string) => void)[] = [];
   rl.on("line", (line) => (waiting.length ? waiting.shift()!(line) : lines.push(line)));
@@ -31,8 +34,12 @@ function prompter() {
       asking = question;
       process.stdout.write(question);
       return new Promise<string>((resolve) => {
-        const done = (line: string) => { if (tty) process.stdout.write("\n"); resolve(line); };
-        if (lines.length) done(lines.shift()!); else waiting.push(done);
+        const done = (line: string) => {
+          if (tty) process.stdout.write("\n");
+          resolve(line);
+        };
+        if (lines.length) done(lines.shift()!);
+        else waiting.push(done);
       });
     },
     close: () => rl.close(),
@@ -40,12 +47,15 @@ function prompter() {
 }
 
 async function main() {
-  const email = String(arg("email") || "").trim().toLowerCase();
+  const email = String(arg("email") || "")
+    .trim()
+    .toLowerCase();
   const name = String(arg("name") || "Owner").trim();
   const role = String(arg("role") || "OWNER").toUpperCase() as Role;
   if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error("Pass --email with a valid address.");
   if (!Object.values(Role).includes(role)) throw new Error(`--role must be one of ${Object.values(Role).join(", ")}.`);
-  if (await prisma.user.findUnique({ where: { email } })) throw new Error(`${email} already exists. Change it in Admin → Users.`);
+  if (await prisma.user.findUnique({ where: { email } }))
+    throw new Error(`${email} already exists. Change it in Admin → Users.`);
 
   const prompt = prompter();
   const password = await prompt.ask("Password (at least 12 characters): ");
@@ -55,9 +65,19 @@ async function main() {
   if (again !== password) throw new Error("The passwords do not match.");
 
   const user = await prisma.user.create({
-    data: { email, name, role, passwordHash: await bcrypt.hash(password, 12), active: true, twoFactorReady: false, totpSecret: null },
+    data: {
+      email,
+      name,
+      role,
+      passwordHash: await bcrypt.hash(password, 12),
+      active: true,
+      twoFactorReady: false,
+      totpSecret: null,
+    },
   });
-  console.log(`Created ${user.role} ${user.email}.${["OWNER", "MANAGER"].includes(user.role) ? " Two-factor sign-in is set up at the first login." : ""}`);
+  console.log(
+    `Created ${user.role} ${user.email}.${["OWNER", "MANAGER"].includes(user.role) ? " Two-factor sign-in is set up at the first login." : ""}`,
+  );
 }
 
 main()

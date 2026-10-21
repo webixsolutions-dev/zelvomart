@@ -33,10 +33,16 @@ export async function sendOrderTeamEmail(orderId: string) {
   });
   if (!order) throw new Error("Order not found");
 
-
-  const items = order.items
-    .map((item) => `${escapeHtml(item.quantity)} × ${escapeHtml(item.title)} (${escapeHtml(item.sku)}) — ${escapeHtml(money(item.lineTotal))}`)
-    .join("<br/>") + (Number(order.couponDiscount)>0?`<br/>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}`:"");
+  const items =
+    order.items
+      .map(
+        (item) =>
+          `${escapeHtml(item.quantity)} × ${escapeHtml(item.title)} (${escapeHtml(item.sku)}) — ${escapeHtml(money(item.lineTotal))}`,
+      )
+      .join("<br/>") +
+    (Number(order.couponDiscount) > 0
+      ? `<br/>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}`
+      : "");
 
   const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app"}/admin/orders/${order.id}`;
   const whatsappPhone = order.phone.replace(/\D/g, "");
@@ -64,12 +70,15 @@ export async function sendOrderTeamEmail(orderId: string) {
     adminUrl: escapeHtml(adminUrl),
   });
 
-  return deliverEmail({
-    ...emailIdentity("orders"),
-    to: await recipients(),
-    subject: `${order.orderNumber} • New COD order • ${money(order.total)}`,
-    html: emailLayout(html),
-  }, `order-team-${order.id}`);
+  return deliverEmail(
+    {
+      ...emailIdentity("orders"),
+      to: await recipients(),
+      subject: `${order.orderNumber} • New COD order • ${money(order.total)}`,
+      html: emailLayout(html),
+    },
+    `order-team-${order.id}`,
+  );
 }
 
 export async function sendCustomerOrderEmail(orderId: string) {
@@ -80,10 +89,16 @@ export async function sendCustomerOrderEmail(orderId: string) {
   if (!order) throw new Error("Order not found");
   if (!order.email) return { skipped: "Customer did not provide an email address" };
 
-
-  const items = order.items
-    .map((item) => `<li>${escapeHtml(item.quantity)} × ${escapeHtml(item.title)} — ${escapeHtml(money(item.lineTotal))}</li>`)
-    .join("") + (Number(order.couponDiscount)>0?`<li>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}</li>`:"");
+  const items =
+    order.items
+      .map(
+        (item) =>
+          `<li>${escapeHtml(item.quantity)} × ${escapeHtml(item.title)} — ${escapeHtml(money(item.lineTotal))}</li>`,
+      )
+      .join("") +
+    (Number(order.couponDiscount) > 0
+      ? `<li>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}</li>`
+      : "");
   const defaultTemplate = `
     <h2>Thanks for your order, {{customerName}}.</h2>
     <p>Your order number is <strong>{{orderNumber}}</strong>.</p>
@@ -103,12 +118,15 @@ export async function sendCustomerOrderEmail(orderId: string) {
     address: escapeHtml(order.address),
   });
 
-  return deliverEmail({
-    ...emailIdentity("orders"),
-    to: order.email,
-    subject: `Order received • ${order.orderNumber}`,
-    html: emailLayout(html),
-  }, `order-received-${order.id}`);
+  return deliverEmail(
+    {
+      ...emailIdentity("orders"),
+      to: order.email,
+      subject: `Order received • ${order.orderNumber}`,
+      html: emailLayout(html),
+    },
+    `order-received-${order.id}`,
+  );
 }
 
 export async function sendFailureAlert(subject: string, details: string) {
@@ -128,7 +146,6 @@ export async function sendContactTeamEmail(input: {
   problem: string;
   sourceUrl?: string;
 }) {
-
   const html = `
     <h2>New Zelvomart contact request</h2>
     <p><strong>Name:</strong> ${escapeHtml(input.name)}</p>
@@ -149,7 +166,10 @@ export async function sendContactTeamEmail(input: {
 }
 
 export async function sendCustomerStatusEmail(orderId: string, status: "CONFIRMED" | "BOOKED" | "DELIVERED") {
-  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: { include: { product: { select: { slug: true } } } } } });
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { items: { include: { product: { select: { slug: true } } } } },
+  });
   if (!order) throw new Error("Order not found");
   if (!order.email) return { skipped: "Customer did not provide an email address" };
 
@@ -160,16 +180,29 @@ export async function sendCustomerStatusEmail(orderId: string, status: "CONFIRME
   const reviewSlug = order.items[0]?.product?.slug;
   const reviewUrl = reviewSlug ? `${base}/product/${encodeURIComponent(reviewSlug)}/` : base;
 
-  const content = status === "CONFIRMED"
-    ? { subject: `Order confirmed • ${order.orderNumber}`, html: `<h2>Your Zelvomart order is confirmed.</h2><p>Hi ${escapeHtml(order.fullName)}, we have confirmed <strong>${escapeHtml(order.orderNumber)}</strong>.</p><p>We will update you when it is booked with the courier.</p>` }
-    : status === "BOOKED"
-      ? { subject: `Your order has shipped • ${order.orderNumber}`, html: `<h2>Your order is on the way.</h2><p>Order <strong>${escapeHtml(order.orderNumber)}</strong> has been booked with the courier.</p><p><a href="${escapeHtml(trackingUrl)}">Track your parcel</a></p>` }
-      : { subject: `Delivered • ${order.orderNumber}`, html: `<h2>We hope you enjoy your order.</h2><p>Order <strong>${escapeHtml(order.orderNumber)}</strong> is marked delivered.</p><p>If you have a moment, you can leave a review on the product page: <a href="${escapeHtml(reviewUrl)}">Review your purchase</a>.</p>` };
+  const content =
+    status === "CONFIRMED"
+      ? {
+          subject: `Order confirmed • ${order.orderNumber}`,
+          html: `<h2>Your Zelvomart order is confirmed.</h2><p>Hi ${escapeHtml(order.fullName)}, we have confirmed <strong>${escapeHtml(order.orderNumber)}</strong>.</p><p>We will update you when it is booked with the courier.</p>`,
+        }
+      : status === "BOOKED"
+        ? {
+            subject: `Your order has shipped • ${order.orderNumber}`,
+            html: `<h2>Your order is on the way.</h2><p>Order <strong>${escapeHtml(order.orderNumber)}</strong> has been booked with the courier.</p><p><a href="${escapeHtml(trackingUrl)}">Track your parcel</a></p>`,
+          }
+        : {
+            subject: `Delivered • ${order.orderNumber}`,
+            html: `<h2>We hope you enjoy your order.</h2><p>Order <strong>${escapeHtml(order.orderNumber)}</strong> is marked delivered.</p><p>If you have a moment, you can leave a review on the product page: <a href="${escapeHtml(reviewUrl)}">Review your purchase</a>.</p>`,
+          };
 
-  return deliverEmail({
-    ...emailIdentity("orders"),
-    to: order.email,
-    subject: content.subject,
-    html: emailLayout(content.html),
-  }, `order-status-${order.id}-${status}`);
+  return deliverEmail(
+    {
+      ...emailIdentity("orders"),
+      to: order.email,
+      subject: content.subject,
+      html: emailLayout(content.html),
+    },
+    `order-status-${order.id}-${status}`,
+  );
 }

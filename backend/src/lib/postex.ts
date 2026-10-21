@@ -3,20 +3,5 @@ export function postexTrackingUrl(trackingNumber: string) {
   return `${base.replace(/\/$/, "")}/${encodeURIComponent(trackingNumber)}`;
 }
 
-export async function bookPostExOrder(payload: Record<string, unknown>) {
-  if (!process.env.POSTEX_API_BASE_URL || !process.env.POSTEX_API_TOKEN) {
-    throw new Error("PostEx API is not configured");
-  }
-
-  const response = await fetch(`${process.env.POSTEX_API_BASE_URL.replace(/\/$/, "")}/orders`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${process.env.POSTEX_API_TOKEN}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) throw new Error(`PostEx booking failed: ${response.status}`);
-  return response.json();
-}
+// Booking a PostEx shipment is not built yet: orders are booked in the PostEx portal and the tracking number
+// is entered in Admin → Orders. (An unused bookPostExOrder() stub was removed so nobody assumes it works.)

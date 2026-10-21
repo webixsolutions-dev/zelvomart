@@ -60,8 +60,5 @@ const SELLABLE: Prisma.VariantWhereInput & Prisma.ProductWhereInput = {
 
 /** SQL version of productStockStatus(...) === "instock" for the shop's availability filter. */
 export const IN_STOCK_WHERE: Prisma.ProductWhereInput = {
-  OR: [
-    { variants: { none: { active: true } }, ...SELLABLE },
-    { variants: { some: { active: true, ...SELLABLE } } },
-  ],
+  OR: [{ variants: { none: { active: true } }, ...SELLABLE }, { variants: { some: { active: true, ...SELLABLE } } }],
 };

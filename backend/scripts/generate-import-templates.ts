@@ -11,9 +11,14 @@ fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, "simple-products-template.csv"), templateCsv("simple"));
 fs.writeFileSync(path.join(outDir, "variable-products-template.csv"), templateCsv("variable"));
 
-const row = (column: (typeof IMPORT_COLUMNS)[number]) => `| \`${column.key}\` | ${column.required ? "Yes" : "No"} | ${column.help.replace(/\|/g, "\\|")} |`;
-const simple = IMPORT_COLUMNS.filter((column) => column.scope === "both").map(row).join("\n");
-const variable = IMPORT_COLUMNS.filter((column) => column.scope === "variable").map(row).join("\n");
+const row = (column: (typeof IMPORT_COLUMNS)[number]) =>
+  `| \`${column.key}\` | ${column.required ? "Yes" : "No"} | ${column.help.replace(/\|/g, "\\|")} |`;
+const simple = IMPORT_COLUMNS.filter((column) => column.scope === "both")
+  .map(row)
+  .join("\n");
+const variable = IMPORT_COLUMNS.filter((column) => column.scope === "variable")
+  .map(row)
+  .join("\n");
 
 fs.writeFileSync(
   path.join(outDir, "CSV-COLUMNS.md"),

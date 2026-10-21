@@ -8,10 +8,7 @@
       "use": "@vercel/node",
       "config": {
         "maxDuration": 300,
-        "includeFiles": [
-          "prisma/**",
-          "src/generated/prisma/**"
-        ]
+        "includeFiles": ["prisma/**"]
       }
     }
   ],

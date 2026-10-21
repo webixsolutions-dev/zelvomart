@@ -26,9 +26,9 @@ export const checkoutSchema = z
     source: z.record(z.string(), z.unknown()).optional(),
     fbp: z.string().optional(),
     fbc: z.string().optional(),
-    ttp:z.string().max(500).optional(),
-    ttclid:z.string().max(500).optional(),
-    visitorId:z.string().uuid().optional(),
+    ttp: z.string().max(500).optional(),
+    ttclid: z.string().max(500).optional(),
+    visitorId: z.string().uuid().optional(),
     replaySessionId: z.string().uuid().optional(),
     couponCode: z.string().trim().max(40).optional(),
   })
@@ -38,5 +38,5 @@ export const checkoutSchema = z
       ctx.addIssue({ code: "custom", path: ["phone"], message: "Enter a valid Pakistani mobile number." });
       return z.NEVER;
     }
-    return { ...value, phone, email:value.email?.toLowerCase() };
+    return { ...value, phone, email: value.email?.toLowerCase() };
   });
