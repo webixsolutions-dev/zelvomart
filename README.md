@@ -73,3 +73,9 @@ commit cannot be found, it builds).
 
 The command is the same text in both projects; it compares only that project's folder and the shared root
 `package.json` / `package-lock.json`. To force a build anyway, use "Redeploy" in Vercel.
+
+## Deployment region
+
+Both `frontend/vercel.json` and `backend/vercel.json` select `bom1` (Mumbai), so storefront SSR and the API
+run in the same region **after deployment**. This does not move existing deployments or the database.
+Supabase currently remains in Sydney; moving it to Mumbai is a separate project/data migration decision.

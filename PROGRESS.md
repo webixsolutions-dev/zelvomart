@@ -103,3 +103,13 @@ All items done in code. Backend tests (16), backend `tsc` and `next build` pass.
 ### Batch 4 status
 All items done in code. Backend tests (48), both typechecks, Prettier check and `next build` pass locally.
 Next: Batch 5 (region and monitoring).
+## Batch 5: region and monitoring (branch `codex/region-monitoring-batch-5`)
+
+### Region configuration
+- Both deployment configurations now select `bom1` (Mumbai). This changes compute placement on the next deployment only; no dashboard or existing deployment was modified.
+- Supabase remains in Sydney. Database relocation requires a separate project/data migration decision and is outside this change.
+- Validation: inspected both JSON configs. Full batch checks will be recorded below after implementation.
+
+### Left for a person (not code)
+- Deploy both apps and verify their active function region and `/api/health`.
+- Decide separately whether to migrate Supabase from Sydney to Mumbai.
