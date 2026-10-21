@@ -89,6 +89,18 @@ export async function loadProduct(slug: string): Promise<Product | null> {
   }
 }
 
+/**
+ * The public settings the store layout needs (pixel IDs and on/off switches, session recording) from
+ * GET /api/store/bootstrap. Throws when the backend gave no answer and apiFetch had no earlier one: the layout
+ * then loads no pixels or recorder.
+ */
+export async function loadPublicSettings(): Promise<Record<string, unknown>> {
+  const result = await apiFetch<{ settings?: Record<string, unknown> }>(`/api/store/bootstrap`, {
+    next: { revalidate: 30, tags: ["store", "categories", "settings"] },
+  });
+  return result.settings || {};
+}
+
 /** Phone, email, WhatsApp, delivery charge and per-city delivery days from Admin → Settings / Cities. */
 export async function loadStoreSettings(): Promise<StoreSettings> {
   const out: StoreSettings = {};
