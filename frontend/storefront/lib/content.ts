@@ -1,7 +1,9 @@
 import { site } from "./site";
 
-const fee = `Rs. ${site.shipping.flatFee}`;
-const freeOver = `Rs. ${site.shipping.freeOver.toLocaleString("en-PK")}`;
+// Every answer that names a fee, threshold, phone, email or hours reads `site` when it is called,
+// after the store layout has applied Admin → Settings (a module-level string would keep the defaults).
+const fee = () => `Rs. ${site.shipping.flatFee.toLocaleString("en-PK")}`;
+const freeOver = () => `Rs. ${site.shipping.freeOver.toLocaleString("en-PK")}`;
 
 type Faq = { q: string; a: string; group: "About Zelvomart" | "Orders" | "Delivery" | "Payments" | "Returns" | "Products" };
 
@@ -13,7 +15,7 @@ export const whatIsZelvomart: Faq = {
 };
 
 /** Brand questions shown first on the FAQ page. */
-export const brandFaqs: Faq[] = [
+export const brandFaqs = (): Faq[] => [
   whatIsZelvomart,
   {
     group: "About Zelvomart",
@@ -23,32 +25,27 @@ export const brandFaqs: Faq[] = [
   {
     group: "About Zelvomart",
     q: "Is Zelvomart a genuine store?",
-    a: `Yes. You pay in cash only when your parcel arrives, every order is checked before dispatch, and a real person answers on WhatsApp at ${site.phoneDisplay}. Reviews on product pages come only from customers with a delivered order.`,
-  },
-  {
-    group: "About Zelvomart",
-    q: "What payment methods do you accept?",
-    a: "Cash on Delivery today. Online payment options will be added later.",
+    a: `Yes. You pay only when your parcel arrives, every order is checked before dispatch, and a real person answers on WhatsApp at ${site.phoneDisplay}. Reviews on product pages come only from customers with a delivered order.`,
   },
   {
     group: "About Zelvomart",
     q: "How do I contact Zelvomart?",
-    a: `WhatsApp or call ${site.phoneDisplay}, or email ${site.email}, Monday to Saturday.`,
+    a: `WhatsApp or call ${site.phoneDisplay}, or email ${site.email}, any day of the week.`,
   },
 ];
 
 /** Shown on the home page, in this order (and first on the FAQ page). */
-export const homeFaqs: Faq[] = [
+export const homeFaqs = (): Faq[] => [
   whatIsZelvomart,
   {
     group: "About Zelvomart",
     q: "How do I know this is a real store and not a scam?",
-    a: "Zelvomart is a real, working store. Every product shown here is in our own stock, ready to pack and ship; we don’t list anything we don’t actually have. Behind the site is real inventory and a real team. With Cash on Delivery you pay only once your order is in your hands, so there’s no risk in giving us a try.",
+    a: "Zelvomart is a real, working store. Every product shown here is in our own stock, ready to pack and ship; we don’t list anything we don’t actually have. Behind the site is real inventory and a real team. You pay only once your order is in your hands, so there’s no risk in giving us a try.",
   },
   {
     group: "Payments",
     q: "Do I have to pay anything before I receive my order?",
-    a: "No. With Cash on Delivery you pay only when your order arrives at your door. Online payment options will be added soon for customers who prefer to pay in advance, and Cash on Delivery will always stay available.",
+    a: "No. You pay only when your order arrives at your door. Online payment options will be added soon for customers who prefer to pay in advance.",
   },
   {
     group: "Delivery",
@@ -63,7 +60,7 @@ export const homeFaqs: Faq[] = [
 ];
 
 /** The rest of the FAQ page (after the home questions). */
-export const faqs: Faq[] = [
+export const faqs = (): Faq[] => [
   {
     group: "Orders",
     q: "Can I order without using the website?",
@@ -73,6 +70,11 @@ export const faqs: Faq[] = [
     group: "Products",
     q: "Will the product I receive match the photos?",
     a: "Yes. It is the exact same product from our own stock. The main photo shows it clearly, and every listing has 2–3 photos so you can see it from different angles before you decide.",
+  },
+  {
+    group: "Products",
+    q: "Can I ask about a product before I order?",
+    a: "Of course. Send us the product name or link on WhatsApp and ask about its size, material, colour or availability. We’ll help with the details before you decide.",
   },
   {
     group: "Products",
@@ -87,7 +89,7 @@ export const faqs: Faq[] = [
   {
     group: "Delivery",
     q: "How much is delivery?",
-    a: `Standard delivery is ${fee} per order, and free on orders over ${freeOver}. The exact charge is always shown in your cart before you place the order.`,
+    a: `Standard delivery is ${fee()} per order, and free on orders over ${freeOver()}. The exact charge is always shown in your cart before you place the order.`,
   },
   {
     group: "Payments",
@@ -112,6 +114,6 @@ export const faqs: Faq[] = [
 ];
 
 /** Every FAQ, home questions first, then the brand group and the rest — the FAQ page and its FAQPage schema read this list. */
-export const allFaqs: Faq[] = [...homeFaqs, ...brandFaqs.filter((f) => f !== whatIsZelvomart), ...faqs];
+export const allFaqs = (): Faq[] => [...homeFaqs(), ...brandFaqs().filter((f) => f !== whatIsZelvomart), ...faqs()];
 
 // Policy page copy is maintained separately in lib/policies/.

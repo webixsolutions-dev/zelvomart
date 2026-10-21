@@ -29,7 +29,7 @@ export const stages = [
   { key: "confirmed", title: "Confirmed", sub: "We confirm the details with you on a call or WhatsApp." },
   { key: "packed", title: "Packed", sub: `Checked and packed with care, then booked with ${site.shipping.courier}.` },
   { key: "transit", title: "In transit", sub: "On its way with our courier." },
-  { key: "delivered", title: "Delivered", sub: "At your door. Pay cash on delivery." },
+  { key: "delivered", title: "Delivered", sub: "At your door." },
 ] as const;
 
 export type StatusTone = "blue" | "amber" | "green" | "grey";

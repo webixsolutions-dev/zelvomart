@@ -34,16 +34,16 @@ export async function GET() {
 ${shown.map((c) => `- [${c.name}](${u(categoryPath(c.id))}): ${c.seoDescription}`).join("\n")}
 
 ## Shop
-- [All products](${u("/shop-all-products/")})
+- [All products](${u("/shop/")})
 - [New arrivals](${u("/new-arrivals/")})
 - [Bestsellers](${u("/bestsellers/")})
 - [Deals & offers](${u("/deals-and-offers/")})
 
 ## Policies
 - [Shipping policy](${u("/shipping-policy/")})
-- [Refund & return policy](${u("/refund-and-return-policy/")})
+- [Refund & return policy](${u("/refund_returns/")})
 - [Privacy policy](${u("/privacy-policy/")})
-- [Terms & conditions](${u("/terms-and-conditions/")})
+- [Terms & conditions](${u("/terms-conditions/")})
 
 ## Profiles
 ${Object.values(site.social).map((s) => `- ${s}`).join("\n")}

@@ -14,6 +14,9 @@ import { getReplaySessionId, getReplayVisitorId, requestReplayFlush } from "@/li
  */
 
 /** `bundle` is the Buy 2 discount (percent) when the line was added as a bundle. */
+
+/** sessionStorage: the order just placed, so the thank-you page renders it before the backend answers. */
+export const PLACED_ORDER_KEY = "zm_placed_order";
 export type CartLine = { key: string; id: string; variant?: string; qty: number; bundle?: number };
 
 /** Price per item for a cart line: the chosen variation's price, with any bundle discount applied. */
@@ -99,6 +102,7 @@ type Ctx = {
   isWished: (id: string) => boolean;
   /** Places the order on the backend (POST /api/orders) and returns it with the real order number. */
   placeOrder: (customer: Order["customer"], opts: { terms: true }) => Promise<Order>;
+  completeOrder: () => void;
   cartOpen: boolean;
   setCartOpen: (v: boolean) => void;
   toasts: Toast[];
@@ -359,17 +363,27 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         customer,
         payment: "cod",
       };
-      setCart([]);
-      write("zlv-cart-v2", []);
-      setCoupon(null);
+      // The cart stays as it is until the thank-you page has mounted (completeOrder), so the checkout never
+      // re-renders from an empty cart (Rs 0 / free delivery) while the next page loads. The thank-you page
+      // shows this copy at once and refreshes it from the backend.
       try {
-        sessionStorage.removeItem("zm_checkout_idempotency");
-        sessionStorage.removeItem("zm_checkout_coupon");
+        sessionStorage.setItem(PLACED_ORDER_KEY, JSON.stringify(order));
       } catch {}
       return order;
     },
     [cart, coupon, discount],
   );
+
+  /** Called by the thank-you page once it shows the order: empties the cart and forgets the checkout's coupon and key. */
+  const completeOrder = useCallback(() => {
+    setCart([]);
+    write("zlv-cart-v2", []);
+    setCoupon(null);
+    try {
+      sessionStorage.removeItem("zm_checkout_idempotency");
+      sessionStorage.removeItem("zm_checkout_coupon");
+    } catch {}
+  }, []);
 
   const value: Ctx = {
     ready,
@@ -392,6 +406,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     toggleWish,
     isWished: (id) => wishlist.includes(id),
     placeOrder,
+    completeOrder,
     cartOpen,
     setCartOpen,
     toasts,

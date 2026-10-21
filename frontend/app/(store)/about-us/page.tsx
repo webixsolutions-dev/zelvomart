@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { categories, categoryPath, type CategoryId } from "@store/lib/catalog";
 import { site } from "@store/lib/site";
+import { loadSettings } from "@store/lib/backend";
 import { waLink } from "@store/lib/format";
 import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
 import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
@@ -31,8 +32,6 @@ export const metadata: Metadata = {
   ...shareMeta({ title: "About Zelvomart: Online Store in Lahore, Pakistan", description: "Zelvomart is a Lahore-based online store selling everyday products in seven categories. Every order is checked before dispatch and sent across Pakistan.", path: "/about-us/" }),
 };
 
-const wa = waLink(site.whatsappNumber, "Hi Zelvomart! I have a question.");
-const hours = site.supportHours.replace(/\s+–\s+/g, "–");
 const started = new Date(`${site.foundingDate}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 const cat = (id: CategoryId) => categories.find((c) => c.id === id)!;
 
@@ -43,15 +42,19 @@ const trust = [
   { icon: HeartHandshake, title: "A real person to help", sub: "Just a WhatsApp away" },
 ];
 
+/**
+ * Everything on this page that reads the store settings (phone, hours, delivery days). A function,
+ * called after `loadSettings()`, so Admin → Settings values show instead of the defaults.
+ */
+function settingsContent() {
 /** "Zelvomart at a glance": short, quotable facts, all read from the store settings and catalogue. */
 const glance: [string, string, boolean?][] = [
   ["Name", site.name],
   ["Based in", site.city],
   ["What we sell", `Everyday products in seven categories: ${categories.map((c) => c.name).join(", ")}`, true],
   ["How to order", `zelvomart.com, WhatsApp ${site.phoneDisplay}, Facebook Messenger or Instagram`, true],
-  ["Payment", "Cash on Delivery"],
   ["Delivery", `Across Pakistan, in ${site.shipping.estimate} depending on the city`],
-  ["Support", `WhatsApp and email, ${hours}`, true],
+  ["Support", `WhatsApp and email, ${site.supportHours}`, true],
   ["Started", started],
   ["Co-founder", site.founder],
 ];
@@ -61,20 +64,16 @@ const steps = [
   { title: "Order Placed", sub: "Choose your product and confirm your order." },
   { title: "Confirmation", sub: "We reach out on WhatsApp or call to confirm your address." },
   { title: "Dispatched", sub: "Packed and handed to our courier within 24–48 hours." },
-  { title: "Delivered", sub: `Arrives in ${site.shipping.estimate}. Pay cash on delivery.` },
+  { title: "Delivered", sub: `Arrives in ${site.shipping.estimate}.` },
 ];
 
 const promises = [
   { title: "Know what you’re choosing.", sub: "Clear descriptions and useful product details, so you can choose with confidence." },
-  { title: "Know what you’re paying.", sub: "Review your order total at checkout, with Cash on Delivery available." },
+  { title: "Know what you’re paying.", sub: "Review your order total at checkout, before you place your order." },
   { title: "Know who to ask.", sub: "A real conversation on WhatsApp, before and after your order." },
 ];
 
 const aboutFaqs = [
-  {
-    q: "Can I pay Cash on Delivery?",
-    a: "Yes. Choose Cash on Delivery at checkout and pay the courier in cash when your parcel arrives. Available options are shown before you place your order.",
-  },
   {
     q: "Where do you deliver?",
     a: `We deliver across Pakistan, usually in ${site.shipping.estimate} depending on your city. Delivery charges are shown at checkout, and the shipping policy has the details.`,
@@ -93,9 +92,15 @@ const aboutFaqs = [
   },
 ];
 
+const wa = waLink(site.whatsappNumber, "Hi Zelvomart! I have a question.");
+return { glance, steps, promises, aboutFaqs, wa };
+}
+
 const gridOrder: CategoryId[] = ["home-living", "home-decor", "beauty", "tech", "fashion", "fitness", "kids"];
 
-export default function Page() {
+export default async function Page() {
+  await loadSettings();
+  const { glance, steps, promises, aboutFaqs, wa } = settingsContent();
   const featured = cat("home-living");
   return (
     <>
@@ -112,9 +117,9 @@ export default function Page() {
               About Zelvomart. <span>Everyday things, chosen with care.</span>
             </h1>
             <p className={s.heroLead}>For the home you’re making, the moments you’re sharing, and the little things in between.</p>
-            <p className={s.heroDetail}>Thoughtfully selected finds across seven categories, delivered across Pakistan with Cash on Delivery.</p>
+            <p className={s.heroDetail}>Thoughtfully selected finds across seven categories, delivered across Pakistan.</p>
             <div className={s.heroButtons}>
-              <Link className="btn lg" href="/shop-all-products/">
+              <Link className="btn lg" href="/shop/">
                 Explore our world <ArrowRight size={17} />
               </Link>
               <a className={`btn lg ghost ${s.talk}`} href={wa} target="_blank" rel="noopener noreferrer">
@@ -192,16 +197,24 @@ export default function Page() {
           <div className={s.storyCopy}>
             <p className="eyebrow">Our story</p>
             <h2 id="story-title">
-              A more considered
+              From a simple idea
               <br />
-              way to shop.
+              to a store you can count on.
             </h2>
-            <p>Zelvomart began with a simple thought: the things you buy for everyday life should feel worth bringing home.</p>
             <p>
-              Based in Lahore, we bring together useful, lovely finds for your home, your family and yourself. We select our products,
-              explain the details clearly, and check and pack each order with care.
+              Zelvomart started with a simple idea: shopping online in Pakistan shouldn’t feel like a gamble. Too many people have been
+              let down by products that look nothing like the photos, vague listings, and sellers who go quiet once the parcel ships. We
+              set out to build the opposite: a store where what you see is what arrives at your door.
             </p>
-            <p>We’re building our store around one thing: the confidence to come back, whenever you need something next.</p>
+            <p>
+              We’re based in Lahore, and we run Zelvomart the way we’d want to be treated as customers ourselves: real photos of our own
+              stock, honest descriptions, every order checked before dispatch, and a real person on WhatsApp whenever you need help.
+            </p>
+            <p>
+              We started small, with a handful of categories we could genuinely stand behind. As we grow, we add new categories based on
+              what our customers actually ask for: not just what’s trending, but what people across Pakistan really need for their homes,
+              their families and their everyday lives.
+            </p>
             <div className={s.signature}>
               <span className={s.signatureMark} aria-hidden="true">
                 Z.
@@ -282,7 +295,7 @@ export default function Page() {
           </div>
           <div className={s.collectionFoot}>
             <span>A little something for every part of your day.</span>
-            <Link className={s.textLink} href="/shop-all-products/">
+            <Link className={s.textLink} href="/shop/">
               Shop all products <ArrowRight size={16} />
             </Link>
           </div>
@@ -345,7 +358,7 @@ export default function Page() {
               the little details.
             </h2>
             <p>We want you to feel good about your order, from the first look to the moment it arrives.</p>
-            <Link className={s.lightLink} href="/shop-all-products/">
+            <Link className={s.lightLink} href="/shop/">
               Find your next everyday favourite <ArrowRight size={16} />
             </Link>
           </div>

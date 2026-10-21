@@ -1,7 +1,7 @@
 import type { PolicyDocument } from "./types";
 
 export const termsPolicy: PolicyDocument = {
-  "slug": "terms-and-conditions",
+  "slug": "terms-conditions",
   "title": "Terms & Conditions",
   "subtitle": "The terms that govern using our website and placing an order.",
   "icon": "document",
@@ -38,7 +38,7 @@ export const termsPolicy: PolicyDocument = {
     },
     {
       "heading": "Returns & Refunds",
-      "body": "Our [Refund & Return](https://zelvomart.com/refund_returns/) Policy governs any return, exchange, or refund request, including the requirement to record an unboxing video. Please refer to that policy for full details.",
+      "body": "Our [Refund & Return](/refund_returns/) Policy governs any return, exchange, or refund request, including the requirement to record an unboxing video. Please refer to that policy for full details.",
       "icon": "return"
     },
     {

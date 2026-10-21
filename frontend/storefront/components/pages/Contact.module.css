@@ -804,3 +804,98 @@ a.value:hover {
     padding-bottom: 40px;
   }
 }
+
+/* ---------- Contact form: sending, errors and the sent card (round 4) ---------- */
+.honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.form .submit:disabled {
+  opacity: 0.75;
+  cursor: progress;
+}
+.failure {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff4f2;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--danger);
+}
+.failure button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.sent {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 26px 24px;
+  border: 1px solid #cfe5f1;
+  border-radius: 18px;
+  background: var(--blue-mist);
+}
+.sent h3 {
+  margin: 4px 0 0;
+}
+.sent p {
+  margin: 0;
+  font-size: 15.5px;
+  color: #3e4e61;
+}
+.sentIcon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: var(--blue);
+  color: #fff;
+}
+.sentAlt a {
+  color: var(--blue);
+  font-weight: 750;
+}
+
+/* ---------- Google listing and review links (home base card) ---------- */
+.googleLinks {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.googleLinks a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #cfe5f1;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: border-color 0.2s, color 0.2s, transform 0.2s var(--ease);
+}
+.googleLinks a:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  transform: translateY(-1px);
+}
+/* The form now sends email: its tag uses the brand blue, not WhatsApp green. */
+.channelTag.mailTag {
+  background: var(--blue-mist);
+  color: var(--blue);
+}

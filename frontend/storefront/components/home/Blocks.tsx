@@ -137,7 +137,7 @@ export function ProcessSteps() {
     { icon: <MousePointerClick size={24} />, title: "Order Placed", sub: "Choose your product and confirm your order." },
     { icon: <ClipboardCheck size={24} />, title: "Confirmation", sub: "We reach out on WhatsApp or call to confirm your address." },
     { icon: <PackageCheck size={24} />, title: "Dispatched", sub: "Packed and handed to our courier within 24–48 hours." },
-    { icon: <Truck size={24} />, title: "Delivered", sub: `Arrives in ${site.shipping.estimate}. Pay cash on delivery.` },
+    { icon: <Truck size={24} />, title: "Delivered", sub: `Arrives in ${site.shipping.estimate}.` },
   ];
   return (
     <ol className="how-grid">

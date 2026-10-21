@@ -1,7 +1,7 @@
 import type { PolicyDocument } from "./types";
 
 export const returnsPolicy: PolicyDocument = {
-  "slug": "refund-and-return-policy",
+  "slug": "refund_returns",
   "title": "Refund & Return Policy",
   "subtitle": "How refunds, returns, and exchanges work at Zelvomart.",
   "icon": "return",

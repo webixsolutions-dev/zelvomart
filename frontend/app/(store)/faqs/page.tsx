@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { loadSettings } from "@store/lib/backend";
 import { allFaqs } from "@store/lib/content";
 import { shareMeta } from "@store/lib/seo";
 import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
@@ -20,7 +21,8 @@ export const metadata: Metadata = {
 
 const groups = ["About Zelvomart", "Orders", "Delivery", "Payments", "Returns", "Products"] as const;
 
-export default function Page() {
+export default async function Page() {
+  await loadSettings();
   return (
     <>
       <Breadcrumbs items={[{ label: "Help" }, { label: "FAQs" }]} />
@@ -36,7 +38,7 @@ export default function Page() {
       <section className="section pt-sm">
         <div className="container-narrow">
           {groups.map((g) => {
-            const items = allFaqs.filter((f) => f.group === g);
+            const items = allFaqs().filter((f) => f.group === g);
             if (!items.length) return null;
             return (
               <div className="faq-group" key={g}>
@@ -45,7 +47,7 @@ export default function Page() {
               </div>
             );
           })}
-          <FaqJsonLd items={allFaqs} />
+          <FaqJsonLd items={allFaqs()} />
         </div>
       </section>
       <div className="container">

@@ -657,7 +657,7 @@ function WriteReviewModal({
               )}
             </div>
             <div className="rv-actions">
-              <Link href="/shop-all-products/" className="btn">
+              <Link href="/shop/" className="btn">
                 Continue shopping
               </Link>
               <button type="button" className="btn ghost" onClick={onClose}>

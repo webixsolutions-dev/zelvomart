@@ -15,9 +15,17 @@ export const site = {
   email: "support@zelvomart.com",
   phoneDisplay: "+92 300 2026711",
   whatsappNumber: "923002026711",
-  supportHours: "Mon–Sat, 10am – 7pm", // verify
+  supportHours: "Open 24/7", // Admin → Settings → Store → Support hours overrides it
   foundingDate: "2026-07",
   founder: "Sehar Faryal", // co-founder
+  // Google Business Profile: the listing and the "write a review" link.
+  google: {
+    listing: "https://share.google/uwaIZLjv39Tk38ZZz",
+    review: "https://g.page/r/CQlatN7X6fOaEBM/review",
+    // The Google Maps URL the share link lands on (the one with `cid=`); goes into Organization `sameAs`.
+    // TODO: open the listing link once in a browser and paste the final URL here.
+    maps: "",
+  },
   // Official profiles (decided 19 Oct 2026). Footer icons and Organization `sameAs` both read this list.
   social: {
     facebook: "https://www.facebook.com/zelvomart/",
@@ -47,7 +55,8 @@ export const site = {
   },
 } as const;
 
-export const announcements = [
+/** The top bar. A function, so the free-delivery amount from Admin → Settings is read at render time. */
+export const announcements = () => [
   "Cash on Delivery across Pakistan",
   `Free delivery on orders over Rs. ${site.shipping.freeOver.toLocaleString("en-PK")}`,
   "Every order checked before dispatch",

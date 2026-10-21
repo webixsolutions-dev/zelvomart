@@ -13,9 +13,9 @@ const customerServiceLinks = [
   { label: "Contact Us", href: "/contact-us/" },
   { label: "Track Order", href: "/track-your-order/" },
   { label: "Privacy Policy", href: "/privacy-policy/" },
-  { label: "Terms & Conditions", href: "/terms-and-conditions/" },
+  { label: "Terms & Conditions", href: "/terms-conditions/" },
   { label: "Shipping Policy", href: "/shipping-policy/" },
-  { label: "Returns & Refunds", href: "/refund-and-return-policy/" },
+  { label: "Returns & Refunds", href: "/refund_returns/" },
   { label: "FAQs", href: "/faqs/" },
 ] as const;
 
@@ -39,7 +39,7 @@ export function Footer() {
             </Link>
             <p>
               Everyday things, chosen better. Zelvomart is a Pakistani lifestyle store — we stock every product ourselves, check it
-              by hand and ship it from {site.fulfilment.warehouse} with Cash on Delivery nationwide.
+              by hand and ship it from {site.fulfilment.warehouse} to your door, anywhere in Pakistan.
             </p>
             <div className="socials">
               {(
@@ -70,7 +70,7 @@ export function Footer() {
           <div className={styles.linkGroup}>
             <h4>Explore</h4>
             <nav aria-label="Explore">
-              <FooterNavLink href="/shop-all-products/">All Products</FooterNavLink>
+              <FooterNavLink href="/shop/">All Products</FooterNavLink>
               <FooterNavLink href="/new-arrivals/">New Arrivals</FooterNavLink>
               <FooterNavLink href="/bestsellers/">Bestsellers</FooterNavLink>
               <FooterNavLink href="/deals-and-offers/">Deals & Offers</FooterNavLink>

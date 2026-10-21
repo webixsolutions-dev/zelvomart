@@ -9078,10 +9078,10 @@ body:has(.confirm-page) {
   }
 }
 
-/* ---------- Home: hero slider on phones (eyebrow, bigger heading, both buttons, ~18% shorter) ---------- */
+/* ---------- Home: hero slider on phones (eyebrow, bigger heading, both buttons on one row, 10% taller than 0.86) ---------- */
 @media (max-width: 760px) {
   .hero-slider .slide .hero-art {
-    aspect-ratio: 0.86 / 1;
+    aspect-ratio: 0.78 / 1;
   }
   .hero-slider .slide::after {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.82) 46%, rgba(255, 255, 255, 0.2) 72%, rgba(255, 255, 255, 0) 84%);
@@ -9113,25 +9113,36 @@ body:has(.confirm-page) {
     transform: none;
   }
   .hero-slider .hero-buttons {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: center;
     gap: 8px;
-    width: min(280px, 100%);
+    width: 100%;
+    max-width: 360px;
     margin-top: 14px;
   }
   .hero-slider .hero-buttons > :not(:first-child) {
     display: inline-flex;
   }
   .hero-slider .hero-buttons .btn {
-    justify-content: center;
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
-    padding: 10px 22px;
-    font-size: 14px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    white-space: nowrap;
+    justify-content: center;
   }
   .hero-slider .hero-buttons .btn:first-child {
     color: #fff;
     background: var(--blue);
     border-color: var(--blue);
+  }
+}
+/* Very narrow phones: the second label no longer fits on one line, so only "Shop Now" stays. */
+@media (max-width: 359px) {
+  .hero-slider .hero-buttons > :not(:first-child) {
+    display: none;
   }
 }
 
@@ -10447,3 +10458,86 @@ body:has(.product-page) {
   background: var(--blue-mist);
 }
 .rv-media button{padding:0;border:0;background:transparent;cursor:pointer;border-radius:8px;overflow:hidden}.rv-media button img{width:76px;height:76px;object-fit:cover}.rv-gallery{position:fixed;inset:0;margin:auto;max-width:min(94vw,960px);max-height:94vh;padding:18px;border:0;border-radius:16px;background:#fff;color:#17251e}.rv-gallery::backdrop{background:rgba(0,0,0,.8)}.rv-gallery>img,.rv-gallery>video{display:block;width:auto;height:auto;max-width:85vw;max-height:68vh;margin:12px auto;object-fit:contain}.rv-gallery-controls{display:flex;align-items:center;justify-content:space-between;gap:20px}
+
+/* ---------- WhatsApp band: equal top/bottom padding, content centred, nothing on the border ----------
+   Outranks the "page end" rule, which zeroes the bottom padding when the band ends a page (FAQ page). */
+.whatsapp-band.whatsapp-band,
+#main > * > .whatsapp-band.whatsapp-band.whatsapp-band {
+  padding: 24px 30px;
+  align-items: center;
+}
+@media (max-width: 760px) {
+  .whatsapp-band.whatsapp-band,
+  #main > * > .whatsapp-band.whatsapp-band.whatsapp-band {
+    padding: 20px;
+    align-items: flex-start;
+  }
+}
+
+/* ---------- Listing with no products yet: one full-width card, no filters ---------- */
+.archive-wrap.is-empty {
+  grid-template-columns: minmax(0, 1fr);
+}
+.archive-coming-soon {
+  max-width: none;
+}
+.archive-coming-soon p {
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.archive-coming-soon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+@media (max-width: 760px) {
+  .archive-coming-soon-actions .btn {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
+/* ---------- Checkout: "Placing your order…" over the form while the order is sent ---------- */
+.checkout-page .form-card,
+.form-card:has(> .checkout-placing) {
+  position: relative;
+}
+.checkout-placing {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* At the bottom, over the Place Order button the shopper just tapped, so it is on screen on a phone. */
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 24px 24px 34px;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  color: var(--ink);
+}
+.checkout-placing strong {
+  font-size: 18px;
+}
+.checkout-placing span {
+  font-size: 14px;
+  color: var(--muted);
+}
+.checkout-placing-spin {
+  color: var(--blue);
+  animation: checkout-spin 0.9s linear infinite;
+}
+@keyframes checkout-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .checkout-placing-spin {
+    animation-duration: 2.4s;
+  }
+}

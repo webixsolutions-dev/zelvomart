@@ -14,17 +14,37 @@ export const privacyPolicy: PolicyDocument = {
     },
     {
       "heading": "Information We Collect",
-      "body": "When you place an order or contact us, we may collect your name, phone number, delivery address, and email address (if provided). We do not require or store any payment card details, since we operate on a Cash on Delivery (COD) basis.",
+      "body": "When you place an order, contact us or leave a review, we may collect your name, mobile number, delivery address, city and email address. When you browse the website, we also collect basic technical information such as your device type, browser, pages visited and the website or ad that brought you here. We don’t ask for or store card or bank details.",
       "icon": "database"
     },
     {
       "heading": "How We Use Your Information",
-      "body": "We use your information to confirm and process your order, communicate with you by phone or WhatsApp about your order, arrange delivery through our courier partners, and respond to your questions or support requests. We do not use your personal information for anything beyond fulfilling your order and providing support.",
+      "body": "We use your information to confirm and deliver your order, reply to your messages, send order updates by WhatsApp, SMS or email, show your review on our website, measure which of our ads and pages work, and improve the shopping experience. If you agree to receive offers, we may also email you about new products and deals; every offer email has an unsubscribe link.",
       "icon": "message"
     },
     {
+      "heading": "Session recording to improve our website",
+      "body": "To find and fix problems on our website, we record how visitors use our pages: page views, scrolling, taps and clicks, and which steps of checkout were reached. This helps us see where something is confusing or broken and improve the experience for everyone.\n\nRecording covers our website pages only. We can’t see anything outside the page, such as your phone’s status bar, time, battery, other apps or notifications.\n\nEverything you type into a form field (name, phone, address, messages) is masked and is not recorded.\n\nRecordings are viewed only by our team inside our secure admin dashboard. They are not downloaded, sold or shared.\n\nRecordings are deleted automatically after 14 days.",
+      "icon": "video"
+    },
+    {
+      "heading": "Cookies, pixels and analytics",
+      "body": "We use cookies and similar tools from Meta (Facebook and Instagram), TikTok and Google to understand how people find and use our website and to measure our ads. These tools may receive information such as the pages you view and the actions you take, like adding to cart or placing an order. You can limit this through your browser settings or the ad settings of those platforms.",
+      "icon": "database"
+    },
+    {
+      "heading": "Your reviews",
+      "body": "When you write a review, we show your name (or the name you choose), your rating, your comments and any photos or videos you add. You can ask us to edit or remove your review at any time.",
+      "icon": "message"
+    },
+    {
+      "heading": "Messages you send us",
+      "body": "When you use our contact form, your message, name, mobile number and email are sent to our support team at [support@zelvomart.com](mailto:support@zelvomart.com) so we can reply. We keep these messages only as long as needed to help you.",
+      "icon": "mail"
+    },
+    {
       "heading": "Sharing Your Information",
-      "body": "We share your name, phone number, and address with our courier partner (such as PostEx) solely for the purpose of delivering your order. We do not sell, rent, or trade your personal information to any third party for marketing purposes.",
+      "body": "We share your name, phone number, and address with our courier partner (such as PostEx) solely for the purpose of delivering your order, and with service providers that help us run the store, such as our email delivery and hosting providers, only as needed for that service. We do not sell, rent, or trade your personal information to any third party for marketing purposes.",
       "icon": "share",
       "half": true
     },

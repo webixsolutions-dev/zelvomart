@@ -131,7 +131,7 @@ export function OrderConfirmed() {
             <Link className="btn ghost" href="/track-your-order/">
               <PackageSearch size={16} /> Track your order
             </Link>
-            <Link className="btn ghost" href="/shop-all-products/">
+            <Link className="btn ghost" href="/shop/">
               Continue shopping
             </Link>
           </div>

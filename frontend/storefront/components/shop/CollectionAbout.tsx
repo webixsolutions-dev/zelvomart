@@ -2,7 +2,7 @@ import { ChevronDown } from "lucide-react";
 
 const points = [
   { title: "Checked before dispatch", text: "Every item is inspected and packed with care before it leaves our stock." },
-  { title: "Cash on Delivery", text: "Pay in cash when your parcel arrives, anywhere in Pakistan." },
+  { title: "Pay when it arrives", text: "No advance payment: you pay when your parcel reaches you, anywhere in Pakistan." },
   { title: "Need help choosing?", text: "Message us on WhatsApp with the product name and we’ll help you pick." },
 ];
 

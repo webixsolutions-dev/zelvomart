@@ -3,25 +3,24 @@ import { shareMeta } from "@store/lib/seo";
 import Link from "next/link";
 import { ArrowRight, Clock, Mail, MapPin, MessageCircleQuestion, PackageSearch, RefreshCw } from "lucide-react";
 import { site } from "@store/lib/site";
-import { money, waLink } from "@store/lib/format";
+import { waLink } from "@store/lib/format";
+import { loadSettings } from "@store/lib/backend";
 import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
 import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
 import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, TiktokIcon, WhatsAppIcon, XIcon, YoutubeIcon } from "@store/components/ui/BrandIcons";
 import { ContactForm, TopicLink } from "@store/components/pages/ContactForm";
 import s from "@store/components/pages/Contact.module.css";
 
-export const metadata: Metadata = {
-  title: { absolute: "Contact Zelvomart: WhatsApp, Phone & Email" },
-  description: `Contact Zelvomart on WhatsApp at ${site.phoneDisplay} or by email. Ask about products, orders or delivery; our Lahore team replies Monday to Saturday.`,
-  alternates: { canonical: "/contact-us/" },
-  ...shareMeta({ title: "Contact Zelvomart: WhatsApp, Phone & Email", description: `Contact Zelvomart on WhatsApp at ${site.phoneDisplay} or by email. Ask about products, orders or delivery; our Lahore team replies Monday to Saturday.`, path: "/contact-us/" }),
-};
-
-const wa = waLink(site.whatsappNumber, "Hi Zelvomart! I have a question.");
-/** "Mon–Sat, 10am – 7pm" → "Mon–Sat, 10am–7pm" */
-const hours = site.supportHours.replace(/\s+–\s+/g, "–");
-const fee = money(site.shipping.flatFee);
-const freeOver = money(site.shipping.freeOver);
+export async function generateMetadata(): Promise<Metadata> {
+  await loadSettings();
+  const description = `Contact Zelvomart on WhatsApp at ${site.phoneDisplay} or by email. Ask about products, orders or delivery; our Lahore team replies 7 days a week.`;
+  return {
+    title: { absolute: "Contact Zelvomart: WhatsApp, Phone & Email" },
+    description,
+    alternates: { canonical: "/contact-us/" },
+    ...shareMeta({ title: "Contact Zelvomart: WhatsApp, Phone & Email", description, path: "/contact-us/" }),
+  };
+}
 
 const socials = [
   { label: "Facebook", href: site.social.facebook, Icon: FacebookIcon },
@@ -33,34 +32,52 @@ const socials = [
   { label: "X", href: site.social.x, Icon: XIcon },
 ];
 
-const contactFaqs = [
-  {
-    q: "Do you offer Cash on Delivery?",
-    a: "Yes. Choose Cash on Delivery at checkout and pay the courier in cash when your parcel arrives. Available payment options are shown before you order.",
-  },
-  {
-    q: "When will my order arrive?",
-    a: `Delivery takes ${site.shipping.estimate}, depending on your city. Check your order information and our shipping policy, or message us with your order number.`,
-  },
-  {
-    q: "How much does delivery cost?",
-    a: `Delivery is ${fee}, and free on orders above ${freeOver}. Your delivery charge is shown at checkout before you place your order.`,
-  },
-  {
-    q: "How can I track my order?",
-    a: "Use our Track Order page with your order number and mobile number. If you need help, send us your order number.",
-  },
-  {
-    q: "Can I ask about a product first?",
-    a: "Absolutely. Share the product name or link and ask about its size, materials, colour or availability. We’ll help with the details.",
-  },
-  {
-    q: "What if an item needs attention?",
-    a: "Contact us with your order number and a description of the issue. Photos can help us understand it. See the Returns & Refunds policy for the applicable process.",
-  },
-];
+/** Questions about getting in touch. A function, so the phone, email and hours from Admin → Settings show. */
+function contactFaqs() {
+  return [
+    {
+      q: "What’s the fastest way to reach you?",
+      a: `WhatsApp is quickest. Message us on ${site.phoneDisplay} any time, day or night, and we usually reply within a few hours. You can also use the form on this page or email ${site.email}.`,
+    },
+    {
+      q: "What should I include in my message?",
+      a: "Your order number (it starts with ZM-), the mobile number you ordered with, and a short description. If it’s about an item you received, add a photo or a short video; it helps us sort it out faster.",
+    },
+    {
+      q: "Can I change my order after placing it?",
+      a: "Yes, if it hasn’t been dispatched yet. Message us with your order number and the change you need, and we’ll update it before it leaves.",
+    },
+    {
+      q: "Do you reply on weekends and holidays?",
+      a: "Yes. We’re available 24/7, so you can message us any day and we’ll get back to you.",
+    },
+    {
+      q: "I sent the form. When will I hear back?",
+      a: "We reply to the email address you entered, usually within a few hours. If it’s urgent, send us a WhatsApp message as well.",
+    },
+    {
+      q: "How can I share feedback about Zelvomart?",
+      a: "We’d love to hear it. Leave us a review on Google, or message us directly if something could have gone better.",
+    },
+  ];
+}
 
-export default function Page() {
+/** The Google "G", in its four colours. */
+function GoogleIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="#4285F4" d="M23.5 12.27c0-.82-.07-1.6-.2-2.36H12v4.47h6.45a5.5 5.5 0 0 1-2.4 3.62v3h3.88c2.27-2.1 3.57-5.18 3.57-8.73z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.9l-3.88-3c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.1A12 12 0 0 0 12 24z" />
+      <path fill="#FBBC05" d="M5.29 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.28a12 12 0 0 0 0 10.8l4.01-3.1z" />
+      <path fill="#EA4335" d="M12 4.75c1.76 0 3.34.6 4.59 1.8l3.44-3.44A11.95 11.95 0 0 0 12 0 12 12 0 0 0 1.28 6.6l4.01 3.1C6.23 6.86 8.88 4.75 12 4.75z" />
+    </svg>
+  );
+}
+
+export default async function Page() {
+  await loadSettings();
+  const wa = waLink(site.whatsappNumber, "Hi Zelvomart! I have a question.");
+  const faqItems = contactFaqs();
   return (
     <>
       {/* ── Hero ── */}
@@ -87,7 +104,7 @@ export default function Page() {
               </a>
             </div>
             <p className={s.heroHours}>
-              <Clock size={16} /> <span>{hours}</span> · Pakistan time
+              <Clock size={16} /> <span>{site.supportHours}</span> · Replies usually within a few hours
             </p>
           </div>
           <div className={s.heroArt}>
@@ -148,8 +165,8 @@ export default function Page() {
               <span className={s.channelLabel}>When we’re here</span>
             </div>
             <h2>Support hours.</h2>
-            <p className={s.value}>{hours}</p>
-            <p>Pakistan Standard Time. Messages outside these hours are picked up during our next support day.</p>
+            <p className={s.value}>{site.supportHours}</p>
+            <p>We reply every day, including weekends and holidays, usually within a few hours.</p>
             <span className={s.hoursTag}>
               <span aria-hidden="true" /> Pakistan time · UTC+5
             </span>
@@ -230,8 +247,8 @@ export default function Page() {
           <div className={s.message} id="contact-form">
             <div className={s.messageTop}>
               <p className="eyebrow">Let’s get started</p>
-              <span className={s.channelTag}>
-                <WhatsAppIcon size={15} /> Via WhatsApp
+              <span className={`${s.channelTag} ${s.mailTag}`}>
+                <Mail size={15} /> Via email
               </span>
             </div>
             <h2>
@@ -250,7 +267,7 @@ export default function Page() {
               Useful answers.
             </h2>
             <p className={s.faqLead}>A few things you may want to know before getting in touch.</p>
-            <FaqAccordion items={contactFaqs} />
+            <FaqAccordion items={faqItems} />
             <p className={s.emailReminder}>
               <Mail size={18} aria-hidden="true" />
               <span>
@@ -260,7 +277,7 @@ export default function Page() {
             </p>
           </aside>
         </div>
-        <FaqJsonLd items={contactFaqs} />
+        <FaqJsonLd items={faqItems} />
       </section>
 
       {/* ── Home base (last section) ── */}
@@ -274,6 +291,18 @@ export default function Page() {
               <p className="eyebrow">Our home base</p>
               <h2 id="location-title">Lahore, Pakistan.</h2>
               <p>An online store for everyday life, delivering across Pakistan.</p>
+              <ul className={s.googleLinks}>
+                <li>
+                  <a href={site.google.listing} target="_blank" rel="noopener noreferrer">
+                    <GoogleIcon /> Find us on Google
+                  </a>
+                </li>
+                <li>
+                  <a href={site.google.review} target="_blank" rel="noopener noreferrer">
+                    <GoogleIcon /> Review us on Google
+                  </a>
+                </li>
+              </ul>
             </div>
           </div>
           <div className={s.social}>

@@ -72,7 +72,7 @@ const orgJsonLd = () => ({
   address: { "@type": "PostalAddress", addressLocality: "Lahore", addressRegion: "Punjab", addressCountry: "PK" },
   foundingDate: site.foundingDate,
   founder: { "@type": "Person", name: site.founder },
-  sameAs: Object.values(site.social),
+  sameAs: [...Object.values(site.social), ...(site.google.maps ? [site.google.maps] : [])],
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer service",

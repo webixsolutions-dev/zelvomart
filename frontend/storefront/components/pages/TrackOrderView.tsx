@@ -30,10 +30,8 @@ import s from "./TrackOrder.module.css";
 /** Same icons in the result tracker and in "What each stage means": check, shield, box, truck, house. */
 const stageIcons: LucideIcon[] = [CircleCheck, ShieldCheck, Package, Truck, House];
 
-/** "Mon–Sat, 10am – 7pm" → "Mon–Sat, 10am–7pm" */
-const hours = site.supportHours.replace(/\s+–\s+/g, "–");
-
-export const trackFaqs = [
+/** A function, so delivery days and the courier from Admin → Settings are read at render time. */
+export const trackFaqs = () => [
   {
     q: "Where can I find my order number?",
     a: "In the confirmation message we send after you order, and on the thank-you page. It starts with ZM-. If you can’t find it, message us on WhatsApp with the mobile number you used at checkout.",
@@ -103,7 +101,7 @@ export function TrackOrderView() {
             </p>
             <ul className={s.facts}>
               <li>
-                <Banknote size={18} /> Cash on Delivery
+                <ShieldCheck size={18} /> Checked before dispatch
               </li>
               <li>
                 <Truck size={18} /> Delivered by {site.shipping.courier}
@@ -268,7 +266,7 @@ export function TrackOrderView() {
               <a className="btn wa lg" href={wa("Hi Zelvomart! I need help with my order.")} target="_blank" rel="noopener noreferrer">
                 <WhatsAppIcon /> Chat on WhatsApp
               </a>
-              <small>{hours} · Pakistan time</small>
+              <small>{site.supportHours}</small>
             </div>
           </div>
         </div>
@@ -299,10 +297,10 @@ export function TrackOrderView() {
             </Link>
           </div>
           <div>
-            <FaqAccordion items={trackFaqs} defaultOpen={null} />
+            <FaqAccordion items={trackFaqs()} defaultOpen={null} />
           </div>
         </div>
-        <FaqJsonLd items={trackFaqs} />
+        <FaqJsonLd items={trackFaqs()} />
       </section>
     </>
   );

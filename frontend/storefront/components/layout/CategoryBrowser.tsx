@@ -11,7 +11,7 @@ import { CategoryIcon } from "@store/components/ui/CategoryIcon";
 type Group = { key: string; label: string; href: string; icon: React.ReactNode; items: Product[] };
 
 const groups: Group[] = [
-  { key: "all", label: "All Products", href: "/shop-all-products/", icon: <LayoutGrid size={16} />, items: products },
+  { key: "all", label: "All Products", href: "/shop/", icon: <LayoutGrid size={16} />, items: products },
   { key: "best", label: "Best selling", href: "/bestsellers/", icon: <Flame size={16} />, items: products.filter(collections.bestsellers.filter) },
   { key: "new", label: "New arrival", href: "/new-arrivals/", icon: <Sparkle size={16} />, items: products.filter(collections["new-arrivals"].filter) },
   { key: "deals", label: "Discounts", href: "/deals-and-offers/", icon: <BadgePercent size={16} />, items: products.filter(collections.deals.filter) },

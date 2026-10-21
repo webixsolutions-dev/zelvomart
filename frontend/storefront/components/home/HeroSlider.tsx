@@ -25,9 +25,9 @@ const slides: Slide[] = [
     alt: "Zelvomart everyday essentials for home, fitness and kids",
     eyebrow: "Pakistan’s everyday online store",
     title: "Online Shopping in Pakistan | Zelvomart",
-    sub: "Shop useful products for everyday life at Zelvomart, from home essentials, fitness and kids’ products to lifestyle finds, with convenient Cash on Delivery across Pakistan.",
+    sub: "Shop useful products for everyday life at Zelvomart, from home essentials, fitness and kids’ products to lifestyle finds, delivered across Pakistan.",
     buttons: [
-      { label: "Shop Now", href: "/shop-all-products/" },
+      { label: "Shop Now", href: "/shop/" },
       { label: "Explore Categories", href: "/#categories" },
     ],
   },
@@ -39,7 +39,7 @@ const slides: Slide[] = [
     title: "Items for You and Your Household, Delivered by Zelvomart",
     sub: "From home and living essentials to tech gadgets, kids’ products and fitness gear, Zelvomart brings everyday finds for every room and every member of the family to your doorstep. Pay on delivery anywhere in Pakistan, with help on WhatsApp whenever you need it.",
     buttons: [
-      { label: "Shop Home & Living", href: "/category/home-and-living/" },
+      { label: "Shop Home & Living", href: "/product-category/home-living/" },
       { label: "Order on WhatsApp", href: waLink(site.whatsappNumber), external: true },
     ],
   },
@@ -51,7 +51,7 @@ const slides: Slide[] = [
     title: "Move More, Train Better: Fitness & Sports Gear at Zelvomart",
     sub: "From home workouts to gym days, find fitness and sports essentials at Zelvomart that keep you training, recovering and moving with confidence. Order online, pay on delivery across Pakistan, and get help on WhatsApp anytime.",
     buttons: [
-      { label: "Shop Fitness & Sports", href: "/category/sports-and-fitness/" },
+      { label: "Shop Fitness & Sports", href: "/product-category/sports-fitness/" },
       { label: "Order on WhatsApp", href: waLink(site.whatsappNumber), external: true },
     ],
   },

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Banknote, ShieldCheck, ShoppingBag, Trash2 } from "lucide-react";
+import { ArrowRight, ShieldCheck, ShoppingBag, Trash2 } from "lucide-react";
 import { categoryPath, getCategory, getProductById, products } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
 import { unitPrice, useShop } from "@store/lib/store";
@@ -37,7 +37,7 @@ export function CartView() {
               </span>
               <h1>Your cart is empty</h1>
               <p>Your next useful find is waiting.</p>
-              <Link href="/shop-all-products/" className="btn lg">
+              <Link href="/shop/" className="btn lg">
                 Start shopping <ArrowRight size={16} />
               </Link>
               <ul className="cart-empty-chips" aria-label="Shop by category">
@@ -89,7 +89,7 @@ export function CartView() {
                   })}
                 </div>
                 <div className="cart-under">
-                  <Link href="/shop-all-products/" className="link-cta">
+                  <Link href="/shop/" className="link-cta">
                     ← Continue shopping
                   </Link>
                   <button type="button" className="link-btn" onClick={clearCart}>
@@ -122,9 +122,6 @@ export function CartView() {
                   Proceed to Checkout <ArrowRight size={17} />
                 </Link>
                 <ul className="summary-assure">
-                  <li>
-                    <Banknote size={16} /> Cash on Delivery — pay at your door
-                  </li>
                   <li>
                     <ShieldCheck size={16} /> Order confirmed by our team before dispatch
                   </li>

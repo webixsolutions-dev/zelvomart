@@ -110,7 +110,7 @@ export function CartDrawer() {
                 <strong>{money(total)}</strong>
               </div>
               <Link href="/checkout/" className="btn block lg" onClick={() => setCartOpen(false)}>
-                Checkout — Cash on Delivery <ArrowRight size={17} />
+                Checkout <ArrowRight size={17} />
               </Link>
               <Link href="/cart/" className="btn ghost block" onClick={() => setCartOpen(false)}>
                 View full cart

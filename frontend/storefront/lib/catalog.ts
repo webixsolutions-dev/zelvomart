@@ -15,7 +15,7 @@ export type CategoryId =
 
 export type Category = {
   id: CategoryId;
-  /** URL segment, spelled out from `name` (e.g. Tech & Gadgets → tech-and-gadgets). */
+  /** URL segment: the WordPress category slug, kept so indexed URLs stay the same (e.g. Tech & Gadgets → tech-gadgets). */
   slug: string;
   name: string;
   short: string;
@@ -81,12 +81,14 @@ export type Product = {
   seoTitle?: string;
   /** Meta description written for this product in the admin (140–155 characters). */
   seoDescription?: string;
+  /** Admin → Product → SEO set to "noindex": the page tells search engines not to list it. */
+  noindex?: boolean;
 };
 
 export const categories: Category[] = [
   {
     id: "home-living",
-    slug: "home-and-living",
+    slug: "home-living",
     name: "Home & Living",
     short: "Home & Living",
     tagline: "Practical essentials for everyday life.",
@@ -124,7 +126,7 @@ export const categories: Category[] = [
   },
   {
     id: "beauty",
-    slug: "beauty-and-personal-care",
+    slug: "beauty-personal-care",
     name: "Beauty & Personal Care",
     short: "Beauty",
     tagline: "Everyday beauty and self-care picks.",
@@ -143,7 +145,7 @@ export const categories: Category[] = [
   },
   {
     id: "tech",
-    slug: "tech-and-gadgets",
+    slug: "tech-gadgets",
     name: "Tech & Gadgets",
     short: "Tech",
     tagline: "Smart tech for your everyday routine.",
@@ -181,7 +183,7 @@ export const categories: Category[] = [
   },
   {
     id: "fitness",
-    slug: "sports-and-fitness",
+    slug: "sports-fitness",
     name: "Sports & Fitness",
     short: "Fitness",
     tagline: "Make every move count.",
@@ -200,7 +202,7 @@ export const categories: Category[] = [
   },
   {
     id: "kids",
-    slug: "kids-and-toys",
+    slug: "kids-toys",
     name: "Kids & Toys",
     short: "Kids",
     tagline: "More playful moments, more creativity.",
@@ -277,7 +279,7 @@ export function getCategoryBySlug(slug: string) {
 
 /** Public URL of a category page. */
 export function categoryPath(id: string) {
-  return `/category/${getCategory(id)?.slug ?? id}/`;
+  return `/product-category/${getCategory(id)?.slug ?? id}/`;
 }
 
 export function getProduct(slug: string) {

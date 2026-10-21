@@ -57,7 +57,7 @@ export default async function HomePage() {
 
       <section className="section home-categories" id="categories">
         <div className="container">
-          <SectionHead eyebrow="Seven ways to shop" title="Shop by Category" sub="Seven Zelvomart categories, from home and decor to beauty, tech, fashion, fitness and kids." href="/shop-all-products/" linkLabel="All products" />
+          <SectionHead eyebrow="Seven ways to shop" title="Shop by Category" sub="Seven Zelvomart categories, from home and decor to beauty, tech, fashion, fitness and kids." href="/shop/" linkLabel="All products" />
           <CategoryGrid />
         </div>
       </section>
@@ -132,8 +132,8 @@ export default async function HomePage() {
             <div className="split faq-split">
               <div className="faq-copy">
                 <SectionHead eyebrow="Good to know" title="Questions About Zelvomart, Answered" sub="Everything you need to know before you order." />
-                <FaqAccordion items={homeFaqs} />
-                <FaqJsonLd items={homeFaqs} />
+                <FaqAccordion items={homeFaqs()} />
+                <FaqJsonLd items={homeFaqs()} />
               </div>
               <div className="support-card">
                 <span className="support-glow" aria-hidden="true" />

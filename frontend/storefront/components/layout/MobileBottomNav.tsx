@@ -15,7 +15,7 @@ export function MobileBottomNav() {
         <House size={20} />
         Home
       </Link>
-      <Link href="/shop-all-products/" className={is("/shop") || is("/category") ? "active" : ""}>
+      <Link href="/shop/" className={is("/shop") || is("/product-category") ? "active" : ""}>
         <LayoutGrid size={20} />
         Shop
       </Link>

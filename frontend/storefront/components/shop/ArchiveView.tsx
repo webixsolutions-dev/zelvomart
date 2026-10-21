@@ -2,9 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { categories, getCategory, products, type CategoryId, categoryPath } from "@store/lib/catalog";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
 import { ProductGrid } from "@store/components/product/ProductGrid";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 
 type Sort = "featured" | "low" | "high" | "name" | "discount";
 
@@ -76,8 +80,37 @@ function PriceRange({
   );
 }
 
-/** `heading` adds an H2 above the grid (e.g. "Shop Home & Living"); without it only the product count shows, so the page H1 is not repeated. */
-export function ArchiveView({ ids, heading, lockedCategory }: { ids: string[]; heading?: string; lockedCategory?: CategoryId }) {
+/** A listing with no products at all yet (not filtered to zero): no count, filters or sort, just a way on. */
+function ComingSoon({ name }: { name: string }) {
+  return (
+    <div className="empty-state archive-coming-soon">
+      <h3>New {name} picks are on the way.</h3>
+      <p>
+        We’re adding products to this category right now. Until then, explore what’s already in store, or message us on WhatsApp if
+        you’re looking for something specific.
+      </p>
+      <div className="archive-coming-soon-actions">
+        <Link href="/shop/" className="btn">
+          Shop all products <ArrowRight size={16} />
+        </Link>
+        <a
+          className="btn ghost"
+          href={waLink(site.whatsappNumber, `Hi Zelvomart! I'm looking for something in ${name}.`)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <WhatsAppIcon size={17} /> Ask on WhatsApp
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * `heading` adds an H2 above the grid (e.g. "Shop Home & Living"); without it only the product count shows, so the page H1 is not repeated.
+ * `name` is what the "on the way" state calls the listing when it has no products yet (defaults to the locked category's name).
+ */
+export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: string[]; heading?: string; lockedCategory?: CategoryId; name?: string }) {
   const router = useRouter();
   const base = useMemo(() => products.filter((p) => ids.includes(p.id)), [ids]);
   const [category, setCategory] = useState<string | null>(lockedCategory ?? null);
@@ -174,6 +207,23 @@ export function ArchiveView({ ids, heading, lockedCategory }: { ids: string[]; h
       </FilterGroup>
     </>
   );
+
+  if (!base.length) {
+    return (
+      <div className="archive-wrap is-empty">
+        <div>
+          {heading && (
+            <div className="archive-toolbar">
+              <div>
+                <h2>{heading}</h2>
+              </div>
+            </div>
+          )}
+          <ComingSoon name={name || (lockedCategory ? getCategory(lockedCategory)?.name : undefined) || "new"} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="archive-wrap">

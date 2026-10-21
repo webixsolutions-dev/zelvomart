@@ -4,6 +4,8 @@ import type { Product as ApiProduct, ProductListResponse } from "@/types/product
 import { designCategoryId, setCatalog, upsertProducts, type Product } from "./catalog";
 import { toDesignProduct } from "./product-map";
 import { applyStoreSettings, type StoreSettings } from "./settings";
+import { pageToPolicy, type PageRow } from "./policies/html";
+import type { PolicyDocument } from "./policies/types";
 
 /**
  * The storefront's only door to the backend catalog (server side).
@@ -99,6 +101,7 @@ export async function loadStoreSettings(): Promise<StoreSettings> {
     if (info.phone) out.phone = String(info.phone);
     if (info.email) out.email = String(info.email);
     if (info.whatsapp) out.whatsapp = String(info.whatsapp).replace(/\D/g, "");
+    if (String(info.supportHours || "").trim()) out.supportHours = String(info.supportHours).trim();
     if (Number(delivery.flatRate) > 0) out.flatFee = Number(delivery.flatRate);
     if (Number(delivery.freeAbove) > 0) out.freeOver = Number(delivery.freeAbove);
   } catch {
@@ -115,6 +118,16 @@ export async function loadStoreSettings(): Promise<StoreSettings> {
     // the 2–7 working-day fallback stays
   }
   return out;
+}
+
+/**
+ * Just the store settings, for pages that print the phone, email, hours or delivery amounts but no products.
+ * Server pages render alongside the layout, so each such page applies the settings itself.
+ */
+export async function loadSettings() {
+  const settings = await loadStoreSettings();
+  applyStoreSettings(settings);
+  return settings;
 }
 
 /**
@@ -149,5 +162,20 @@ export async function loadCategoryIds(): Promise<Set<string>> {
     return new Set(rows.map((c) => designCategoryId(c.slug)));
   } catch {
     return new Set();
+  }
+}
+
+/**
+ * A policy page as Admin → Pages has it (GET /api/pages/{slug}, cached with the `pages` tag), falling back
+ * to the file version when the backend is unreachable or the page has no <h2> sections yet.
+ */
+export async function loadPolicy(fallback: PolicyDocument): Promise<PolicyDocument> {
+  try {
+    const page = await apiFetch<PageRow>(`/api/pages/${encodeURIComponent(fallback.slug)}`, {
+      next: { revalidate: 600, tags: ["pages", `page:${fallback.slug}`] },
+    });
+    return pageToPolicy(fallback.slug, page, fallback) || fallback;
+  } catch {
+    return fallback;
   }
 }

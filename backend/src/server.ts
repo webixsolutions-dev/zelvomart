@@ -42,6 +42,7 @@ import { BUY_TWO_DISCOUNT_PERCENT, bundleLineTotal, priceSummary, variantPriceSu
 import { sendContactTeamEmail } from './lib/email';
 import { consumeRateLimit, requestIp, isLikelyBot } from './lib/rate-limit';
 import { dispatchJobRow } from './lib/jobs';
+import { waitUntil } from '@vercel/functions';
 import { buildProductWrite, demoteH1, MAX_PRODUCT_IMAGES, MAX_VARIATION_IMAGES, planImport, slugify as importSlugify, templateCsv, titleKey as importTitleKey, validateHeaders } from './lib/product-import';
 
 const app = express();
@@ -570,7 +571,20 @@ app.post('/api/orders', async (req,res) => {
   const rawPhone = String(req.body?.phone || '').replace(/\D/g, '').slice(-10);
   if (rawPhone && !(await allowRequest(req, res, 'checkout-phone', 6, 15 * 60 * 1000, rawPhone))) return;
   const parsed = checkoutSchema.safeParse(req.body); if(!parsed.success) return res.status(400).json({error:'VALIDATION_ERROR',issues:parsed.error.flatten()});
-  try { const order = await createOrder({ ...parsed.data, email: parsed.data.email || undefined, postcode: parsed.data.postcode || undefined, orderNotes: parsed.data.orderNotes || undefined, trackingAllowed:isStorefrontUrl(req.get('origin')||req.get('referer')||''), clientIp:req.ip, clientUserAgent:req.get('user-agent') || undefined }); await invalidateFrontendCache(['products']); res.status(201).json({ orderNumber: order.orderNumber, id: order.id, total: Number(order.total) }); }
+  try {
+    // The order is saved when createOrder returns; the customer gets the answer right away. Job dispatch and the
+    // cache refresh run after the response (waitUntil). The Job rows are already saved, so the worker's
+    // job-recovery picks up any that fail to dispatch here.
+    const order = await createOrder({ ...parsed.data, email: parsed.data.email || undefined, postcode: parsed.data.postcode || undefined, orderNotes: parsed.data.orderNotes || undefined, trackingAllowed:isStorefrontUrl(req.get('origin')||req.get('referer')||''), clientIp:req.ip, clientUserAgent:req.get('user-agent') || undefined }, { dispatchJobs: false });
+    res.status(201).json({ orderNumber: order.orderNumber, id: order.id, subtotal: Number(order.subtotal), deliveryFee: Number(order.deliveryFee), discount: Number(order.couponDiscount || 0), total: Number(order.total) });
+    const jobIds: string[] = (order as { jobIds?: string[] }).jobIds || [];
+    const soldOut: string[] = (order as { soldOutSlugs?: string[] }).soldOutSlugs || [];
+    waitUntil(Promise.allSettled([
+      ...jobIds.map((id) => dispatchJobRow(id)),
+      // Only the products this order sold out change on the storefront; a normal order flushes nothing.
+      ...(soldOut.length ? [invalidateFrontendCache(soldOut.map((slug) => `product:${slug}`))] : []),
+    ]));
+  }
   catch(e:any){ res.status(400).json({error:e?.message || 'ORDER_FAILED'}); }
 });
 app.post('/api/orders/track', async (req,res) => { if (!(await allowRequest(req, res, 'order-track', 30, 15 * 60 * 1000))) return; const orderNumber=String(req.body.orderNumber||'').toUpperCase(); const phone=String(req.body.phone||'').replace(/\D/g,'');if(!normalizePakistanPhone(phone))return res.status(400).json({error:'Enter a valid Pakistani phone number.'}); const order=await prisma.order.findFirst({where:{orderNumber, OR:[{phone:{endsWith:phone.slice(-10)}},{phone:{endsWith:phone.slice(-11)}}]},select:{orderNumber:true,status:true,postexTracking:true,createdAt:true,total:true,city:true}}); if(!order)return res.status(404).json({error:'NOT_FOUND'}); const city=await prisma.city.findUnique({where:{name:order.city}});res.json({...order,deliveryEstimate:`${city?.deliveryMinDays??2}–${city?.deliveryMaxDays??7} working days`,total:Number(order.total),trackingUrl:order.postexTracking?postexTrackingUrl(order.postexTracking):null}); });

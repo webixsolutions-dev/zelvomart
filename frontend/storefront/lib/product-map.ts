@@ -136,5 +136,6 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
     reviewCount: Number(p.reviewCount || 0),
     ...(p.seoTitle ? { seoTitle: p.seoTitle } : {}),
     ...(p.seoDescription ? { seoDescription: p.seoDescription } : {}),
+    ...(p.catalogMeta?.robotsIndex === "noindex" ? { noindex: true } : {}),
   };
 }

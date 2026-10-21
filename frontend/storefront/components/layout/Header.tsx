@@ -127,7 +127,7 @@ export function Header() {
           </ul>
           <p className="drawer-label">Explore</p>
           <ul className="drawer-links">
-            <li><Link href="/shop-all-products/">All Products</Link></li>
+            <li><Link href="/shop/">All Products</Link></li>
             <li><Link href="/new-arrivals/">New Arrivals</Link></li>
             <li><Link href="/bestsellers/">Bestsellers</Link></li>
             <li><Link href="/deals-and-offers/" className="deal-link">Deals & Offers</Link></li>
