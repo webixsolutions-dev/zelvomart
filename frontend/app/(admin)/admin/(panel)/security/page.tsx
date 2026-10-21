@@ -115,7 +115,7 @@ export default function Security() {
             <span>Confirm new password</span>
             <input name="confirmPassword" type="password" autoComplete="new-password" minLength={PASSWORD_MIN} maxLength={200} required />
           </label>
-          <p>At least {PASSWORD_MIN} characters. Changing it signs you out on every other device.</p>
+          <p style={{ gridColumn: "1 / -1" }}>At least {PASSWORD_MIN} characters. Changing it signs you out on every other device.</p>
           <button className="admin-reference-submit" disabled={passwordBusy}>{passwordBusy ? "Saving…" : "Change password"}</button>
         </form>
         {passwordMessage ? <p role="status">{passwordMessage}</p> : null}
