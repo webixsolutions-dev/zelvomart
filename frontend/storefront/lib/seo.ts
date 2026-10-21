@@ -35,6 +35,7 @@ export function shareMeta({
 }: {
   title: string;
   description: string;
+  /** Page path for og:url; "" when the page writes og:url itself (the home page). */
   path: string;
   image?: OgImage;
   type?: "website" | null;
@@ -44,11 +45,27 @@ export function shareMeta({
       ...(type ? { type } : {}),
       title,
       description,
-      url: path,
+      ...(path ? { url: path } : {}),
       siteName: site.name,
       locale: site.locale,
       images: [image],
     },
     twitter: { card: "summary_large_image", title, description, images: [{ url: image.url, alt: image.alt }] },
   };
+}
+
+const BRAND_SUFFIX = " | Zelvomart";
+
+/** "… | Zelvomart", "… - Zelvomart" and the like at the end of a saved SEO title. */
+const TRAILING_BRAND = /\s*[|\-–—:]\s*zelvomart\s*$/i;
+
+/**
+ * The product page <title>: the saved SEO title (or "<name> Price in Pakistan"), with " | Zelvomart" added once
+ * when it fits in 60 characters. A saved title that already ends with the brand is not given a second one.
+ */
+export function productTitle(p: { seoTitle?: string | null; name: string }) {
+  const saved = p.seoTitle?.trim() || "";
+  const base = saved.replace(TRAILING_BRAND, "").trim() || `${p.name} Price in Pakistan`;
+  if (base.length + BRAND_SUFFIX.length <= 60) return base + BRAND_SUFFIX;
+  return saved || base; // too long for the suffix: keep exactly what was saved
 }
