@@ -82,4 +82,24 @@ All items done in code. Backend tests (13), backend `tsc` and `next build` pass.
 
 ### Batch 3 status
 All items done in code. Backend tests (16), backend `tsc` and `next build` pass.
-Next: Batch 4 (clean-up and CI).
+
+## Batch 4: clean-up and CI (branch `chore/cleanup-batch-4`)
+
+| Item | Status | Notes |
+|---|---|---|
+| K1: dead code | Done | The 8 unused files from the audit, plus 6 more found by an import graph from every page/route (a duplicate `useAdminData.tsx`, `ProductStats.tsx`, `lib/phone.ts`, `lib/settings.ts`, `lib/store-images.ts`, `lib/product-media.ts`). `lib/store.ts` replaced by `loadPublicSettings()` in `storefront/lib/backend.ts` (single data layer). Backend: unused `bookPostExOrder()` stub and the never-read `checkout.requiredFields` seed setting removed; `lib/totp.ts` stays (admin 2FA). |
+| K1: unused public assets | Done | 39 files (3.4 MB) that no page requests or references (crawl of 32 store pages at 1440 and 390 px + code search). Kept on purpose: `/brand/` logos, `/images/products/` (database product images), `/images/zelvomart/`. Fixed on the way: shop, bestsellers, deals and new-arrivals pages pointed og:image at files that did not exist. |
+| K2: Prettier | Done | Separate "format only" commit; `npm run format` / `format:check` in the backend. |
+| K2: routers | Done | `server.ts` 3,843 → 109 lines; routes in `src/routes/` (public, tracking, replay, customer-auth, auth, admin/orders, admin/products, admin/customers, admin/settings, admin/reports), shared helpers in `src/http/shared.ts`. Same 120 registered layers before and after; no reordered pair can match the same request. Kept in one PR: it is a move of unchanged code, and the checks cover it as a whole. |
+| L1: generated client | Done | `backend/src/generated/` (28 MB, incl. a 20 MB Windows engine) out of git and ignored; made by `prisma generate` at install/build. Removed from `vercel.json` includeFiles. |
+| L1: deployment screenshots | Done | 104 images (8.3 MB) removed; notes and runbooks stay. |
+| L1: CI | Done | `.github/workflows/ci.yml`: npm ci, prisma validate, backend typecheck/format/tests, frontend typecheck, next build. No secrets or database needed. README has the Ignored Build Step for both Vercel projects. |
+
+### Left for a person (not code)
+- In each Vercel project: Settings → Git → Ignored Build Step → paste the command from the README.
+- Watch the first backend preview deploy after this merge: the Prisma client is now generated on Vercel instead of committed. If the deploy fails with a missing Prisma file, add `"src/generated/prisma/**"` back to `includeFiles` in `backend/vercel.json`.
+- Optional, later: protect `main` on GitHub (require the CI check and one review).
+
+### Batch 4 status
+All items done in code. Backend tests (48), both typechecks, Prettier check and `next build` pass locally.
+Next: Batch 5 (region and monitoring).
