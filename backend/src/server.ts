@@ -24,7 +24,7 @@ import bcrypt from 'bcryptjs';
 import multer from 'multer';
 import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatus } from './generated/prisma/client';
 import { prisma } from './lib/db';
-import { signAdminToken, requireAuth, signTwoFactorChallenge, decodeTwoFactorChallenge, forgetAdminUser, TWO_FACTOR_ROLES, ADMIN_TOKEN_SECONDS, type AuthedRequest } from './lib/auth';
+import { signAdminToken, requireAuth, signTwoFactorChallenge, decodeTwoFactorChallenge, forgetAdminUser, ADMIN_TOKEN_SECONDS, type AuthedRequest } from './lib/auth';
 import { generateTotpSecret, verifyTotp, totpUri } from './lib/totp';
 import { validAdminBody, productCreateSchema, productUpdateSchema, variantCreateSchema, categoryCreateSchema, categoryUpdateSchema, pageCreateSchema, pageUpdateSchema, redirectSchema, salePriceProblem } from './lib/admin-validators';
 import QRCode from 'qrcode';
@@ -833,7 +833,7 @@ function sessionResponse(res: express.Response, user: { id: string; name: string
   return res.json({ token: signAdminToken(identity), expiresIn: ADMIN_TOKEN_SECONDS, user: identity });
 }
 
-// Step 1: email + password. With 2FA set up (or required for the role) the answer is a 5-minute challenge, not a session.
+// Step 1: email + password. An account that turned 2FA on gets a 5-minute challenge instead of a session.
 app.post('/api/auth/login', async (req,res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
@@ -843,12 +843,6 @@ app.post('/api/auth/login', async (req,res) => {
   res.setHeader('Cache-Control', 'no-store');
 
   if (user.twoFactorReady && user.totpSecret) return res.json({ twoFactor: 'verify', challenge: signTwoFactorChallenge(user.id, 'verify') });
-  if (TWO_FACTOR_ROLES.includes(user.role)) {
-    // First sign-in since 2FA became mandatory: set it up now. A pending secret is kept, so the QR stays the same on retries.
-    const secret = user.totpSecret || generateTotpSecret();
-    if (!user.totpSecret) await prisma.user.update({ where: { id: user.id }, data: { totpSecret: secret, twoFactorReady: false } });
-    return res.json({ twoFactor: 'enroll', challenge: signTwoFactorChallenge(user.id, 'enroll'), ...(await enrolmentDetails(secret, user.email)) });
-  }
   return sessionResponse(res, user);
 });
 
@@ -873,7 +867,7 @@ app.post('/api/auth/login/verify', async (req,res) => {
 // A fresh 2-hour token for an admin who is still signed in (the admin proxy calls this near expiry).
 app.post('/api/auth/refresh', requireAuth(), async (req:AuthedRequest,res) => sessionResponse(res, req.admin!));
 
-// 2FA for roles where it is optional (ORDER_AGENT, MARKETER), from a signed-in session.
+// 2FA is optional for every role: turned on (and off) from a signed-in session in Admin → Security.
 app.post('/api/auth/2fa/setup', requireAuth(), async (req:AuthedRequest,res) => {
   res.setHeader('Cache-Control', 'no-store');
   const user = await prisma.user.findUnique({ where: { id: req.admin!.id } });

@@ -9,8 +9,6 @@ export type AuthedRequest = Request & { admin?: AdminIdentity };
 
 /** How long an admin session token lives. The admin proxy refreshes it while the admin keeps working. */
 export const ADMIN_TOKEN_SECONDS = 2 * 60 * 60;
-/** Roles that may not use the admin without a second factor. */
-export const TWO_FACTOR_ROLES: Role[] = ["OWNER", "MANAGER"];
 /** Between password and code: the short-lived proof that the password step passed. */
 const CHALLENGE_SECONDS = 5 * 60;
 /** How long requireAuth trusts its last database read of a user's active flag and role. */
@@ -69,8 +67,9 @@ async function currentUser(userId: string) {
 }
 
 /**
- * The token proves who signed in; the database decides what they may do now. A deactivated user, a lowered role
- * or a reset second factor applies within a minute (immediately on the instance that made the change).
+ * The token proves who signed in; the database decides what they may do now. A deactivated user or a lowered role
+ * applies within a minute (immediately on the instance that made the change). Two-factor is optional: it is asked
+ * for at sign-in only by accounts that turned it on.
  */
 export function requireAuth(permission?: Permission) {
   return async (req: AuthedRequest, res: Response, next: NextFunction) => {
@@ -90,7 +89,6 @@ export function requireAuth(permission?: Permission) {
       return res.status(503).json({ error: "AUTH_CHECK_UNAVAILABLE" });
     }
     if (!user || !user.active) return res.status(401).json({ error: "UNAUTHORIZED" });
-    if (TWO_FACTOR_ROLES.includes(user.role) && !user.twoFactorReady) return res.status(401).json({ error: "TWO_FACTOR_REQUIRED" });
     if (permission && !can(user.role, permission)) return res.status(403).json({ error: "FORBIDDEN" });
     req.admin = { id: user.id, name: user.name, email: user.email, role: user.role };
     next();

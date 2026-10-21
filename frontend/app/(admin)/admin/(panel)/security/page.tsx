@@ -7,7 +7,7 @@ import { useAdminData, AdminLoading, AdminError } from "@/components/admin/useAd
 type Me = { user: { id: string; name: string; email: string; role: string }; twoFactorReady: boolean };
 type Setup = { qr: string; secret: string };
 
-/** Two-factor sign-in for the signed-in admin. Required for owners and managers (set up at login), optional for others. */
+/** The signed-in admin's own security: optional two-factor sign-in. */
 export default function Security() {
   const { data, loading, error } = useAdminData<Me | null>("/api/auth/me", null);
   const [setup, setSetup] = useState<Setup | null>(null);
@@ -17,8 +17,7 @@ export default function Security() {
   if (loading) return <AdminLoading />;
   if (error || !data) return <AdminError message={error || "Could not load your account."} />;
   const me = data.user;
-  const required = me.role === "OWNER" || me.role === "MANAGER";
-  const on = enabled || required || data.twoFactorReady;
+  const on = enabled || data.twoFactorReady;
 
   async function start() {
     setBusy(true);
@@ -61,7 +60,7 @@ export default function Security() {
         <h2>Two-factor sign-in</h2>
         {on ? (
           <p>
-            <strong>On.</strong> {required ? "Required for your role." : "You will be asked for a code each time you sign in."} If you lose your phone, an owner can reset it in Users &amp; Roles.
+            <strong>On.</strong> You will be asked for a code each time you sign in. If you lose your phone, an owner can reset it in Users &amp; Roles.
           </p>
         ) : setup ? (
           <form className="admin-reference-form catalog-form" onSubmit={confirm}>
