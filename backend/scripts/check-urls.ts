@@ -11,13 +11,11 @@ async function check(path: string) {
 async function main() {
   const products = await prisma.product.findMany({ select: { slug: true } });
   const categories = await prisma.category.findMany({ select: { slug: true } });
-  const pages = await prisma.page.findMany({ where: { published: true }, select: { slug: true } });
   const paths = [
     "/",
     "/shop/",
     ...products.map((row) => `/product/${row.slug}/`),
     ...categories.map((row) => `/product-category/${row.slug}/`),
-    ...pages.map((row) => `/${row.slug}/`),
   ];
   const failures = [] as any[];
   for (const path of paths) {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Input checks for the admin's product, category, page and redirect writes (checkout already had its own).
+ * Input checks for the admin's product, category and redirect writes (checkout already had its own).
  * Objects are "loose": fields the handlers read but these schemas do not list (previousSlug, catalogMeta
  * details, …) pass through unchanged. What is listed is checked for type, length and format.
  */
@@ -118,23 +118,6 @@ export const categoryCreateSchema = z.looseObject({
   seoDescription: categoryFields.seoDescription.optional(),
 });
 export const categoryUpdateSchema = z.looseObject(Object.fromEntries(Object.entries(categoryFields).map(([k, s]) => [k, s.optional()])));
-
-const pageFields = {
-  slug: slug.max(100),
-  title: z.string().trim().min(1, "Add a page title.").max(200),
-  bodyHtml: z.preprocess((v) => (v == null ? "" : v), z.string().max(500_000)),
-  seoTitle: text(200),
-  seoDescription: text(1000),
-  published: z.boolean(),
-};
-export const pageCreateSchema = z.looseObject({
-  ...pageFields,
-  bodyHtml: pageFields.bodyHtml.optional(),
-  seoTitle: pageFields.seoTitle.optional(),
-  seoDescription: pageFields.seoDescription.optional(),
-  published: pageFields.published.optional(),
-});
-export const pageUpdateSchema = z.looseObject(Object.fromEntries(Object.entries(pageFields).map(([k, s]) => [k, s.optional()])));
 
 export const redirectSchema = z.looseObject({
   sourcePath: z

@@ -178,7 +178,7 @@ const adminApiByHref: Record<string, string> = {
 
 type NavLink = readonly [string, string, ReactNode];
 
-const groups=[{label:'Store',links:[['/admin','Dashboard',icons.dashboard],['/admin/orders','Orders',icons.orders],['/admin/customers','Customers',icons.customers]] as NavLink[]},{label:'Catalog',links:[['/admin/products','Products',icons.products],['/admin/categories','Categories',icons.categories],['/admin/tags','Tags',icons.tags],['/admin/discounts','Discounts',icons.discounts],['/admin/coupons','Coupons',icons.discounts],['/admin/reviews','Reviews',icons.reviews],['/admin/product-tabs','Product tabs',icons.pages],['/admin/content','Pages',icons.pages]] as NavLink[]},{label:'Insights',links:[['/admin/session-replays','Session Replays',icons.replays]] as NavLink[]},{label:'Admin',links:[['/admin/settings','Settings',icons.settings],['/admin/users','Users & Roles',icons.users],['/admin/redirects','SEO Redirects',icons.redirects],['/admin/jobs','Jobs',icons.jobs]] as NavLink[]}];
+const groups=[{label:'Store',links:[['/admin','Dashboard',icons.dashboard],['/admin/orders','Orders',icons.orders],['/admin/customers','Customers',icons.customers]] as NavLink[]},{label:'Catalog',links:[['/admin/products','Products',icons.products],['/admin/categories','Categories',icons.categories],['/admin/tags','Tags',icons.tags],['/admin/discounts','Discounts',icons.discounts],['/admin/coupons','Coupons',icons.discounts],['/admin/reviews','Reviews',icons.reviews],['/admin/product-tabs','Product tabs',icons.pages]] as NavLink[]},{label:'Insights',links:[['/admin/session-replays','Session Replays',icons.replays]] as NavLink[]},{label:'Admin',links:[['/admin/settings','Settings',icons.settings],['/admin/users','Users & Roles',icons.users],['/admin/redirects','SEO Redirects',icons.redirects],['/admin/jobs','Jobs',icons.jobs]] as NavLink[]}];
 
 function linkIsActive(pathname: string, href: string) {
   if (href === "/admin") return pathname === href;
@@ -272,7 +272,6 @@ export default function AdminNav({
         "/admin/discounts",
         "/admin/coupons",
         "/admin/product-tabs",
-        "/admin/content",
         "/admin/reports",
         "/admin/marketing",
         "/admin/cro",

@@ -237,35 +237,6 @@ async function importPastOrdersAndCustomers() {
   }
 }
 
-async function importPages() {
-  try {
-    const rows = await api<any[]>(`${source}/wp-json/wp/v2/pages?per_page=100&status=publish`);
-    for (const row of rows) {
-      const seo = rankMathSeo(row);
-      const title = stripHtml(row.title?.rendered) || row.slug;
-      const bodyText = stripHtml(row.excerpt?.rendered || row.content?.rendered || "").slice(0, 300);
-      await prisma.page.upsert({
-        where: { slug: row.slug },
-        update: {
-          title,
-          bodyHtml: row.content?.rendered || "",
-          seoTitle: seo.title || title,
-          seoDescription: seo.description || bodyText || null,
-        },
-        create: {
-          slug: row.slug,
-          title,
-          bodyHtml: row.content?.rendered || "",
-          seoTitle: seo.title || title,
-          seoDescription: seo.description || bodyText || null,
-        },
-      });
-    }
-  } catch (error) {
-    console.warn("Page migration skipped:", error);
-  }
-}
-
 async function main() {
   if (!consumerKey || !consumerSecret) throw new Error('Set WC_CONSUMER_KEY and WC_CONSUMER_SECRET in backend/.env. Use a read-only WooCommerce key. No products have been changed.');
   if (!apply) {
@@ -278,7 +249,6 @@ async function main() {
   await importCategoriesAuthenticated();
   await importProductsAuthenticated();
   await importReviewsAuthenticated();
-  await importPages();
   await importPastOrdersAndCustomers();
   console.log("Migration complete. Re-run immediately before cutover as required by the specification.");
 }

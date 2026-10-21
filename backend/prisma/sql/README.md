@@ -56,3 +56,16 @@ Steps:
 
 Tested on a copy of the local database: 500 seeded chunks and their session removed, order links cleared,
 the chunk table back to 40 kB.
+
+## 03 — Remove the CMS pages (Admin → Pages removed)
+
+`03-drop-cms-pages.sql` deletes every row of `Page`. Admin → Pages and its API are gone in this release, and
+the policy pages now take their text from code (`frontend/storefront/lib/policies`). Until this runs, a policy
+row still in the table is shown instead of the code version; afterwards the code version always shows (within
+10 minutes, the storefront cache). Old CMS slugs already answer 404 from this release.
+
+Steps: deploy this release, then Supabase → SQL Editor → paste the file → Run. The first query lists the pages
+being removed (copy anything you want to keep); the last must show `pages_left = 0`. Then open
+`/privacy-policy/`, `/terms-conditions/`, `/shipping-policy/` and `/refund_returns/` once.
+
+Tested on a copy of the local database.

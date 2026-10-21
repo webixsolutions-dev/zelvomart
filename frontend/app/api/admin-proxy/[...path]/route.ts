@@ -87,11 +87,6 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
         for(const tag of ['settings','store','products','cities'])revalidateTag(tag,{expire:0});
         revalidatePath('/','layout');
       }
-      // Admin → Pages: the four policy pages (and CMS pages) read /api/pages/{slug}; show a save after one reload.
-      if(upstream.ok&&['PUT','PATCH','POST','DELETE'].includes(method)&&backendPath.startsWith('/api/admin/pages')){
-        revalidateTag('pages',{expire:0});
-        for(const path of ['/privacy-policy/','/terms-conditions/','/shipping-policy/','/refund_returns/','/sitemap.xml'])revalidatePath(path);
-      }
       if(upstream.ok&&['POST','PATCH','DELETE'].includes(method)&&backendPath.startsWith('/api/admin/reviews')){
         revalidateTag('products',{expire:0});
         revalidatePath('/','layout');

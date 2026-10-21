@@ -1,37 +1,14 @@
 import type { PolicyDocument, PolicyIcon, PolicySection, PolicySlug } from "./types";
 
 /**
- * The four policies live in Admin → Pages as rich text. Each <h2> starts one section card; the text
- * under it becomes the card's paragraphs (links kept, every other tag dropped). The files in this
- * folder are the fallback and the seed for those pages.
+ * The policy text lives in the files in this folder and changes only in code. Until
+ * backend/prisma/sql/03-drop-cms-pages.sql is run, a policy row still in the Page table (saved in the old
+ * Admin → Pages) is shown instead: each <h2> starts one section card, the text under it becomes the card's
+ * paragraphs (links kept, every other tag dropped). With the table empty, the file version always shows.
  */
 
-/** Date the file versions of the policies last changed; shown as "Last updated" when Admin has no page yet. */
+/** Date the file versions of the policies last changed; shown as "Last updated". */
 export const POLICY_FILES_UPDATED = "2026-10-21";
-
-const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-/** A section body (paragraphs split by blank lines, Markdown links) as HTML. */
-function bodyToHtml(body: string) {
-  return body
-    .split(/\n{2,}/)
-    .map((para) => {
-      let out = "";
-      let cursor = 0;
-      for (const m of para.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)) {
-        out += escapeHtml(para.slice(cursor, m.index));
-        out += `<a href="${escapeHtml(m[2])}">${escapeHtml(m[1])}</a>`;
-        cursor = (m.index ?? 0) + m[0].length;
-      }
-      return `<p>${out + escapeHtml(para.slice(cursor))}</p>`;
-    })
-    .join("");
-}
-
-/** The policy as Admin → Pages HTML: one <h2> per section. */
-export function policyToHtml(doc: PolicyDocument) {
-  return doc.sections.map((s) => `<h2>${escapeHtml(s.heading)}</h2>${bodyToHtml(s.body)}`).join("\n");
-}
 
 const decode = (text: string) =>
   text
@@ -97,7 +74,7 @@ function styleFor(heading: string, fallback: PolicyDocument): Pick<PolicySection
 export type PageRow = { title?: string; bodyHtml?: string | null; seoDescription?: string | null; updatedAt?: string; published?: boolean };
 
 /**
- * The Admin page as the design's policy document, or null when it has no <h2> sections
+ * A saved Page row as the design's policy document, or null when it has no <h2> sections
  * (for example the one-line placeholder an older seed created): the file version shows then.
  */
 export function pageToPolicy(slug: PolicySlug, page: PageRow | null, fallback: PolicyDocument): PolicyDocument | null {

@@ -1,6 +1,5 @@
 import { Prisma } from "../src/generated/prisma/client";
 import { prisma } from "../src/lib/db";
-import { seedPolicyPages } from "../scripts/seed-policy-pages";
 
 const categories = [
   ["Home & Living", "home-living", 10, "/images/categories/home-living.svg"],
@@ -79,51 +78,6 @@ const defaultSettings: Record<string, unknown> = {
   },
 };
 
-const defaultPages = [
-  {
-    slug: "blog",
-    title: "Blog",
-    bodyHtml:
-      "<h2>Useful ideas for everyday shopping</h2><p>The Zelvomart Blog shares practical buying guides, product ideas, care tips and store updates.</p><h3>Shopping guides</h3><p>Compare products, understand features and choose what fits your routine.</p><h3>Product inspiration</h3><p>Discover useful ideas across home, beauty, tech, fashion and fitness.</p><p><a href=\"/shop\"><strong>Explore the latest products →</strong></a></p>",
-  },
-  {
-    slug: "about-us",
-    title: "About Us",
-    bodyHtml:
-      "<p>Zelvomart is an online store serving customers across Pakistan with quality-checked products and Cash on Delivery.</p>",
-  },
-  {
-    slug: "contact-us",
-    title: "Contact Us",
-    bodyHtml:
-      "<p>For order help or product questions, contact Zelvomart on WhatsApp or email.</p>",
-  },
-  {
-    slug: "faq",
-    title: "Frequently Asked Questions",
-    bodyHtml:
-      "<p>Common questions about ordering, delivery, Cash on Delivery, returns and support.</p>",
-  },
-  {
-    slug: "shipping-delivery",
-    title: "Shipping & Delivery",
-    bodyHtml:
-      "<p>Orders are confirmed before dispatch. Delivery estimates are shown during checkout and may vary by city.</p>",
-  },
-  {
-    slug: "returns-exchange",
-    title: "Returns & Exchange",
-    bodyHtml:
-      "<p>Return and exchange rules are managed by Zelvomart and should be reviewed before launch.</p>",
-  },
-  {
-    slug: "terms",
-    title: "Terms & Conditions",
-    bodyHtml:
-      "<p>These terms apply to orders placed through Zelvomart.</p>",
-  },
-];
-
 const cities = [
   "Karachi",
   "Lahore",
@@ -170,17 +124,6 @@ async function main() {
       data: { value: defaultSettings["store.delivery"] as Prisma.InputJsonValue },
     });
   }
-
-  for (const page of defaultPages) {
-    await prisma.page.upsert({
-      where: { slug: page.slug },
-      update: {},
-      create: page,
-    });
-  }
-
-  // The four policy pages (privacy, terms, shipping, refunds), edited in Admin → Pages.
-  await seedPolicyPages();
 
   for (const name of cities) {
     await prisma.city.upsert({
