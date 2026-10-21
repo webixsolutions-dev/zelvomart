@@ -6,7 +6,7 @@ import { ShopProvider } from "@store/lib/store";
 import { AnnouncementBar } from "@store/components/layout/AnnouncementBar";
 import { Header } from "@store/components/layout/Header";
 import { Footer } from "@store/components/layout/Footer";
-import { CartDrawer } from "@store/components/layout/CartDrawer";
+import { LazyCartDrawer } from "@store/components/layout/LazyCartDrawer";
 import { MobileBottomNav } from "@store/components/layout/MobileBottomNav";
 import { Toaster } from "@store/components/layout/Toaster";
 // Platform providers (non-visual): settings bootstrap, Meta/TikTok pixels, GA4, tracking events and session replays.
@@ -108,7 +108,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <main id="main">{children}</main>
           <Footer />
           <MobileBottomNav />
-          <CartDrawer />
+          <LazyCartDrawer />
           <Toaster />
         </ShopProvider>
         </CatalogBridge>

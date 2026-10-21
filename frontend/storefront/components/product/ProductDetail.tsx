@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,10 @@ import { Price } from "@store/components/ui/Price";
 import { Stars } from "@store/components/ui/Stars";
 import { QtyStepper } from "@store/components/shop/QtyStepper";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
-import { ProductReviews, ReviewCard } from "./ProductReviews";
+import { ReviewCard } from "./ReviewCard";
+
+// Below the fold: its code (filters, photo upload, review form) is a separate chunk. Still rendered on the server.
+const ProductReviews = dynamic(() => import("./ProductReviews").then((m) => m.ProductReviews));
 
 const views = [
   { label: "Front", style: {} },
