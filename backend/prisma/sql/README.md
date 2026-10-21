@@ -1,0 +1,39 @@
+# Database SQL scripts
+
+Reviewed SQL that a person runs by hand in the Supabase SQL editor. Nothing here runs on deploy.
+
+## 01 — Lock the public schema (audit C1)
+
+`01-lock-public-schema.sql` removes every grant the Supabase API roles (`anon`, `authenticated`) hold on the
+`public` and `pgboss` schemas, stops new tables from inheriting them, and turns on Row-Level Security for
+every table with no policies. The app is not affected: it uses Prisma over a direct connection as the
+table owner, and owners bypass RLS. Nothing in the repository calls the Supabase REST/GraphQL Data API.
+
+Steps:
+
+1. **Back up first.** Supabase → Database → Backups (Pro), or `pg_dump` of the database.
+2. **Staging first.** Run the script on a copy or a Supabase branch, then open the storefront, place a test
+   order and log in to the admin.
+3. **Production.** Supabase → SQL Editor → paste `01-lock-public-schema.sql` → Run.
+   - Run it as the same role `DATABASE_URL` uses (the SQL editor's default `postgres` role).
+   - If it stops with "not owned by …", nothing was changed. Fix the ownership it names, then run it again.
+   - The last query must show `rls_off = 0` and `anon_grants = 0`.
+4. **Data API.** Supabase → Settings → Data API: remove `public` from the exposed schemas, or turn the
+   Data API off (nothing uses it).
+5. **Check from outside.** Call `GET https://<project>.supabase.co/rest/v1/User` with the anon key. It must
+   answer 401 or "permission denied".
+6. **Check the app.** Storefront pages, checkout, admin login and an admin save must all still work.
+7. **Check the advisor.** Supabase → Advisors → Security must show no `rls_disabled_in_public` errors.
+8. **Rotate what was exposed:**
+   - Change the admin password.
+   - Delete every `StoreSession` row, so customers sign in again.
+   - Rotate `JWT_SECRET` on go-live day.
+
+Rollback: `01-rollback.sql` restores the previous grants and turns RLS off again. Use it only if the lock
+broke something; it re-opens the exposure.
+
+Both scripts were tested on a local Postgres with `anon` and `authenticated` roles:
+
+- After the lock, the anon role gets "permission denied" and the API still answers 200.
+- The rollback restores the previous state, and the lock runs again cleanly afterwards.
+- With a table owned by another role, the lock stops before making any change.
