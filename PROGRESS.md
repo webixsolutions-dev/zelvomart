@@ -45,4 +45,24 @@ new password works. Backend tests (13) and `next build` pass.
 ### Left for a person (not code)
 - After deploy, every admin signs in once more (tokens issued before this change do not carry the fingerprint).
 
-Next: Batch 2 (`fix/data-loss-batch-2`): C4 replays to R2 only, purge SQL, remove admin Pages and the catch-all route, H3 fetch timeout.
+
+## Batch 2: recordings to R2, Pages removed, backend timeouts (branch `fix/data-loss-batch-2`)
+
+| Item | Status | Notes |
+|---|---|---|
+| C4: recordings only in the private R2 bucket | Done | No Postgres fallback. Without `REPLAY_S3_BUCKET` (plus `S3_ENDPOINT` and the S3 keys) nothing is recorded: the storefront does not load the recorder, the replay endpoints answer 503 `REPLAY_STORAGE_NOT_CONFIGURED` before any database write, and Admin → Session Replays and Admin → Tracking show a warning. Postgres keeps metadata only (storage key, counts, size, timestamps). No sampling: every visitor is recorded. |
+| C4: purge SQL | Done (file only) | `backend/prisma/sql/02-purge-old-replays.sql`: deletes every recording, clears order links, `VACUUM FULL`. Tested on a copy of the local database. |
+| C4: R2 lifecycle | Done (file only) | `deployment/replay-lifecycle.json`: `replays/` objects expire after 30 days. Retention setting default 30, maximum 30. Steps in `deployment/TRACKING-REPLAY-ROLLOUT.md`. The old `migrate-replay-storage.ts` is removed (old data is not kept). |
+| Admin → Pages removed | Done | Sidebar link, pages and `/api/admin/pages` GET/POST/PATCH removed. `/api/pages/:slug` and `loadPolicy()` unchanged: policy text changes only in code. CMS pages left the sitemap, and the seeds and WordPress import no longer write the Page table. `backend/prisma/sql/03-drop-cms-pages.sql` deletes every Page row (file only, tested on a copy). |
+| Catch-all `[...slug]` | Done, kept as a 404 route | It no longer renders any CMS page, so old slugs answer 404. It stays only to show the store's own 404 (header and footer) and to apply an Admin redirect the proxy map has not loaded yet (up to 2 minutes). Deleting the file would give Next.js's plain built-in 404 page, because the store and the admin each have their own root layout. |
+| H3: backend fetch timeout | Done | `apiFetch()`: 5 s per attempt, one retry for timeouts, dropped connections and 5xx (never for 4xx). If both fail it serves the last good answer for that path (and logs it); with none it throws and the page shows its own empty or error state. `DEFAULT_CATEGORIES` and `lib/dummy-content.ts` removed. If the store layout gets no settings at all it loads no pixels or recorder. Tested against a fake backend: slow, flaky, 500 and 404 cases. |
+
+### Left for a person (not code)
+- Set `REPLAY_S3_BUCKET` on the backend (Vercel) and check the R2 token can write to that bucket; until then nothing is recorded.
+- Add the 30-day lifecycle rule on the R2 bucket (Cloudflare → R2 → bucket → Settings → Object lifecycle rules).
+- After deploying this release: run `02-purge-old-replays.sql`, then `03-drop-cms-pages.sql` (steps in `backend/prisma/sql/README.md`).
+- Admin → Settings: set the recording retention to 30 days or less if it was saved higher.
+
+### Batch 2 status
+All items done in code. Backend tests (13), backend `tsc` and `next build` pass. Store pages return 200 and old slugs 404 with the store design; with the backend stopped, cached pages keep showing their products.
+Next: Batch 3 (`fix/perf-seo-batch-3`): WebP on upload, the 35 MB PNG folder, M1/M2/M3.
