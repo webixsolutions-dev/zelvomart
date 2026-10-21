@@ -32,7 +32,8 @@ export async function trackStoreEvent(
         if(platform==='meta'&&window.fbq){window.fbq('track',eventName,params,{eventID:eventId});return;}
         if(platform==='tiktok'&&window.ttq){if(eventName==='PageView')window.ttq.page();else window.ttq.track(eventName,tiktokProperties(params),{event_id:eventId});return;}
       }catch{return;}
-      if(attempt<50)window.setTimeout(()=>deliver(platform,attempt+1),100);
+      // Pixels load lazily (after the page has loaded and gone idle): keep the event for up to ~25 s.
+      if(attempt<100)window.setTimeout(()=>deliver(platform,attempt+1),250);
     };
     deliver('meta');deliver('tiktok');
   }

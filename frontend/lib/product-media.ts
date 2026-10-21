@@ -21,16 +21,16 @@ const LEGACY_PRODUCT_IMAGES: Record<string, string> = {
 };
 
 const CATEGORY_FALLBACKS: Record<string, string> = {
-  "home-living": "/images/Zelvomart images/home and living zelvomart.png",
-  "home-decor": "/images/Zelvomart images/Home Decor Zelvomart.png",
-  "beauty-personal-care": "/images/Zelvomart images/Beauty & Personal Care Zelvomart.png",
-  "tech-gadgets": "/images/Zelvomart images/Tech & Gadgets Zelvomart.png",
-  "fashion-accessories": "/images/Zelvomart images/Fashion Accessories Zelvomart.png",
-  "sports-fitness": "/images/Zelvomart images/Sports & Fitness Zelvomart.png",
-  "kids-toys": "/images/Zelvomart images/Kids & Toys Zelvomart.png",
+  "home-living": "/images/zelvomart/home-and-living-zelvomart.webp",
+  "home-decor": "/images/zelvomart/home-decor-zelvomart.webp",
+  "beauty-personal-care": "/images/zelvomart/beauty-and-personal-care-zelvomart.webp",
+  "tech-gadgets": "/images/zelvomart/tech-and-gadgets-zelvomart.webp",
+  "fashion-accessories": "/images/zelvomart/fashion-accessories-zelvomart.webp",
+  "sports-fitness": "/images/zelvomart/sports-and-fitness-zelvomart.webp",
+  "kids-toys": "/images/zelvomart/kids-and-toys-zelvomart.webp",
 };
 
-const DEFAULT_PRODUCT_IMAGE = "/images/Zelvomart images/Shop Zelvmart.png";
+const DEFAULT_PRODUCT_IMAGE = "/images/zelvomart/shop-zelvomart.webp";
 
 // Product may be missing (e.g. an empty catalog during a build), so fall back to the shop image
 export function getProductFallbackImage(product?: Pick<Product, "slug" | "categorySlugs" | "categories"> | null): string {

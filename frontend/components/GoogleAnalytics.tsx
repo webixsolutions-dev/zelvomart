@@ -11,6 +11,13 @@ type AnalyticsWindow = Window & {
   zmGoogleConfigured?: string;
 };
 
+/** Runs once the page has finished loading and the browser is idle (or after 3 s at most). */
+function afterLoadAndIdle(run: () => void) {
+  const idle = () => ('requestIdleCallback' in window ? window.requestIdleCallback(run, { timeout: 3000 }) : setTimeout(run, 1));
+  if (document.readyState === 'complete') idle();
+  else window.addEventListener('load', idle, { once: true });
+}
+
 export default function GoogleAnalytics() {
   const pathname = usePathname(), search = useSearchParams(), last = useRef('');
   const id = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || 'G-9SJCXNENVE';
@@ -30,7 +37,8 @@ export default function GoogleAnalytics() {
       const script = document.createElement('script');
       script.id = 'zelvomart-google-analytics'; script.async = true;
       script.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
-      document.head.appendChild(script);
+      // Lazy, like the pixels: gtag() above queues events in dataLayer until the library arrives.
+      afterLoadAndIdle(() => document.head.appendChild(script));
     }
     if (last.current === page) return () => { w[`ga-disable-${id}`] = true; };
     last.current = page;

@@ -2584,7 +2584,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             <label>
               <span>Title <b>{seoTitle.length} / 60</b></span>
               <input value={seoTitle} maxLength={180} onChange={(event) => setSeoTitle(event.target.value)} placeholder={title || "%title%"} />
-              <small>This is what will appear in the first line when this product shows up in the search results.</small>
+              <small>This is what will appear in the first line when this product shows up in the search results. Leave out “| Zelvomart”: the store adds it when the title fits in 60 characters.</small>
             </label>
             <label>
               <span>Permalink <b>{slug.length} / 75</b></span>

@@ -4,7 +4,7 @@ import { getCategory, relatedProducts, categoryPath, type Product } from "@store
 import { loadProduct, loadStore } from "@store/lib/backend";
 import { ProductBridge } from "@store/lib/bridge";
 import { site } from "@store/lib/site";
-import { productOg, shareMeta } from "@store/lib/seo";
+import { productOg, productTitle, shareMeta } from "@store/lib/seo";
 import { Breadcrumbs } from "@store/components/ui/Breadcrumbs";
 import { ProductDetail } from "@store/components/product/ProductDetail";
 import { ProductGrid } from "@store/components/product/ProductGrid";
@@ -19,14 +19,8 @@ export async function generateStaticParams() {
   return [];
 }
 
-const BRAND_SUFFIX = " | Zelvomart";
 
 /** The product's own SEO title; "| Zelvomart" is added only while the whole title fits Google's ~60 characters. */
-function productTitle(p: Product) {
-  const base = p.seoTitle?.trim() || `${p.name} Price in Pakistan`;
-  return base.length + BRAND_SUFFIX.length <= 60 ? base + BRAND_SUFFIX : base;
-}
-
 /** The product's own meta description; the pattern below is only a fallback for products without one. */
 function productDescription(p: Product) {
   if (p.seoDescription?.trim()) return p.seoDescription.trim();

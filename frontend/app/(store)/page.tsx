@@ -19,12 +19,13 @@ export const metadata: Metadata = {
   title: { absolute: "Zelvomart | Online Shopping in Pakistan, Cash on Delivery" },
   description:
     "Zelvomart is an online store in Pakistan for home, decor, beauty, tech, fashion, fitness and kids’ products. Order online or on WhatsApp, pay on delivery.",
-  alternates: { canonical: "/" },
+  // canonical and og:url are written in the page body (React moves them into <head>): Next.js always renders the
+  // home URL without its trailing slash, and every other page uses one.
   ...shareMeta({
     title: "Zelvomart – Online Shopping in Pakistan",
     description:
       "Zelvomart is an online store in Pakistan for home, decor, beauty, tech, fashion, fitness and kids’ products. Order online or on WhatsApp, pay on delivery.",
-    path: "/",
+    path: "",
   }),
 };
 
@@ -47,6 +48,8 @@ export default async function HomePage() {
 
   return (
     <>
+      <link rel="canonical" href={`${site.url}/`} />
+      <meta property="og:url" content={`${site.url}/`} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       <HeroSlider />
       <section className="trust-section home-trust" aria-label="Why shop with Zelvomart">
