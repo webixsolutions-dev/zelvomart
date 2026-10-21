@@ -2,6 +2,8 @@
 node_modules/
 
 # build output
+# Prisma client: made by `prisma generate` (postinstall, build, dev) from backend/prisma/schema.prisma
+backend/src/generated/
 .next/
 out/
 dist/
