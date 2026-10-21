@@ -290,7 +290,7 @@ async function main() {
     const parsedSettingDays = settingDays !== null && settingDays !== undefined ? Number(settingDays) : NaN;
     const days = Number.isFinite(parsedSettingDays) && parsedSettingDays > 0
       ? parsedSettingDays
-      : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 14);
+      : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
     if (!Number.isFinite(days) || days <= 0) return 0;
     const cutoff = new Date(Date.now() - days * 86400000);
     const result = await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } });

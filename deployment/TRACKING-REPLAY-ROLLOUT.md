@@ -44,7 +44,7 @@ the backend directory as cwd and the same environment.
 ## Private Cloudflare R2 bucket
 
 The private `zelvomart-replays` bucket has now been created in the Zelvomart account,
-with public access disabled, playback CORS and a fourteen-day `replays/` lifecycle
+with public access disabled, playback CORS and a thirty-day `replays/` lifecycle
 rule. The existing multipart-abort rule is preserved. Gzip upload, signed playback,
 production-origin CORS and unsigned-access rejection passed; the QA object was removed.
 The local backend environment now has `REPLAY_S3_BUCKET=zelvomart-replays`.
@@ -54,27 +54,24 @@ the existing R2 `S3_ENDPOINT`, `S3_REGION=auto`, `S3_ACCESS_KEY_ID` and
 Disable public access. No replay public URL is used.
 
 Apply the CORS policy in `replay-cors.json` to the private bucket, adding the actual
-admin origin if different. Apply/merge `replay-lifecycle.json` as an R2 S3 lifecycle
-rule for `replays/`. Preserve any unrelated existing rules. The default is fourteen
-days; when changing the admin retention setting, change the bucket expiration to
-match. Database retention also removes expired session metadata. Lifecycle must
-be configured in Cloudflare; the admin setting does not edit the bucket policy.
+admin origin if different. Apply/merge `replay-lifecycle.json` as an R2 lifecycle
+rule: every object under `replays/` expires **30 days** after upload. Preserve any
+unrelated existing rules. In Cloudflare: R2 → the replay bucket → Settings →
+Object lifecycle rules → Add rule → prefix `replays/`, delete objects after 30 days.
+The admin retention setting (default 30, maximum 30 days) removes the database
+metadata on the same schedule; it does not edit the bucket.
 
-Until a separate bucket is configured, replay ingestion retains the existing
-database JSON storage so recordings continue working. After bucket configuration,
-new chunks contain only metadata in PostgreSQL. Old recordings are still retained
-in their existing database storage. To copy old recordings safely:
+Recordings are stored **only** in the private bucket. Without `REPLAY_S3_BUCKET`
+(plus `S3_ENDPOINT` and the S3 access keys) nothing is recorded: the storefront
+does not load the recorder, the replay endpoints answer 503
+`REPLAY_STORAGE_NOT_CONFIGURED` without touching the database, and Admin →
+Session Replays and Admin → Tracking show a warning. There is no sampling: with
+the bucket configured, every visitor is recorded. PostgreSQL keeps only metadata
+per chunk (storage key, event count, size, timestamps); the inline `events`
+column stays empty.
 
-```sh
-cd backend
-npx tsx scripts/migrate-replay-storage.ts
-npx tsx scripts/migrate-replay-storage.ts --apply
-```
-
-The first command is a dry run. The copy keeps old JSON for rollback; deleting it
-should be a separate decision after verifying signed playback and retention.
-The current database dry run found 4,931 eligible legacy chunks; none were moved
-or removed during this implementation.
+Old inline recordings are not kept or moved. Remove them with
+`backend/prisma/sql/02-purge-old-replays.sql` (steps in `backend/prisma/sql/README.md`).
 
 ## Database and catalog deployment
 

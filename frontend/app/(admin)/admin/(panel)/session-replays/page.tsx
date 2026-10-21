@@ -11,7 +11,7 @@ import {SITE_ORIGIN} from '@/lib/site-url';
 import '../orders/orders.css';
 import './replays.css';
 type Replay={lastSeenAt:string;eventCount:number;viewport?:string;referrer?:string;orderDestination?:string;order?:{orderNumber:string};id:string;visitorId:string;source:string;campaign?:string;landingUrl:string;device?:string;startedAt:string;durationMs:number;pageViews:number;reachedCart:boolean;reachedCheckout:boolean;ordered:boolean};
-type List={total:number;items:Replay[];page:number;totalPages:number;stats:{ordered30:number}};
+type List={storageConfigured?:boolean;total:number;items:Replay[];page:number;totalPages:number;stats:{ordered30:number}};
 const duration=(ms:number)=>`${Math.floor(ms/60000)}m ${Math.floor(ms/1000)%60}s`;
 const pagePath=(url:string)=>{try{return new URL(url||'/',SITE_ORIGIN).pathname}catch{return url||'/'}};
 export default function Replays(){
@@ -28,6 +28,7 @@ export default function Replays(){
  useEffect(()=>{if(outcome!=='live')return;const timer=setInterval(()=>void reload(),5000);return()=>clearInterval(timer)},[outcome,reload]);
  return <div className="od-dashboard replay-list">
   <div className="admin-title"><div><h1>Session Replays</h1><p>Watch customer journeys and find where shoppers drop off.</p></div><label><input type="checkbox" checked={excluded} onChange={e=>{setExcluded(e.target.checked);setSessionReplayOptOut(e.target.checked)}}/> Exclude this device</label></div>
+  {data&&data.storageConfigured===false&&<div className="replay-storage-warning" role="alert"><b>Recording is off: the private R2 bucket is not configured.</b><span>No visitor is being recorded. Recordings are stored only in Cloudflare R2, never in the database. Set REPLAY_S3_BUCKET (with the S3_ENDPOINT and S3 access keys) on the backend, then redeploy.</span></div>}
   <ReplayStatCards loading={loading&&!data} items={[{label:'Matching recordings',value:data?.total||0,description:'With selected filters'},{label:'Orders with recordings',value:data?.stats?.ordered30||0,description:'Selected date range'},{label:'Privacy protection',value:'Masked',description:'Personal inputs hidden'}]}/>
   <section className="od-panel">
    <div className="od-tabs" role="tablist" aria-label="Replay outcome">{[['all','All recordings'],['live','Live now'],['cart-no-order','Cart abandoned'],['checkout-no-order','Checkout abandoned'],['ordered','Ordered'],['visitor-no-product','No product viewed'],['product-no-cart','Product, no cart'],['cart-no-checkout','Cart, no checkout']].map(([value,label])=><button key={value} className={outcome===value?'active':''} role="tab" aria-selected={outcome===value} onClick={()=>setOutcome(value)}>{label}</button>)}</div>

@@ -37,7 +37,7 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
       'marketing.meta.pageId':String(f.get('pageId')||'').trim(),
       'marketing.meta.instagramAccountId':String(f.get('instagramAccountId')||'').trim(),
       'tracking.sessionReplayEnabled': f.get('sessionReplayEnabled') === 'on',
-      'tracking.sessionReplayRetentionDays': Math.max(1, Math.min(90, Number(f.get('sessionReplayRetentionDays') || 14))),
+      'tracking.sessionReplayRetentionDays': Math.max(1, Math.min(30, Number(f.get('sessionReplayRetentionDays') || 30))),
     };
 
     const marketingToken=String(f.get('marketingAccessToken')||'').trim();if(marketingToken)body['marketing.meta.accessToken']=marketingToken;
@@ -135,7 +135,7 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
       {/* Session Replay */}
       <div className="full" style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px', color: '#0f172a' }}>CRO Session Replay & Retention</h3>
-        <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px' }}>Privacy-masked recordings. Scheduled cleanup requires the worker; the storage bucket lifecycle must also match this retention period.</p>
+        <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px' }}>Privacy-masked recordings, stored only in the private R2 bucket (nothing is recorded until it is configured). Recording files expire after 30 days by the bucket rule, so keep this at 30 days or less.</p>
 
         <label className="admin-check full" style={{ marginBottom: 10 }}>
           <input type="checkbox" name="sessionReplayEnabled" defaultChecked={replayOn} />
@@ -143,7 +143,7 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
         </label>
         <label className="field">
           <span>Retention Window (Days)</span>
-          <input name="sessionReplayRetentionDays" type="number" min="1" max="90" defaultValue={s['tracking.sessionReplayRetentionDays'] ?? 14} />
+          <input name="sessionReplayRetentionDays" type="number" min="1" max="30" defaultValue={s['tracking.sessionReplayRetentionDays'] ?? 30} />
         </label>
       </div>
 
