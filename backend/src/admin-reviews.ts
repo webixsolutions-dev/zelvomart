@@ -10,11 +10,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "./lib/db";
 import { requireAuth, type AuthedRequest } from "./lib/auth";
 import { invalidateFrontendCache } from "./lib/cache-invalidation";
-import { uploadObject } from "./lib/storage";
 import {
   stageReviewUpload,
   hydrateReviewUploads,
-  reviewAssetKey,
+  uploadReviewAsset,
   reviewChunkUpload,
   writeReviewChunk,
   completeReviewChunks,
@@ -212,7 +211,7 @@ async function validateUpload(req: Request, preview: boolean) {
     let media: Awaited<ReturnType<typeof rowMedia>> = [];
     try {
       media = await rowMedia(values, mediaFiles, preview, (bytes, path, type) =>
-        uploadObject(reviewAssetKey(bytes, path), bytes, type),
+        uploadReviewAsset(Buffer.from(bytes), path, type),
       );
       media.forEach((m) => assigned.add(m.path));
     } catch (e: any) {
@@ -290,11 +289,7 @@ reviewRouter.post(
         const media: { type: string; url: string; path: string }[] = [];
         let avatarUrl: string | undefined;
         for (const m of row.media) {
-          const url = await uploadObject(
-            reviewAssetKey(validated.mediaFiles[m.path], m.path),
-            validated.mediaFiles[m.path],
-            m.contentType,
-          );
+          const url = await uploadReviewAsset(Buffer.from(validated.mediaFiles[m.path]), m.path, m.contentType);
           if (m.avatar) avatarUrl = url;
           else media.push({ type: m.type, url, path: m.path });
         }
@@ -435,11 +430,7 @@ export async function storeReviewFiles(req: Request) {
   if (photos > 5 || videos > 1)
     throw new Error("Maximum 5 photos and 1 video.");
   for (const { f, avatar, info } of checked) {
-    const url = await uploadObject(
-      reviewAssetKey(f.buffer, f.originalname),
-      f.buffer,
-      info.contentType,
-    );
+    const url = await uploadReviewAsset(f.buffer, f.originalname, info.contentType);
     if (avatar) avatarUrl = url;
     else media.push({ type: info.type, url });
   }

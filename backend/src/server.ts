@@ -12,7 +12,7 @@ import {SITE_ORIGIN,isStorefrontUrl} from './lib/site-url';
 import {privateSafeUrl} from "./lib/url-privacy";
 import {storeReplayChunk,replayChunkUrl,replayStorageConfigured,deleteReplayChunks,readReplayChunk} from "./lib/replay-storage";
 import {catalogFeed} from "./lib/catalog-feed";
-import {saveCatalogImage} from "./lib/catalog-images";
+import {saveCatalogImage,toSiteWebp} from "./lib/catalog-images";
 import {sendTikTokServerEvent} from "./lib/tiktok";
 import {trackingHealth} from "./lib/tracking-health";
 import 'dotenv/config';
@@ -1744,7 +1744,9 @@ app.post('/api/admin/products/:id/images', requireAuth('products.write'), async 
     res.status(400).json({error:error?.message||'PRODUCT_IMAGES_FAILED'});
   }
 });
-// Images are converted to WebP in the browser first (frontend/lib/image-convert.ts).
+// Images are converted to WebP in the browser first (frontend/lib/image-convert.ts), and again here for anything
+// that arrives as JPG, PNG or AVIF (toSiteWebp: max 1600 px wide, quality 82, metadata removed). The feed copy
+// below is a JPG made from the original upload, because the ad platforms' feeds need JPG/PNG.
 // Each file is stored in R2 as products/<sha256>.<ext>: the same image uploaded again gets
 // the same URL, so the admin can skip it as a duplicate. There is no local-disk fallback:
 // on Vercel those files disappear after a restart.
@@ -1758,11 +1760,14 @@ app.post('/api/admin/upload', requireAuth('products.write'), (req,res,next)=>{
 }, async (req,res)=>{
   if(!req.file) return res.status(400).json({error:'FILE_REQUIRED',message:'Unable to upload: no file was received.'});
   const ext=UPLOAD_EXTENSIONS[req.file.mimetype];
-  if(!ext) return res.status(400).json({error:'IMAGE_REQUIRED',message:'Unable to upload: only JPG, PNG, WEBP or GIF images are allowed.'});
+  if(!ext) return res.status(400).json({error:'IMAGE_REQUIRED',message:'Unable to upload: only JPG, PNG, WEBP, AVIF or GIF images are allowed.'});
   if(!isCloudStorageConfigured()) return res.status(503).json({error:'STORAGE_NOT_CONFIGURED',message:'Unable to upload: image storage (Cloudflare R2) is not configured on the backend. Set S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY and S3_PUBLIC_BASE_URL.'});
+  let site:Awaited<ReturnType<typeof toSiteWebp>>;
+  try{site=await toSiteWebp(req.file.buffer,req.file.mimetype)}catch{return res.status(400).json({error:'IMAGE_UNREADABLE',message:'Unable to upload: the image could not be read.'})}
   try {
+    // The hash is of the original file, so the same upload twice still gets the same URL (duplicate check).
     const hash=createHash('sha256').update(req.file.buffer).digest('hex');
-    const url=await uploadObject(`products/${hash}.${ext}`,req.file.buffer,req.file.mimetype);
+    const url=await uploadObject(`products/${hash}.${site.ext}`,site.bytes,site.contentType);
     let feedImageUrl:string|undefined;try{feedImageUrl=await saveCatalogImage(url,req.file.buffer)}catch(error){console.error('Catalog JPG copy failed; backfill can retry',error instanceof Error?error.message:error)}
     res.json({url,hash,feedImageUrl});
   } catch (error:any) {

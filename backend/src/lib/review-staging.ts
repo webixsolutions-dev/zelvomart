@@ -4,6 +4,7 @@ import type { RequestHandler } from "express";
 import type { AuthedRequest } from "./auth";
 import multer from "multer";
 import { uploadObject } from "./storage";
+import { toSiteWebp } from "./catalog-images";
 import { presignReviewUpload, readStagedReviewObject } from "./storage";
 
 type Upload = {
@@ -200,4 +201,14 @@ export const hydrateReviewUploads: RequestHandler = async (
 };
 export function reviewAssetKey(bytes: Uint8Array, name: string) {
   return `reviews/assets/${createHash("sha256").update(bytes).digest("hex")}.${name.split(".").pop()?.toLowerCase()}`;
+}
+
+/**
+ * Stores one review photo or video. Photos (JPG, PNG, AVIF, WebP) become WebP like every site image
+ * (toSiteWebp); videos and GIFs are stored as they are. The key hashes the original bytes.
+ */
+export async function uploadReviewAsset(bytes: Buffer, name: string, contentType: string) {
+  const site = await toSiteWebp(bytes, contentType);
+  const key = site.converted || site.ext === "webp" ? reviewAssetKey(bytes, `${name}.webp`) : reviewAssetKey(bytes, name);
+  return uploadObject(key, site.bytes, site.contentType);
 }
