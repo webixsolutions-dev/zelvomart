@@ -21,6 +21,9 @@ export async function logoutAdminSession() {
 
 async function handleUnauthorized(response: Response) {
   if (response.status !== 401 || typeof window === 'undefined') return;
+  // Only an ended session signs out. A wrong current password (Security page) is a 401 too, with its own code.
+  const body = await response.clone().json().catch(() => null) as { error?: unknown } | null;
+  if (body?.error === 'WRONG_PASSWORD') return;
   await logoutAdminSession();
   if (!window.location.pathname.startsWith('/admin/login')) {
     window.location.replace('/admin/login');

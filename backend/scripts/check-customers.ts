@@ -2,15 +2,15 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {prisma} from '../src/lib/db';
-import {signAdminToken} from '../src/lib/auth';
+import {signAdminToken,passwordStamp} from '../src/lib/auth';
 
 // From backend/: npx tsx scripts/check-customers.ts [--write-test]
 // Write checks create one uniquely tagged fixture, then clean up only its records.
 async function main(){
  const base=process.env.CUSTOMER_CHECK_API_URL||'http://localhost:4000';
- const user=await prisma.user.findFirst({where:{role:'OWNER'},select:{id:true,name:true,email:true,role:true}});
+ const user=await prisma.user.findFirst({where:{role:'OWNER'},select:{id:true,name:true,email:true,role:true,passwordHash:true}});
  assert.ok(user,'An existing owner is required for API checks.');
- const token=signAdminToken(user);
+ const token=signAdminToken(user,passwordStamp(user.passwordHash));
  async function api(path:string,method='GET',body?:unknown,auth=true){
   const r=await fetch(`${base}/api/admin/customers${path}`,{method,headers:{'content-type':'application/json',...(auth?{authorization:`Bearer ${token}`}:{})},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(45000)});
   return {status:r.status,body:await r.json()};

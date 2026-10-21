@@ -8,11 +8,20 @@ test("a 2FA challenge is never accepted as a session, and a session never as a c
   const challenge = signTwoFactorChallenge("user-1", "verify");
   assert.deepEqual(decodeTwoFactorChallenge(challenge), { sub: "user-1", purpose: "verify" });
   assert.throws(() => decodeAdminToken(challenge));
-  const session = signAdminToken({ id: "user-1", name: "A", email: "a@example.com", role: "OWNER" as never });
+  const session = signAdminToken({ id: "user-1", name: "A", email: "a@example.com", role: "OWNER" as never }, "stamp");
   assert.throws(() => decodeTwoFactorChallenge(session));
   const claims = decodeAdminToken(session) as unknown as { exp: number; iat: number };
   assert.equal(claims.exp - claims.iat, ADMIN_TOKEN_SECONDS);
   assert.equal(ADMIN_TOKEN_SECONDS, 2 * 60 * 60);
+});
+
+test("a password change gives the account a new stamp, so older sessions stop matching", async () => {
+  const { passwordStamp } = await import("./auth");
+  const bcrypt = (await import("bcryptjs")).default;
+  const before = passwordStamp(await bcrypt.hash("first-password-1", 4));
+  const after = passwordStamp(await bcrypt.hash("first-password-1", 4));
+  assert.notEqual(before, after); // a new hash (new salt) even for the same password
+  assert.equal(before.length, 16);
 });
 
 test("TOTP codes verify within one 30-second step and not beyond", async () => {

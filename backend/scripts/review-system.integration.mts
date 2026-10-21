@@ -70,17 +70,18 @@ globalThis.prisma = new PrismaClient({
   ),
 });
 const { prisma } = require("../src/lib/db.ts");
-const { signAdminToken } = require("../src/lib/auth.ts");
+const { signAdminToken, passwordStamp } = require("../src/lib/auth.ts");
 const { app } = require("../src/server.ts");
 const { csv, REVIEW_COLUMNS } = require("../src/lib/review-import.ts");
 const { zipSync } = require("fflate");
 const sharp = require("sharp");
+const qaOwnerHash = await require("bcryptjs").hash("QaReview123!", 4);
 await prisma.user.create({
   data: {
     id: "qa-owner",
     name: "QA Owner",
     email: "qa@example.invalid",
-    passwordHash: await require("bcryptjs").hash("QaReview123!", 4),
+    passwordHash: qaOwnerHash,
     role: "OWNER",
   },
 });
@@ -104,7 +105,7 @@ const token = signAdminToken({
   name: "QA Owner",
   email: "qa@example.invalid",
   role: "OWNER",
-});
+}, passwordStamp(qaOwnerHash));
 const api = app.listen(55441, "127.0.0.1");
 async function call(path, options = {}, auth = true) {
   const response = await fetch("http://127.0.0.1:55441" + path, {
@@ -215,7 +216,7 @@ try {
               name: "Other",
               email: "other@example.invalid",
               role: "OWNER",
-            }),
+            }, "no-such-account"),
         },
       })
     ).status,

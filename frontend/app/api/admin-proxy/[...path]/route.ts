@@ -97,6 +97,13 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
         revalidatePath('/','layout');
       }
 
+      // A password change answers with a fresh token (all older sessions of the account end): keep this one signed in.
+      if (upstream.ok && method === "POST" && backendPath === "/api/auth/password") {
+        const data = (await upstream.json().catch(() => ({}))) as { token?: string; expiresIn?: number };
+        if (data.token) cookieStore.set(SESSION_COOKIE, data.token, adminCookieOptions(Number(data.expiresIn) || undefined));
+        return Response.json({ ok: true }, { headers: { "cache-control": "no-store" } });
+      }
+
       const responseHeaders = new Headers();
       for (const key of ["content-type", "content-disposition", "cache-control"]) {
         const value = upstream.headers.get(key);

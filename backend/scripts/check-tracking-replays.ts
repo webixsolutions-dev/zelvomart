@@ -2,10 +2,10 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {prisma} from '../src/lib/db';
-import {signAdminToken} from '../src/lib/auth';
+import {signAdminToken,passwordStamp} from '../src/lib/auth';
 import {deleteReplayChunks,replayStorageConfigured} from '../src/lib/replay-storage';
 async function main(){
- const owner=await prisma.user.findFirstOrThrow({where:{role:'OWNER'},select:{id:true,name:true,email:true,role:true}}),token=signAdminToken(owner);
+ const owner=await prisma.user.findFirstOrThrow({where:{role:'OWNER'},select:{id:true,name:true,email:true,role:true,passwordHash:true}}),token=signAdminToken(owner,passwordStamp(owner.passwordHash));
  const id=randomUUID(),visitorId=randomUUID(),marker=`replay-qa-${id}`,base='http://localhost:4000';
  async function api(path:string,body?:unknown){const response=await fetch(base+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','user-agent':'Zelvomart QA Browser',authorization:`Bearer ${token}`},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(45000)});const data=await response.json();assert.equal(response.status,200,`${path}: ${JSON.stringify(data)}`);return data}
  try{

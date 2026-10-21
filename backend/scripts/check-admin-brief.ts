@@ -2,11 +2,11 @@ import 'dotenv/config';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {prisma} from '../src/lib/db';
-import {signAdminToken} from '../src/lib/auth';
+import {signAdminToken,passwordStamp} from '../src/lib/auth';
 import {createOrder} from '../src/lib/order';
 async function main(){
  process.env.VERCEL='1';const {app}=await import('../src/server');const server=app.listen(0,'127.0.0.1');await new Promise<void>(resolve=>server.once('listening',resolve));const address=server.address() as {port:number},base=`http://127.0.0.1:${address.port}`;
- const owner=await prisma.user.findFirstOrThrow({where:{role:'OWNER'},select:{id:true,name:true,email:true,role:true}}),token=signAdminToken(owner),key=randomUUID(),sku='QA-'+key,phone='+923'+String(Date.now()).slice(-9);let productId='',orderId='',customerId='',cartId='',couponId='';
+ const owner=await prisma.user.findFirstOrThrow({where:{role:'OWNER'},select:{id:true,name:true,email:true,role:true,passwordHash:true}}),token=signAdminToken(owner,passwordStamp(owner.passwordHash)),key=randomUUID(),sku='QA-'+key,phone='+923'+String(Date.now()).slice(-9);let productId='',orderId='',customerId='',cartId='',couponId='';
  async function api(path:string,method='GET',body?:unknown,status=200){const response=await fetch(base+path,{method,headers:{'content-type':'application/json',authorization:`Bearer ${token}`},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(45000)});const data=await response.json();assert.equal(response.status,status,`${path}: ${JSON.stringify(data)}`);return data;}
  try{
   const product=await prisma.product.create({data:{title:'QA admin brief fixture',slug:sku.toLowerCase(),sku,price:1000,status:'PUBLISHED',trackStock:true,stock:10}});productId=product.id;
