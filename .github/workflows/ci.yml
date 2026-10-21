@@ -1,0 +1,57 @@
+name: CI
+
+# Runs on every pull request and on main. Needs no secrets and no database: the URLs below point nowhere on
+# purpose (tests do not connect, and the storefront build falls back to empty data without a backend).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Typecheck, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:1/ci
+      DIRECT_URL: postgresql://ci:ci@127.0.0.1:1/ci
+      JWT_SECRET: ci-only-not-a-real-secret-0123456789
+      BACKEND_URL: http://127.0.0.1:9
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:9
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Also runs prisma generate (backend postinstall): the Prisma client is not committed.
+      - name: Install
+        run: npm ci
+
+      - name: Prisma schema
+        run: npx prisma validate --schema backend/prisma/schema.prisma
+
+      - name: Backend typecheck
+        run: npm run typecheck --workspace backend
+
+      - name: Backend formatting
+        run: npm run format:check --workspace backend
+
+      - name: Backend tests
+        run: npm test --workspace backend
+
+      - name: Frontend typecheck
+        run: npm run typecheck --workspace frontend
+
+      - name: Frontend build
+        run: npm run build --workspace frontend

@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "npm run prisma:generate && tsx watch src/server.ts",
     "build": "prisma generate --schema=prisma/schema.prisma && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --import tsx --test \"src/**/*.test.ts\" \"scripts/*.test.ts\"",
     "start": "node dist/src/server.js",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
     "db:push": "prisma db push --schema=prisma/schema.prisma",
