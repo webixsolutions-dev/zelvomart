@@ -65,4 +65,21 @@ new password works. Backend tests (13) and `next build` pass.
 
 ### Batch 2 status
 All items done in code. Backend tests (13), backend `tsc` and `next build` pass. Store pages return 200 and old slugs 404 with the store design; with the backend stopped, cached pages keep showing their products.
-Next: Batch 3 (`fix/perf-seo-batch-3`): WebP on upload, the 35 MB PNG folder, M1/M2/M3.
+
+## Batch 3: images, speed and SEO (branch `fix/perf-seo-batch-3`)
+
+| Item | Status | Notes |
+|---|---|---|
+| WebP on upload | Done | `toSiteWebp()` (backend `lib/catalog-images.ts`): JPG, PNG, AVIF and oversized WebP become WebP, at most 1600 px wide, quality 82, metadata removed; a WebP that already fits is kept unchanged, GIFs and videos pass through. Used by `POST /api/admin/upload` (also the bulk image ZIP) and every review photo (customer form, CSV/ZIP import). The JPG feed copy is still made from the original; feeds always use it for WebP images. Tests in `catalog-images.test.ts`. |
+| K6: 35 MB PNG folder | Done | `public/images/Zelvomart images/` → `public/images/zelvomart/`: 21 files, WebP, each under 150 KB, 35 MB → 1.6 MB, names without spaces or &. Note: nothing on the live store shows these files (only `lib/store-images.ts` and `lib/product-media.ts` point at them, and that code is unused); left for the Batch 4 clean-up. |
+| M1: JavaScript | Done | Meta and TikTok pixels `lazyOnload`; GA4's gtag.js after load + idle (events queue until then). Browser pixel events wait up to ~25 s for the pixel. Cart drawer is its own chunk, mounted when the browser is idle (or at once when the cart opens). Product reviews list via `next/dynamic`. browserslist pinned to the modern set. |
+| M2: hero and CSS | Done | Hero art through `next/image` (`getImageProps`, desktop/phone art direction, AVIF/WebP at displayed width). Only the first slide (fetchPriority high) is in the first HTML; slides 2–3 mount on first interaction or after 3 s. Desktop: 2 hero images before interaction → 1. `globals.css`: 424 rules that match nothing removed (209 KB → 166 KB); `Footer.module.css` merged in: 3 stylesheets → 2 (the other is next/font's @font-face). Pixel diff against the previous build on 14 pages at 1440 and 390 px: identical except the re-encoded hero image. |
+| M3: titles and canonicals | Done | No second "| Zelvomart" on product titles (admin hint added). Home canonical and og:url `https://zelvomart.com/`. Already in place and checked: the two duplicate policy URLs answer 301; Product JSON-LD has `shippingDetails` and `hasMerchantReturnPolicy` from the store settings; no JSON-LD node without `@type` on 15 pages. |
+
+### Left for a person (not code)
+- Free delivery threshold: the flow says Rs 7,500, the code default is Rs 8,000 ("decided 19 Oct 2026" in `storefront/lib/site.ts`). The live value comes from Admin → Settings → Delivery; set it there (JSON-LD and the storefront follow it).
+- After deploy: run PageSpeed on the home page (mobile) to measure LCP/TBT against the audit's 2.8 s / 1,140 ms.
+
+### Batch 3 status
+All items done in code. Backend tests (16), backend `tsc` and `next build` pass.
+Next: Batch 4 (clean-up and CI).
