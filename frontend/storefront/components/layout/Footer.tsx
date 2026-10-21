@@ -6,7 +6,6 @@ import { categories, categoryPath } from "@store/lib/catalog";
 import { site } from "@store/lib/site";
 import { waLink } from "@store/lib/format";
 import { FacebookIcon, InstagramIcon, LinkedinIcon, PinterestIcon, TiktokIcon, WhatsAppIcon, XIcon, YoutubeIcon } from "@store/components/ui/BrandIcons";
-import styles from "./Footer.module.css";
 
 const customerServiceLinks = [
   { label: "About Us", href: "/about-us/" },
@@ -21,7 +20,7 @@ const customerServiceLinks = [
 
 function FooterNavLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className={styles.navLink}>
+    <Link href={href} className="zf-nav-link">
       <ChevronRight size={15} strokeWidth={3} aria-hidden="true" focusable="false" />
       <span>{children}</span>
     </Link>
@@ -34,7 +33,7 @@ export function Footer() {
       <div className="container">
         <div className="footer-inner">
           <div className="footer-brand">
-            <Link href="/" className={styles.logo} aria-label="Zelvomart — home">
+            <Link href="/" className="zf-logo" aria-label="Zelvomart — home">
               <Image src="/brand/zelvomart-logo-white.png" alt="Zelvomart" width={320} height={211} />
             </Link>
             <p>
@@ -59,7 +58,7 @@ export function Footer() {
               ))}
             </div>
           </div>
-          <div className={styles.linkGroup}>
+          <div className="zf-link-group">
             <h4>Shop</h4>
             <nav aria-label="Shop">
               {categories.map((c) => (
@@ -67,7 +66,7 @@ export function Footer() {
               ))}
             </nav>
           </div>
-          <div className={styles.linkGroup}>
+          <div className="zf-link-group">
             <h4>Explore</h4>
             <nav aria-label="Explore">
               <FooterNavLink href="/shop/">All Products</FooterNavLink>
@@ -77,7 +76,7 @@ export function Footer() {
               <FooterNavLink href="/about-us/">Our Story</FooterNavLink>
             </nav>
           </div>
-          <div className={styles.linkGroup}>
+          <div className="zf-link-group">
             <h4>Customer Service</h4>
             <nav aria-label="Customer Service">
               {customerServiceLinks.map((item) => (
@@ -85,7 +84,7 @@ export function Footer() {
               ))}
             </nav>
           </div>
-          <div className={styles.contacts}>
+          <div className="zf-contacts">
             <h4>Talk to Us</h4>
             <a href={waLink(site.whatsappNumber)} target="_blank" rel="noopener noreferrer" className="with-ico">
               <WhatsAppIcon size={15} /> {site.phoneDisplay}
@@ -106,7 +105,7 @@ export function Footer() {
           </span>
           <span>
             Designed &amp; developed by{" "}
-            <a href="https://webixsolutions.com" target="_blank" rel="noopener" className={styles.credit}>
+            <a href="https://webixsolutions.com" target="_blank" rel="noopener" className="zf-credit">
               Webix Solutions
             </a>
           </span>

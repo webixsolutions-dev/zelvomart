@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { getImageProps } from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { site } from "@store/lib/site";
@@ -59,8 +60,43 @@ const slides: Slide[] = [
 
 /** Pixels the pointer must travel before a drag counts as a swipe. */
 const SWIPE = 50;
+/** Slides 2 and 3 mount after the visitor's first interaction, or after this long. */
+const MOUNT_REST_AFTER_MS = 3000;
+const DESKTOP = { width: 2100, height: 711 };
+const MOBILE = { width: 900, height: 1350 };
+
+/**
+ * One slide's art through the Next.js image optimiser (AVIF/WebP at the displayed width): portrait art on
+ * phones, the wide banner above 760 px. The first slide is fetched at high priority and never lazily.
+ */
+function SlideArt({ slide, first }: { slide: Slide; first: boolean }) {
+  const common = { alt: slide.alt, sizes: "100vw", draggable: false, decoding: "async" as const, ...(first ? { fetchPriority: "high" as const, loading: "eager" as const } : { loading: "lazy" as const }) };
+  const { props: { srcSet: desktop } } = getImageProps({ ...common, ...DESKTOP, src: slide.desktop });
+  const { props: { srcSet: mobile, ...img } } = getImageProps({ ...common, ...MOBILE, src: slide.mobile });
+  return (
+    <picture className="hero-art">
+      <source media="(max-width: 760px)" srcSet={mobile} />
+      <source media="(min-width: 761px)" srcSet={desktop} />
+      <img {...img} />
+    </picture>
+  );
+}
+
 export function HeroSlider() {
   const [i, setI] = useState(0);
+  // Only the first slide is in the first HTML and the first image request.
+  const [restMounted, setRestMounted] = useState(false);
+  useEffect(() => {
+    if (restMounted) return;
+    const mount = () => setRestMounted(true);
+    const timer = window.setTimeout(mount, MOUNT_REST_AFTER_MS);
+    const events = ["pointerdown", "keydown", "touchstart", "scroll", "wheel"] as const;
+    for (const name of events) window.addEventListener(name, mount, { once: true, passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      for (const name of events) window.removeEventListener(name, mount);
+    };
+  }, [restMounted]);
   const [paused, setPaused] = useState(false);
   const [dx, setDx] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -68,11 +104,17 @@ export function HeroSlider() {
   const moved = useRef(false);
   useEffect(() => {
     if (paused || dragging) return;
-    const t = setInterval(() => setI((x) => (x + 1) % slides.length), 6500);
+    const t = setInterval(() => {
+      setRestMounted(true);
+      setI((x) => (x + 1) % slides.length);
+    }, 6500);
     return () => clearInterval(t);
   }, [paused, dragging]);
 
-  const go = (n: number) => setI((n + slides.length) % slides.length);
+  const go = (n: number) => {
+    setRestMounted(true);
+    setI((n + slides.length) % slides.length);
+  };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
@@ -125,12 +167,9 @@ export function HeroSlider() {
       onDragStart={(e) => e.preventDefault()}
     >
       <div className="slider-track" style={{ transform: `translate3d(calc(${-i * 100}% + ${dx}px), 0, 0)` }}>
-        {slides.map((s, idx) => (
+        {(restMounted ? slides : slides.slice(0, 1)).map((s, idx) => (
           <div key={idx} className={`slide ${idx === i ? "active" : ""}`} aria-hidden={idx !== i} role="group" aria-roledescription="slide" aria-label={`${idx + 1} of ${slides.length}`}>
-            <picture className="hero-art">
-              <source media="(max-width: 760px)" srcSet={encodeURI(s.mobile)} />
-              <img src={s.desktop} alt={s.alt} draggable={false} fetchPriority={idx === 0 ? "high" : "low"} loading={idx === 0 ? "eager" : "lazy"} decoding="async" />
-            </picture>
+            <SlideArt slide={s} first={idx === 0} />
             <div className="container hero-inner">
               <div className="hero-content">
                 <div className="eyebrow">{s.eyebrow}</div>
