@@ -1,5 +1,4 @@
-import { Prisma, Role } from "../src/generated/prisma/client";
-import bcrypt from "bcryptjs";
+import { Prisma } from "../src/generated/prisma/client";
 import { prisma } from "../src/lib/db";
 import { seedPolicyPages } from "../scripts/seed-policy-pages";
 
@@ -197,32 +196,8 @@ async function main() {
     create: { name: "order", value: 10000 },
   });
 
-  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  const password = process.env.ADMIN_PASSWORD;
-  if (email && password) {
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    await prisma.user.upsert({
-      where: { email },
-      update: {
-        name: "Owner",
-        role: Role.OWNER,
-        passwordHash,
-        totpSecret: null,
-        twoFactorReady: false,
-        active: true,
-      },
-      create: {
-        name: "Owner",
-        email,
-        passwordHash,
-        role: Role.OWNER,
-        totpSecret: null,
-        twoFactorReady: false,
-        active: true,
-      },
-    });
-  }
+  // Admin accounts are not created or changed here (the seed used to reset the owner's password on every run).
+  // Create the first owner once with `npm run admin:create --workspace backend -- --email you@example.com`.
 
   console.log("Zelvomart seed completed. No dummy products were created.");
 }

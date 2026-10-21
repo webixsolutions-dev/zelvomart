@@ -1,5 +1,6 @@
 import PgBoss from "pg-boss";
 import { prisma } from "./db";
+import { databaseConnection } from "./db-ssl";
 
 let boss: PgBoss | null = null;
 let sender: Promise<PgBoss> | null = null;
@@ -8,7 +9,7 @@ const knownQueues = new Set<string>();
 /** The worker's full pg-boss: maintenance, schedules and its own connection pool. Started by workers/main.ts. */
 export async function getBoss() {
   if (!boss) {
-    boss = new PgBoss({ connectionString: process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL! });
+    boss = new PgBoss({ ...databaseConnection(process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL!) });
     boss.on("error", (error) => console.error("pg-boss", error));
     await boss.start();
   }
@@ -23,7 +24,7 @@ function getSender() {
   if (boss) return Promise.resolve(boss);
   sender ??= (async () => {
     const client = new PgBoss({
-      connectionString: process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL!,
+      ...databaseConnection(process.env.WORKER_DATABASE_URL || process.env.DIRECT_URL || process.env.DATABASE_URL!),
       supervise: false,
       schedule: false,
       migrate: false,

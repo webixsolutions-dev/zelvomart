@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 import {revalidatePath,revalidateTag} from 'next/cache';
+import { ADMIN_SESSION_COOKIE as SESSION_COOKIE, adminCookieOptions, tokenSecondsLeft } from "@/lib/admin-session";
 
-const SESSION_COOKIE = "zelvomart_admin_session";
+/** Refresh the 2-hour admin token when less than this is left, so an admin who keeps working stays signed in. */
+const REFRESH_WHEN_SECONDS_LEFT = 30 * 60;
 export const maxDuration = 300;
 
 function backendCandidates(request: NextRequest) {
@@ -18,7 +20,7 @@ function backendCandidates(request: NextRequest) {
 
 async function forward(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  let token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return Response.json({ error: "UNAUTHORIZED" }, { status: 401 });
 
   const { path } = await context.params;
@@ -29,6 +31,25 @@ async function forward(request: NextRequest, context: { params: Promise<{ path: 
       { error: "BACKEND_URL_NOT_CONFIGURED", message: "Set BACKEND_URL to the deployed Express backend origin." },
       { status: 503 },
     );
+  }
+
+  // Sliding session: a token close to expiry is swapped for a fresh one before this request goes through.
+  const left = tokenSecondsLeft(token);
+  if (left > 0 && left < REFRESH_WHEN_SECONDS_LEFT) {
+    for (const base of candidates) {
+      try {
+        const refreshed = await fetch(`${base}/api/auth/refresh`, { method: "POST", headers: { authorization: `Bearer ${token}` }, cache: "no-store" });
+        if (!refreshed.ok) break;
+        const data = (await refreshed.json()) as { token?: string; expiresIn?: number };
+        if (data.token) {
+          token = data.token;
+          cookieStore.set(SESSION_COOKIE, data.token, adminCookieOptions(Number(data.expiresIn) || undefined));
+        }
+        break;
+      } catch {
+        continue;
+      }
+    }
   }
 
   const method = request.method.toUpperCase();
