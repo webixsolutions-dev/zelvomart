@@ -209,15 +209,15 @@ export default function Tracking() {
         <article className="admin-tracking-card" style={{ minHeight: 120 }}>
           <div>
             <small>CRO Session Replay</small>
-            <span className={`admin-health-pill ${statusTone(Boolean(sessionReplay?.enabled))}`}>
-              {!sessionReplay?.enabled ? "Disabled" : "Active"}
+            <span className={`admin-health-pill ${statusTone(Boolean(sessionReplay?.enabled && sessionReplay?.configured))}`}>
+              {!sessionReplay?.enabled ? "Disabled" : !sessionReplay?.configured ? "Not recording" : "Active"}
             </span>
           </div>
           <strong className="status-copy">
-            {!sessionReplay?.enabled ? "Disabled" : "14-Day Retention"}
+            {!sessionReplay?.enabled ? "Disabled" : !sessionReplay?.configured ? "R2 bucket not configured" : `${sessionReplay?.retentionDays || 30}-Day Retention`}
           </strong>
-          <p>Purge cycle: {sessionReplay?.retentionDays || 14} days retention</p>
-          <i style={{ width: sessionReplay?.enabled ? "100%" : "0%" }} />
+          <p>{sessionReplay?.enabled && !sessionReplay?.configured ? "Nothing is recorded until REPLAY_S3_BUCKET is set on the backend." : `Purge cycle: ${sessionReplay?.retentionDays || 30} days retention`}</p>
+          <i style={{ width: sessionReplay?.enabled && sessionReplay?.configured ? "100%" : "0%" }} />
         </article>
       </div>
 

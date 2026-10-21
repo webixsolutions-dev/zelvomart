@@ -10,7 +10,6 @@
     "db:push": "prisma db push --schema=prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
     "seed": "tsx prisma/seed.ts",
-    "pages:policies": "tsx scripts/seed-policy-pages.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "db:health": "tsx scripts/db-health.ts",
     "db:env-check": "node scripts/validate-supabase-env.mjs",

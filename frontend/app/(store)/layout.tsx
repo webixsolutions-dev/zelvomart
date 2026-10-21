@@ -91,7 +91,8 @@ export const revalidate = 300;
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [bootstrap, store] = await Promise.all([getStoreBootstrap().catch(() => null), loadStore()]);
   const settings = (bootstrap?.settings || {}) as Record<string, unknown>;
-  const enabled = (key: string) => settings[key] !== false && settings[key] !== "false";
+  // No answer from the backend at all (and no earlier one): load no pixels or recorder rather than guess.
+  const enabled = (key: string) => Boolean(bootstrap) && settings[key] !== false && settings[key] !== "false";
   const pixelId = String(settings["tracking.metaPixelId"] || "");
   const tiktokPixelId = String(settings["tracking.tiktokPixelId"] || "");
   return (

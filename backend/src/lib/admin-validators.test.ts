@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { productCreateSchema, productUpdateSchema, categoryCreateSchema, pageCreateSchema, pageUpdateSchema, redirectSchema, salePriceProblem } from "./admin-validators";
+import { productCreateSchema, productUpdateSchema, categoryCreateSchema, redirectSchema, salePriceProblem } from "./admin-validators";
 
 // The shape Admin → Products → Save sends (components/admin/ProductForm.tsx).
 const formPayload = {
@@ -48,11 +48,9 @@ test("sale price must be lower than the regular price", () => {
   assert.equal(salePriceProblem(900, ""), null);
 });
 
-test("categories, pages and redirects", () => {
+test("categories and redirects", () => {
   assert.equal(categoryCreateSchema.safeParse({ name: "Home & Living", slug: "home-living", sortOrder: "10" }).success, true);
   assert.equal(categoryCreateSchema.safeParse({ name: "", slug: "home-living" }).success, false);
-  assert.equal(pageCreateSchema.safeParse({ slug: "refund_returns", title: "Refund", bodyHtml: "<h2>A</h2><p>B</p>" }).success, true);
-  assert.equal(pageUpdateSchema.safeParse({ slug: "Refund Returns" }).success, false);
   assert.equal(redirectSchema.safeParse({ sourcePath: "/old-page/", destination: "/shop/", permanent: true }).success, true);
   assert.equal(redirectSchema.safeParse({ sourcePath: "/x/", destination: "https://zelvomart.com/shop/" }).success, true);
   assert.equal(redirectSchema.safeParse({ sourcePath: "old-page", destination: "/shop/" }).success, false);

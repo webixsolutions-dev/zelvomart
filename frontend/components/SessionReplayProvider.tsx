@@ -36,7 +36,11 @@ function trafficMeta() {
   };
 }
 
+/** Set when the backend says recordings have nowhere to go (no private R2 bucket). Recording then stops for this page. */
+let storageMissing = false;
+
 function send(path: string, body: unknown, keepalive = false) {
+  if (storageMissing) return Promise.resolve(false);
   const payload = JSON.stringify(body);
   const safeKeepalive = keepalive && new Blob([payload]).size <= 60_000;
   return fetch(`/api/store-proxy${path}`, {
@@ -46,7 +50,13 @@ function send(path: string, body: unknown, keepalive = false) {
     signal:AbortSignal.timeout(15000),
     cache: "no-store",
     body: payload,
-  }).then((response) => response.ok).catch(() => false);
+  }).then(async (response) => {
+    if (response.status === 503) {
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (data?.error === "REPLAY_STORAGE_NOT_CONFIGURED") storageMissing = true;
+    }
+    return response.ok;
+  }).catch(() => false);
 }
 
 type PendingChunk = { sequence: number; events: unknown[]; currentUrl: string };
@@ -132,6 +142,7 @@ export default function SessionReplayProvider() {
       }
 
       if(!sessionReplayEnabled()){queue=[];pending=undefined;flushing=false;return false;}
+      if(storageMissing){queue=[];pending=undefined;flushing=false;try{stopRecording?.()}catch{}return false;}
       if (!pending) {
         const count = Math.min(queue.length, 100);
         pending = {

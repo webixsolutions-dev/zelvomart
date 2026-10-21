@@ -1,6 +1,5 @@
 import type { Category, Product, ProductListResponse } from '@/types/product';
 import { apiFetch } from './api';
-import { DEFAULT_CATEGORIES, getDisplayCategories } from './dummy-content';
 import { withProductMedia } from './product-media';
 
 export type MenuProduct = {
@@ -14,29 +13,30 @@ export type StoreBootstrap = {
   settings: Record<string, unknown>;
 };
 
-export async function getStoreBootstrap(): Promise<StoreBootstrap> {
-  try {
-    const result = await apiFetch<StoreBootstrap>('/api/store/bootstrap', {
-      next: { revalidate: 30, tags: ['store', 'categories', 'settings'] },
-    });
-    return {
-      categories: getDisplayCategories(result.categories || []),
-      settings: result.settings || {},
-    };
-  } catch {
-    return { categories: DEFAULT_CATEGORIES, settings: {} };
-  }
+/** Preferred storefront order for the known categories; categories added later in Admin follow by name. */
+const DISPLAY_CATEGORY_SLUGS = ["home-living", "home-decor", "beauty-personal-care", "tech-gadgets", "kids-toys", "fashion-accessories", "sports-fitness"];
+
+function displayOrder(categories: Category[]): Category[] {
+  const priority = new Map<string, number>(DISPLAY_CATEGORY_SLUGS.map((slug, index) => [slug, index]));
+  return [...categories].sort((a, b) => {
+    const aRank = priority.get(a.slug) ?? Number.MAX_SAFE_INTEGER;
+    const bRank = priority.get(b.slug) ?? Number.MAX_SAFE_INTEGER;
+    return aRank !== bRank ? aRank - bRank : a.name.localeCompare(b.name);
+  });
 }
 
-export async function getCategories(): Promise<Category[]> {
-  try {
-    const rows = await apiFetch<Category[]>('/api/categories', {
-      next: { revalidate: 900, tags: ['categories'] },
-    });
-    return getDisplayCategories(rows || []);
-  } catch {
-    return DEFAULT_CATEGORIES;
-  }
+/**
+ * Categories and public settings. On a backend failure apiFetch already served its last good answer if it had
+ * one; otherwise this throws and the caller decides (the store layout falls back to no settings, no dummy data).
+ */
+export async function getStoreBootstrap(): Promise<StoreBootstrap> {
+  const result = await apiFetch<StoreBootstrap>('/api/store/bootstrap', {
+    next: { revalidate: 30, tags: ['store', 'categories', 'settings'] },
+  });
+  return {
+    categories: displayOrder(result.categories || []),
+    settings: result.settings || {},
+  };
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {

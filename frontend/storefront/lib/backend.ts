@@ -143,15 +143,14 @@ export async function loadStore() {
 export type SeoIndex = {
   products: { slug: string; updatedAt: string }[];
   categories: { slug: string; updatedAt: string }[];
-  pages: { slug: string; updatedAt: string }[];
 };
 
-/** What search engines may list: published, indexable products, categories and CMS pages (GET /api/seo/sitemap). */
+/** What search engines may list: published, indexable products and categories (GET /api/seo/sitemap). */
 export async function loadSeoIndex(): Promise<SeoIndex> {
   try {
     return await apiFetch<SeoIndex>(`/api/seo/sitemap`, { next: { revalidate: 3600, tags: ["seo", "products"] } });
   } catch {
-    return { products: [], categories: [], pages: [] };
+    return { products: [], categories: [] };
   }
 }
 
@@ -166,8 +165,8 @@ export async function loadCategoryIds(): Promise<Set<string>> {
 }
 
 /**
- * A policy page as Admin → Pages has it (GET /api/pages/{slug}, cached with the `pages` tag), falling back
- * to the file version when the backend is unreachable or the page has no <h2> sections yet.
+ * A policy page: the file version, unless an old Page row still exists for it (GET /api/pages/{slug},
+ * cached with the `pages` tag). After 03-drop-cms-pages.sql the backend answers 404 and the file version shows.
  */
 export async function loadPolicy(fallback: PolicyDocument): Promise<PolicyDocument> {
   try {

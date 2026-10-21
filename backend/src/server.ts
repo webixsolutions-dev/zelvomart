@@ -26,7 +26,7 @@ import { Prisma, ProductStatus, OrderStatus, Role, ReviewStatus, ExperimentStatu
 import { prisma } from './lib/db';
 import { signAdminToken, requireAuth, signTwoFactorChallenge, decodeTwoFactorChallenge, forgetAdminUser, passwordStamp, ADMIN_TOKEN_SECONDS, type AuthedRequest } from './lib/auth';
 import { generateTotpSecret, verifyTotp, totpUri } from './lib/totp';
-import { validAdminBody, productCreateSchema, productUpdateSchema, variantCreateSchema, categoryCreateSchema, categoryUpdateSchema, pageCreateSchema, pageUpdateSchema, redirectSchema, salePriceProblem } from './lib/admin-validators';
+import { validAdminBody, productCreateSchema, productUpdateSchema, variantCreateSchema, categoryCreateSchema, categoryUpdateSchema, redirectSchema, salePriceProblem } from './lib/admin-validators';
 import QRCode from 'qrcode';
 import { createOrder, transitionOrder } from './lib/order';
 import { checkoutSchema } from './lib/validators';
@@ -474,7 +474,7 @@ async function maybeCleanupOldSessionReplays() {
   const parsedSettingDays = settingDays !== null && settingDays !== undefined ? Number(settingDays) : NaN;
   const days = Number.isFinite(parsedSettingDays) && parsedSettingDays > 0
     ? parsedSettingDays
-    : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 14);
+    : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
   if (!Number.isFinite(days) || days <= 0) return;
   const now = Date.now();
   if (now - replayCleanupAt < 6 * 60 * 60 * 1000) return;
@@ -529,6 +529,8 @@ app.get('/api/store/bootstrap', async (_req, res) => {
       'store.bundleDefaultDiscountPercent',
     ])
   ]);
+  // Recordings go to the private R2 bucket only. Without it the storefront does not load the recorder at all.
+  if (!replayStorageConfigured()) settings['tracking.sessionReplayEnabled'] = false;
   res.json({ categories: categories.map(c => ({ id:c.id,name:c.name,slug:c.slug,description:c.description,image:c.imageUrl,seoTitle:c.seoTitle,seoDescription:c.seoDescription,count:c._count.products })), settings });
 });
 
@@ -563,7 +565,7 @@ app.get('/api/products/slug/:slug', async (req,res) => { const slug=routeParam(r
 app.get('/api/pages/:slug', async (req,res) => { setPublicCache(res, 900, 3600, ['pages']); const slugs = [routeParam(req, 'slug'), ...String(req.query.fallback || '').split(',').filter(Boolean)]; const page = await prisma.page.findFirst({ where:{ slug:{in:slugs}, published:true } }); if(!page) return res.status(404).json({error:'NOT_FOUND'}); res.json(page); });
 app.get('/api/settings/public', async (req,res) => { setNoStore(res); const keys = publicSettingKeys(req.query.keys); res.json(keys.length?await getSettings(keys):{}); });
 app.get('/api/cities', async (_req,res) => { setNoStore(res); res.json(await prisma.city.findMany({ where:{active:true}, orderBy:{name:'asc'} })); });
-app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 86400, ['seo']); const [products,categories,pages] = await Promise.all([prisma.product.findMany({where:{status:'PUBLISHED'},select:{slug:true,updatedAt:true,sourceUrl:true}}).then(rows=>rows.filter(r=>readCatalogMeta(r.sourceUrl)?.robotsIndex!=='noindex').map(({slug,updatedAt})=>({slug,updatedAt}))),prisma.category.findMany({select:{slug:true,updatedAt:true}}),prisma.page.findMany({where:{published:true},select:{slug:true,updatedAt:true}})]); res.json({products,categories,pages}); });
+app.get('/api/seo/sitemap', async (_req,res) => { setPublicCache(res, 3600, 86400, ['seo']); const [products,categories] = await Promise.all([prisma.product.findMany({where:{status:'PUBLISHED'},select:{slug:true,updatedAt:true,sourceUrl:true}}).then(rows=>rows.filter(r=>readCatalogMeta(r.sourceUrl)?.robotsIndex!=='noindex').map(({slug,updatedAt})=>({slug,updatedAt}))),prisma.category.findMany({select:{slug:true,updatedAt:true}})]); res.json({products,categories}); });
 // Every redirect, for the storefront proxy: it answers old URLs with a real 301 before the page renders.
 app.get('/api/redirects/map', async (_req,res)=>{setPublicCache(res,120,600,['redirects']);const rows=await prisma.redirect.findMany({select:{sourcePath:true,destination:true,permanent:true},take:20000});res.json(rows.map(r=>[r.sourcePath,r.destination,r.permanent?1:0]));});
 app.get('/api/redirects/resolve', async (req,res)=>{setPublicCache(res,3600,86400,['redirects']);const sourcePath=String(req.query.path||'');const row=await prisma.redirect.findUnique({where:{sourcePath}});if(!row)return res.status(404).json({error:'NOT_FOUND'});res.json(row);});
@@ -714,7 +716,15 @@ app.post('/api/events', async (req,res) => {
 });
 
 // Privacy-safe customer session replay ingestion. Input values are masked in the browser before these events arrive.
+// Recording events are stored only in the private R2 bucket; Postgres keeps metadata (storageKey, counts, timestamps).
+// Without R2 nothing is recorded: these routes answer 503 before touching the database.
+function replayStorageMissing(res: express.Response) {
+  if (replayStorageConfigured()) return false;
+  res.status(503).json({ error: 'REPLAY_STORAGE_NOT_CONFIGURED' });
+  return true;
+}
 app.post('/api/session-replays/start', async (req,res) => {
+  if (replayStorageMissing(res)) return;
   void maybeCleanupOldSessionReplays();
   if(!(await allowRequest(req,res,'replay-start',60,60000)))return;
   const sessionId=String(req.body.sessionId||'').trim();
@@ -753,6 +763,7 @@ app.post('/api/session-replays/start', async (req,res) => {
 });
 
 app.post('/api/session-replays/chunk', async(req,res)=>{
+ if(replayStorageMissing(res))return;
  if(!(await allowRequest(req,res,'replay-chunks',180,60000)))return;
  const sessionId=String(req.body.sessionId||''),sequence=Number(req.body.sequence),events=Array.isArray(req.body.events)?req.body.events:[];
  if(!/^[0-9a-f-]{36}$/i.test(sessionId)||!Number.isInteger(sequence)||sequence<0||events.length<1||events.length>100)return res.status(400).json({error:'INVALID_REPLAY_CHUNK'});
@@ -761,7 +772,9 @@ app.post('/api/session-replays/chunk', async(req,res)=>{
  const firstTimestamp=Math.min(...events.map((e:any)=>e.timestamp)),lastTimestamp=Math.max(...events.map((e:any)=>e.timestamp));
  await prisma.sessionReplay.upsert({where:{id:sessionId},update:{lastSeenAt:now,lastUrl:currentUrl},create:{id:sessionId,visitorId:sessionId,source:'direct',landingUrl:currentUrl,lastUrl:currentUrl,status:'ACTIVE',startedAt:new Date(firstTimestamp),lastSeenAt:now}});
  let stored;try{stored=await storeReplayChunk(sessionId,sequence,events)}catch(error){console.error('Private replay upload failed',error instanceof Error?error.message:error);return res.status(503).json({error:'REPLAY_STORAGE_UNAVAILABLE'})}
- const data={events:(stored?[]:events) as Prisma.InputJsonValue,eventCount:events.length,hasSnapshot:events.some((e:any)=>e.type===2),firstTimestamp,lastTimestamp,...(stored||{} )};
+ if(!stored)return res.status(503).json({error:'REPLAY_STORAGE_NOT_CONFIGURED'});
+ // Metadata only: the events column stays at its empty default.
+ const data={eventCount:events.length,hasSnapshot:events.some((e:any)=>e.type===2),firstTimestamp,lastTimestamp,...(stored||{} )};
  await prisma.$transaction(async tx=>{
   await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${sessionId}))`;
   const old=await tx.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId,sequence}},select:{eventCount:true}});
@@ -773,6 +786,7 @@ app.post('/api/session-replays/chunk', async(req,res)=>{
 });
 
 app.post('/api/session-replays/end', async (req,res) => {
+  if (replayStorageMissing(res)) return;
   const sessionId=String(req.body.sessionId||'').trim();
   if(!/^[0-9a-f-]{36}$/i.test(sessionId)) return res.status(400).json({error:'INVALID_SESSION'});
   const endedAt=new Date(req.body.endedAt||Date.now());
@@ -1229,9 +1243,6 @@ app.patch('/api/admin/customers/:id', requireAuth('customers.write'), async (req
 });
 app.patch('/api/admin/customers/:id/blocklist', requireAuth('customers.write'), async (req:AuthedRequest,res)=>{const current=await prisma.customer.findUnique({where:{id:routeParam(req, 'id')}});if(!current)return res.status(404).json({error:'NOT_FOUND'});const row=await prisma.customer.update({where:{id:routeParam(req, 'id')},data:{blocklisted:typeof req.body.blocklisted==='boolean'?req.body.blocklisted:!current.blocklisted}});await audit(req,'toggle_blocklist','Customer',row.id,{blocklisted:row.blocklisted});res.json(row);});
 
-app.get('/api/admin/pages', requireAuth('content.write'), async (_req,res)=>res.json(await prisma.page.findMany({orderBy:{slug:'asc'}})));
-app.post('/api/admin/pages', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const b=req.body||{};if(!validAdminBody(pageCreateSchema,b,res))return;const slug=String(b.slug||'').trim().toLowerCase();const title=String(b.title||'').trim();if(!slug||!title)return res.status(400).json({error:'TITLE_AND_SLUG_REQUIRED'});const row=await prisma.page.upsert({where:{slug},update:{title,bodyHtml:String(b.bodyHtml||''),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false},create:{slug,title,bodyHtml:String(b.bodyHtml||''),seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false}});await audit(req,'upsert','Page',row.id);await invalidateFrontendCache(['pages']);res.status(201).json(row);});
-app.patch('/api/admin/pages/:id', requireAuth('content.write'), async (req:AuthedRequest,res)=>{const b=req.body||{};if(!validAdminBody(pageUpdateSchema,b,res))return;const row=await prisma.page.update({where:{id:routeParam(req, 'id')},data:{title:b.title,slug:b.slug,bodyHtml:b.bodyHtml,seoTitle:b.seoTitle||null,seoDescription:b.seoDescription||null,published:b.published!==false}});await audit(req,'update','Page',row.id);await invalidateFrontendCache(['pages']);res.json(row);});
 
 app.get('/api/admin/product-tabs', requireAuth('products.write'), async (_req,res)=>{
   const tabs = await getSetting<Record<string, { title: string; content: string }> | null>('store.productTabs', null);
@@ -1292,13 +1303,13 @@ app.get('/api/admin/session-replays', requireAuth('reports.read'),async(req,res)
  const [sessions,total,sourceGroups]=await Promise.all([prisma.sessionReplay.findMany({where,orderBy:req.query.sort==='oldest'?{startedAt:'asc'}:req.query.sort==='duration'?{durationMs:'desc'}:{startedAt:'desc'},skip:(page-1)*limit,take:limit}),prisma.sessionReplay.count({where}),prisma.sessionReplay.groupBy({by:['source'],where:{startedAt:{gte:from,lte:to}},_count:{_all:true}})]);
  const orders=await prisma.order.findMany({where:{replaySessionId:{in:sessions.map(s=>s.id)}},select:{id:true,orderNumber:true,replaySessionId:true,total:true,createdAt:true,city:true},orderBy:{createdAt:'desc'}});
  const orderMap=new Map(orders.map(o=>[o.replaySessionId,o]));
- res.json({total,page,totalPages:Math.max(1,Math.ceil(total/limit)),items:sessions.map(s=>({...s,orderDestination:orderMap.get(s.id)?.city||null,order:orderMap.has(s.id)?{...orderMap.get(s.id),total:Number(orderMap.get(s.id)!.total)}:null})),stats:{last30:total,ordered30:await prisma.sessionReplay.count({where:{startedAt:{gte:from,lte:to},ordered:true}}),sources:Object.fromEntries(sourceGroups.map(s=>[s.source,s._count._all]))}});
+ res.json({storageConfigured:replayStorageConfigured(),total,page,totalPages:Math.max(1,Math.ceil(total/limit)),items:sessions.map(s=>({...s,orderDestination:orderMap.get(s.id)?.city||null,order:orderMap.has(s.id)?{...orderMap.get(s.id),total:Number(orderMap.get(s.id)!.total)}:null})),stats:{last30:total,ordered30:await prisma.sessionReplay.count({where:{startedAt:{gte:from,lte:to},ordered:true}}),sources:Object.fromEntries(sourceGroups.map(s=>[s.source,s._count._all]))}});
 });
 app.get('/api/admin/session-replays/:id/chunks/:sequence',requireAuth('reports.read'),async(req,res)=>{
  if(!Number.isInteger(Number(routeParam(req,'sequence')))||Number(routeParam(req,'sequence'))<0)return res.status(400).json({error:'INVALID_SEQUENCE'});
- const chunk=await prisma.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId:routeParam(req,'id'),sequence:Number(routeParam(req,'sequence'))}}});
+ const chunk=await prisma.sessionReplayChunk.findUnique({where:{sessionId_sequence:{sessionId:routeParam(req,'id'),sequence:Number(routeParam(req,'sequence'))}},select:{storageKey:true}});
  if(!chunk)return res.status(404).json({error:'NOT_FOUND'});
- setNoStore(res);if(chunk.storageKey){if(req.query.download==='1'){try{return res.json({events:await readReplayChunk(chunk.storageKey)})}catch(error:any){if(Array.isArray(chunk.events)&&chunk.events.length)return res.json({events:chunk.events});if(error?.name==='NoSuchKey'||error?.$metadata?.httpStatusCode===404)return res.status(410).json({error:'RECORDING_FILE_EXPIRED'});return res.status(503).json({error:'REPLAY_STORAGE_UNAVAILABLE'});}}return res.json({url:await replayChunkUrl(chunk.storageKey)});}res.json({events:chunk.events});
+ setNoStore(res);if(!chunk.storageKey)return res.status(410).json({error:'RECORDING_FILE_EXPIRED'});if(!replayStorageConfigured())return res.status(503).json({error:'REPLAY_STORAGE_NOT_CONFIGURED'});{if(req.query.download==='1'){try{return res.json({events:await readReplayChunk(chunk.storageKey)})}catch(error:any){if(error?.name==='NoSuchKey'||error?.$metadata?.httpStatusCode===404)return res.status(410).json({error:'RECORDING_FILE_EXPIRED'});return res.status(503).json({error:'REPLAY_STORAGE_UNAVAILABLE'});}}return res.json({url:await replayChunkUrl(chunk.storageKey)});}
 });
 app.get('/api/admin/session-replays/:id',requireAuth('reports.read'),async(req,res)=>{
  const id=routeParam(req,'id');
@@ -1308,7 +1319,7 @@ app.get('/api/admin/session-replays/:id',requireAuth('reports.read'),async(req,r
  const [width,height]=String(session.viewport||'1280x720').split('x').map(Number);
  const first=chunks[0]?.firstTimestamp;
  const bootstrap=first?{type:4,timestamp:first-1,data:{href:privateSafeUrl(session.landingUrl),width:Number.isFinite(width)&&width>0?width:1280,height:Number.isFinite(height)&&height>0?height:720}}:undefined;
- res.json({replayVersion:2,session,order:order?{...order,total:Number(order.total)}:null,markers,chunks,bootstrap,storage:replayStorageConfigured()?'private-r2':'database-legacy'});
+ res.json({replayVersion:2,session,order:order?{...order,total:Number(order.total)}:null,markers,chunks,bootstrap,storage:replayStorageConfigured()?'private-r2':'not-configured'});
 });
 
 app.delete('/api/admin/session-replays/:id', requireAuth('reports.read'), async (req:AuthedRequest,res)=>{
@@ -1406,7 +1417,7 @@ app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
 
 
   const sessionReplayEnabled = settings['tracking.sessionReplayEnabled'] !== false && settings['tracking.sessionReplayEnabled'] !== 'false';
-  const sessionReplayRetentionDays = Number(settings['tracking.sessionReplayRetentionDays'] || process.env.SESSION_REPLAY_RETENTION_DAYS || 14);
+  const sessionReplayRetentionDays = Number(settings['tracking.sessionReplayRetentionDays'] || process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
 
   const metaLastSuccess = events.find(e=>(e.channel==='server'||e.channel==='meta-server')&&e.accepted===true)?.createdAt||null;
   const tiktokLastSuccess = events.find(e=>e.channel==='tiktok-server'&&e.accepted===true)?.createdAt||null;
@@ -1452,7 +1463,7 @@ app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
       metaCapi: { enabled: metaCapiEnabled, configured: metaCapiConfigured, testEventCodeConfigured: metaTestEventCodeConfigured },
       tiktokPixel: { enabled: tiktokPixelEnabled, configured: tiktokPixelConfigured, id: tiktokPixelId },
       tiktokEventsApi: { enabled: tiktokEventsApiEnabled, configured: tiktokEventsApiConfigured, testEventCodeConfigured: tiktokTestEventCodeConfigured },
-      sessionReplay: { enabled: sessionReplayEnabled, configured: true, retentionDays: sessionReplayRetentionDays },
+      sessionReplay: { enabled: sessionReplayEnabled, configured: replayStorageConfigured(), retentionDays: sessionReplayRetentionDays },
     },
 
     config: {
@@ -1464,7 +1475,7 @@ app.get('/api/admin/tracking', requireAuth('reports.read'), async (_req,res)=>{
       metaCapi: { enabled: metaCapiEnabled, configured: metaCapiConfigured, testEventCodeConfigured: metaTestEventCodeConfigured },
       tiktokPixel: { enabled: tiktokPixelEnabled, configured: tiktokPixelConfigured, id: tiktokPixelId },
       tiktokEventsApi: { enabled: tiktokEventsApiEnabled, configured: tiktokEventsApiConfigured, testEventCodeConfigured: tiktokTestEventCodeConfigured },
-      sessionReplay: { enabled: sessionReplayEnabled, configured: true, retentionDays: sessionReplayRetentionDays },
+      sessionReplay: { enabled: sessionReplayEnabled, configured: replayStorageConfigured(), retentionDays: sessionReplayRetentionDays },
     },
   });
 });
