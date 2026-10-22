@@ -69,3 +69,19 @@ being removed (copy anything you want to keep); the last must show `pages_left =
 `/privacy-policy/`, `/terms-conditions/`, `/shipping-policy/` and `/refund_returns/` once.
 
 Tested on a copy of the local database.
+
+## 04 — Fix pg-boss function search paths
+
+After the launch worker has installed pg-boss, run `04-pgboss-search-path.sql` on a staging copy first,
+then in the production SQL editor as the function owner. It fixes only the installed pg-boss 10 overloads
+`create_queue(text,json)` and `delete_queue(text)`. Missing functions or an unexpected existing custom
+search path abort the transaction before any changes. Both verification rows must show
+`search_path=pgboss, pg_temp`. Recheck the security advisor; worker upgrades may replace these functions.
+
+Rollback: `04-pgboss-search-path-rollback.sql` restores the prior default unset path. It brings the
+mutable-search-path warning back; it does not delete jobs or functions. Tested with the installed
+pg-boss DDL in isolated in-memory PostgreSQL, including real queue creation/deletion, reapply,
+rollback, missing functions and rejection of unexpected custom settings. No production SQL was run.
+
+After the replay purge (02), a person should run Supabase's performance advisor and inspect the
+actual admin query plans before proposing indexes. No speculative indexes are included in 04.

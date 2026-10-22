@@ -167,6 +167,16 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   backend and frontend typechecks pass. Tests stub imports before registering the actual routes and
   never load the database connection module.
 
+### B-4: pg-boss database hygiene
+
+- Added `backend/prisma/sql/04-pgboss-search-path.sql` for the installed pg-boss 10 function signatures,
+  with a separate rollback and operator instructions. Missing worker functions or an unexpected custom
+  path stop the entire patch; applying it twice is safe.
+- Validation: both SQL tests pass on isolated in-memory PostgreSQL using the installed pg-boss DDL,
+  including actual queue create/delete, reapplication, rollback and failure guards. No live database
+  was accessed. The performance-advisor review stays manual after the purge; no unmeasured indexes
+  were added.
+
 ### Left for a person (not code)
 
 - Complete Part A configuration in the handover, in order; no production databases, dashboards,
