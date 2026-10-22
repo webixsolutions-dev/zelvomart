@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLd } from "@/lib/json-ld";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { products, isOnSale } from "@store/lib/catalog";
@@ -50,7 +51,7 @@ export default async function HomePage() {
     <>
       <link rel="canonical" href={`${site.url}/`} />
       <meta property="og:url" content={`${site.url}/`} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(websiteJsonLd) }} />
       <HeroSlider />
       <section className="trust-section home-trust" aria-label="Why shop with Zelvomart">
         <div className="container">

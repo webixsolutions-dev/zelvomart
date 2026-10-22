@@ -158,3 +158,78 @@ configuration tasks from the handover remain manual and were not executed here.
   those refs. No branch or source history was deleted. Author identity already matched the owner;
   repository-local GitHub credential selection now uses the saved `webixsolutions-dev` account.
 - No production database command, dashboard setting, secret or environment variable was changed.
+
+## Batch 5-B: audit follow-ups (branch `fix/audit-followups-batch-5b`)
+
+22 October 2026 handover reviewed against the merged source and the existing Batch 5 branch. This branch
+starts from Batch 5 so its PR must be reviewed separately after Batch 5 lands. Work plan: cap replay
+ingestion; return clear duplicate-email conflicts; serialize all structured data safely; ship pg-boss
+search-path SQL and rollback; run the complete CI checks and record the manual rollout work.
+
+### B-3: structured-data script safety
+
+- Added one `jsonLd()` serializer that escapes every `<` as a JSON Unicode escape. All six JSON-LD
+  emitters (organization, website, product, breadcrumb, FAQ and policy) now use it.
+- Tested a hostile product title, nested strings, Unicode and a closing-script/image payload through
+  React's HTML renderer: exactly one script, no injected HTML, and JSON round-trips without data loss.
+- Validation: `node --import tsx --test backend/scripts/json-ld.test.ts` passes (1 test).
+
+### B-2: duplicate team-user email
+
+- Team-user create and update return `409 { error: "EMAIL_ALREADY_EXISTS" }` only for the email unique
+  constraint. Email values are trimmed and lowercased consistently; other failures still reach the
+  normal error handler. Add Staff shows a clear inline message and keeps the form open.
+- Customer email is not unique in the existing schema, so shared customer emails remain supported.
+  The existing customer-phone conflict stays a 409 with its specific message; no migration was added.
+- Validation: duplicate-email HTTP route tests plus existing app-error tests pass (8 including subtests);
+  backend and frontend typechecks pass. Tests stub imports before registering the actual routes and
+  never load the database connection module.
+
+### B-4: pg-boss database hygiene
+
+- Added `backend/prisma/sql/04-pgboss-search-path.sql` for the installed pg-boss 10 function signatures,
+  with a separate rollback and operator instructions. Missing worker functions or an unexpected custom
+  path stop the entire patch; applying it twice is safe.
+- Validation: both SQL tests pass on isolated in-memory PostgreSQL using the installed pg-boss DDL,
+  including actual queue create/delete, reapplication, rollback and failure guards. No live database
+  was accessed. The performance-advisor review stays manual after the purge; no unmeasured indexes
+  were added.
+
+### B-1: bounded replay ingestion and atomic rate limits
+
+- Replaced read/reset/increment rate limiting with one atomic PostgreSQL upsert, including window
+  resets and retry times. The high-frequency chunk route uses bounded in-memory counters per instance;
+  it no longer queries the database for a per-request rate-limit bucket.
+- Only `/start` can register a recording. Up to 200 new sessions per IP in a rolling 24-hour window;
+  re-announcing the same registered session does not consume quota. Analytics events annotate existing
+  sessions only, and early cart/checkout events are restored during registration.
+- Each session accepts at most 400 immutable chunk sequences and 20 MiB of compressed R2 data. A
+  transaction-scoped session lock covers admission, upload and metadata, so concurrent requests cannot
+  exceed the caps or overwrite admitted keys. Duplicate retries acknowledge the existing chunk;
+  unknown sessions, exhausted quotas and failed uploads never create arbitrary recording rows.
+- The recorder buffers while registration retries, stops on a durable quota without rotating IDs,
+  and retains that stop across reloads. Short per-IP throttles remain retryable. R2 PUT has a 15-second
+  timeout; storage failures do not commit chunk metadata or consume session capacity.
+- Validation: 8 new ingestion/delivery tests pass, including real atomic SQL on isolated in-memory
+  PostgreSQL, floods, concurrent resets, 200-session quota, 40,000-event normal session, concurrent
+  400-chunk boundary, byte boundary, duplicate immutability, unknown/unregistered session rejection,
+  upload failure and browser registration/stop/retry behavior. Both app typechecks pass.
+
+### Left for a person (not code)
+
+- Complete Part A configuration in the handover, in order; no production databases, dashboards,
+  environment variables or credentials were changed here.
+- Deploy and verify Batch 5 in Mumbai before measuring the Batch 6 production baseline. Batch 6 remains
+  gated on that evidence; no speculative speed changes or invented Lighthouse numbers are included.
+
+### Final Batch 5-B verification 23 October 2026
+
+- Clean dependency installation, Prisma validation, backend tests **73/73**, both TypeScript checks,
+  backend Prettier check, backend build and frontend production build pass. The worktree uses its own
+  dependencies; a shared dependency junction was removed after it caused local resolution failures.
+- Batch 5 PR #20 merged through green CI and successful previews. Its production deployment on
+  `4f8ebd8` also passes CI and both Vercel deployment statuses; backend `/api/health`, storefront home
+  and admin login return 200. A backend response identifies the `bom1` compute hop. No authenticated
+  admin action, live recording upload or real order was performed.
+- Rollout steps and operating limits are in `deployment/batch-5b-runbook.md`. The pg-boss patch and
+  Supabase performance-advisor review remain manual, as required by the handover.

@@ -1,6 +1,6 @@
 import express from "express";
 import bcrypt from "bcryptjs";
-import { Role } from "../generated/prisma/client";
+import type { Role } from "../generated/prisma/client";
 import { prisma } from "../lib/db";
 import {
   signAdminToken,
@@ -16,6 +16,7 @@ import { generateTotpSecret, verifyTotp, totpUri } from "../lib/totp";
 import QRCode from "qrcode";
 import type { Express } from "express";
 import { allowRequest, audit, routeParam } from "../http/shared";
+import { isEmailConflict } from "../lib/email-conflict";
 
 /** The otpauth link and a QR code (SVG data URL) for an authenticator app. */
 async function enrolmentDetails(secret: string, email: string) {
@@ -171,21 +172,28 @@ export function registerAuthRoutes(app: Express) {
     const password = String(req.body.password || "");
     if (password.length < ADMIN_PASSWORD_MIN || password.length > 200)
       return res.status(400).json({ error: `The password needs ${ADMIN_PASSWORD_MIN} to 200 characters.` });
-    const row = await prisma.user.create({
-      data: {
-        name: String(req.body.name),
-        email: String(req.body.email).toLowerCase(),
-        passwordHash: await bcrypt.hash(password, 12),
-        role: (req.body.role || "ORDER_AGENT") as Role,
-        active: req.body.active !== false,
-      },
-    });
+    let row;
+    try {
+      row = await prisma.user.create({
+        data: {
+          name: String(req.body.name),
+          email: String(req.body.email).trim().toLowerCase(),
+          passwordHash: await bcrypt.hash(password, 12),
+          role: (req.body.role || "ORDER_AGENT") as Role,
+          active: req.body.active !== false,
+        },
+      });
+    } catch (error) {
+      if (isEmailConflict(error)) return res.status(409).json({ error: "EMAIL_ALREADY_EXISTS" });
+      throw error;
+    }
     await audit(req, "create", "User", row.id);
     res.status(201).json({ id: row.id, name: row.name, email: row.email, role: row.role, active: row.active });
   });
   app.patch("/api/admin/users/:id", requireAuth("users.write"), async (req: AuthedRequest, res) => {
     const data: any = {};
     for (const k of ["name", "email", "role", "active"]) if (k in req.body) data[k] = req.body[k];
+    if ("email" in data) data.email = String(data.email).trim().toLowerCase();
     if (req.body.password) {
       const nextPassword = String(req.body.password);
       if (nextPassword.length < ADMIN_PASSWORD_MIN || nextPassword.length > 200)
@@ -196,7 +204,13 @@ export function registerAuthRoutes(app: Express) {
       data.totpSecret = null;
       data.twoFactorReady = false;
     }
-    const row = await prisma.user.update({ where: { id: routeParam(req, "id") }, data });
+    let row;
+    try {
+      row = await prisma.user.update({ where: { id: routeParam(req, "id") }, data });
+    } catch (error) {
+      if (isEmailConflict(error)) return res.status(409).json({ error: "EMAIL_ALREADY_EXISTS" });
+      throw error;
+    }
     forgetAdminUser(row.id);
     await audit(
       req,

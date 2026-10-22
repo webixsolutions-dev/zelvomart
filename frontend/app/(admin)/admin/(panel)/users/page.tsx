@@ -6,21 +6,29 @@ import AdminTable from '@/components/admin/AdminTable';
 import AdminModal from '@/components/admin/AdminModal';
 import { useState } from 'react';
 import { clientApi } from '@/lib/client-api';
+import { friendlyError } from '@/lib/app-errors';
 import { useAdminData,AdminLoading,AdminError } from '@/components/admin/useAdminData';
 
 function UserForm({onSaved}:{onSaved:()=>void}){
+  const [error,setError]=useState('');
+  const [busy,setBusy]=useState(false);
   async function submit(e:React.FormEvent<HTMLFormElement>){
     e.preventDefault();
-    const f=new FormData(e.currentTarget);
-    await clientApi('/api/admin/users',{method:'POST',body:JSON.stringify({name:f.get('name'),email:f.get('email'),password:f.get('password'),role:f.get('role'),active:true})},true);
-    onSaved();
+    const form=e.currentTarget,f=new FormData(form);
+    setBusy(true);setError('');
+    try{
+      await clientApi('/api/admin/users',{method:'POST',body:JSON.stringify({name:f.get('name'),email:f.get('email'),password:f.get('password'),role:f.get('role'),active:true})},true);
+      form.reset();onSaved();
+    }catch(error){setError(friendlyError(error));}
+    finally{setBusy(false);}
   }
-  return <form className="admin-reference-form catalog-form" onSubmit={submit}>
+  return <form className="admin-reference-form catalog-form" onSubmit={submit} aria-busy={busy}>
     <label className="field"><span>Name</span><input name="name" required/></label>
     <label className="field"><span>Email</span><input name="email" type="email" required/></label>
     <label className="field"><span>Password</span><input name="password" type="password" autoComplete="new-password" minLength={PASSWORD_MIN} required/></label>
     <label className="field"><span>Role</span><select name="role"><option value="OWNER">Owner</option><option value="MANAGER">Manager</option><option value="ORDER_AGENT">Order agent</option><option value="MARKETER">Marketer</option></select></label>
-    <button className="admin-reference-submit">Add User</button>
+    <button className="admin-reference-submit" disabled={busy}>{busy?'Adding…':'Add User'}</button>
+    {error?<p role="alert" style={{gridColumn:'1 / -1'}}>{error}</p>:null}
   </form>
 }
 

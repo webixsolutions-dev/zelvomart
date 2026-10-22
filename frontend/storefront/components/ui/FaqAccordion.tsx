@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { jsonLd } from "@/lib/json-ld";
 import { Plus } from "lucide-react";
 
 export function FaqAccordion({ items, defaultOpen = 0 }: { items: { q: string; a: string }[]; defaultOpen?: number | null }) {
@@ -30,5 +31,5 @@ export function FaqJsonLd({ items }: { items: { q: string; a: string }[] }) {
     "@type": "FAQPage",
     mainEntity: items.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
   };
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />;
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(data) }} />;
 }
