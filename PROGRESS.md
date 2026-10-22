@@ -1,5 +1,18 @@
 # Progress
 
+## Dashboard health-card removal (23 October 2026)
+
+- Removed the System health card and its dedicated admin endpoint/service/tests at the owner's request. Successful email sends no longer write a health-only database marker.
+- Kept `/api/health` for deployment checks and the separate Tracking Health page and worker heartbeat used by tracking operations.
+- Removed two unreferenced historical Markdown reports: `deployment/WORK-REPORT-2026-10-20.md` (explicitly superseded by the launch-readiness report) and `deployment/storefront-move/DELETED-FILES.md` (a stale deleted-file inventory).
+
+## Live database cleanup check (23 October 2026)
+
+- Read-only Supabase check: database is 16 MB; `SessionReplay` and `SessionReplayChunk` are already empty. No replay purge was needed in this pass.
+- The 8 unused CMS `Page` rows were exported to the ignored local recovery file `tmp-pages-backup-2026-10-23/pages.json`, deleted as requested by the handover cleanup, and verified at 0 rows.
+- Read-only security check: no grants to `anon`/`authenticated` on public tables and all public tables have RLS enabled. The separate Supabase Data API exposed-schemas setting was not inspected.
+- The queue currently contains 1,185 `QUEUED` jobs and no worker heartbeat is recorded. Do not start the worker until the backlog and email side effects have been reviewed.
+
 Work from the 21 October 2026 audit, done in batches, one branch each. Finding IDs (C1, H5, …) refer to the
 audit report kept outside this repository.
 
@@ -120,11 +133,8 @@ Next: Batch 5 (region and monitoring).
 - Optional source-map upload is guarded by build credentials and commit SHA; frontend maps are deleted after upload. Updated Vercel Ignored Build Step instructions to include shared packages.
 - Tests cover disabled/invalid DSNs, hostile nested sensitive event payloads and source-map upload disabled without credentials. No live Sentry event or source map was uploaded.
 
-### System Health — complete in code
-- Added non-cacheable `GET /api/admin/system-health` with independent OWNER/MANAGER authorization and a dashboard card restricted to the same roles. Refreshes every 30 seconds while visible, supports manual refresh and handles failures without a false green state.
-- Reports heartbeat age, queue count/oldest age, jobs failed by completion time in the last 24 hours, and last successful email. Missing worker explicitly says `Worker not running`; heartbeat >=120 seconds is red.
-- Successful Resend acknowledgements save only a timestamp in the existing Setting table, with older successful email jobs as fallback. Metadata-write failure never converts an acknowledged send into a retry. No migration or contact-message storage was added.
-- Tests cover no/stale/future/malformed heartbeat, queue age, recent failures, email fallback, 401/403 role restrictions before data access, no-store headers and sanitized 503 storage failure.
+### System health card removal
+- Removed the standalone dashboard card, its OWNER/MANAGER admin endpoint, service and tests, and the email-success database timestamp at the owner's request. The separate Tracking Health page, worker heartbeat and generic deployment `/api/health` check remain.
 
 ### Validation
 - Backend tests: **54/54 pass**, no live database/mail service required.
@@ -217,10 +227,13 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 
 ### Left for a person (not code)
 
-- Complete Part A configuration in the handover, in order; no production databases, dashboards,
-  environment variables or credentials were changed here.
-- Deploy and verify Batch 5 in Mumbai before measuring the Batch 6 production baseline. Batch 6 remains
-  gated on that evidence; no speculative speed changes or invented Lighthouse numbers are included.
+- Review Supabase security/performance advisors. Run guarded SQL 04 only after installing the launch
+  worker, staging first, with the supplied rollback available.
+- Verify the Supabase Data API exposed-schemas setting. Complete Vercel secret cleanup/Sensitive
+  flags, ignored build commands, main protection, owner password and delivery settings from Part A.
+- Configure and verify Resend/domain and Sentry credentials/alerts. Review the 1,185-job backlog before
+  deploying the worker. Complete infrastructure upgrades, final content, live domain/SSL, tracking
+  tokens and real-order smoke tests from Part C.
 
 ### Final Batch 5-B verification 23 October 2026
 

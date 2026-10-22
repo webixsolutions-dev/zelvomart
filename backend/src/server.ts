@@ -1,6 +1,5 @@
 import "dotenv/config";
-import { installErrorMonitoring, reportError } from "./instrument";
-import { createSystemHealthRouter } from "./routes/admin/system-health";
+import { installErrorMonitoring } from "./instrument";
 import { prisma } from "./lib/db";
 import { requireAuth } from "./lib/auth";
 import { reviewRouter } from "./admin-reviews";
@@ -83,10 +82,6 @@ app.use("/api/admin/coupons", couponRouter);
 app.use("/api/admin/orders", orderEditRouter);
 app.use("/api/admin/overview", overviewRouter);
 app.use("/api/admin/reviews", reviewRouter);
-app.use(
-  "/api/admin/system-health",
-  createSystemHealthRouter({ authenticate: requireAuth(), store: prisma, reportError }),
-);
 registerTrackingRoutes(app);
 registerReplayRoutes(app);
 registerCustomerAuthRoutes(app);
