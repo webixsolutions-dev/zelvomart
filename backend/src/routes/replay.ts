@@ -401,7 +401,11 @@ export function registerReplayRoutes(app: Express) {
       select: { storageKey: true },
     });
     await deleteReplayChunks(chunks.map((c) => c.storageKey!));
-    await prisma.sessionReplay.deleteMany({ where: { id } });
+    await prisma.$transaction([
+      prisma.order.updateMany({ where: { replaySessionId: id }, data: { replaySessionId: null } }),
+      prisma.eventLog.deleteMany({ where: { sessionReplayId: id } }),
+      prisma.sessionReplay.deleteMany({ where: { id } }),
+    ]);
     await audit(req, "delete", "SessionReplay", id);
     res.json({ ok: true });
   });

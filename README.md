@@ -102,16 +102,11 @@ remain for diagnosis. Sentry v11 `dataCollection` disables personal-data collect
 Replay are disabled/dropped. The existing rrweb recorder remains separate. Real error ingestion and source-map matching
 must be smoke-tested after configuring an account; no test event was sent to a live service during development.
 
-## Admin system health
+## Admin dashboard health
 
-The dashboard shows the card only to OWNER/MANAGER; `GET /api/admin/system-health` independently enforces those roles
-and returns private, non-cacheable aggregate data. It reports worker heartbeat age, queued count, oldest queued age,
-failures completed in the last 24 hours and the latest acknowledged email send. Missing heartbeat says **Worker not
-running**; a heartbeat at least two minutes old is red. Refresh is automatic every 30 seconds while the page is visible.
-An unavailable database shows a retryable error instead of a false healthy status.
-
-Email success means a Resend API acknowledgement, not proof of inbox delivery. Only a timestamp is persisted in the
-existing Setting table; no migration, recipient, message or contact-form contents are stored for this feature. Older
-successful email jobs provide a fallback. Reading the card never retries jobs or drains the queue.
+The standalone System health dashboard card and its `/api/admin/system-health` endpoint were removed on 23 October
+2026 at the owner's request. Worker and queue status remain available in the separate Admin → Tracking Health area;
+the generic `/api/health` endpoint remains for deployment checks. Successful email sends no longer write a
+health-only database timestamp.
 
 Deployment and measurement checklist: [deployment/batch-5-6-runbook.md](deployment/batch-5-6-runbook.md).
