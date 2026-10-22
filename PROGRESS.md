@@ -221,3 +221,15 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   environment variables or credentials were changed here.
 - Deploy and verify Batch 5 in Mumbai before measuring the Batch 6 production baseline. Batch 6 remains
   gated on that evidence; no speculative speed changes or invented Lighthouse numbers are included.
+
+### Final Batch 5-B verification 23 October 2026
+
+- Clean dependency installation, Prisma validation, backend tests **73/73**, both TypeScript checks,
+  backend Prettier check, backend build and frontend production build pass. The worktree uses its own
+  dependencies; a shared dependency junction was removed after it caused local resolution failures.
+- Batch 5 PR #20 merged through green CI and successful previews. Its production deployment on
+  `4f8ebd8` also passes CI and both Vercel deployment statuses; backend `/api/health`, storefront home
+  and admin login return 200. A backend response identifies the `bom1` compute hop. No authenticated
+  admin action, live recording upload or real order was performed.
+- Rollout steps and operating limits are in `deployment/batch-5b-runbook.md`. The pg-boss patch and
+  Supabase performance-advisor review remain manual, as required by the handover.
