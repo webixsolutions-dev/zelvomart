@@ -115,3 +115,10 @@ export function requestReplayFlush() {
 }
 
 export function resetReplaySession(){try{for(const key of [SESSION_KEY,STARTED_AT_KEY,LANDING_URL_KEY,ACTIVITY_KEY])sessionStorage.removeItem(key)}catch{}}
+
+export function isReplaySessionLimited(sessionId: string) {
+  try { return sessionStorage.getItem(`zm_replay_limited:${sessionId}`) === "1"; } catch { return false; }
+}
+export function limitReplaySession(sessionId: string) {
+  try { sessionStorage.setItem(`zm_replay_limited:${sessionId}`, "1"); } catch {}
+}

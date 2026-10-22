@@ -5,14 +5,17 @@ import {
   replayStorageConfigured,
   deleteReplayChunks,
   readReplayChunk,
+  prepareReplayChunk,
 } from "../lib/replay-storage";
+import { ingestReplayChunk, startReplaySession } from "../lib/replay-ingest";
+import { createMemoryRateLimiter } from "../lib/rate-limit-store";
+import { requestIp } from "../lib/rate-limit";
 import express from "express";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/db";
 import { requireAuth, type AuthedRequest } from "../lib/auth";
 import type { Express } from "express";
 import {
-  allowRequest,
   audit,
   maybeCleanupOldSessionReplays,
   normalizeTrafficSource,
@@ -20,6 +23,15 @@ import {
   setNoStore,
   upload,
 } from "../http/shared";
+
+const limitReplayTraffic = createMemoryRateLimiter();
+function allowReplayTraffic(req: express.Request, res: express.Response, namespace: string, limit: number) {
+  const result = limitReplayTraffic(`${namespace}:${requestIp(req)}`, limit, 60000);
+  if (result.allowed) return true;
+  res.setHeader("Retry-After", String(result.retryAfterSeconds));
+  res.status(429).json({ error: "RATE_LIMITED", retryAfterSeconds: result.retryAfterSeconds });
+  return false;
+}
 
 // Privacy-safe customer session replay ingestion. Input values are masked in the browser before these events arrive.
 // Recording events are stored only in the private R2 bucket; Postgres keeps metadata (storageKey, counts, timestamps).
@@ -34,7 +46,7 @@ export function registerReplayRoutes(app: Express) {
   app.post("/api/session-replays/start", async (req, res) => {
     if (replayStorageMissing(res)) return;
     void maybeCleanupOldSessionReplays();
-    if (!(await allowRequest(req, res, "replay-start", 60, 60000))) return;
+    if (!allowReplayTraffic(req, res, "replay-start", 60)) return;
     const sessionId = String(req.body.sessionId || "").trim();
     const visitorId = String(req.body.visitorId || "").trim();
     if (!/^[0-9a-f-]{36}$/i.test(sessionId) || !/^[0-9a-f-]{36}$/i.test(visitorId))
@@ -72,10 +84,10 @@ export function registerReplayRoutes(app: Express) {
       metadata,
       ...(pageView ? { pageViews: { increment: 1 } } : {}),
     };
-    await prisma.sessionReplay.upsert({
-      where: { id: sessionId },
-      update: updateData,
-      create: {
+    const result = await startReplaySession(
+      prisma,
+      requestIp(req),
+      {
         id: sessionId,
         visitorId,
         source: sourceName,
@@ -91,20 +103,26 @@ export function registerReplayRoutes(app: Express) {
         lastSeenAt: now,
         metadata,
       },
-    });
+      updateData,
+    );
+    if (result.status !== 200) {
+      if (result.retryAfterSeconds) res.setHeader("Retry-After", String(result.retryAfterSeconds));
+      return res.status(result.status).json({ error: result.error, retryAfterSeconds: result.retryAfterSeconds });
+    }
     res.json({ ok: true });
   });
 
   app.post("/api/session-replays/chunk", async (req, res) => {
     if (replayStorageMissing(res)) return;
-    if (!(await allowRequest(req, res, "replay-chunks", 180, 60000))) return;
+    if (!allowReplayTraffic(req, res, "replay-chunks", 180)) return;
     const sessionId = String(req.body.sessionId || ""),
       sequence = Number(req.body.sequence),
       events = Array.isArray(req.body.events) ? req.body.events : [];
     if (
       !/^[0-9a-f-]{36}$/i.test(sessionId) ||
-      !Number.isInteger(sequence) ||
+      !Number.isSafeInteger(sequence) ||
       sequence < 0 ||
+      sequence > 2147483647 ||
       events.length < 1 ||
       events.length > 100
     )
@@ -119,71 +137,33 @@ export function registerReplayRoutes(app: Express) {
       )
     )
       return res.status(400).json({ error: "INVALID_REPLAY_TIMESTAMP" });
-    const now = new Date(),
-      currentUrl = privateSafeUrl(String(req.body.currentUrl || "")).slice(0, 4000);
+    const currentUrl = privateSafeUrl(String(req.body.currentUrl || "")).slice(0, 4000);
     const firstTimestamp = Math.min(...events.map((e: any) => e.timestamp)),
       lastTimestamp = Math.max(...events.map((e: any) => e.timestamp));
-    await prisma.sessionReplay.upsert({
-      where: { id: sessionId },
-      update: { lastSeenAt: now, lastUrl: currentUrl },
-      create: {
-        id: sessionId,
-        visitorId: sessionId,
-        source: "direct",
-        landingUrl: currentUrl,
-        lastUrl: currentUrl,
-        status: "ACTIVE",
-        startedAt: new Date(firstTimestamp),
-        lastSeenAt: now,
-      },
-    });
-    let stored;
-    try {
-      stored = await storeReplayChunk(sessionId, sequence, events);
-    } catch (error) {
-      console.error("Private replay upload failed", error instanceof Error ? error.message : error);
-      return res.status(503).json({ error: "REPLAY_STORAGE_UNAVAILABLE" });
-    }
-    if (!stored) return res.status(503).json({ error: "REPLAY_STORAGE_NOT_CONFIGURED" });
-    // Metadata only: the events column stays at its empty default.
-    const data = {
-      eventCount: events.length,
-      hasSnapshot: events.some((e: any) => e.type === 2),
+    const input = {
+      sessionId,
+      sequence,
+      currentUrl,
       firstTimestamp,
       lastTimestamp,
-      ...(stored || {}),
+      eventCount: events.length,
+      hasSnapshot: events.some((e: any) => e.type === 2),
+      body: prepareReplayChunk(events),
     };
-    await prisma.$transaction(
-      async (tx) => {
-        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${sessionId}))`;
-        const old = await tx.sessionReplayChunk.findUnique({
-          where: { sessionId_sequence: { sessionId, sequence } },
-          select: { eventCount: true },
-        });
-        await tx.sessionReplayChunk.upsert({
-          where: { sessionId_sequence: { sessionId, sequence } },
-          create: { sessionId, sequence, ...data },
-          update: data,
-        });
-        const session = await tx.sessionReplay.findUniqueOrThrow({
-          where: { id: sessionId },
-          select: { startedAt: true, durationMs: true },
-        });
-        await tx.sessionReplay.update({
-          where: { id: sessionId },
-          data: {
-            lastSeenAt: now,
-            lastUrl: currentUrl,
-            eventCount: { increment: events.length - (old?.eventCount || 0) },
-            ...(!old ? { chunkCount: { increment: 1 } } : {}),
-            ...(events.some((e: any) => e.type === 2) ? { hasSnapshot: true } : {}),
-            durationMs: Math.max(session.durationMs, Math.min(2147483647, lastTimestamp - session.startedAt.getTime())),
-          },
-        });
-      },
-      { maxWait: 15000, timeout: 30000 },
-    );
-    res.json({ ok: true });
+    let storageFailed = false;
+    const result = await ingestReplayChunk(prisma, input, async (...args) => {
+      try {
+        return await storeReplayChunk(...args);
+      } catch {
+        storageFailed = true;
+        return null;
+      }
+    });
+    if (result.status !== 200)
+      return res.status(result.status).json({
+        error: storageFailed ? "REPLAY_STORAGE_UNAVAILABLE" : result.error,
+      });
+    res.json({ ok: true, ...(result.duplicate ? { duplicate: true } : {}) });
   });
 
   app.post("/api/session-replays/end", async (req, res) => {

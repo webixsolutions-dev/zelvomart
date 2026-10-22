@@ -48,19 +48,13 @@ export function registerTrackingRoutes(app: Express) {
           ...(eventName === "AddToCart" ? { reachedCart: true } : {}),
           ...(eventName === "InitiateCheckout" ? { reachedCheckout: true } : {}),
         };
-      await prisma.sessionReplay.upsert({
-        where: { id: sessionReplayId },
-        update: { lastSeenAt: now, lastUrl: sourceUrl || "", ...flags },
-        create: {
-          id: sessionReplayId,
-          visitorId: /^[0-9a-f-]{36}$/i.test(String(req.body.visitorId || "")) ? req.body.visitorId : sessionReplayId,
-          source: "direct",
-          landingUrl: sourceUrl || "",
-          lastUrl: sourceUrl || "",
-          startedAt: now,
-          lastSeenAt: now,
-          ...flags,
-        },
+      // Analytics can annotate an existing replay, but only /start registers a recording.
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${sessionReplayId}))`;
+        await tx.sessionReplay.updateMany({
+          where: { id: sessionReplayId },
+          data: { lastSeenAt: now, lastUrl: sourceUrl || "", ...flags },
+        });
       });
     }
 

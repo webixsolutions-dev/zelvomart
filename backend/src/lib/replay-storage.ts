@@ -20,10 +20,13 @@ function client() {
     credentials: { accessKeyId: process.env.S3_ACCESS_KEY_ID!, secretAccessKey: process.env.S3_SECRET_ACCESS_KEY! },
   });
 }
-export async function storeReplayChunk(sessionId: string, sequence: number, events: unknown[]) {
+export function prepareReplayChunk(events: unknown[]) {
+  return gzipSync(Buffer.from(JSON.stringify(events)));
+}
+export async function storeReplayChunk(sessionId: string, sequence: number, events: unknown[] | Buffer) {
   if (!replayStorageConfigured()) return null;
   const storageKey = `replays/${sessionId}/${sequence}.json.gz`,
-    body = gzipSync(Buffer.from(JSON.stringify(events)));
+    body = Buffer.isBuffer(events) ? events : prepareReplayChunk(events);
   await client().send(
     new PutObjectCommand({
       Bucket: process.env.REPLAY_S3_BUCKET,
@@ -33,6 +36,7 @@ export async function storeReplayChunk(sessionId: string, sequence: number, even
       ContentEncoding: "gzip",
       CacheControl: "private,max-age=300",
     }),
+    { abortSignal: AbortSignal.timeout(15000) },
   );
   return { storageKey, byteSize: body.length };
 }

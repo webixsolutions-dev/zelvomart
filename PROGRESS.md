@@ -177,6 +177,26 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   was accessed. The performance-advisor review stays manual after the purge; no unmeasured indexes
   were added.
 
+### B-1: bounded replay ingestion and atomic rate limits
+
+- Replaced read/reset/increment rate limiting with one atomic PostgreSQL upsert, including window
+  resets and retry times. The high-frequency chunk route uses bounded in-memory counters per instance;
+  it no longer queries the database for a per-request rate-limit bucket.
+- Only `/start` can register a recording. Up to 200 new sessions per IP in a rolling 24-hour window;
+  re-announcing the same registered session does not consume quota. Analytics events annotate existing
+  sessions only, and early cart/checkout events are restored during registration.
+- Each session accepts at most 400 immutable chunk sequences and 20 MiB of compressed R2 data. A
+  transaction-scoped session lock covers admission, upload and metadata, so concurrent requests cannot
+  exceed the caps or overwrite admitted keys. Duplicate retries acknowledge the existing chunk;
+  unknown sessions, exhausted quotas and failed uploads never create arbitrary recording rows.
+- The recorder buffers while registration retries, stops on a durable quota without rotating IDs,
+  and retains that stop across reloads. Short per-IP throttles remain retryable. R2 PUT has a 15-second
+  timeout; storage failures do not commit chunk metadata or consume session capacity.
+- Validation: 8 new ingestion/delivery tests pass, including real atomic SQL on isolated in-memory
+  PostgreSQL, floods, concurrent resets, 200-session quota, 40,000-event normal session, concurrent
+  400-chunk boundary, byte boundary, duplicate immutability, unknown/unregistered session rejection,
+  upload failure and browser registration/stop/retry behavior. Both app typechecks pass.
+
 ### Left for a person (not code)
 
 - Complete Part A configuration in the handover, in order; no production databases, dashboards,
