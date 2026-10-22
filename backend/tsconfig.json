@@ -8,7 +8,9 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "inlineSources": true
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "api/**/*.ts"],
   "exclude": ["dist", "node_modules", "workers", "scripts", "prisma/seed.ts"]

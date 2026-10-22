@@ -1,4 +1,8 @@
 import "dotenv/config";
+import { installErrorMonitoring, reportError } from "./instrument";
+import { createSystemHealthRouter } from "./routes/admin/system-health";
+import { prisma } from "./lib/db";
+import { requireAuth } from "./lib/auth";
 import { reviewRouter } from "./admin-reviews";
 import { orderEditRouter } from "./admin-order-edit";
 import { registerRecovery } from "./recovery";
@@ -79,6 +83,10 @@ app.use("/api/admin/coupons", couponRouter);
 app.use("/api/admin/orders", orderEditRouter);
 app.use("/api/admin/overview", overviewRouter);
 app.use("/api/admin/reviews", reviewRouter);
+app.use(
+  "/api/admin/system-health",
+  createSystemHealthRouter({ authenticate: requireAuth(), store: prisma, reportError }),
+);
 registerTrackingRoutes(app);
 registerReplayRoutes(app);
 registerCustomerAuthRoutes(app);
@@ -88,6 +96,7 @@ registerAdminProductsRoutes(app);
 registerAdminCustomersRoutes(app);
 registerAdminSettingsRoutes(app);
 registerAdminReportsRoutes(app);
+installErrorMonitoring(app);
 
 app.use((err: any, req: any, res: any, _next: any) => {
   if (err?.code === "P1001" || err?.code === "P1002") {

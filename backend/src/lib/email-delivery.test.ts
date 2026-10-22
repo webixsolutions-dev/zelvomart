@@ -29,7 +29,35 @@ test("email routing, missing credentials and provider responses", async () => {
         headers: { "content-type": "application/json" },
       });
     };
-    assert.equal((await deliverEmail(payload, "test-order-1")).id, "email-123");
+    let recorded = 0;
+    assert.equal(
+      (
+        await deliverEmail(payload, "test-order-1", async (at) => {
+          assert.ok(at instanceof Date);
+          recorded++;
+        })
+      ).id,
+      "email-123",
+    );
+    assert.equal(recorded, 1);
+    const originalWarn = console.warn;
+    let healthWarning = false;
+    try {
+      console.warn = () => {
+        healthWarning = true;
+      };
+      assert.equal(
+        (
+          await deliverEmail(payload, "test-order-1", async () => {
+            throw new Error("health store offline");
+          })
+        ).id,
+        "email-123",
+      );
+      assert.equal(healthWarning, true);
+    } finally {
+      console.warn = originalWarn;
+    }
     globalThis.fetch = async () =>
       new Response(JSON.stringify({ name: "validation_error", message: "Domain not verified" }), {
         status: 422,

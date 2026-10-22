@@ -14,7 +14,11 @@ export function emailIdentity(kind: EmailKind) {
 }
 
 // Keep this transport shared so a provider rejection cannot silently complete a job.
-export async function deliverEmail(payload: Parameters<Resend["emails"]["send"]>[0], idempotencyKey?: string) {
+export async function deliverEmail(
+  payload: Parameters<Resend["emails"]["send"]>[0],
+  idempotencyKey?: string,
+  recordSuccess = recordEmailSuccess,
+) {
   if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
   const result = await new Resend(process.env.RESEND_API_KEY).emails.send(
     payload,
@@ -22,7 +26,19 @@ export async function deliverEmail(payload: Parameters<Resend["emails"]["send"]>
   );
   if (result.error) throw new Error(`Email delivery rejected: ${result.error.message}`);
   if (!result.data?.id) throw new Error("Email provider did not acknowledge delivery");
+  // A timestamp only: never persist recipient, subject or contact-form contents for monitoring.
+  // An unavailable health store must not turn an already-acknowledged send into a retry/duplicate.
+  await recordSuccess(new Date()).catch(() => console.warn("Email health timestamp could not be recorded"));
   return result.data;
+}
+async function recordEmailSuccess(at: Date) {
+  const { prisma } = await import("./db");
+  const value = { at: at.toISOString() };
+  await prisma.setting.upsert({
+    where: { key: "health.lastSuccessfulEmail" },
+    update: { value },
+    create: { key: "health.lastSuccessfulEmail", value },
+  });
 }
 
 export function emailLayout(content: string) {

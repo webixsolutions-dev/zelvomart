@@ -1,0 +1,8 @@
+{
+  "name": "@zelvomart/monitoring",
+  "version": "1.0.0",
+  "private": true,
+  "main": "privacy.js",
+  "types": "privacy.d.ts",
+  "files": ["privacy.js", "privacy.d.ts"]
+}
