@@ -1,8 +1,16 @@
 import * as Sentry from "@sentry/nextjs";
-import { monitoringEnabled, scrubMonitoringEvent } from "@zelvomart/monitoring";
-export function initSentryServer(service: "frontend" | "frontend-edge") {
+import {
+  errorOnlyMonitoringOptions,
+  monitoringEnabled,
+  scrubMonitoringEvent,
+} from "@zelvomart/monitoring";
+export function initSentryServer(
+  service: "frontend" | "frontend-edge",
+  httpIntegration?: { name: string },
+) {
   if (!monitoringEnabled(process.env.SENTRY_DSN)) return;
   Sentry.init({
+    ...errorOnlyMonitoringOptions(httpIntegration),
     dsn: process.env.SENTRY_DSN,
     release: process.env.VERCEL_GIT_COMMIT_SHA,
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV,

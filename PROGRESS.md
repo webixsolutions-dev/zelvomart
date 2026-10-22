@@ -141,6 +141,24 @@ to be live, then mobile Slow 4G Lighthouse measurements of real production pages
 a measurement of this branch. Existing SQL, replay storage, Resend, worker backlog review/deployment, domain and launch
 configuration tasks from the handover remain manual and were not executed here.
 
+### Handover review and verification 23 October 2026
+
+- Reviewed existing Batch 5 rather than rebuilding it: both apps select `bom1`; the system-health
+  endpoint and dashboard restrict access to OWNER/MANAGER, distinguish an absent worker from an
+  endpoint error, and turn stale at the tested 120-second boundary.
+- Closed an SDK telemetry gap: automatic browser/process/HTTP session envelopes and client reports
+  bypass `beforeSend`. They are now disabled at initialization, and tracing is explicitly sampled at
+  zero even if a tracing environment variable is present. In-memory SDK transport tests verify that
+  normal page loads/HTTP requests emit nothing and captured errors are sanitized error events only.
+- Fresh `npm ci` passes. Compared every pre-existing lockfile package version with main: no unrelated
+  dependency version changed. Backend tests **56/56**, both typechecks, backend formatting, backend
+  build and the isolated frontend production build all pass. Prior preview deployments and CI were
+  green; the new review commit must also pass remote CI before merge.
+- Git pull was repaired by backing up two broken local Codex checkpoint refs before removing only
+  those refs. No branch or source history was deleted. Author identity already matched the owner;
+  repository-local GitHub credential selection now uses the saved `webixsolutions-dev` account.
+- No production database command, dashboard setting, secret or environment variable was changed.
+
 ## Batch 5-B: audit follow-ups (branch `fix/audit-followups-batch-5b`)
 
 22 October 2026 handover reviewed against the merged source and the existing Batch 5 branch. This branch

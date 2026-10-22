@@ -138,3 +138,23 @@ function monitoringEnabled(dsn) {
 }
 exports.scrubMonitoringEvent = scrubMonitoringEvent;
 exports.monitoringEnabled = monitoringEnabled;
+// Session and client-report envelopes bypass beforeSend. Disable them at their
+// source; Node callers also supply the Http integration with sessions:false.
+function errorOnlyMonitoringOptions(httpIntegration) {
+  return {
+    tracesSampleRate: 0,
+    sendClientReports: false,
+    integrations: (defaults) =>
+      defaults
+        .filter(
+          (integration) =>
+            !["BrowserSession", "ProcessSession"].includes(integration.name),
+        )
+        .map((integration) =>
+          integration.name === "Http" && httpIntegration
+            ? httpIntegration
+            : integration,
+        ),
+  };
+}
+exports.errorOnlyMonitoringOptions = errorOnlyMonitoringOptions;
