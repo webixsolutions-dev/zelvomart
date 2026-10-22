@@ -156,6 +156,17 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   React's HTML renderer: exactly one script, no injected HTML, and JSON round-trips without data loss.
 - Validation: `node --import tsx --test backend/scripts/json-ld.test.ts` passes (1 test).
 
+### B-2: duplicate team-user email
+
+- Team-user create and update return `409 { error: "EMAIL_ALREADY_EXISTS" }` only for the email unique
+  constraint. Email values are trimmed and lowercased consistently; other failures still reach the
+  normal error handler. Add Staff shows a clear inline message and keeps the form open.
+- Customer email is not unique in the existing schema, so shared customer emails remain supported.
+  The existing customer-phone conflict stays a 409 with its specific message; no migration was added.
+- Validation: duplicate-email HTTP route tests plus existing app-error tests pass (8 including subtests);
+  backend and frontend typechecks pass. Tests stub imports before registering the actual routes and
+  never load the database connection module.
+
 ### Left for a person (not code)
 
 - Complete Part A configuration in the handover, in order; no production databases, dashboards,
