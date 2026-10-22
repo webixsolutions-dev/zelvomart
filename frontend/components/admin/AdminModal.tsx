@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useRef, useState, useId } from "react";
+import { ToastContainer } from "react-toastify";
 
 type AdminModalProps = {
   trigger: ReactNode;
@@ -39,6 +40,7 @@ export default function AdminModal({
         const rect=event.currentTarget.getBoundingClientRect();
         if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)close();
       }}>
+        {opened ? <ToastContainer containerId="admin-modal" position="top-right" autoClose={5000} limit={3} newestOnTop closeOnClick pauseOnHover pauseOnFocusLoss theme="light" style={{zIndex:999999,fontFamily:'inherit',fontSize:13}}/> : null}
         <div className="admin-modal-shell">
           <div className="admin-modal-head">
             <div>

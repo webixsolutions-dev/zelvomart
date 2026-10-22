@@ -8,6 +8,7 @@ export function friendlyError(error:unknown,status?:number):string{
  if(messages[text])return messages[text];
  if(error instanceof Error&&error.name==='TimeoutError')return 'The request took too long. Please try again.';
  if(/failed to fetch|networkerror|load failed|network request failed/i.test(text))return 'Unable to connect. Check your connection and try again.';
+ if(text&&!/^[A-Z][A-Z_\d]+$/.test(text)&&!/prisma|sql|stack trace|unexpected token|internal server/i.test(text))return text.slice(0,240);
  if(status===401)return messages.UNAUTHORIZED;if(status===403)return messages.FORBIDDEN;
  if(status===429)return 'Too many requests. Please wait a moment and try again.';
  if(status&&status>=500)return messages.SERVER_ERROR;
@@ -20,7 +21,8 @@ export function notifyError(error:unknown,status?:number){
  const message=friendlyError(error,status),now=Date.now();
  if(now-(recent.get(message)||0)<30000)return;
  recent.set(message,now);for(const [key,time]of recent)if(now-time>60000)recent.delete(key);
- toast.error(message,{toastId:`app-error:${message}`});
+ const containerId=typeof document!=='undefined'&&document.querySelector('dialog.admin-modal[open]')?'admin-modal':undefined;
+ toast.error(message,{toastId:`app-error:${message}`,...(containerId?{containerId}:{})});
 }
 export function userFacingRequest(url:string){
  try{const path=new URL(url,window.location.origin).pathname;return path.includes('/api/')&&!/\/api\/(events|session-replays\/(start|chunk|end)|checkout\/abandoned|admin-session\/(login|verify|logout)|admin-proxy\/api\/auth\/me|account\/cart)(\/|$)/.test(path);}catch{return false;}
