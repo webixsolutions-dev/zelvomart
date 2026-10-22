@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLd as serializeJsonLd } from "@/lib/json-ld";
 import { notFound } from "next/navigation";
 import { getCategory, relatedProducts, categoryPath, type Product } from "@store/lib/catalog";
 import { loadProduct, loadStore } from "@store/lib/backend";
@@ -121,7 +122,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       <meta property="og:type" content="product" />
       <meta property="product:price:amount" content={String(p.price)} />
       <meta property="product:price:currency" content="PKR" />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
     </div>
   );
 }

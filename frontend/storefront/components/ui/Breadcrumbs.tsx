@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { jsonLd as serializeJsonLd } from "@/lib/json-ld";
 import { ChevronRight } from "lucide-react";
 import { site } from "@store/lib/site";
 
@@ -27,7 +28,7 @@ export function Breadcrumbs({ items, inHero = false }: { items: Crumb[]; inHero?
           </li>
         ))}
       </ol>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
     </nav>
   );
 }

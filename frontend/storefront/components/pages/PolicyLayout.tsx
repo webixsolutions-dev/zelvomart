@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { jsonLd } from "@/lib/json-ld";
 import { Fragment } from "react";
 import {
   Undo2, Heart, Video, CircleCheck, CircleX, MessageCircle, Clock3, Mail,
@@ -141,7 +142,7 @@ export function PolicyLayout({ policy }: { policy: PolicyDocument }) {
           </article>
         </div>
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }} />
     </div>
   );
 }

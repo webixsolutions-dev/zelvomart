@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { jsonLd } from "@/lib/json-ld";
 import { Manrope } from "next/font/google";
 import "@store/styles/globals.css";
 import { site } from "@store/lib/site";
@@ -111,7 +112,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Toaster />
         </ShopProvider>
         </CatalogBridge>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd()) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(orgJsonLd()) }} />
         <Suspense fallback={null}>
           <TrackingProvider />
           <GoogleAnalytics />

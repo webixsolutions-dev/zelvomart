@@ -140,3 +140,25 @@ Batch 6 intentionally has **no invented baseline or speculative performance chan
 to be live, then mobile Slow 4G Lighthouse measurements of real production pages. The historical Speed Index 4.3 s is not
 a measurement of this branch. Existing SQL, replay storage, Resend, worker backlog review/deployment, domain and launch
 configuration tasks from the handover remain manual and were not executed here.
+
+## Batch 5-B: audit follow-ups (branch `fix/audit-followups-batch-5b`)
+
+22 October 2026 handover reviewed against the merged source and the existing Batch 5 branch. This branch
+starts from Batch 5 so its PR must be reviewed separately after Batch 5 lands. Work plan: cap replay
+ingestion; return clear duplicate-email conflicts; serialize all structured data safely; ship pg-boss
+search-path SQL and rollback; run the complete CI checks and record the manual rollout work.
+
+### B-3: structured-data script safety
+
+- Added one `jsonLd()` serializer that escapes every `<` as a JSON Unicode escape. All six JSON-LD
+  emitters (organization, website, product, breadcrumb, FAQ and policy) now use it.
+- Tested a hostile product title, nested strings, Unicode and a closing-script/image payload through
+  React's HTML renderer: exactly one script, no injected HTML, and JSON round-trips without data loss.
+- Validation: `node --import tsx --test backend/scripts/json-ld.test.ts` passes (1 test).
+
+### Left for a person (not code)
+
+- Complete Part A configuration in the handover, in order; no production databases, dashboards,
+  environment variables or credentials were changed here.
+- Deploy and verify Batch 5 in Mumbai before measuring the Batch 6 production baseline. Batch 6 remains
+  gated on that evidence; no speculative speed changes or invented Lighthouse numbers are included.
