@@ -261,3 +261,12 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - Complete Resend/domain verification, monitoring credentials/alerts, launch worker and backlog
   processing, infrastructure upgrades, final content, live domain/SSL, tracking tokens and real-order
   smoke tests from Part C. These were not executed or represented as complete by code tests.
+
+### Delivery status 23 October 2026
+
+- PR #20 (reviewed Batch 5) and PR #21 (Batch 5-B) are merged into main. The Batch 5-B production
+  commit `0943215` passes GitHub CI and both Vercel production deployment checks. Backend health,
+  storefront home and admin login return 200; backend and home responses show `bom1` compute.
+- Batch 6 measurements are preserved separately in draft PR #22. Speed optimization and acceptance
+  are **not complete**; its warnings and next steps are explicit. No changes were pushed directly to
+  main, and all implemented application work is committed and pushed.
