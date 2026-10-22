@@ -1,7 +1,7 @@
 "use client";
 import ReplayStatCards,{ReplaySkeleton} from '@/components/admin/ReplayStatCards';
 import Link from 'next/link';
-import {useParams,useSearchParams} from 'next/navigation';
+import {useParams,useRouter,useSearchParams} from 'next/navigation';
 import {useEffect,useState} from 'react';
 import {clientApi} from '@/lib/client-api';
 import {replayPayload,replayRecords,type ReplayRecord} from '@/lib/replay-data';
@@ -17,11 +17,11 @@ const eventLabel=(name:string)=>({PageView:'Page viewed',ViewContent:'Product vi
 const eventIcon=(name:string)=>({PageView:'↗',ViewContent:'◈',AddToCart:'+',InitiateCheckout:'→',Purchase:'✓',ReplayError:'!',ReplayRageClick:'!'}[name]||'•');
 const errorText=(message:string)=>({DATABASE_UNAVAILABLE:'Database temporarily unavailable. Your loaded recording is still available.',RECORDING_FILE_EXPIRED:'This recording file has expired or is no longer available.',REPLAY_STORAGE_UNAVAILABLE:'Recording storage is temporarily unavailable. Retrying…'} as Record<string,string>)[message]||message;
 export default function ReplayDetail(){
- const {id}=useParams<{id:string}>(),search=useSearchParams(),live=search.get('live')==='1';
- const [detail,setDetail]=useState<Detail|null>(null),[events,setEvents]=useState<ReplayRecord[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[progress,setProgress]=useState({loaded:0,total:0}),[seek,setSeek]=useState<number>(),[attempt,setAttempt]=useState(0),[ended,setEnded]=useState(false);
+ const {id}=useParams<{id:string}>(),router=useRouter(),search=useSearchParams(),live=search.get('live')==='1';
+ const [detail,setDetail]=useState<Detail|null>(null),[events,setEvents]=useState<ReplayRecord[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[unavailable,setUnavailable]=useState(false),[deleting,setDeleting]=useState(false),[progress,setProgress]=useState({loaded:0,total:0}),[seek,setSeek]=useState<number>(),[attempt,setAttempt]=useState(0),[ended,setEnded]=useState(false);
  useEffect(()=>{
   const abort=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined,failures=0,legacyCount=0,bootstrapped=false;
-  const seen=new Set<number>();setDetail(null);setEvents([]);setLoading(true);setError('');setProgress({loaded:0,total:0});setSeek(undefined);setEnded(false);
+  const seen=new Set<number>();setDetail(null);setEvents([]);setLoading(true);setError('');setUnavailable(false);setProgress({loaded:0,total:0});setSeek(undefined);setEnded(false);
   const signal=()=>AbortSignal.any([abort.signal,AbortSignal.timeout(45000)]);
   async function load(){try{
    const raw=await clientApi<unknown>(`/api/admin/session-replays/${encodeURIComponent(id)}${live?'?live=1':''}`,{signal:signal()},true);
@@ -58,17 +58,34 @@ export default function ReplayDetail(){
   }catch(e){
    if(abort.signal.aborted)return;
    setLoading(false);const message=e instanceof Error?e.name==='TimeoutError'?'The recording request timed out. Retrying…':e.message:'Recording failed to load.';
-   setError(({DATABASE_UNAVAILABLE:'The database is temporarily unavailable. Loaded playback is preserved while we retry.',RECORDING_FILE_EXPIRED:'This recording file has expired or is no longer available.',REPLAY_STORAGE_UNAVAILABLE:'Recording storage is temporarily unavailable. Retrying…'} as Record<string,string>)[message]||message);
+   const friendly=({DATABASE_UNAVAILABLE:'The database is temporarily unavailable. Loaded playback is preserved while we retry.',RECORDING_FILE_EXPIRED:'This recording has expired or is no longer available.',REPLAY_STORAGE_UNAVAILABLE:'Recording storage is temporarily unavailable. Retrying…',NOT_FOUND:'The requested item is no longer available.'} as Record<string,string>)[message]||message;
+   if(friendly==='This recording has expired or is no longer available.'||friendly==='The requested item is no longer available.'){
+    // Missing R2 objects cannot be played again. Remove their stale index so they also disappear from the list.
+    if(friendly==='This recording has expired or is no longer available.'){
+     try{await clientApi(`/api/admin/session-replays/${encodeURIComponent(id)}`,{method:'DELETE'},true);setError('This recording has expired or is no longer available. Its stale entry has been removed from the recordings list.')}
+     catch{setError('This recording has expired or is no longer available. Return to the recordings list and try refreshing it.')}
+    }else setError(friendly);
+    setUnavailable(true);
+    return;
+   }
+   setError(friendly);
    // Keep already-loaded video visible and recover the failed chunk with a new URL.
    if(failures++<5)timer=setTimeout(()=>void load(),Math.min(30000,2000*2**(failures-1)));
   }}
   void load();return()=>{abort.abort();if(timer)clearTimeout(timer)};
  },[id,live,attempt]);
+ async function deleteRecording(){
+  if(!window.confirm('Delete this recording and its stored R2 chunks? This cannot be undone.'))return;
+  setDeleting(true);
+  try{await clientApi(`/api/admin/session-replays/${encodeURIComponent(id)}`,{method:'DELETE'},true);router.replace('/admin/session-replays');}
+  catch{setDeleting(false);}
+ }
+ if(unavailable)return <div className="replay-workspace"><section className="admin-card replay-notice" role="status"><div><h1>Recording unavailable</h1><p>{error}</p></div><Link className="admin-btn admin-btn-primary" href="/admin/session-replays">Back to recordings</Link></section></div>;
  const session=detail?.session,start=events[0]?.timestamp||(session?Date.parse(session.startedAt):0);
  const outcome=session?.ordered?'Ordered':session?.reachedCheckout?'Reached checkout':session?.reachedCart?'Added to cart':'Browsed';
  return <div className="replay-workspace">
  <header className="admin-title"><div><Link href="/admin/session-replays">← Session Replays</Link><h1>{session?`Replay #${session.visitorId.slice(0,8)}`:<ReplaySkeleton className="replay-title-skeleton"/>}</h1>{session&&<p>{session.source}{session.campaign?` · ${session.campaign}`:''} · {session.device||'Unknown device'} · {time(session.durationMs)} · {session.pageViews} pages · {outcome}</p>}</div>
- <div className="replay-header-actions"><Link className="admin-btn admin-btn-light" href={`/admin/session-replays/${id}${live?'':'?live=1'}`}>{live?'Recorded playback':'Watch live'}</Link>{session&&<Link href={`/admin/session-replays?visitor=${session.visitorId}`}>Other sessions from this visitor</Link>}{detail?.order&&<Link href={`/admin/orders/${detail.order.id}`}>{detail.order.orderNumber}</Link>}</div></header>
+ <div className="replay-header-actions"><Link className="admin-btn admin-btn-light" href={`/admin/session-replays/${id}${live?'':'?live=1'}`}>{live?'Recorded playback':'Watch live'}</Link>{session&&<Link href={`/admin/session-replays?visitor=${session.visitorId}`}>Other sessions from this visitor</Link>}{detail?.order&&<Link href={`/admin/orders/${detail.order.id}`}>{detail.order.orderNumber}</Link>}{session&&<button className="admin-btn admin-btn-light" disabled={deleting} onClick={()=>void deleteRecording()}>{deleting?'Deleting…':'Delete recording'}</button>}</div></header>
  {error&&<div className="admin-card replay-notice" role="alert"><span>{errorText(error)}</span><button className="admin-btn admin-btn-light" onClick={()=>setAttempt(n=>n+1)}>Retry recording</button></div>}
  <ReplayStatCards loading={!session&&loading} items={[{label:'Recorded duration',value:session?time(session.durationMs):'—',description:'Visitor session'},{label:'Pages visited',value:session?.pageViews??'—',description:'Across the journey'},{label:'Journey events',value:detail?.markers.length??'—',description:'Select an event to jump'},{label:'Furthest step',value:session?outcome:'—',description:live&&!ended?'Live updates enabled':'Recorded playback'}]}/>
  <p role="status" className="replay-progress">{loading?<ReplaySkeleton className="replay-progress-skeleton"/>:live?ended?'Session ended · recorded playback available':'Live · checking for new activity every 5 seconds':`${progress.loaded} recording parts loaded`}</p>

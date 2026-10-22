@@ -15,6 +15,10 @@ begin;
 -- Orders keep their data; only the link to a recording that no longer exists is cleared.
 update public."Order" set "replaySessionId" = null where "replaySessionId" is not null;
 
+-- Remove replay journey markers as well; they are not needed after their recording is purged.
+delete from public."EventLog"
+where "sessionReplayId" is not null;
+
 -- Chunks first (they reference the sessions), then the sessions.
 delete from public."SessionReplayChunk";
 delete from public."SessionReplay";
@@ -25,6 +29,7 @@ commit;
 -- if your SQL editor wraps everything in one transaction.
 vacuum full public."SessionReplayChunk";
 vacuum full public."SessionReplay";
+vacuum full public."EventLog";
 
 -- Check: both counts 0, and the table sizes are now small.
 select

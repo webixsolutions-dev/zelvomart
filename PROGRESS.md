@@ -1,5 +1,18 @@
 # Progress
 
+## Dashboard health-card removal (23 October 2026)
+
+- Removed the System health card and its dedicated admin endpoint/service/tests at the owner's request. Successful email sends no longer write a health-only database marker.
+- Kept `/api/health` for deployment checks and the separate Tracking Health page and worker heartbeat used by tracking operations.
+- Removed two unreferenced historical Markdown reports: `deployment/WORK-REPORT-2026-10-20.md` (explicitly superseded by the launch-readiness report) and `deployment/storefront-move/DELETED-FILES.md` (a stale deleted-file inventory).
+
+## Live database cleanup check (23 October 2026)
+
+- Read-only Supabase check: database is 16 MB; `SessionReplay` and `SessionReplayChunk` are already empty. No replay purge was needed in this pass.
+- The 8 unused CMS `Page` rows were exported to the ignored local recovery file `tmp-pages-backup-2026-10-23/pages.json`, deleted as requested by the handover cleanup, and verified at 0 rows.
+- Read-only security check: no grants to `anon`/`authenticated` on public tables and all public tables have RLS enabled. The separate Supabase Data API exposed-schemas setting was not inspected.
+- The queue currently contains 1,185 `QUEUED` jobs and no worker heartbeat is recorded. Do not start the worker until the backlog and email side effects have been reviewed.
+
 Work from the 21 October 2026 audit, done in batches, one branch each. Finding IDs (C1, H5, …) refer to the
 audit report kept outside this repository.
 
@@ -120,11 +133,8 @@ Next: Batch 5 (region and monitoring).
 - Optional source-map upload is guarded by build credentials and commit SHA; frontend maps are deleted after upload. Updated Vercel Ignored Build Step instructions to include shared packages.
 - Tests cover disabled/invalid DSNs, hostile nested sensitive event payloads and source-map upload disabled without credentials. No live Sentry event or source map was uploaded.
 
-### System Health — complete in code
-- Added non-cacheable `GET /api/admin/system-health` with independent OWNER/MANAGER authorization and a dashboard card restricted to the same roles. Refreshes every 30 seconds while visible, supports manual refresh and handles failures without a false green state.
-- Reports heartbeat age, queue count/oldest age, jobs failed by completion time in the last 24 hours, and last successful email. Missing worker explicitly says `Worker not running`; heartbeat >=120 seconds is red.
-- Successful Resend acknowledgements save only a timestamp in the existing Setting table, with older successful email jobs as fallback. Metadata-write failure never converts an acknowledged send into a retry. No migration or contact-message storage was added.
-- Tests cover no/stale/future/malformed heartbeat, queue age, recent failures, email fallback, 401/403 role restrictions before data access, no-store headers and sanitized 503 storage failure.
+### System health card removal
+- Removed the standalone dashboard card, its OWNER/MANAGER admin endpoint, service and tests, and the email-success database timestamp at the owner's request. The separate Tracking Health page, worker heartbeat and generic deployment `/api/health` check remain.
 
 ### Validation
 - Backend tests: **54/54 pass**, no live database/mail service required.
@@ -233,3 +243,40 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   admin action, live recording upload or real order was performed.
 - Rollout steps and operating limits are in `deployment/batch-5b-runbook.md`. The pg-boss patch and
   Supabase performance-advisor review remain manual, as required by the handover.
+
+## Batch 6 baseline (branch `perf/speed-index-batch-6`)
+
+- Batch 5 PR #20 and Batch 5-B PR #21 are merged. Both were merged only after CI and both Vercel
+  preview checks succeeded. Batch 5 production checks succeeded; Batch 5-B production verification
+  is recorded with the final delivery status below.
+- Captured mobile simulated Slow 4G Lighthouse reports on 23 October 2026 for production home,
+  beauty category and an existing example lipstick product. Initial LCP: 2.90/3.17/2.98 s; TBT:
+  636/633/909 ms; CLS: 0/0/0; Speed Index: 4.26/3.30/2.63 s. Document server response: 81/82/73 ms;
+  simulated TTFB: 898/686/673 ms. Top opportunities and exact settings are recorded in
+  `deployment/BATCH-6-BASELINE.md` and `deployment/performance/2026-10-23-baseline.json`.
+- Every run reports incomplete results after a page-load timeout. These are diagnostic single runs,
+  with a brief home/category overlap and a deployment transition during product collection, not
+  three-run medians or a passing launch benchmark. The example catalog is not final content.
+- No speculative performance patch, image/style removal, tracking suppression or claimed speed gain.
+  Batch 6 optimization/acceptance remains open until valid repeat measurements and flow verification.
+- Raw reports remain in ignored `tmp-lighthouse/`; the committed summary excludes full network
+  URLs, third-party parameters and page payloads.
+
+### Left for a person (not code)
+
+- Review Supabase security/performance advisors. Run guarded SQL 04 only after installing the launch
+  worker, staging first, with the supplied rollback available.
+- Verify the Supabase Data API exposed-schemas setting. Complete Vercel secret cleanup/Sensitive
+  flags, ignored build commands, main protection, owner password and delivery settings from Part A.
+- Configure and verify Resend/domain and Sentry credentials/alerts. Review the 1,185-job backlog before
+  deploying the worker. Complete infrastructure upgrades, final content, live domain/SSL, tracking
+  tokens and real-order smoke tests from Part C.
+
+### Delivery status 23 October 2026
+
+- PR #20 (reviewed Batch 5) and PR #21 (Batch 5-B) are merged into main. The Batch 5-B production
+  commit `0943215` passes GitHub CI and both Vercel production deployment checks. Backend health,
+  storefront home and admin login return 200; backend and home responses show `bom1` compute.
+- Batch 6 measurements are preserved separately in draft PR #22. Speed optimization and acceptance
+  are **not complete**; its warnings and next steps are explicit. No changes were pushed directly to
+  main, and all implemented application work is committed and pushed.
