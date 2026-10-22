@@ -8,6 +8,7 @@ import AdminNav from "./AdminNav";
 import AdminNotifications from "./AdminNotifications";
 import { clientApi, logoutAdminSession } from "@/lib/client-api";
 import { clearAdminDataCache, prefetchAdminData } from "./useAdminData";
+import {AdminRoleContext} from './AdminRoleContext';
 
 
 
@@ -226,7 +227,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </header>
 
         {/* Content area */}
-        <main className="admin-main">{children}</main>
+        <AdminRoleContext.Provider value={user.role}><main className="admin-main">{children}</main></AdminRoleContext.Provider>
         <footer className="admin-workspace-footer">
           <span>© {new Date().getUTCFullYear()} <strong>Zelvomart.</strong> All rights reserved.</span>
           <Link href="/contact-us" target="_blank" rel="noopener noreferrer" className="admin-footer-support">Help &amp; support <span aria-hidden="true">→</span></Link>

@@ -13,3 +13,11 @@ if (typeof window !== "undefined" && window.performance && typeof window.perform
     }
   }) as Performance["measure"];
 }
+
+// Monitoring is opt-in. The rrweb recorder is a separate feature and is never added to Sentry.
+if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  void import('./lib/sentry-client').catch(() => {});
+}
+export function onRouterTransitionStart(...args:Parameters<typeof import('@sentry/nextjs').captureRouterTransitionStart>) {
+  if(process.env.NEXT_PUBLIC_SENTRY_DSN)void import('@sentry/nextjs').then(Sentry=>Sentry.captureRouterTransitionStart(...args)).catch(() => {});
+}

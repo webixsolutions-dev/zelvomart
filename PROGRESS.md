@@ -103,3 +103,58 @@ All items done in code. Backend tests (16), backend `tsc` and `next build` pass.
 ### Batch 4 status
 All items done in code. Backend tests (48), both typechecks, Prettier check and `next build` pass locally.
 Next: Batch 5 (region and monitoring).
+## Batch 5: region and monitoring (branch `codex/region-monitoring-batch-5`)
+
+### Region configuration
+- Both deployment configurations now select `bom1` (Mumbai). This changes compute placement on the next deployment only; no dashboard or existing deployment was modified.
+- Supabase remains in Sydney. Database relocation requires a separate project/data migration decision and is outside this change.
+- Validation: inspected both JSON configs. Full batch checks will be recorded below after implementation.
+
+### Left for a person (not code)
+- Deploy both apps and verify their active function region and `/api/health`.
+- Decide separately whether to migrate Supabase from Sydney to Mumbai.
+
+### Optional Sentry monitoring — complete in code
+- Added Sentry v11 to backend and Next.js (server, edge, browser and global error boundary). No valid DSN means no SDK initialization; CI/local builds need no Sentry account.
+- Shared `@zelvomart/monitoring` allowlist retains only error type, safe stack location, release/environment and structural identifiers. Removes auth/contact/checkout data, request URLs, headers, cookies, bodies, breadcrumbs, arbitrary context, SQL and attachments. SDK v11 personal-data collection is explicitly disabled. Logs/metrics are dropped; tracing and Sentry Replay are off. Existing rrweb remains separate.
+- Optional source-map upload is guarded by build credentials and commit SHA; frontend maps are deleted after upload. Updated Vercel Ignored Build Step instructions to include shared packages.
+- Tests cover disabled/invalid DSNs, hostile nested sensitive event payloads and source-map upload disabled without credentials. No live Sentry event or source map was uploaded.
+
+### System Health — complete in code
+- Added non-cacheable `GET /api/admin/system-health` with independent OWNER/MANAGER authorization and a dashboard card restricted to the same roles. Refreshes every 30 seconds while visible, supports manual refresh and handles failures without a false green state.
+- Reports heartbeat age, queue count/oldest age, jobs failed by completion time in the last 24 hours, and last successful email. Missing worker explicitly says `Worker not running`; heartbeat >=120 seconds is red.
+- Successful Resend acknowledgements save only a timestamp in the existing Setting table, with older successful email jobs as fallback. Metadata-write failure never converts an acknowledged send into a retry. No migration or contact-message storage was added.
+- Tests cover no/stale/future/malformed heartbeat, queue age, recent failures, email fallback, 401/403 role restrictions before data access, no-store headers and sanitized 503 storage failure.
+
+### Validation
+- Backend tests: **54/54 pass**, no live database/mail service required.
+- Backend and frontend TypeScript checks: pass.
+- Backend build and frontend production build (`.next-launch`, isolated from the running dev server): pass; 72 static pages generated.
+- Backend Prettier check: pass. `endOfLine: auto` handles the existing Windows CRLF checkout without reformatting unrelated files.
+- Not exercised: authenticated browser card against live services, Sentry ingestion/source-map matching, deployed Mumbai placement. These are rollout smoke tests, not evidence claimed by unit/build checks.
+
+### Batch 5 status and Batch 6 gate
+All Batch 5 code is implemented and locally checked. Merge/deployment and optional monitoring credentials remain manual.
+`deployment/batch-5-6-runbook.md` consolidates rollout steps and a reproducible three-page performance measurement checklist.
+Batch 6 intentionally has **no invented baseline or speculative performance changes**: it requires both Mumbai deployments
+to be live, then mobile Slow 4G Lighthouse measurements of real production pages. The historical Speed Index 4.3 s is not
+a measurement of this branch. Existing SQL, replay storage, Resend, worker backlog review/deployment, domain and launch
+configuration tasks from the handover remain manual and were not executed here.
+
+### Handover review and verification 23 October 2026
+
+- Reviewed existing Batch 5 rather than rebuilding it: both apps select `bom1`; the system-health
+  endpoint and dashboard restrict access to OWNER/MANAGER, distinguish an absent worker from an
+  endpoint error, and turn stale at the tested 120-second boundary.
+- Closed an SDK telemetry gap: automatic browser/process/HTTP session envelopes and client reports
+  bypass `beforeSend`. They are now disabled at initialization, and tracing is explicitly sampled at
+  zero even if a tracing environment variable is present. In-memory SDK transport tests verify that
+  normal page loads/HTTP requests emit nothing and captured errors are sanitized error events only.
+- Fresh `npm ci` passes. Compared every pre-existing lockfile package version with main: no unrelated
+  dependency version changed. Backend tests **56/56**, both typechecks, backend formatting, backend
+  build and the isolated frontend production build all pass. Prior preview deployments and CI were
+  green; the new review commit must also pass remote CI before merge.
+- Git pull was repaired by backing up two broken local Codex checkpoint refs before removing only
+  those refs. No branch or source history was deleted. Author identity already matched the owner;
+  repository-local GitHub credential selection now uses the saved `webixsolutions-dev` account.
+- No production database command, dashboard setting, secret or environment variable was changed.
