@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { monitoringEnabled, scrubMonitoringEvent } from "@zelvomart/monitoring";
+import { errorOnlyMonitoringOptions, monitoringEnabled, scrubMonitoringEvent } from "@zelvomart/monitoring";
 import type { Express } from "express";
 
 // This side-effect module must load before Express/Prisma so the SDK can instrument their errors.
@@ -8,6 +8,7 @@ let sdk: typeof import("@sentry/node") | undefined;
 if (monitoringEnabled(process.env.SENTRY_DSN)) {
   sdk = require("@sentry/node") as typeof import("@sentry/node");
   sdk.init({
+    ...errorOnlyMonitoringOptions(sdk.httpIntegration({ sessions: false })),
     dsn: process.env.SENTRY_DSN,
     release: process.env.VERCEL_GIT_COMMIT_SHA,
     environment: process.env.VERCEL_ENV || process.env.NODE_ENV || "development",

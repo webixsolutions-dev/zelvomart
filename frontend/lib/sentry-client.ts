@@ -1,7 +1,12 @@
 import * as Sentry from "@sentry/nextjs";
-import { monitoringEnabled, scrubMonitoringEvent } from "@zelvomart/monitoring";
+import {
+  errorOnlyMonitoringOptions,
+  monitoringEnabled,
+  scrubMonitoringEvent,
+} from "@zelvomart/monitoring";
 if (monitoringEnabled(process.env.NEXT_PUBLIC_SENTRY_DSN)) {
   Sentry.init({
+    ...errorOnlyMonitoringOptions(),
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
     release: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
     environment:

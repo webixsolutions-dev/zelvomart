@@ -4,3 +4,10 @@ export function scrubMonitoringEvent<T extends object>(
   hint?: { attachments?: unknown[] },
 ): T | null;
 export function monitoringEnabled(dsn: string | undefined): boolean;
+export function errorOnlyMonitoringOptions(httpIntegration?: {
+  name: string;
+}): {
+  tracesSampleRate: 0;
+  sendClientReports: false;
+  integrations: (defaults: { name: string }[]) => { name: string }[];
+};
