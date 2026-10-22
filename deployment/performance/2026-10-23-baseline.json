@@ -1,0 +1,161 @@
+{
+  "deployment": "4f8ebd8",
+  "singleRuns": true,
+  "acceptancePassed": false,
+  "rows": [
+    {
+      "page": "home",
+      "url": "https://zelvomart.vercel.app/",
+      "capturedAt": "2026-10-22T19:49:21.344Z",
+      "lighthouseVersion": "13.5.0",
+      "score": 0.76,
+      "metrics": {
+        "lcpMs": 2897.3469999999998,
+        "tbtMs": 636,
+        "cls": 0,
+        "speedIndexMs": 4258.7113982421915,
+        "documentServerResponseMs": 81,
+        "simulatedTtfbMs": 898
+      },
+      "warnings": [
+        "The page loaded too slowly to finish within the time limit. Results may be incomplete."
+      ],
+      "opportunities": [
+        {
+          "id": "unused-css-rules",
+          "title": "Reduce unused CSS",
+          "display": "Est savings of 18 KiB"
+        },
+        {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "display": "Est savings of 157 KiB"
+        },
+        {
+          "id": "cache-insight",
+          "title": "Use efficient cache lifetimes",
+          "display": "Est savings of 240 KiB"
+        },
+        {
+          "id": "image-delivery-insight",
+          "title": "Improve image delivery",
+          "display": "Est savings of 33 KiB"
+        },
+        {
+          "id": "legacy-javascript-insight",
+          "title": "Legacy JavaScript",
+          "display": "Est savings of 26 KiB"
+        }
+      ],
+      "throttling": {
+        "rttMs": 150,
+        "throughputKbps": 1638.4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "cpuSlowdownMultiplier": 4
+      }
+    },
+    {
+      "page": "category",
+      "url": "https://zelvomart.vercel.app/product-category/beauty-personal-care/",
+      "capturedAt": "2026-10-22T19:50:04.687Z",
+      "lighthouseVersion": "13.5.0",
+      "score": 0.76,
+      "metrics": {
+        "lcpMs": 3165.0495000000005,
+        "tbtMs": 632.5,
+        "cls": 0,
+        "speedIndexMs": 3297.247967123628,
+        "documentServerResponseMs": 82,
+        "simulatedTtfbMs": 686
+      },
+      "warnings": [
+        "The page loaded too slowly to finish within the time limit. Results may be incomplete."
+      ],
+      "opportunities": [
+        {
+          "id": "unused-css-rules",
+          "title": "Reduce unused CSS",
+          "display": "Est savings of 21 KiB"
+        },
+        {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "display": "Est savings of 179 KiB"
+        },
+        {
+          "id": "cache-insight",
+          "title": "Use efficient cache lifetimes",
+          "display": "Est savings of 240 KiB"
+        },
+        {
+          "id": "image-delivery-insight",
+          "title": "Improve image delivery",
+          "display": "Est savings of 30 KiB"
+        },
+        {
+          "id": "legacy-javascript-insight",
+          "title": "Legacy JavaScript",
+          "display": "Est savings of 26 KiB"
+        }
+      ],
+      "throttling": {
+        "rttMs": 150,
+        "throughputKbps": 1638.4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "cpuSlowdownMultiplier": 4
+      }
+    },
+    {
+      "page": "product",
+      "url": "https://zelvomart.vercel.app/product/example-matte-lipstick-rose-red/",
+      "capturedAt": "2026-10-22T19:51:55.832Z",
+      "lighthouseVersion": "13.5.0",
+      "score": 0.73,
+      "metrics": {
+        "lcpMs": 2984.764000000001,
+        "tbtMs": 908.5,
+        "cls": 0,
+        "speedIndexMs": 2626.2150375103893,
+        "documentServerResponseMs": 73,
+        "simulatedTtfbMs": 673
+      },
+      "warnings": [
+        "The page loaded too slowly to finish within the time limit. Results may be incomplete."
+      ],
+      "opportunities": [
+        {
+          "id": "unused-css-rules",
+          "title": "Reduce unused CSS",
+          "display": "Est savings of 21 KiB"
+        },
+        {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "display": "Est savings of 175 KiB"
+        },
+        {
+          "id": "cache-insight",
+          "title": "Use efficient cache lifetimes",
+          "display": "Est savings of 240 KiB"
+        },
+        {
+          "id": "legacy-javascript-insight",
+          "title": "Legacy JavaScript",
+          "display": "Est savings of 26 KiB"
+        }
+      ],
+      "throttling": {
+        "rttMs": 150,
+        "throughputKbps": 1638.4,
+        "requestLatencyMs": 562.5,
+        "downloadThroughputKbps": 1474.5600000000002,
+        "uploadThroughputKbps": 675,
+        "cpuSlowdownMultiplier": 4
+      }
+    }
+  ]
+}

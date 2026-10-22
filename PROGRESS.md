@@ -233,3 +233,31 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   admin action, live recording upload or real order was performed.
 - Rollout steps and operating limits are in `deployment/batch-5b-runbook.md`. The pg-boss patch and
   Supabase performance-advisor review remain manual, as required by the handover.
+
+## Batch 6 baseline (branch `perf/speed-index-batch-6`)
+
+- Batch 5 PR #20 and Batch 5-B PR #21 are merged. Both were merged only after CI and both Vercel
+  preview checks succeeded. Batch 5 production checks succeeded; Batch 5-B production verification
+  is recorded with the final delivery status below.
+- Captured mobile simulated Slow 4G Lighthouse reports on 23 October 2026 for production home,
+  beauty category and an existing example lipstick product. Initial LCP: 2.90/3.17/2.98 s; TBT:
+  636/633/909 ms; CLS: 0/0/0; Speed Index: 4.26/3.30/2.63 s. Document server response: 81/82/73 ms;
+  simulated TTFB: 898/686/673 ms. Top opportunities and exact settings are recorded in
+  `deployment/BATCH-6-BASELINE.md` and `deployment/performance/2026-10-23-baseline.json`.
+- Every run reports incomplete results after a page-load timeout. These are diagnostic single runs,
+  with a brief home/category overlap and a deployment transition during product collection, not
+  three-run medians or a passing launch benchmark. The example catalog is not final content.
+- No speculative performance patch, image/style removal, tracking suppression or claimed speed gain.
+  Batch 6 optimization/acceptance remains open until valid repeat measurements and flow verification.
+- Raw reports remain in ignored `tmp-lighthouse/`; the committed summary excludes full network
+  URLs, third-party parameters and page payloads.
+
+### Left for a person (not code)
+
+- Run purge SQL 02 then 03 on the intended database; review size and advisors. Run guarded SQL 04
+  only after installing the launch worker, staging first, with the supplied rollback available.
+- Complete secret cleanup, Sensitive flags, replay bucket permissions/lifecycle/CORS, ignored build
+  commands, main protection, owner password and delivery settings from Part A.
+- Complete Resend/domain verification, monitoring credentials/alerts, launch worker and backlog
+  processing, infrastructure upgrades, final content, live domain/SSL, tracking tokens and real-order
+  smoke tests from Part C. These were not executed or represented as complete by code tests.
