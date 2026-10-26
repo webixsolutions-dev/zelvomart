@@ -24,7 +24,7 @@ export const privacyPolicy: PolicyDocument = {
     },
     {
       "heading": "Session recording to improve our website",
-      "body": "To find and fix problems on our website, we record how visitors use our pages: page views, scrolling, taps and clicks, and which steps of checkout were reached. This helps us see where something is confusing or broken and improve the experience for everyone.\n\nRecording covers our website pages only. We can’t see anything outside the page, such as your phone’s status bar, time, battery, other apps or notifications.\n\nEverything you type into a form field (name, phone, address, messages) is masked and is not recorded.\n\nRecordings are viewed only by our team inside our secure admin dashboard. They are not downloaded, sold or shared.\n\nRecordings are deleted automatically after 14 days.",
+      "body": "To find and fix problems on our website, we record how visitors use our pages: page views, scrolling, taps and clicks, and which steps of checkout were reached. This helps us see where something is confusing or broken and improve the experience for everyone.\n\nRecording covers our website pages only. We can’t see anything outside the page, such as your phone’s status bar, time, battery, other apps or notifications.\n\nEverything you type into a form field (name, phone, address, messages) is masked and is not recorded.\n\nRecordings are viewed only by our team inside our secure admin dashboard. They are not downloaded, sold or shared.\n\nRecordings are retained for up to 30 days and then deleted automatically.",
       "icon": "video"
     },
     {
