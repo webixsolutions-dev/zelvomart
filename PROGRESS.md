@@ -246,3 +246,8 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   admin action, live recording upload or real order was performed.
 - Rollout steps and operating limits are in `deployment/batch-5b-runbook.md`. The pg-boss patch and
   Supabase performance-advisor review remain manual, as required by the handover.
+
+## Footer navigation scroll fix — 27 October 2026
+- Footer navigation links and the footer logo now reset the viewport instantly to the top on client navigation and again when the destination pathname commits. This keeps the full header visible and avoids the upward smooth-scroll animation from the previous footer position.
+- Uses Next.js `onNavigate`, so opening links in another tab and external/social links retain their normal behavior. Other navigation and browser history are unchanged.
+- Validation: frontend TypeScript and production build pass. Browser checks: About footer at y=4881 → Privacy Policy y=0, then Privacy Policy footer y=2781 → FAQ y=0; full header top=38 px in both destinations.

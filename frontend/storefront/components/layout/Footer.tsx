@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { FooterLink } from "./FooterLink";
 import type { ReactNode } from "react";
 import { ChevronRight, Mail, MapPin } from "lucide-react";
 import { categories, categoryPath } from "@store/lib/catalog";
@@ -20,10 +20,10 @@ const customerServiceLinks = [
 
 function FooterNavLink({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Link href={href} className="zf-nav-link">
+    <FooterLink href={href} className="zf-nav-link">
       <ChevronRight size={15} strokeWidth={3} aria-hidden="true" focusable="false" />
       <span>{children}</span>
-    </Link>
+    </FooterLink>
   );
 }
 
@@ -33,9 +33,9 @@ export function Footer() {
       <div className="container">
         <div className="footer-inner">
           <div className="footer-brand">
-            <Link href="/" className="zf-logo" aria-label="Zelvomart — home">
+            <FooterLink href="/" className="zf-logo" aria-label="Zelvomart — home">
               <Image src="/brand/zelvomart-logo-white.png" alt="Zelvomart" width={320} height={211} />
-            </Link>
+            </FooterLink>
             <p>
               Everyday things, chosen better. Zelvomart is a Pakistani lifestyle store — we stock every product ourselves, check it
               by hand and ship it from {site.fulfilment.warehouse} to your door, anywhere in Pakistan.
