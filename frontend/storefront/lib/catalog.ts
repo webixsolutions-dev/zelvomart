@@ -23,6 +23,8 @@ export type Category = {
   intro: string;
   label: string;
   image: string;
+  /** Full-size product gallery, including the main image. */
+  gallery?: { src: string; alt?: string; title?: string }[];
   tile: string;
   banner: string;
   bannerMobile: string;
@@ -37,6 +39,7 @@ export type Variant = {
   name: string;
   swatch?: string;
   imageUrl?: string;
+  images?: string[];
   soldOut?: boolean;
   /** Backend variant id and SKU, sent with the order. */
   id?: string;
@@ -54,11 +57,15 @@ export type Product = {
   price: number;
   compare?: number;
   image: string;
+  /** Full-size product gallery, including the main image. */
+  gallery?: { src: string; alt?: string; title?: string }[];
   badge?: "Bestseller" | "New in" | "Popular" | "Gift pick" | "Limited";
   isNew?: boolean;
   isBestseller?: boolean;
   tagline: string;
   description: string;
+  /** Admin-authored rich description, retained so headings, emphasis and lists render as edited. */
+  descriptionHtml?: string;
   highlights: string[];
   idealFor: string[];
   specs: [string, string][];

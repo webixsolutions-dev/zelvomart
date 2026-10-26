@@ -13,6 +13,7 @@ import { useShop } from "@store/lib/store";
 import { useViewContent } from "@store/lib/orders";
 import { deliverBy, shortDate } from "@store/lib/delivery";
 import { resolveProductTabs } from "@store/lib/productTabs";
+import { sanitizeDescriptionHtml } from "@store/lib/sanitize-description";
 import { approvedReviews, reviewSummary } from "@store/lib/reviews";
 import { Price } from "@store/components/ui/Price";
 import { Stars } from "@store/components/ui/Stars";
@@ -22,12 +23,6 @@ import { ReviewCard } from "./ReviewCard";
 
 // Below the fold: its code (filters, photo upload, review form) is a separate chunk. Still rendered on the server.
 const ProductReviews = dynamic(() => import("./ProductReviews").then((m) => m.ProductReviews));
-
-const views = [
-  { label: "Front", style: {} },
-  { label: "Detail", style: { transform: "scale(1.55)", transformOrigin: "50% 45%" } },
-  { label: "Close-up", style: { transform: "scale(2.1)", transformOrigin: "35% 60%" } },
-];
 
 function isSize(label: string, kind?: string) {
   return kind ? kind === "size" : /size/i.test(label);
@@ -47,7 +42,7 @@ export function ProductDetail({ slug }: { slug: string }) {
   const sizeLayout = !!p.variants && isSize(p.variants.label, p.variants.kind);
   const imageSwatches = !sizeLayout && options.some((o) => o.imageUrl);
 
-  const [view, setView] = useState(0);
+  const [galleryIndex, setGalleryIndex] = useState(0);
   const [qty, setQtyState] = useState(1);
   const [bundle, setBundle] = useState<1 | 2>(1);
   const [variant, setVariant] = useState<string | undefined>(options.find((o) => !o.soldOut)?.name);
@@ -68,7 +63,6 @@ export function ProductDetail({ slug }: { slug: string }) {
   const total = unit * qty;
   const twoPrice = bundleOn ? Math.round(p.price * (1 - p.bundleDiscountPercent! / 100)) * 2 : 0;
   const selected: Variant | undefined = options.find((o) => o.name === variant);
-  const mainImage = selected?.imageUrl || p.image;
 
   const setQty = (n: number) => {
     setQtyState(n);
@@ -83,6 +77,15 @@ export function ProductDetail({ slug }: { slug: string }) {
   const waText = `Hi Zelvomart! I'd like to order:\n• ${p.name}${variant ? ` (${variant})` : ""} × ${qty}\nTotal: ${money(total)}\nLink: ${site.url}/product/${p.slug}/`;
   const toggleRow = (id: string) => setOpenRows((r) => (r.includes(id) ? r.filter((x) => x !== id) : [...r, id]));
   const goReviews = () => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const gallery = selected?.images?.length
+    ? selected.images.map((src) => ({ src, alt: p.name + (variant ? " in " + variant : "") }))
+    : selected?.imageUrl
+      ? [{ src: selected.imageUrl, alt: p.name + (variant ? " in " + variant : "") }]
+      : p.gallery?.length
+        ? p.gallery
+        : [{ src: p.image, alt: p.name }];
+  const activeImage = gallery[Math.min(galleryIndex, gallery.length - 1)] || { src: p.image, alt: p.name };
+  const mainImage = activeImage.src;
 
   return (
     <>
@@ -101,12 +104,12 @@ export function ProductDetail({ slug }: { slug: string }) {
               >
                 <Image
                   src={mainImage}
-                  alt={`${p.name}${variant ? ` in ${variant}` : ""}, ${views[view].label.toLowerCase()} view`}
+                  alt={activeImage.alt || p.name + (variant ? " in " + variant : "")}
                   width={600}
                   height={600}
                   priority
                   sizes="(max-width:760px) 100vw, 620px"
-                  style={zoom ? { transform: "scale(1.8)", transformOrigin: `${zoom.x}% ${zoom.y}%` } : views[view].style}
+                  style={zoom ? { transform: "scale(1.8)", transformOrigin: zoom.x + "% " + zoom.y + "%" } : undefined}
                 />
                 {p.badge && (
                   <div className="pd-tags">
@@ -116,10 +119,10 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {pct > 0 && <span className="badge badge-sale pd-discount">-{pct}%</span>}
               </div>
               <div className="gallery-thumbs" role="tablist" aria-label="Product images">
-                {views.map((v, i) => (
-                  <button key={v.label} type="button" role="tab" aria-selected={view === i} aria-label={`${v.label} view`} className={view === i ? "active" : ""} onClick={() => setView(i)}>
+                {gallery.map((image, i) => (
+                  <button key={image.src + "-" + i} type="button" role="tab" aria-selected={galleryIndex === i} aria-label={"Product image " + (i + 1) + " of " + gallery.length} className={galleryIndex === i ? "active" : ""} onClick={() => setGalleryIndex(i)}>
                     <span>
-                      <Image src={mainImage} alt="" width={120} height={120} style={v.style} />
+                      <Image src={image.src} alt={image.alt || ""} width={120} height={120} />
                     </span>
                   </button>
                 ))}
@@ -158,9 +161,9 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {imageSwatches ? (
                   <div className="pd-swatches">
                     {options.map((o) => (
-                      <button key={o.name} type="button" className={variant === o.name ? "active" : ""} aria-pressed={variant === o.name} onClick={() => setVariant(o.name)}>
+                      <button key={o.name} type="button" className={variant === o.name ? "active" : ""} aria-pressed={variant === o.name} onClick={() => { setVariant(o.name); setGalleryIndex(0); }}>
                         <span className="pd-swatch-img">
-                          <Image src={o.imageUrl || p.image} alt="" width={64} height={64} />
+                          <Image src={o.imageUrl || o.images?.[0] || p.image} alt="" width={64} height={64} />
                         </span>
                         <small>{o.name}</small>
                       </button>
@@ -176,7 +179,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                         aria-pressed={variant === o.name}
                         disabled={o.soldOut}
                         aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
-                        onClick={() => setVariant(o.name)}
+                        onClick={() => { setVariant(o.name); setGalleryIndex(0); }}
                       >
                         {o.name}
                       </button>
@@ -185,7 +188,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                 ) : (
                   <div className="variant-options">
                     {options.map((o) => (
-                      <button key={o.name} type="button" className={variant === o.name ? "active" : ""} aria-pressed={variant === o.name} disabled={o.soldOut} onClick={() => setVariant(o.name)}>
+                      <button key={o.name} type="button" className={variant === o.name ? "active" : ""} aria-pressed={variant === o.name} disabled={o.soldOut} onClick={() => { setVariant(o.name); setGalleryIndex(0); }}>
                         <span style={{ background: o.swatch }} />
                         {o.name}
                       </button>
@@ -349,8 +352,14 @@ export function ProductDetail({ slug }: { slug: string }) {
                     {t.id === "description" && (
                       <div className="desc-grid">
                         <div>
-                          <h3 className="pd-panel-h">Why you&apos;ll love it</h3>
-                          <p>{p.description}</p>
+                          {p.descriptionHtml ? (
+                            <div className="pd-description-content" dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(p.descriptionHtml) }} />
+                          ) : (
+                            <>
+                              <h3 className="pd-panel-h">Why you&apos;ll love it</h3>
+                              <p>{p.description}</p>
+                            </>
+                          )}
                           <h3>Key features</h3>
                           <ul className="check-list">
                             {p.highlights.map((h) => (
@@ -361,22 +370,14 @@ export function ProductDetail({ slug }: { slug: string }) {
                           </ul>
                         </div>
                         <div className="desc-side">
-                          <div className="info-box">
+                          {p.idealFor.length > 0 && <div className="info-box">
                             <h3>Perfect for</h3>
-                            <ul className="dot-list">
-                              {p.idealFor.map((x) => (
-                                <li key={x}>{x}</li>
-                              ))}
-                            </ul>
-                          </div>
-                          <div className="info-box">
+                            <ul className="dot-list">{p.idealFor.map((x) => <li key={x}>{x}</li>)}</ul>
+                          </div>}
+                          {p.inBox.length > 0 && <div className="info-box">
                             <h3>What&apos;s in the box</h3>
-                            <ul className="dot-list">
-                              {p.inBox.map((x) => (
-                                <li key={x}>{x}</li>
-                              ))}
-                            </ul>
-                          </div>
+                            <ul className="dot-list">{p.inBox.map((x) => <li key={x}>{x}</li>)}</ul>
+                          </div>}
                         </div>
                       </div>
                     )}

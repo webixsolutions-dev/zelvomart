@@ -58,9 +58,28 @@ const HIDDEN_KEYS = new Set(["stockstatus", "gallery", "gtin", "downloadable", "
 /** The design shows one option row; the first visible attribute of the variations drives it. */
 function designVariants(p: ApiProduct): Product["variants"] {
   const variants = (p.variants || []).filter((v) => v.active !== false && v.enabled !== false);
-  if (!variants.length) return undefined;
+  if (!variants.length) {
+    const visibleAttributes = (p.catalogMeta?.attributes || []).filter(
+      (attribute) => attribute.visible !== false && attribute.name?.trim() && attribute.valuesText?.trim(),
+    );
+    const visibleAttribute =
+      visibleAttributes.find((attribute) => /colou?r/i.test(attribute.name || "")) || visibleAttributes[0];
+    if (!visibleAttribute) return undefined;
+    const options = visibleAttribute.valuesText!.split("|").map((value) => value.trim()).filter(Boolean);
+    const isSize = /size/i.test(visibleAttribute.name!);
+    return options.length
+      ? {
+          label: visibleAttribute.name!.trim(),
+          kind: isSize ? "size" : "colour",
+          options: options.map((name) => ({ name, ...(!isSize ? { swatch: swatchFor(name) } : {}) })),
+        }
+      : undefined;
+  }
+  const attributeNames = Object.keys(variants[0].attributes || {});
   const label =
-    Object.keys(variants[0].attributes || {}).find((k) => !HIDDEN_KEYS.has(k.toLowerCase())) || "Option";
+    attributeNames.find((name) => /colou?r/i.test(name)) ||
+    attributeNames.find((name) => !HIDDEN_KEYS.has(name.toLowerCase())) ||
+    "Option";
   const isSize = /size/i.test(label);
   const options: Variant[] = variants.map((v) => {
     const name = String(v.attributes?.[label] || v.name || "").trim() || v.sku;
@@ -71,6 +90,7 @@ function designVariants(p: ApiProduct): Product["variants"] {
       sku: v.sku,
       ...(isSize ? {} : { swatch: swatchFor(name) }),
       ...(v.imageUrl ? { imageUrl: v.imageUrl } : {}),
+      ...(v.images?.length ? { images: v.images } : {}),
       ...(variantBuyable(v) ? {} : { soldOut: true }),
       ...(price != null && Number(price) !== Number(p.price) ? { price: Number(price) } : {}),
     };
@@ -101,11 +121,13 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
     price: Number(p.price),
     ...(p.onSale && regular > Number(p.price) ? { compare: regular } : {}),
     image,
+    gallery: (p.images || []).filter((item) => item?.src).map((item) => ({ src: item.src, alt: item.alt || p.name, ...(item.title ? { title: item.title } : {}) })),
     ...(named ? { badge: named } : isBestseller ? { badge: "Bestseller" as const } : isNew ? { badge: "New in" as const } : {}),
     isNew,
     isBestseller,
     tagline: firstParagraph(p.shortDescription) || stripHtml(p.description).split("\n")[0] || "",
     description: stripHtml((p as ApiProduct & { descriptionHtml?: string | null }).descriptionHtml || p.description),
+    descriptionHtml: (p as ApiProduct & { descriptionHtml?: string | null }).descriptionHtml || p.description || "",
     highlights,
     idealFor: [],
     specs: [],

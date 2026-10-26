@@ -87,6 +87,7 @@ export type Product = {
   imageTitle?: string | null;
   shortDescription?: string | null;
   description?: string | null;
+  descriptionHtml?: string | null;
   /** YouTube or Vimeo link (lib/product-video.ts). */
   videoUrl?: string | null;
   /** Thumbnail shown before the player loads (Vimeo's comes from oEmbed when the link is saved). */
@@ -110,6 +111,8 @@ export type Product = {
   updatedAt?: string;
   catalogMeta?: {
     freeShipping?: boolean;
+    attributes?: { name?: string; valuesText?: string; visible?: boolean; forVariations?: boolean }[];
+    swatchesEnabled?: boolean;
     productTabs?: Record<string, { override?: boolean; content?: string }>;
     redirectUrl?: string;
     [key: string]: unknown;

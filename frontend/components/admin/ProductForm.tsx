@@ -1037,6 +1037,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       imageTitle: imageMeta.title || null,
       shortDescription: shortHtml,
       description: descriptionHtml,
+      descriptionHtml,
       permalink: `/product/${slug || "preview"}/`,
       hasOptions: productType === "variable" && enabled.length > 0,
       variants: enabled.map((item, index) => ({
