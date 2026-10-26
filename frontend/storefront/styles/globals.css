@@ -3363,6 +3363,12 @@ em {
   max-width: 100%;
   overflow-x: auto;
   padding-bottom: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+}
+.gallery-thumbs::-webkit-scrollbar {
+  display: none;
 }
 .gallery-thumbs button {
   flex: 0 0 84px;

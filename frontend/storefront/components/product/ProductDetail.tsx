@@ -103,11 +103,13 @@ export function ProductDetail({ slug }: { slug: string }) {
                 onMouseLeave={() => setZoom(null)}
               >
                 <Image
+                  key={mainImage}
                   src={mainImage}
                   alt={activeImage.alt || p.name + (variant ? " in " + variant : "")}
                   width={600}
                   height={600}
                   priority
+                  unoptimized
                   sizes="(max-width:760px) 100vw, 620px"
                   style={zoom ? { transform: "scale(1.8)", transformOrigin: zoom.x + "% " + zoom.y + "%" } : undefined}
                 />
@@ -122,7 +124,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {gallery.map((image, i) => (
                   <button key={image.src + "-" + i} type="button" role="tab" aria-selected={galleryIndex === i} aria-label={"Product image " + (i + 1) + " of " + gallery.length} className={galleryIndex === i ? "active" : ""} onClick={() => setGalleryIndex(i)}>
                     <span>
-                      <Image src={image.src} alt={image.alt || ""} width={120} height={120} />
+                      <Image src={image.src} alt={image.alt || ""} width={120} height={120} unoptimized />
                     </span>
                   </button>
                 ))}
@@ -163,7 +165,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                     {options.map((o) => (
                       <button key={o.name} type="button" className={variant === o.name ? "active" : ""} aria-pressed={variant === o.name} onClick={() => { setVariant(o.name); setGalleryIndex(0); }}>
                         <span className="pd-swatch-img">
-                          <Image src={o.imageUrl || o.images?.[0] || p.image} alt="" width={64} height={64} />
+                          <Image src={o.imageUrl || o.images?.[0] || p.image} alt="" width={64} height={64} unoptimized />
                         </span>
                         <small>{o.name}</small>
                       </button>
