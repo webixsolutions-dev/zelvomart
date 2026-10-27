@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { trackStoreEvent } from "@/lib/client-tracking";
-import { getReplaySessionId } from "@/lib/session-replay-client";
+import { getReplaySessionId, getReplayVisitorId } from "@/lib/session-replay-client";
 import { getProductById, type Product } from "./catalog";
 import { PLACED_ORDER_KEY, unitPrice, useShop, type CartLine, type Order } from "./store";
 
@@ -127,6 +127,10 @@ export function useConfirmedOrder(orderNumber: string | null, key: string | null
         if (o) {
           setOrders([toDesignOrder(o)]);
           firePurchase(o);
+        } else if (saved) {
+          // The local order copy keeps confirmation useful during a backend outage. Send
+          // the browser Purchase once the pixel is ready; the server job retries separately.
+          fireSavedPurchase(saved);
         }
         setReady(true);
       })
@@ -138,40 +142,78 @@ export function useConfirmedOrder(orderNumber: string | null, key: string | null
 
 function firePurchase(o: Confirmation) {
   if (o.test || o.staffCreated || o.blocklistedAtOrder) return;
-  const flag = `zm_purchase_fired_${o.orderNumber}`;
-  try {
-    if (localStorage.getItem(flag)) return;
-    localStorage.setItem(flag, "1");
-  } catch {}
+  sendPurchase({
+    id: o.id,
+    orderNumber: o.orderNumber,
+    total: Number(o.total),
+    items: o.items.map((i) => ({ sku: i.sku, title: i.title, quantity: i.quantity, unitPrice: Number(i.unitPrice) })),
+    customer: { name: o.fullName, phone: o.phone, email: o.email || undefined, city: o.city },
+  });
+}
+
+function fireSavedPurchase(o: PlacedOrder) {
+  sendPurchase({
+    id: o.key || o.id,
+    orderNumber: o.id,
+    total: Number(o.total),
+    items: o.lines.map((i) => ({ sku: i.variant || i.id, title: i.name, quantity: i.qty, unitPrice: Number(i.price) })),
+    customer: o.customer,
+  });
+}
+
+function sendPurchase(o: { id: string; orderNumber: string; total: number; items: { sku: string; title: string; quantity: number; unitPrice: number }[]; customer: { name: string; phone: string; email?: string; city: string } }) {
+  const flag = `zm_purchase_fired_${o.id}`;
+  try { if (localStorage.getItem(flag)) return; } catch {}
   const skus = o.items.map((i) => i.sku);
   trackStoreEvent(
     "Purchase",
     {
       content_ids: skus,
       content_type: "product",
-      contents: o.items.map((i) => ({ id: i.sku, content_id: i.sku, content_name: i.sku, quantity: i.quantity || 1, item_price: Number(i.unitPrice) || 0, price: Number(i.unitPrice) || 0 })),
+      contents: o.items.map((i) => ({ id: i.sku, content_id: i.sku, content_name: i.title, quantity: i.quantity || 1, item_price: Number(i.unitPrice) || 0, price: Number(i.unitPrice) || 0 })),
       num_items: o.items.reduce((sum, i) => sum + (i.quantity || 0), 0),
       value: Number(o.total),
       currency: "PKR",
       order_id: o.orderNumber,
     },
-    { eventId: o.orderNumber },
+    {
+      eventId: o.orderNumber,
+      metaUserData: (() => {
+        const [firstName, ...lastName] = (o.customer.name || "").trim().split(/\s+/);
+        const phone = (o.customer.phone || "").replace(/\D/g, "").replace(/^0/, "92");
+        const visitorId = getReplayVisitorId();
+        return {
+          ...(phone ? { ph: phone } : {}),
+          ...(o.customer.email ? { em: o.customer.email.trim().toLowerCase() } : {}),
+          ...(firstName ? { fn: firstName.toLowerCase() } : {}),
+          ...(lastName.length ? { ln: lastName.join(" ").toLowerCase() } : {}),
+          ...(o.customer.city ? { ct: o.customer.city.trim().toLowerCase() } : {}),
+          country: "pk",
+          ...(visitorId ? { external_id: visitorId } : {}),
+        };
+      })(),
+      onMetaDelivered: () => { try { localStorage.setItem(flag, "1"); } catch {} },
+    },
   ).catch(() => undefined);
 }
 
 /** ViewContent once per product page. */
-export function useViewContent(p: Product | undefined) {
+export function useViewContent(p: Product | undefined, variantSku?: string | null) {
   const sent = useRef<string | null>(null);
   useEffect(() => {
-    if (!p || sent.current === p.id) return;
-    sent.current = p.id;
+    if (!p) return;
+    const sku = p.variants?.options.find((option) => option.sku === variantSku)?.sku || p.sku;
+    const key = `${p.id}:${sku}`;
+    if (sent.current === key) return;
+    sent.current = key;
     trackStoreEvent("ViewContent", {
-      content_ids: [p.sku],
-      content_type: p.variants?.options.length ? "product_group" : "product",
+      content_ids: [sku],
+      content_type: "product",
+      contents: [{ id: sku, content_id: sku, content_name: p.name, quantity: 1, item_price: p.price }],
       value: p.price,
       currency: "PKR",
     }).catch(() => undefined);
-  }, [p]);
+  }, [p, variantSku]);
 }
 
 type CheckoutDraft = { name: string; phone: string; email: string; city: string; address: string };
@@ -209,6 +251,7 @@ export function useCheckoutTracking(form: CheckoutDraft) {
     });
     trackStoreEvent("InitiateCheckout", {
       content_ids: contents.map((c) => c.id),
+      content_type: "product",
       contents,
       num_items: cart.reduce((sum, l) => sum + l.qty, 0),
       value: payable,

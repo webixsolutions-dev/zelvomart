@@ -23,7 +23,11 @@ import { invalidateFrontendCache } from "../lib/cache-invalidation";
 import { bundleLineTotal, priceSummary, variantPriceSummary } from "../lib/pricing";
 import { sendContactTeamEmail } from "../lib/email";
 import { dispatchJobRow } from "../lib/jobs";
+import { requestIp } from "../lib/rate-limit";
+import { processJobRow } from "../lib/job-processor";
+import { sendDailySummary } from "../lib/daily-summary";
 import { waitUntil } from "@vercel/functions";
+import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
 import {
   allowRequest,
@@ -39,6 +43,75 @@ import {
 } from "../http/shared";
 
 export function registerPublicRoutes(app: Express) {
+  const cronAuthorized = (req: any) => {
+    const expected = process.env.CRON_SECRET || "";
+    const authorization = String(req.get("authorization") || "");
+    const supplied = /^Bearer\s+(.+)$/i.exec(authorization)?.[1] || "";
+    if (!expected || !supplied) return false;
+    const expectedBytes = Buffer.from(expected);
+    const suppliedBytes = Buffer.from(supplied);
+    return expectedBytes.length === suppliedBytes.length && timingSafeEqual(expectedBytes, suppliedBytes);
+  };
+
+  // Cron-job.org calls this once per minute when JOB_MODE=cron. Job rows stay durable in Postgres.
+  app.post("/api/cron/jobs", async (req, res) => {
+    if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
+    if (!cronAuthorized(req)) return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
+    const now = Date.now();
+    const staleBefore = new Date(now - 10 * 60 * 1000);
+    const retryBefore = new Date(now - 60 * 1000);
+    await prisma.job.updateMany({
+      where: { status: "RUNNING", startedAt: { lt: staleBefore } },
+      data: { status: "FAILED", error: "Worker lease expired after ten minutes.", finishedAt: new Date(now) },
+    });
+    const eligible = {
+      name: { in: ["order-team-email", "customer-order-email", "customer-status-email", "meta-event", "meta-purchase", "tiktok-event", "tiktok-purchase"] },
+      externalId: null,
+      attempts: { lt: 5 },
+      createdAt: { gte: new Date(now - 7 * 86400000) },
+      OR: [{ status: "QUEUED" as const }, { status: "FAILED" as const, updatedAt: { lte: retryBefore } }],
+    };
+    const rows = await prisma.job.findMany({
+      where: eligible,
+      orderBy: { createdAt: "asc" }, take: 25, select: { id: true },
+    });
+    const deadline = now + 20 * 1000;
+    let processed = 0, succeeded = 0, failed = 0, skipped = 0;
+    for (const { id } of rows) {
+      // Leave enough room for one provider call (which has a 15s network timeout) and cleanup.
+      if (Date.now() + 15 * 1000 >= deadline) break;
+      try {
+        const result = await processJobRow(id);
+        processed++;
+        if (result && typeof result === "object" && "skipped" in result) skipped++;
+        else succeeded++;
+      } catch {
+        processed++;
+        failed++;
+      }
+    }
+    const remaining = await prisma.job.count({ where: eligible });
+    res.json({ processed, succeeded, failed, skipped, remaining });
+  });
+
+  // Daily maintenance that previously depended on pg-boss schedules.
+  app.post("/api/cron/daily", async (req, res) => {
+    if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
+    if (!cronAuthorized(req)) return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
+    const cutoff = new Date(Date.now() - 2 * 86400000);
+    const rateLimits = await prisma.rateLimitBucket.deleteMany({ where: { updatedAt: { lt: cutoff } } });
+    const configuredDays = Number(await getSetting("tracking.sessionReplayRetentionDays", process.env.SESSION_REPLAY_RETENTION_DAYS || 30));
+    const retentionDays = Number.isFinite(configuredDays) && configuredDays > 0 ? Math.min(configuredDays, 365) : 30;
+    const replays = await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: new Date(Date.now() - retentionDays * 86400000) } } });
+    const summary = await sendDailySummary();
+    const dataCutoff = new Date(Date.now() - 30 * 86400000);
+    const [jobs, events] = await Promise.all([
+      prisma.job.deleteMany({ where: { createdAt: { lt: dataCutoff } } }),
+      prisma.eventLog.deleteMany({ where: { createdAt: { lt: dataCutoff } } }),
+    ]);
+    res.json({ rateLimitBucketsRemoved: rateLimits.count, expiredReplaysRemoved: replays.count, oldJobsRemoved: jobs.count, oldEventsRemoved: events.count, summary });
+  });
+
   // The backend is an API only; the root just says it is running (the shop is on the frontend).
   app.get("/", (_req, res) => {
     setNoStore(res);
@@ -288,7 +361,7 @@ export function registerPublicRoutes(app: Express) {
           postcode: parsed.data.postcode || undefined,
           orderNotes: parsed.data.orderNotes || undefined,
           trackingAllowed: isStorefrontUrl(req.get("origin") || req.get("referer") || ""),
-          clientIp: req.ip,
+          clientIp: requestIp(req),
           clientUserAgent: req.get("user-agent") || undefined,
         },
         { dispatchJobs: false },
@@ -303,9 +376,13 @@ export function registerPublicRoutes(app: Express) {
       });
       const jobIds: string[] = (order as { jobIds?: string[] }).jobIds || [];
       const soldOut: string[] = (order as { soldOutSlugs?: string[] }).soldOutSlugs || [];
+      const immediateJobs = await prisma.job.findMany({
+        where: { id: { in: jobIds }, name: { in: ["order-team-email", "customer-order-email", "meta-event", "meta-purchase"] } },
+        select: { id: true },
+      });
       waitUntil(
         Promise.allSettled([
-          ...jobIds.map((id) => dispatchJobRow(id)),
+          ...immediateJobs.map(({ id }) => processJobRow(id)),
           // Only the products this order sold out change on the storefront; a normal order flushes nothing.
           ...(soldOut.length ? [invalidateFrontendCache(soldOut.map((slug) => `product:${slug}`))] : []),
         ]),

@@ -15,8 +15,13 @@ export async function POST(request: NextRequest) {
         "content-type": "application/json",
         "origin":request.nextUrl.origin,
         "user-agent": request.headers.get("user-agent") || "",
-        "x-forwarded-for": request.headers.get("x-forwarded-for") || "",
-        "x-real-ip": request.headers.get("x-real-ip") || "",
+        ...(request.headers.get("x-real-ip") && (process.env.STORE_PROXY_SECRET || process.env.REVALIDATION_SECRET)
+          ? {
+              // x-real-ip is set by the hosting edge; never trust a caller-controlled X-Forwarded-For value.
+              "x-zm-client-ip": request.headers.get("x-real-ip")!,
+              "x-zm-proxy-secret": process.env.STORE_PROXY_SECRET || process.env.REVALIDATION_SECRET!,
+            }
+          : {}),
       },
       body,
       cache: "no-store",

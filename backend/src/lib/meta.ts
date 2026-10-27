@@ -22,6 +22,8 @@ export type MetaServerEvent = {
   externalId?: string;
   customData?: Record<string, unknown>;
   orderId?: string;
+  /** Admin-only testing: production jobs must never inherit the saved test code. */
+  testEventCode?: string;
 };
 
 export function metaUserData(event: MetaServerEvent) {
@@ -80,11 +82,7 @@ export async function sendMetaServerEvent(event: MetaServerEvent) {
     ],
   };
 
-  const configuredTestCode = await getSetting<string>(
-    "tracking.metaTestEventCode",
-    process.env.META_TEST_EVENT_CODE || "",
-  );
-  const testEventCode = String(configuredTestCode || process.env.META_TEST_EVENT_CODE || "").trim();
+  const testEventCode = String(event.testEventCode || "").trim();
   if (testEventCode) {
     payload.test_event_code = testEventCode;
   }

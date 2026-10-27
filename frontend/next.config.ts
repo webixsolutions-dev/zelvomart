@@ -83,6 +83,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      ...["zelvomart-frontend.vercel.app", "zelvomart.vercel.app", "zelvomart.com"].map((host) => ({
+        source: "/:path*",
+        has: [{ type: "host" as const, value: host }],
+        destination: "https://www.zelvomart.com/:path*",
+        permanent: true,
+      })),
+    ];
+  },
   async rewrites() {
     const api = (
       process.env.BACKEND_URL ||

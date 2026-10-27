@@ -41,6 +41,7 @@ const frontendOrigins = [
       .map((v) => v.trim())
       .filter(Boolean),
     SITE_ORIGIN,
+    "https://zelvomart-frontend.vercel.app",
     "https://zelvomart.vercel.app",
     "https://zelvomart.com",
     "https://www.zelvomart.com",

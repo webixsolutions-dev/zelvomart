@@ -2,6 +2,7 @@ import { deliverEmail, emailIdentity, emailLayout } from "./email-delivery";
 import { prisma } from "./db";
 import { money } from "./format";
 import { getSetting } from "./settings";
+import { SITE_ORIGIN } from "./site-url";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -44,7 +45,7 @@ export async function sendOrderTeamEmail(orderId: string) {
       ? `<br/>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}`
       : "");
 
-  const adminUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app"}/admin/orders/${order.id}`;
+  const adminUrl = `${SITE_ORIGIN}/admin/orders/${order.id}`;
   const whatsappPhone = order.phone.replace(/\D/g, "");
   const defaultTemplate = `
     <h2>New order {{orderNumber}}</h2>
@@ -173,7 +174,7 @@ export async function sendCustomerStatusEmail(orderId: string, status: "CONFIRME
   if (!order) throw new Error("Order not found");
   if (!order.email) return { skipped: "Customer did not provide an email address" };
 
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app").replace(/\/$/, "");
+  const base = SITE_ORIGIN;
   const trackingUrl = order.postexTracking
     ? `${process.env.POSTEX_TRACKING_BASE_URL || "https://postex.pk/tracking"}/${encodeURIComponent(order.postexTracking)}`
     : `${base}/track-your-order`;

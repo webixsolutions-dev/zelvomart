@@ -14,6 +14,7 @@ import { Resend } from "resend";
 import { money } from "../src/lib/format";
 import { setSetting, getSetting } from "../src/lib/settings";
 import { assertWorkerDatabase, expiredBacklog } from "../src/lib/launch-jobs";
+import { SITE_ORIGIN } from "../src/lib/site-url";
 
 async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>) {
   if (jobLogId) {
@@ -129,14 +130,15 @@ async function main() {
         where: { id: data.orderId },
         include: { items: true },
       });
-      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return { skipped: "ORDER_EXCLUDED" };
+      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder || order.status === "CANCELLED") return { skipped: "ORDER_EXCLUDED" };
 
       const names = order.fullName.trim().split(/\s+/);
       return sendMetaServerEvent({
         eventName: data.eventName || "Purchase",
-        eventId: data.eventName ? `${order.orderNumber}:${data.eventName}` : order.orderNumber,
+        eventId: order.id,
+        eventTime: Math.floor(order.createdAt.getTime() / 1000),
         orderId: order.id,
-        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app"}/checkout/success/${order.orderNumber}`,
+        sourceUrl: `${SITE_ORIGIN}/order-confirmed?order=${encodeURIComponent(order.orderNumber)}`,
         fbp: order.fbp || undefined,
         fbc: order.fbc || undefined,
         ip: order.clientIp || undefined,
@@ -152,6 +154,8 @@ async function main() {
           content_ids: order.items.map((item) => item.sku),
           contents: order.items.map((item) => ({
             id: item.sku,
+            content_id: item.sku,
+            content_name: item.title,
             quantity: item.quantity,
             item_price: Number(item.unitPrice),
           })),
@@ -189,13 +193,14 @@ async function main() {
         where: { id: data.orderId },
         include: { items: true },
       });
-      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return { skipped: "ORDER_EXCLUDED" };
+      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder || order.status === "CANCELLED") return { skipped: "ORDER_EXCLUDED" };
 
       return sendTikTokServerEvent({
         eventName: data.eventName || "Purchase",
-        eventId: data.eventName ? `${order.orderNumber}:${data.eventName}` : order.orderNumber,
+        eventId: order.id,
+        eventTime: Math.floor(order.createdAt.getTime() / 1000),
         orderId: order.id,
-        sourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app"}/checkout/success/${order.orderNumber}`,
+        sourceUrl: `${SITE_ORIGIN}/order-confirmed?order=${encodeURIComponent(order.orderNumber)}`,
         ip: order.clientIp || undefined,
         userAgent: order.clientUserAgent || undefined,
         ttp: order.ttp || undefined,
