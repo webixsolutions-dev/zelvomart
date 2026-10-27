@@ -279,18 +279,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const toggleWish = useCallback(
     (id: string) => {
+      const has = wishlist.includes(id);
       setWishlist((w) => {
-        const has = w.includes(id);
-        const p = getProductById(id);
-        notify({
-          title: has ? "Removed from wishlist" : "Saved to wishlist",
-          body: p?.name,
-          image: p?.image,
-        });
-        return has ? w.filter((x) => x !== id) : [...w, id];
+        // Keep this updater pure: React Strict Mode may invoke state updaters twice in development.
+        return has ? w.filter((x) => x !== id) : w.includes(id) ? w : [...w, id];
+      });
+      const p = getProductById(id);
+      notify({
+        title: has ? "Removed from wishlist" : "Saved to wishlist",
+        body: p?.name,
+        image: p?.image,
       });
     },
-    [notify],
+    [notify, wishlist],
   );
 
   const subtotal = useMemo(

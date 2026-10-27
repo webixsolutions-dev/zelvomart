@@ -16,10 +16,10 @@ export function WatchDiscover() {
       <div className="eyebrow">Watch & Discover</div>
       <h2>See Zelvomart products in action</h2>
       <div className="shorts-grid">
-        {homeShorts.map((video) => (
+        {homeShorts.map((video, index) => (
           <article className="short-card" key={video.id}>
             <div className="short-frame">
-              <LazyYouTube id={video.youtubeId} title={video.title} />
+              <LazyYouTube id={video.youtubeId} title={video.title} eager={index < 3} rootMargin={1800} />
               <span className="short-badge">Shorts</span>
               <span className="short-muted" aria-hidden="true">
                 <VolumeX size={14} />

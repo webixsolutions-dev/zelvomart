@@ -14,7 +14,7 @@ export function BrandPromise() {
   return (
     <div className="unbox">
       <div className="unbox-player">
-        <LazyYouTube id={UNBOXING_ID} title="Pack an Order With Me — Zelvomart jewellery packing" />
+        <LazyYouTube id={UNBOXING_ID} title="Pack an Order With Me — Zelvomart jewellery packing" rootMargin={1800} />
       </div>
       <div className="unbox-copy">
         <div className="eyebrow">The unboxing</div>

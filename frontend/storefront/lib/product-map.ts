@@ -44,7 +44,12 @@ function listItems(html?: string | null) {
 
 function firstParagraph(html?: string | null) {
   const withoutList = String(html || "").replace(/<(ul|ol)[\s\S]*?<\/\1>/gi, "");
-  return stripHtml(withoutList).split("\n")[0] || "";
+  const first = withoutList.match(/<p\b[^>]*>([\s\S]*?)<\/p>/i)?.[1] || withoutList;
+  const text = stripHtml(first).replace(/\s+/g, " ").trim();
+  const limit = 180;
+  if (text.length <= limit) return text;
+  const clipped = text.slice(0, limit - 1);
+  return `${clipped.slice(0, clipped.lastIndexOf(" ")).trimEnd()}…`;
 }
 
 function variantBuyable(v: ApiVariant) {

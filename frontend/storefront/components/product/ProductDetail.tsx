@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Banknote, Check, ChevronDown, Heart, MessageCircle, PackageCheck, RotateCcw, ShieldCheck, ShoppingBag, Truck } from "lucide-react";
+import { Check, ChevronDown, Heart, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/catalog";
 import { discountPct, money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
@@ -26,6 +26,28 @@ const ProductReviews = dynamic(() => import("./ProductReviews").then((m) => m.Pr
 
 function isSize(label: string, kind?: string) {
   return kind ? kind === "size" : /size/i.test(label);
+}
+
+function withoutGeneratedDescriptionCta(html: string) {
+  const marker = html.toLowerCase().indexOf("to ask about the product and place your order");
+  if (marker < 0) return html;
+
+  const paragraphStart = html.toLowerCase().lastIndexOf("<p", marker);
+  const paragraphEnd = html.toLowerCase().indexOf("</p>", marker);
+  if (paragraphStart < 0 || paragraphEnd < 0) return html;
+
+  const paragraph = html.slice(paragraphStart, paragraphEnd).toLowerCase();
+  if (!paragraph.includes("explore the") || !paragraph.includes("collection")) return html;
+  return html.slice(0, paragraphStart) + html.slice(paragraphEnd + 4);
+}
+
+function withoutGeneratedDescriptionText(text: string) {
+  return text
+    .replace(
+      /(?:^|\n)\s*Choose\b[^\n]*to ask about the product and place your order\.\s*Explore the [^\n.]* collection\.?\s*$/i,
+      "",
+    )
+    .trim();
 }
 
 export function ProductDetail({ slug }: { slug: string }) {
@@ -119,6 +141,15 @@ export function ProductDetail({ slug }: { slug: string }) {
                   </div>
                 )}
                 {pct > 0 && <span className="badge badge-sale pd-discount">-{pct}%</span>}
+                <button
+                  className={`pd-wishlist-top ${wished ? "wished" : ""}`}
+                  type="button"
+                  aria-label={wished ? "Remove from wishlist" : "Save to wishlist"}
+                  aria-pressed={wished}
+                  onClick={() => toggleWish(p.id)}
+                >
+                  <Heart size={19} fill={wished ? "currentColor" : "none"} />
+                </button>
               </div>
               <div className="gallery-thumbs" role="tablist" aria-label="Product images">
                 {gallery.map((image, i) => (
@@ -265,15 +296,6 @@ export function ProductDetail({ slug }: { slug: string }) {
                 <button className="btn ghost pd-cart" type="button" disabled={!inStock} onClick={() => addToCart(p, cartOpts)}>
                   <ShoppingBag size={17} /> Add to cart
                 </button>
-                <button
-                  className={`btn ghost square ${wished ? "wished" : ""}`}
-                  type="button"
-                  aria-label={wished ? "Remove from wishlist" : "Save to wishlist"}
-                  aria-pressed={wished}
-                  onClick={() => toggleWish(p.id)}
-                >
-                  <Heart size={19} fill={wished ? "currentColor" : "none"} />
-                </button>
               </div>
 
               <div className="pd-delivery">
@@ -310,22 +332,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                 </ol>
               </div>
 
-              <ul className="pd-trust">
-                <li>
-                  <Banknote size={18} /> Cash on Delivery
-                </li>
-                <li>
-                  <RotateCcw size={18} /> Easy Returns
-                </li>
-                <li>
-                  <ShieldCheck size={18} /> Quality Checked
-                </li>
-                <li>
-                  <MessageCircle size={18} /> WhatsApp Support
-                </li>
-              </ul>
             </div>
-            <p className="sku">SKU: {p.sku}</p>
           </div>
         </div>
       </section>
@@ -355,21 +362,10 @@ export function ProductDetail({ slug }: { slug: string }) {
                       <div className="desc-grid">
                         <div>
                           {p.descriptionHtml ? (
-                            <div className="pd-description-content" dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(p.descriptionHtml) }} />
+                            <div className="pd-description-content" dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(withoutGeneratedDescriptionCta(p.descriptionHtml)) }} />
                           ) : (
-                            <>
-                              <h3 className="pd-panel-h">Why you&apos;ll love it</h3>
-                              <p>{p.description}</p>
-                            </>
+                            <p>{withoutGeneratedDescriptionText(p.description)}</p>
                           )}
-                          <h3>Key features</h3>
-                          <ul className="check-list">
-                            {p.highlights.map((h) => (
-                              <li key={h}>
-                                <Check size={16} /> {h}
-                              </li>
-                            ))}
-                          </ul>
                         </div>
                         <div className="desc-side">
                           {p.idealFor.length > 0 && <div className="info-box">
