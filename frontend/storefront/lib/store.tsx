@@ -262,7 +262,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const price = unitPrice(p, { bundle: opts.bundle, variant: opts.variant });
     void trackStoreEvent("AddToCart", {
       content_ids: [option?.sku || p.sku],
-      contents: [{ id: option?.sku || p.sku, quantity: qty, item_price: price }],
+      content_type: "product",
+      contents: [{ id: option?.sku || p.sku, content_id: option?.sku || p.sku, content_name: p.name, quantity: qty, item_price: price }],
       value: price * qty,
       currency: "PKR",
     }).catch(() => undefined);

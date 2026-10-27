@@ -117,8 +117,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <TrackingProvider />
           <GoogleAnalytics />
           {enabled("tracking.sessionReplayEnabled") ? <SessionReplayProvider /> : null}
+          {enabled("tracking.metaPixelEnabled") ? <MetaPixelScript pixelId={pixelId} /> : null}
         </Suspense>
-        {enabled("tracking.metaPixelEnabled") ? <MetaPixelScript pixelId={pixelId} /> : null}
         {enabled("tracking.tiktokPixelEnabled") ? <TikTokPixelScript pixelId={tiktokPixelId} /> : null}
       </body>
     </html>

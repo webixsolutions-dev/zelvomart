@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, Heart, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/catalog";
@@ -52,9 +52,11 @@ function withoutGeneratedDescriptionText(text: string) {
 
 export function ProductDetail({ slug }: { slug: string }) {
   const p = getProduct(slug)!;
-  useViewContent(p);
   const cat = getCategory(p.category)!;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const variantSku = searchParams.get("variant");
+  useViewContent(p, variantSku);
   const { addToCart, toggleWish, isWished, ready } = useShop();
   const reviews = useMemo(() => approvedReviews(p.id), [p.id]);
   const summary = reviewSummary(reviews);
@@ -67,7 +69,9 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [qty, setQtyState] = useState(1);
   const [bundle, setBundle] = useState<1 | 2>(1);
-  const [variant, setVariant] = useState<string | undefined>(options.find((o) => !o.soldOut)?.name);
+  const [variant, setVariant] = useState<string | undefined>(() =>
+    (options.find((o) => o.sku === variantSku && !o.soldOut) || options.find((o) => !o.soldOut))?.name,
+  );
   const [tab, setTab] = useState(tabs[0]?.id ?? "description");
   const [openRows, setOpenRows] = useState<string[]>(["description"]);
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
@@ -75,6 +79,11 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   // The date depends on today, so it is worked out in the browser, not at build time.
   useEffect(() => setEta(shortDate(deliverBy())), []);
+  useEffect(() => {
+    if (!variantSku) return;
+    const match = options.find((option) => option.sku === variantSku && !option.soldOut);
+    if (match) { setVariant(match.name); setGalleryIndex(0); }
+  }, [variantSku, p.id]);
 
   const wished = ready && isWished(p.id);
   const pct = discountPct(p.price, p.compare);

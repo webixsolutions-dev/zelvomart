@@ -9,6 +9,7 @@ import { getReplaySessionId } from "@/lib/session-replay-client";
 declare global {
   interface Window {
     fbq?: (...args: any[]) => void;
+    __zmMetaInit?: (userData: Record<string, string>) => void;
     ttq?: {
       track: (eventName: string, params?: Record<string, unknown>, options?: { event_id?: string }) => void;
       page: () => void;
@@ -21,7 +22,7 @@ declare global {
 export async function trackStoreEvent(
   eventName: string,
   params: Record<string, unknown> = {},
-  options: { eventId?: string } = {},
+  options: { eventId?: string; onMetaDelivered?: () => void; metaUserData?: Record<string, string> } = {},
 ) {
   const eventId = options.eventId || crypto.randomUUID();
   if(staffDevice())return eventId;
@@ -29,7 +30,7 @@ export async function trackStoreEvent(
     const deliver=(platform:'meta'|'tiktok',attempt=0)=>{
       if(!trackingSettingEnabled(platform==='meta'?'tracking.metaPixelEnabled':'tracking.tiktokPixelEnabled'))return;
       try{
-        if(platform==='meta'&&window.fbq){window.fbq('track',eventName,params,{eventID:eventId});return;}
+        if(platform==='meta'&&window.fbq){if(options.metaUserData)window.__zmMetaInit?.(options.metaUserData);window.fbq('track',eventName,params,{eventID:eventId});options.onMetaDelivered?.();return;}
         if(platform==='tiktok'&&window.ttq){if(eventName==='PageView')window.ttq.page();else window.ttq.track(eventName,tiktokProperties(params),{event_id:eventId});return;}
       }catch{return;}
       // Pixels load lazily (after the page has loaded and gone idle): keep the event for up to ~25 s.

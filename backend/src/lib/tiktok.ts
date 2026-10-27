@@ -17,6 +17,8 @@ export type TikTokServerEvent = {
   externalId?: string;
   customData?: Record<string, unknown>;
   orderId?: string;
+  /** Admin-only testing: production jobs must never inherit the saved test code. */
+  testEventCode?: string;
 };
 
 const TIKTOK_EVENT_MAP: Record<string, string> = {
@@ -98,11 +100,7 @@ export async function sendTikTokServerEvent(event: TikTokServerEvent) {
     ],
   };
 
-  const configuredTestCode = await getSetting<string>(
-    "tracking.tiktokTestEventCode",
-    process.env.TIKTOK_TEST_EVENT_CODE || "",
-  );
-  const testEventCode = String(configuredTestCode || process.env.TIKTOK_TEST_EVENT_CODE || "").trim();
+  const testEventCode = String(event.testEventCode || "").trim();
   if (testEventCode) {
     payload.test_event_code = testEventCode;
   }

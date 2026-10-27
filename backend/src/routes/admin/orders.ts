@@ -278,6 +278,21 @@ export function registerAdminOrdersRoutes(app: Express) {
       res.status(400).json({ error: error.message || "ORDER_CREATE_FAILED" });
     }
   });
+  app.post("/api/admin/orders/:id/mark-test", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
+    const id = routeParam(req, "id");
+    const order = await prisma.order.findUnique({ where: { id }, select: { id: true, test: true } });
+    if (!order) return res.status(404).json({ error: "NOT_FOUND" });
+    if (order.test) return res.json({ ok: true, alreadyTest: true });
+    await prisma.$transaction([
+      prisma.order.update({ where: { id }, data: { test: true } }),
+      prisma.job.updateMany({
+        where: { orderId: id, status: { in: ["QUEUED", "FAILED"] } },
+        data: { status: "SKIPPED", error: "Marked as a test order by an administrator.", finishedAt: new Date() },
+      }),
+    ]);
+    await audit(req, "mark_test", "Order", id);
+    res.json({ ok: true });
+  });
   app.get("/api/admin/orders", requireAuth("orders.read"), async (req, res) => {
     let where: Prisma.OrderWhereInput;
     try {

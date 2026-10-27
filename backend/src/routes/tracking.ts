@@ -11,6 +11,8 @@ import { getSetting, getSettings } from "../lib/settings";
 import { sendMetaServerEvent } from "../lib/meta";
 import { requestIp, isLikelyBot } from "../lib/rate-limit";
 import { dispatchJobRow } from "../lib/jobs";
+import { processJobRow } from "../lib/job-processor";
+import { waitUntil } from "@vercel/functions";
 import type { Express } from "express";
 import { META_EVENT_NAMES, allowRequest, audit, routeParam } from "../http/shared";
 
@@ -58,8 +60,8 @@ export function registerTrackingRoutes(app: Express) {
       });
     }
 
-    // Purchase is dispatched from the order transaction. All other storefront events
-    // are queued to CAPI and TikTok with the SAME event ID as the browser Pixel event.
+    // Purchase is dispatched from the order transaction. Meta events are attempted
+    // immediately; failures remain durable for the cron retry sweeper.
     const productionEvent = isStorefrontUrl(sourceUrl || "");
     if (eventName !== "Purchase" && !eventName.startsWith("Replay") && productionEvent) {
       const job = await prisma.job.create({
@@ -79,7 +81,7 @@ export function registerTrackingRoutes(app: Express) {
           } as Prisma.InputJsonValue,
         },
       });
-      dispatchJobRow(job.id).catch(() => undefined);
+      waitUntil(processJobRow(job.id).catch(() => undefined));
 
       const ttJob = await prisma.job.create({
         data: {
@@ -127,7 +129,8 @@ export function registerTrackingRoutes(app: Express) {
     const platform = routeParam(req, "platform");
     if (!["meta", "tiktok"].includes(platform)) return res.status(400).json({ error: "INVALID_PLATFORM" });
     const testKey = platform === "meta" ? "tracking.metaTestEventCode" : "tracking.tiktokTestEventCode";
-    if (!(await getSetting(testKey, "")))
+    const testEventCode = String(await getSetting(testKey, process.env[platform === "meta" ? "META_TEST_EVENT_CODE" : "TIKTOK_TEST_EVENT_CODE"] || "") || "").trim();
+    if (!testEventCode)
       return res.status(400).json({ error: "Save a platform test event code first." });
     try {
       const event = {
@@ -135,6 +138,7 @@ export function registerTrackingRoutes(app: Express) {
         eventId: `admin-test-${randomBytes(12).toString("hex")}`,
         sourceUrl: `${SITE_ORIGIN}/`,
         customData: { test: true },
+        testEventCode,
       };
       const result = platform === "meta" ? await sendMetaServerEvent(event) : await sendTikTokServerEvent(event);
       await audit(req, "test_event", "Tracking", platform);

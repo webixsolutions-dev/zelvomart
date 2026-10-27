@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { SITE_ORIGIN } from "./site-url";
 import { canSell } from "./stock";
 import { catalogImageCopies, feedImage } from "./catalog-images";
 import sanitizeHtml from "sanitize-html";
@@ -28,7 +29,7 @@ export async function catalogFeed(platform: "meta" | "tiktok" | "google") {
     }),
     catalogImageCopies(),
   ]);
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://zelvomart.vercel.app").replace(/\/$/, "");
+  const base = SITE_ORIGIN;
   const items: string[] = [];
   const missingImages: string[] = [];
   for (const p of products) {
@@ -52,8 +53,16 @@ export async function catalogFeed(platform: "meta" | "tiktok" | "google") {
           ? (variant.attributes as Record<string, unknown>)
           : {};
       const link = `${base}/product/${p.slug}/${variant ? `?variant=${encodeURIComponent(variant.sku)}` : ""}`;
+      const title = `${variant ? `${p.title} - ${variant.name}` : p.title}`.slice(0, 150);
+      const itemGroup = p.variants.length ? tag("item_group_id", p.sku) : "";
+      const googleCategoryValue =
+        typeof attributes.google_product_category === "string" ? attributes.google_product_category : p.category?.name || "";
+      const googleCategory = platform === "google" && googleCategoryValue ? tag("google_product_category", googleCategoryValue) : "";
+      const gtin = String(attributes.gtin || (variant as any)?.gtin || "").trim();
+      const mpn = String(attributes.mpn || (variant as any)?.mpn || "").trim();
+      const googleIdentifier = gtin ? tag("gtin", gtin) : mpn ? tag("mpn", mpn) : tag("identifier_exists", "no");
       items.push(
-        `<item>${tag("id", sku)}${platform === "tiktok" ? tag("sku_id", sku) : ""}${tag("item_group_id", p.sku)}${tag("title", variant ? `${p.title} - ${variant.name}` : p.title)}${tag("description", plainDescription(p.descriptionHtml || p.shortDescription || p.title))}${tag("availability", canSell(variant || p) ? "in stock" : "out of stock")}${tag("condition", "new")}${tag("price", `${price.toFixed(2)} PKR`)}${sale !== null ? tag("sale_price", `${sale.toFixed(2)} PKR`) : ""}${tag("link", link)}${tag("image_link", image)}${images
+        `<item>${tag("id", sku)}${platform === "tiktok" ? tag("sku_id", sku) : ""}${itemGroup}${tag("title", title)}${tag("description", plainDescription(p.descriptionHtml || p.shortDescription || p.title))}${tag("availability", canSell(variant || p) ? "in stock" : "out of stock")}${tag("condition", "new")}${tag("price", `${price.toFixed(2)} PKR`)}${sale !== null ? tag("sale_price", `${sale.toFixed(2)} PKR`) : ""}${tag("link", link)}${tag("image_link", image)}${images
           .filter((i) => i !== source)
           .map((i) => feedImage(i, platform, copies))
           .filter(Boolean)
@@ -68,7 +77,7 @@ export async function catalogFeed(platform: "meta" | "tiktok" | "google") {
             const entry = Object.entries(attributes).find(([name]) => name.toLowerCase().replace(/^pa_/, "") === key);
             return entry ? tag(key, entry[1]) : "";
           })
-          .join("")}</item>`,
+          .join("")}${googleCategory}${platform === "google" ? googleIdentifier : ""}</item>`,
       );
     }
   }

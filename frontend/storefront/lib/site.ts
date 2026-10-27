@@ -3,12 +3,14 @@
  * contact details, shipping rules and the copy that appears in trust badges.
  * Values marked "verify" must be confirmed by operations before launch.
  */
+import { SITE_ORIGIN } from "../../lib/site-url";
+
 export const site = {
   name: "Zelvomart",
   tagline: "Everyday things, chosen better.",
   description:
     "Zelvomart is an online store in Pakistan for home, decor, beauty, tech, fashion, fitness and kids’ products. Order online or on WhatsApp, pay on delivery.",
-  url: "https://zelvomart.com", // verify: production domain
+  url: SITE_ORIGIN,
   locale: "en_PK",
   currency: "PKR",
   city: "Lahore, Pakistan",

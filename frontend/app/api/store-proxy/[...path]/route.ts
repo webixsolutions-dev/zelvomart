@@ -84,10 +84,12 @@ async function forward(
       if (accept) headers.set("accept", accept);
       const userAgent = request.headers.get("user-agent");
       if (userAgent) headers.set("user-agent", userAgent);
-      const forwardedFor = request.headers.get("x-forwarded-for");
-      if (forwardedFor) headers.set("x-forwarded-for", forwardedFor);
+      const proxySecret = process.env.STORE_PROXY_SECRET || process.env.REVALIDATION_SECRET;
       const realIp = request.headers.get("x-real-ip");
-      if (realIp) headers.set("x-real-ip", realIp);
+      if (realIp && proxySecret) {
+        headers.set("x-zm-client-ip", realIp);
+        headers.set("x-zm-proxy-secret", proxySecret);
+      }
       const referer = request.headers.get("referer");
       if (referer) headers.set("referer", referer);
       const origin = request.headers.get("origin");

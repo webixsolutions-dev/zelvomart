@@ -35,7 +35,12 @@ export default function AdminLogin() {
 
   useEffect(() => {
     fetch('/api/admin-proxy/api/auth/me', { cache: 'no-store', credentials: 'same-origin' })
-      .then((response) => { if (response.ok) router.replace('/admin'); })
+      .then((response) => {
+        if (response.ok) {
+          try { localStorage.setItem("zm_session_replay_opt_out", "1"); } catch {}
+          router.replace('/admin');
+        }
+      })
       .catch(() => undefined);
   }, [router]);
 
@@ -57,6 +62,7 @@ export default function AdminLogin() {
 
   function signedIn() {
     clearAdminDataCache();
+    try { localStorage.setItem("zm_session_replay_opt_out", "1"); } catch {}
     router.replace("/admin");
     router.refresh();
   }
