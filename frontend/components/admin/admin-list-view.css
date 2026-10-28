@@ -22,6 +22,13 @@
 .admin-list-pagination label,.admin-list-pagination nav{display:flex;align-items:center;gap:10px}
 .admin-list-pagination :is(button,select){min-height:40px;min-width:40px;border:1px solid #d6e1ef;border-radius:8px;background:#fff;color:#244360;padding:8px}
 .admin-list-pagination button:disabled{opacity:.4;cursor:not-allowed}
+.admin-list-products-pagination{margin-top:0;padding:14px 16px;border-radius:0 0 11px 11px}
+.admin-list-products-pagination-info{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.admin-list-products-page-size{display:flex;align-items:center;gap:8px;white-space:nowrap;color:#8492a8;font-size:11px}
+.admin-list-products-page-size select{min-height:32px;min-width:60px;padding:6px 28px 6px 10px;border:1px solid #d6e1ef;border-radius:7px;background:#fff;color:#244360;font:inherit;font-size:12px}
+.admin-list-products-pagination .admin-table-count-text{font-size:12px;color:#64748b}.admin-list-products-pagination .admin-table-count-text b{color:#334d6c;font-weight:600}
+.admin-list-products-pagination .admin-page-btn{width:34px;height:34px;min-height:34px;min-width:34px;padding:0;border-radius:9px}
+@media(max-width:650px){.admin-list-products-pagination{align-items:flex-start}.admin-list-products-pagination-info{gap:8px 14px}.admin-list-products-pagination .admin-pagination-controls{width:100%;justify-content:flex-end;flex-wrap:wrap}}
 .admin-list-empty{padding:48px 20px;text-align:center;border:1px dashed #d6e1ef;border-radius:10px;margin-top:16px;color:#244360}
 .admin-list-empty p{font-size:13px;color:#64748b;margin:8px 0 0}
 @container(max-width:850px){.admin-list-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
