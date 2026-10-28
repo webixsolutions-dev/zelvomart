@@ -111,7 +111,7 @@ export function registerPublicRoutes(app: Express) {
   });
 
   // Daily maintenance that previously depended on pg-boss schedules.
-  app.post("/api/cron/daily", async (req, res) => {
+  const runDailyCron = async (req: any, res: any) => {
     if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
     if (!cronAuthorized(req))
       return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
@@ -137,7 +137,9 @@ export function registerPublicRoutes(app: Express) {
       oldEventsRemoved: events.count,
       summary,
     });
-  });
+  };
+  app.get("/api/cron/daily", runDailyCron);
+  app.post("/api/cron/daily", runDailyCron);
 
   // The backend is an API only; the root just says it is running (the shop is on the frontend).
   app.get("/", (_req, res) => {

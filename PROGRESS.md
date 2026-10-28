@@ -272,3 +272,16 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   check (7 backend files not formatted). Those 7 files were formatted with Prettier only; their compiled JavaScript
   is identical before and after (esbuild), so no behaviour changed. All CI steps then pass locally (prisma validate,
   both typechecks, Prettier check, backend tests 71/71, frontend build).
+
+## Batch 7: go-live hardening (branch `batch-7/go-live`)
+
+- Added cron-compatible job processing, bounded retries and daily cleanup; added order test marking and replay opt-out for admins.
+- Hardened Meta Purchase deduplication and tracking payloads; aligned feed links and site canonicals with `https://www.zelvomart.com`.
+- Local verification before merge: 71 backend tests passed, frontend/backend typechecks and production build passed. PR #24 was merged to `main` as `0007b451`.
+- Production smoke check after merge: storefront, backend health, feeds and sitemap returned HTTP 200; feeds listed 21 products and used the `www` host.
+
+## Batch 8: go-live follow-up (branch `batch-8/go-live-finish`)
+
+- Daily cron now accepts GET and POST with the same Bearer `CRON_SECRET` authorization and `JOB_MODE=cron` gate.
+- Session replay deletion now requires `settings.write`; read-only report access can no longer delete recordings.
+- Owner/provider actions remain pending: verify backend production environment and email sender, back up and clean the confirmed Supabase database, skip pre-launch jobs and flag sample orders, then enable the cron runner and configure cron-job.org. TikTok work is intentionally excluded at the owner's request.

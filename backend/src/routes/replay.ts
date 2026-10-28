@@ -394,7 +394,7 @@ export function registerReplayRoutes(app: Express) {
     });
   });
 
-  app.delete("/api/admin/session-replays/:id", requireAuth("reports.read"), async (req: AuthedRequest, res) => {
+  app.delete("/api/admin/session-replays/:id", requireAuth("settings.write"), async (req: AuthedRequest, res) => {
     const id = routeParam(req, "id");
     const chunks = await prisma.sessionReplayChunk.findMany({
       where: { sessionId: id, storageKey: { not: null } },
