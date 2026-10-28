@@ -75,6 +75,7 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [qty, setQtyState] = useState(1);
+  const [ordering, setOrdering] = useState(false);
   const [bundle, setBundle] = useState<1 | 2>(1);
   const [variant, setVariant] = useState<string | undefined>(() =>
     (options.find((o) => o.sku === variantSku && !o.soldOut) || options.find((o) => !o.soldOut))?.name,
@@ -85,7 +86,10 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [eta, setEta] = useState<string | null>(null);
 
   // The date depends on today, so it is worked out in the browser, not at build time.
-  useEffect(() => setEta(shortDate(deliverBy())), []);
+  useEffect(() => {
+    setEta(shortDate(deliverBy()));
+    router.prefetch("/checkout/");
+  }, [router]);
   useEffect(() => {
     if (!variantSku) return;
     const match = options.find((option) => option.sku === variantSku && !option.soldOut);
@@ -296,13 +300,15 @@ export function ProductDetail({ slug }: { slug: string }) {
               <button
                 className="btn block lg pd-order"
                 type="button"
-                disabled={!inStock}
+                disabled={!inStock || !ready || ordering}
                 onClick={() => {
-                  addToCart(p, { ...cartOpts, silent: true });
+                  if (ordering) return;
+                  setOrdering(true);
+                  addToCart(p, { ...cartOpts, silent: true, setQuantity: true });
                   router.push("/checkout/");
                 }}
               >
-                Order now
+                {ordering ? <><span className="pd-order-spinner" aria-hidden="true" />Preparing checkout…</> : "Order now"}
               </button>
               <p className="pd-order-note">Pay when your parcel arrives · Delivered by {site.shipping.courier}</p>
               <div className="pd-buy-secondary">

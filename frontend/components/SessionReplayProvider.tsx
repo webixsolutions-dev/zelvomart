@@ -112,6 +112,8 @@ export default function SessionReplayProvider() {
     let stopRecording: undefined | (() => void);
     let timer: number | undefined;
     let retryTimer: number | undefined;
+    let initialStartTimer: number | undefined;
+    let initialStartReady = false;
     let retryAttempts=0;
     let queue: unknown[] = [];
     let pending: PendingChunk | undefined;
@@ -258,7 +260,7 @@ export default function SessionReplayProvider() {
       if(document.visibilityState==='hidden')pauseRecorder();else onActivity();
     };
 
-    const onActivity=()=>{if(!sessionReplayEnabled()){setGeneration(n=>n+1);return;}const previous=lastActivity,expired=idle||replayIdle(previous);lastActivity=Date.now();touchReplayActivity();if(expired){if(!idle){idle=true;stopPageRecorder();void send('/api/session-replays/end',{sessionId,endedAt:new Date(previous).toISOString(),currentUrl:privateSafeUrl(window.location.href)});}resetReplaySession();setGeneration(value=>value+1);return;}if(bufferPaused&&queue.length>=100)return;if(document.visibilityState==='visible'&&(paused||!stopRecording)){paused=false;void startRecorder();}};
+    const onActivity=()=>{if(!sessionReplayEnabled()){setGeneration(n=>n+1);return;}const previous=lastActivity,expired=idle||replayIdle(previous);lastActivity=Date.now();touchReplayActivity();if(expired){if(!idle){idle=true;stopPageRecorder();void send('/api/session-replays/end',{sessionId,endedAt:new Date(previous).toISOString(),currentUrl:privateSafeUrl(window.location.href)});}resetReplaySession();setGeneration(value=>value+1);return;}if(bufferPaused&&queue.length>=100)return;if(initialStartReady&&document.visibilityState==='visible'&&(paused||!stopRecording)){paused=false;void startRecorder();}};
     activityRef.current=onActivity;
     const onOnline=()=>{retryNotBefore=0;if(retryTimer)clearTimeout(retryTimer);retryTimer=undefined;void flush(false);};
     const onPageShow=()=>onActivity();
@@ -277,8 +279,22 @@ export default function SessionReplayProvider() {
     const onPreference=()=>{if(!sessionReplayEnabled()){queue=[];pending=undefined;stopPageRecorder();}setGeneration(value=>value+1);};
     for(const event of ['pointerdown','pointermove','keydown','scroll','touchstart'])window.addEventListener(event,onActivity,{passive:true,capture:true});
     window.addEventListener('zelvo:replay-preference',onPreference);
-    // Start immediately after hydration instead of waiting for a network round-trip.
-    void startRecorder();
+    // Let the storefront paint before loading rrweb, but start within two seconds.
+    const startWhenIdle = () => {
+      if (stopped) return;
+      initialStartReady = true;
+      if (document.visibilityState === "visible") {
+        paused = false;
+        void startRecorder();
+      }
+    };
+    initialStartTimer = window.setTimeout(startWhenIdle, 2000);
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(() => {
+        if (initialStartTimer) window.clearTimeout(initialStartTimer);
+        startWhenIdle();
+      }, { timeout: 2000 });
+    }
     window.addEventListener("zelvo:replay-flush", onManualFlush);
     window.addEventListener("pagehide", onPageHide);
     document.addEventListener("visibilitychange", onVisibility);
@@ -292,6 +308,7 @@ export default function SessionReplayProvider() {
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener('online',onOnline);window.removeEventListener('pageshow',onPageShow);activityRef.current=null;
+      if (initialStartTimer) window.clearTimeout(initialStartTimer);
       takeSnapshotRef.current = null;
       flushRef.current = null;
       announcePageRef.current = null;

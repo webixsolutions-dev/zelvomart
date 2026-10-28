@@ -61,9 +61,48 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const [minDays, maxDays] = transitDays();
   // Only approved reviews count; at 0 the rating is left out of the schema entirely.
   const reviews = reviewSummary(approvedReviews(p.id));
-  const jsonLd = {
+  const returnPolicy = {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: "PK",
+    returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+    merchantReturnDays: site.returns.windowDays,
+    returnMethod: "https://schema.org/ReturnByMail",
+  };
+  const shippingDetails = {
+    "@type": "OfferShippingDetails",
+    shippingRate: { "@type": "MonetaryAmount", value: p.price >= site.shipping.freeOver ? 0 : site.shipping.flatFee, currency: "PKR" },
+    shippingDestination: { "@type": "DefinedRegion", addressCountry: "PK" },
+    deliveryTime: {
+      "@type": "ShippingDeliveryTime",
+      handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" },
+      transitTime: { "@type": "QuantitativeValue", minValue: minDays, maxValue: maxDays, unitCode: "DAY" },
+    },
+  };
+  const variantProducts = (p.variants?.options || []).map((variant) => {
+    const variantUrl = `${url}?variant=${encodeURIComponent(variant.sku || variant.name)}`;
+    const image = variant.images?.[0] || variant.imageUrl || p.image;
+    return {
+      "@type": "Product",
+      name: `${p.name} - ${variant.name}`,
+      sku: variant.sku || undefined,
+      url: variantUrl,
+      image: [image.startsWith("http") ? image : site.url + image],
+      offers: {
+        "@type": "Offer",
+        url: variantUrl,
+        priceCurrency: "PKR",
+        price: Number(variant.price ?? p.price),
+        availability: variant.soldOut || p.inStock === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+        itemCondition: "https://schema.org/NewCondition",
+        shippingDetails,
+        hasMerchantReturnPolicy: returnPolicy,
+      },
+      ...(p.variants?.label.toLowerCase().match(/colou?r/) ? { color: variant.name } : {}),
+      ...(p.variants?.label.toLowerCase().includes("size") ? { size: variant.name } : {}),
+    };
+  });
+  const productFields = {
     "@context": "https://schema.org",
-    "@type": "Product",
     name: p.name,
     url,
     sku: p.sku,
@@ -74,7 +113,24 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     ...(reviews.count > 0
       ? { aggregateRating: { "@type": "AggregateRating", ratingValue: reviews.average.toFixed(1), reviewCount: reviews.count, bestRating: 5, worstRating: 1 } }
       : {}),
-    offers: {
+  };
+  const jsonLd = variantProducts.length
+    ? {
+        ...productFields,
+        "@type": "ProductGroup",
+        "@id": `${url}#product-group`,
+        productGroupID: p.sku,
+        variesBy: p.variants?.label.toLowerCase().includes("size")
+          ? ["https://schema.org/size"]
+          : p.variants?.label.toLowerCase().match(/colou?r/)
+            ? ["https://schema.org/color"]
+            : undefined,
+        hasVariant: variantProducts.map((variant) => ({ ...variant, isVariantOf: { "@id": `${url}#product-group` } })),
+      }
+    : {
+        ...productFields,
+        "@type": "Product",
+        offers: {
       "@type": "Offer",
       url,
       priceCurrency: "PKR",
@@ -82,30 +138,10 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       availability: p.inStock === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
       itemCondition: "https://schema.org/NewCondition",
       seller: { "@type": "Organization", name: site.name, "@id": `${site.url}/#organization` },
-      // Delivery and returns come from the store settings, never hard-coded per product.
-      shippingDetails: {
-        "@type": "OfferShippingDetails",
-        shippingRate: {
-          "@type": "MonetaryAmount",
-          value: p.price >= site.shipping.freeOver ? 0 : site.shipping.flatFee,
-          currency: "PKR",
+      shippingDetails,
+      hasMerchantReturnPolicy: returnPolicy,
         },
-        shippingDestination: { "@type": "DefinedRegion", addressCountry: "PK" },
-        deliveryTime: {
-          "@type": "ShippingDeliveryTime",
-          handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" },
-          transitTime: { "@type": "QuantitativeValue", minValue: minDays, maxValue: maxDays, unitCode: "DAY" },
-        },
-      },
-      hasMerchantReturnPolicy: {
-        "@type": "MerchantReturnPolicy",
-        applicableCountry: "PK",
-        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-        merchantReturnDays: site.returns.windowDays,
-        returnMethod: "https://schema.org/ReturnByMail",
-      },
-    },
-  };
+      };
 
   return (
     <div className="product-page">

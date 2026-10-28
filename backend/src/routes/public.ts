@@ -31,6 +31,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
 import {
   allowRequest,
+  allowRequests,
   jsonProduct,
   jsonProductSummary,
   productInclude,
@@ -372,11 +373,18 @@ export function registerPublicRoutes(app: Express) {
   }
 
   app.post("/api/orders", async (req, res) => {
-    if (!(await allowRequest(req, res, "checkout-ip", 12, 15 * 60 * 1000))) return;
     const rawPhone = String(req.body?.phone || "")
       .replace(/\D/g, "")
       .slice(-10);
-    if (rawPhone && !(await allowRequest(req, res, "checkout-phone", 6, 15 * 60 * 1000, rawPhone))) return;
+    if (rawPhone) {
+      if (
+        !(await allowRequests(req, res, [
+          { namespace: "checkout-ip", limit: 12, windowMs: 15 * 60 * 1000 },
+          { namespace: "checkout-phone", limit: 6, windowMs: 15 * 60 * 1000, discriminator: rawPhone },
+        ]))
+      )
+        return;
+    } else if (!(await allowRequest(req, res, "checkout-ip", 12, 15 * 60 * 1000))) return;
     const parsed = checkoutSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "VALIDATION_ERROR", issues: parsed.error.flatten() });
     try {

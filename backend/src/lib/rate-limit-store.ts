@@ -3,6 +3,7 @@ import { Prisma } from "../generated/prisma/client";
 
 export type RateLimitResult = { allowed: boolean; remaining: number; retryAfterSeconds: number };
 export type RateLimitStore = Pick<Prisma.TransactionClient, "$queryRaw">;
+export type RateLimitRule = { key: string; limit: number; windowMs: number };
 
 /** One PostgreSQL statement serializes both window resets and increments across instances. */
 export async function consumeDatabaseRateLimit(
@@ -30,6 +31,45 @@ export async function consumeDatabaseRateLimit(
     remaining: Math.max(0, limit - row.count),
     retryAfterSeconds: row.retryAfterSeconds,
   };
+}
+
+/** Atomically increments two independent buckets in one database round trip. */
+export async function consumeDatabaseRateLimits(
+  store: RateLimitStore,
+  rules: [RateLimitRule, RateLimitRule],
+): Promise<RateLimitResult[]> {
+  const [first, second] = rules;
+  const rows = await store.$queryRaw<{ bucketKey: string; count: number; retryAfterSeconds: number }[]>(Prisma.sql`
+    WITH limits("bucketKey", "limitCount", "windowMs") AS (
+      VALUES (${first.key}, ${first.limit}, ${first.windowMs}), (${second.key}, ${second.limit}, ${second.windowMs})
+    ), upserted AS (
+      INSERT INTO "RateLimitBucket" ("id", "bucketKey", "count", "windowStart", "updatedAt")
+      SELECT gen_random_uuid()::text, "bucketKey", 1, statement_timestamp(), statement_timestamp() FROM limits
+      ON CONFLICT ("bucketKey") DO UPDATE SET
+        "count" = CASE WHEN "RateLimitBucket"."windowStart" <= statement_timestamp() -
+          (SELECT "windowMs" FROM limits WHERE limits."bucketKey" = EXCLUDED."bucketKey") * interval '1 millisecond'
+          THEN 1 ELSE LEAST("RateLimitBucket"."count",
+            (SELECT "limitCount" FROM limits WHERE limits."bucketKey" = EXCLUDED."bucketKey")) + 1 END,
+        "windowStart" = CASE WHEN "RateLimitBucket"."windowStart" <= statement_timestamp() -
+          (SELECT "windowMs" FROM limits WHERE limits."bucketKey" = EXCLUDED."bucketKey") * interval '1 millisecond'
+          THEN statement_timestamp() ELSE "RateLimitBucket"."windowStart" END,
+        "updatedAt" = statement_timestamp()
+      RETURNING "bucketKey", "count", "windowStart"
+    )
+    SELECT upserted."bucketKey", upserted."count", GREATEST(1, CEIL(EXTRACT(EPOCH FROM
+      (upserted."windowStart" + limits."windowMs" * interval '1 millisecond' - statement_timestamp()))))::int AS "retryAfterSeconds"
+    FROM upserted JOIN limits USING ("bucketKey")
+  `);
+  const byKey = new Map(rows.map((row) => [row.bucketKey, row]));
+  return rules.map(({ key, limit }) => {
+    const row = byKey.get(key);
+    if (!row) throw new Error("RATE_LIMIT_RESULT_MISSING");
+    return {
+      allowed: row.count <= limit,
+      remaining: Math.max(0, limit - row.count),
+      retryAfterSeconds: row.retryAfterSeconds,
+    };
+  });
 }
 
 /** The high-volume chunk path needs no database-backed request counter. Hard session caps stay in PostgreSQL. */

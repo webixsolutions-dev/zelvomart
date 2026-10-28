@@ -94,7 +94,7 @@ type Ctx = {
   payable: number;
   applyCoupon: (code: string) => Promise<{ ok: boolean; message: string }>;
   removeCoupon: () => void;
-  addToCart: (p: Product, opts?: { qty?: number; variant?: string; silent?: boolean; bundle?: number }) => void;
+  addToCart: (p: Product, opts?: { qty?: number; variant?: string; silent?: boolean; bundle?: number; setQuantity?: boolean }) => void;
   setQty: (key: string, qty: number) => void;
   removeLine: (key: string) => void;
   clearCart: () => void;
@@ -254,7 +254,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     const key = p.id + (opts.variant ? `::${opts.variant}` : "") + (opts.bundle ? "::bundle" : "");
     setCart((lines) => {
       const found = lines.find((l) => l.key === key);
-      if (found) return lines.map((l) => (l.key === key ? { ...l, qty: Math.min(99, l.qty + qty) } : l));
+      if (found) return lines.map((l) => (l.key === key ? { ...l, qty: Math.min(99, opts.setQuantity ? qty : l.qty + qty) } : l));
       return [...lines, { key, id: p.id, variant: opts.variant, qty, ...(opts.bundle ? { bundle: opts.bundle } : {}) }];
     });
     if (!opts.silent) setCartOpen(true);

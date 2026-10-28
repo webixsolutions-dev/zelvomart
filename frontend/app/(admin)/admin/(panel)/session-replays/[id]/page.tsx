@@ -5,6 +5,7 @@ import ReplayStatCards, {
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { clientApi } from "@/lib/client-api";
 import {
   replayPayload,
@@ -274,13 +275,19 @@ export default function ReplayDetail() {
       return;
     setDeleting(true);
     try {
-      await clientApi(
+      const result = await clientApi<{ storageError?: string; storageKeys?: string[] }>(
         `/api/admin/session-replays/${encodeURIComponent(id)}`,
         { method: "DELETE" },
         true,
       );
+      if (result.storageError) {
+        toast.warning(`Recording removed from the list, but R2 cleanup failed: ${result.storageError}. Keys: ${(result.storageKeys || []).join(", ")}`);
+      } else {
+        toast.success("Recording deleted.");
+      }
       router.replace("/admin/session-replays");
-    } catch {
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Recording could not be deleted.");
       setDeleting(false);
     }
   }

@@ -171,7 +171,7 @@ export default function Replays() {
       );
       setSelected([]);
       setDeleteMessage(
-        `${result.deleted.length} deleted; ${result.skipped.length} skipped; ${result.errors.length} database errors; ${result.storageErrors.length} R2 cleanup errors.`,
+        `${result.deleted.length} deleted; ${result.skipped.length} skipped; ${result.errors.length} database errors; ${result.storageErrors.length} R2 cleanup errors.${result.storageErrors.length ? ` Failed R2 keys: ${result.storageErrors.flatMap((item) => item.storageKeys).join(", ")}` : ""}`,
       );
       await reload();
     } catch (error) {

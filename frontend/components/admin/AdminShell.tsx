@@ -136,7 +136,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           />
           <div>
             <b>Checking admin session…</b>
-            <small>Please wait</small>
+            <small>Loading your workspace</small>
+            <span className="admin-auth-skeleton" aria-hidden="true"><i /><i /><i /></span>
           </div>
         </div>
       </div>

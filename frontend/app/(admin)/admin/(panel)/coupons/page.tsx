@@ -53,9 +53,13 @@ export default function Coupons() {
   async function deleteCoupons(ids: string[]) {
     if (!ids.length || deleting) return;
     const count = ids.length;
+    const details = (data || [])
+      .filter((coupon: any) => ids.includes(coupon.id))
+      .map((coupon: any) => `${coupon.code}: ${Number(coupon.usedCount) || 0} uses`)
+      .join(", ");
     if (
       !window.confirm(
-        `Permanently delete ${count} coupon${count === 1 ? "" : "s"}? Past order coupon text remains unchanged.`,
+        `Permanently delete ${count} coupon${count === 1 ? "" : "s"}${details ? ` (${details})` : ""}? Past order coupon text remains unchanged.`,
       )
     )
       return;

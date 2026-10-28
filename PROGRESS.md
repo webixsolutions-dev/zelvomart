@@ -297,4 +297,13 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 ## Batch 8: favicon cleanup (branch `batch-8/favicon`)
 
 - Replaced the ambiguous public favicon filename with `favicon-zelvomart.png`, added a root `favicon.ico`, and pointed both store and admin metadata to the new brand icon. The ICO was generated from the existing Zelvomart app icon at 16/32/48 px.
-- Needs frontend production-build verification before merge.
+- Frontend production build passed on the speed branch (favicon route generated from the existing icon).
+
+## Batch 8: speed, checkout and schema follow-up (branch `batch-8/speed`)
+
+- Order now sets the selected cart line to the chosen quantity instead of incrementing it, disables repeat submission while checkout opens, and prefetches checkout on product detail pages. The add-to-cart behavior remains additive.
+- Delayed rrweb startup until the browser becomes idle or two seconds elapse; added immediate store/admin loading skeletons and reduced-motion handling.
+- Admin reference data now uses memory plus sessionStorage with a five-minute stale-while-revalidate window for products, categories and coupons only. Auth, order, customer and replay data are excluded.
+- Checkout now increments its independent IP and phone limits in one Postgres statement. Product pages emit ProductGroup/hasVariant schema when SKU options exist, including each option's image, price and availability.
+- Local checks: backend/frontend TypeScript checks, backend Prettier, 71 backend tests, and frontend production build passed. The production build logged backend timeouts for policy-page content during static generation; it completed using the page fallbacks.
+- Still requires owner/service access: production environment and Resend verification, Supabase backup/SQL cleanup, cron-job.org + JOB_MODE setup, Secret sensitivity flags, domain/DNS and live smoke tests. TikTok settings and events were left untouched per request.

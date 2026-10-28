@@ -6070,6 +6070,12 @@ form.admin-reference-form { border-color: #d8ded9; }
 .admin-auth-check-card > div { display: grid; gap: 3px; }
 .admin-auth-check-card b { color: #202729; font-size: 14px; }
 .admin-auth-check-card small { color: #7b827f; font-size: 10px; }
+.admin-auth-skeleton { display: grid; gap: 5px; width: 150px; margin-top: 8px; }
+.admin-auth-skeleton i { display: block; height: 6px; border-radius: 5px; background: linear-gradient(90deg,#e7edf3,#f7f9fc,#e7edf3); background-size: 200% 100%; animation: admin-auth-shimmer 1.3s infinite linear; }
+.admin-auth-skeleton i:nth-child(2) { width: 78%; }
+.admin-auth-skeleton i:nth-child(3) { width: 56%; }
+@keyframes admin-auth-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .admin-auth-skeleton i { animation: none; } }
 
 /* ==========================================================================
    2026-10-04 — Modern product detail + working replay player

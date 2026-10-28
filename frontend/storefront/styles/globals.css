@@ -209,6 +209,14 @@ em {
   animation: shimmer 1.3s infinite linear;
   margin-block: 30px;
 }
+.store-loading { min-height: 62vh; padding-block: 40px; }
+.store-loading-line,.store-loading-card { display: block; border-radius: var(--radius); background: linear-gradient(90deg,var(--wash),#eef3f8,var(--wash)); background-size: 200% 100%; animation: shimmer 1.3s infinite linear; }
+.store-loading-line { width: 48%; height: 14px; margin: 14px 0; }
+.store-loading-title { width: 28%; height: 28px; }
+.store-loading-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; margin-top: 32px; }
+.store-loading-card { min-height: 280px; }
+@media (max-width: 700px) { .store-loading-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } .store-loading-card { min-height: 190px; } }
+@media (prefers-reduced-motion: reduce) { .store-loading-line,.store-loading-card { animation: none; } }
 @keyframes shimmer {
   to {
     background-position: -200% 0;
@@ -7530,6 +7538,9 @@ body:has(.product-page) {
 .btn.pd-order:hover {
   background: var(--blue-strong);
 }
+.pd-order-spinner { width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: pd-order-spin .7s linear infinite; }
+@keyframes pd-order-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pd-order-spinner { animation-duration: 1.6s; } }
 .pd-order-note {
   margin: 8px 0 14px;
   text-align: center;
