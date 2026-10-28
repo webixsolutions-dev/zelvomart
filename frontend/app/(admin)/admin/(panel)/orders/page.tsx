@@ -1,84 +1,1511 @@
 "use client";
-import AdminDrawer from '@/components/admin/AdminDrawer';
-import AdminTable from '@/components/admin/AdminTable';
+import AdminDrawer from "@/components/admin/AdminDrawer";
+import AdminTable from "@/components/admin/AdminTable";
 
-import Link from 'next/link';
-import { useEffect, useRef, useState, type FormEvent, type CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
-import { useOrderData } from './useOrderData';
-import { Skeleton, StatSkeleton, TableSkeleton, InsightSkeleton } from './OrderSkeletons';
-import { adminFetch, clientApi } from '@/lib/client-api';
-import { money } from '@/lib/format';
-import './orders.css';
+import Link from "next/link";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type CSSProperties,
+} from "react";
+import { useRouter } from "next/navigation";
+import { useOrderData } from "./useOrderData";
+import {
+  Skeleton,
+  StatSkeleton,
+  TableSkeleton,
+  InsightSkeleton,
+} from "./OrderSkeletons";
+import { adminFetch, clientApi } from "@/lib/client-api";
+import { money } from "@/lib/format";
+import "./orders.css";
+import { useAdminRole } from "@/components/admin/AdminRoleContext";
 
-type Item={id:string;title:string;imageUrl:string|null;quantity:number};
-type Order={id:string;orderNumber:string;fullName:string;email:string|null;phone:string;city:string;source:string|null;status:string;paymentMethod:string;total:number;createdAt:string;test?:boolean;replaySessionId?:string;address?:string;notes?:string;customer?:{refusalCount:number;blocklisted:boolean;_count:{orders:number}};postexTracking:string|null;settledAt:string|null;possibleDuplicate:boolean;blocklistedAtOrder:boolean;items:Item[]};
-type Dashboard={counts:Record<string,number>;current:Record<string,number>;previous:Record<string,number>;comparison:{from:string;to:string};activity:{id:string;to:string;createdAt:string;order:{id:string;orderNumber:string;fullName:string}}[];products:{sku:string;title:string;imageUrl:string|null;quantity:number}[]};
-const groups=[{name:'Pending',statuses:['NEW','ON_HOLD'],color:'#eea009',icon:'◷'},{name:'Processing',statuses:['CONFIRMED'],color:'#187bff',icon:'⚙'},{name:'Shipped',statuses:['BOOKED','IN_TRANSIT'],color:'#8a4cff',icon:'♧'},{name:'Delivered',statuses:['DELIVERED','SETTLED'],color:'#00b578',icon:'✓'},{name:'Cancelled',statuses:['CANCELLED'],color:'#ff4261',icon:'×'},{name:'Returned',statuses:['RETURNED'],color:'#ed338c',icon:'↶'}];
-const statuses=['NEW','CONFIRMED','ON_HOLD','BOOKED','IN_TRANSIT','DELIVERED','RETURNED','CANCELLED','SETTLED'];
-const sum=(counts:Record<string,number>,ss?:string[])=>Object.entries(counts).reduce((n,[s,v])=>n+(!ss||ss.includes(s)?v:0),0);
-const label=(s:string)=>s.replaceAll('_',' ').toLowerCase();
-const date=(s:string)=>new Date(s).toLocaleDateString('en-PK',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Karachi'});
-function Badge({status}:{status:string}){const g=groups.find(g=>g.statuses.includes(status));return <span className="od-badge" style={{'--tone':g?.color||'#187bff'} as CSSProperties}>● {label(status)}</span>}
-function Thumb({src,title}:{src:string|null;title:string}){return src?<img src={src} alt={title} onError={e=>{e.currentTarget.style.display='none'}}/>:<span className="od-placeholder" title={title}>▧</span>}
-
-function PeriodChange({current,previous}:{current:number;previous:number}) {
- const change=previous?((current-previous)/previous*100):null;
- const direction=current>previous?'up':current<previous?'down':'flat';
- const text=change===null?(current?'New':'0.0%'):`${Math.abs(change).toFixed(1)}%`;
- return <small className={`od-change ${direction==='up'?'od-positive':direction==='down'?'od-negative':'od-neutral'}`} aria-label={direction==='flat'?'No change from previous period':`${direction==='up'?'Increase':'Decrease'}: ${text}${change===null?' (no orders in previous period)':''}`}>
- {direction==='flat'?<span aria-hidden="true">—</span>:<svg aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={direction==='up'?'M8 13V3M3.5 7.5 8 3l4.5 4.5':'M8 3v10m-4.5-4.5L8 13l4.5-4.5'}/></svg>}{text}</small>;
+type Item = {
+  id: string;
+  title: string;
+  imageUrl: string | null;
+  quantity: number;
+};
+type Order = {
+  id: string;
+  orderNumber: string;
+  fullName: string;
+  email: string | null;
+  phone: string;
+  city: string;
+  source: string | null;
+  status: string;
+  paymentMethod: string;
+  total: number;
+  createdAt: string;
+  test?: boolean;
+  replaySessionId?: string;
+  address?: string;
+  notes?: string;
+  customer?: {
+    refusalCount: number;
+    blocklisted: boolean;
+    _count: { orders: number };
+  };
+  postexTracking: string | null;
+  settledAt: string | null;
+  possibleDuplicate: boolean;
+  blocklistedAtOrder: boolean;
+  items: Item[];
+};
+type Dashboard = {
+  counts: Record<string, number>;
+  current: Record<string, number>;
+  previous: Record<string, number>;
+  comparison: { from: string; to: string };
+  activity: {
+    id: string;
+    to: string;
+    createdAt: string;
+    order: { id: string; orderNumber: string; fullName: string };
+  }[];
+  products: {
+    sku: string;
+    title: string;
+    imageUrl: string | null;
+    quantity: number;
+  }[];
+};
+const groups = [
+  {
+    name: "Pending",
+    statuses: ["NEW", "ON_HOLD"],
+    color: "#eea009",
+    icon: "◷",
+  },
+  { name: "Processing", statuses: ["CONFIRMED"], color: "#187bff", icon: "⚙" },
+  {
+    name: "Shipped",
+    statuses: ["BOOKED", "IN_TRANSIT"],
+    color: "#8a4cff",
+    icon: "♧",
+  },
+  {
+    name: "Delivered",
+    statuses: ["DELIVERED", "SETTLED"],
+    color: "#00b578",
+    icon: "✓",
+  },
+  { name: "Cancelled", statuses: ["CANCELLED"], color: "#ff4261", icon: "×" },
+  { name: "Returned", statuses: ["RETURNED"], color: "#ed338c", icon: "↶" },
+];
+const statuses = [
+  "NEW",
+  "CONFIRMED",
+  "ON_HOLD",
+  "BOOKED",
+  "IN_TRANSIT",
+  "DELIVERED",
+  "RETURNED",
+  "CANCELLED",
+  "SETTLED",
+];
+const sum = (counts: Record<string, number>, ss?: string[]) =>
+  Object.entries(counts).reduce(
+    (n, [s, v]) => n + (!ss || ss.includes(s) ? v : 0),
+    0,
+  );
+const label = (s: string) => s.replaceAll("_", " ").toLowerCase();
+const date = (s: string) =>
+  new Date(s).toLocaleDateString("en-PK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Karachi",
+  });
+function Badge({ status }: { status: string }) {
+  const g = groups.find((g) => g.statuses.includes(status));
+  return (
+    <span
+      className="od-badge"
+      style={{ "--tone": g?.color || "#187bff" } as CSSProperties}
+    >
+      ● {label(status)}
+    </span>
+  );
+}
+function Thumb({ src, title }: { src: string | null; title: string }) {
+  return src ? (
+    <img
+      src={src}
+      alt={title}
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+      }}
+    />
+  ) : (
+    <span className="od-placeholder" title={title}>
+      ▧
+    </span>
+  );
 }
 
-export default function Orders(){
- const router=useRouter();
- useEffect(()=>{const p=new URLSearchParams(location.search);if(p.get('q'))setQ(p.get('q')!);if(p.get('status'))setStatus(p.get('status')!);if(p.get('from'))setFrom(p.get('from')!);if(p.get('to'))setTo(p.get('to')!)},[]);
- const [quick,setQuick]=useState<Order|null>(null),[hasReplay,setHasReplay]=useState(false),[repeat,setRepeat]=useState(false);
- const [q,setQ]=useState(''),[search,setSearch]=useState(''),[status,setStatus]=useState(''),[tab,setTab]=useState(''),[city,setCity]=useState(''),[source,setSource]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[sort,setSort]=useState('newest'),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
- const [selected,setSelected]=useState<string[]>([]),[bulkStatus,setBulkStatus]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
- const createRef=useRef<HTMLDialogElement>(null);
- const [productQ,setProductQ]=useState(''),[products,setProducts]=useState<{id:string;title:string;variants?:{id:string;name:string;active:boolean}[]}[]>([]),[cart,setCart]=useState<{productId:string;variantId?:string;title:string;quantity:number}[]>([]);
- const [searching,setSearching]=useState(false);
- const idempotencyKey=useRef('');
- useEffect(()=>{const t=setTimeout(()=>setSearch(q.trim()),250);return()=>clearTimeout(t)},[q]);
- useEffect(()=>{setPage(1);setSelected([])},[search,status,tab,city,source,from,to,sort,pageSize,hasReplay,repeat]);
- useEffect(()=>{let active=true; if(!productQ.trim()){setProducts([]);setSearching(false);return} setSearching(true);setProducts([]); const timer=setTimeout(async()=>{try{const r=await adminFetch(`/api/admin/orders/catalog?search=${encodeURIComponent(productQ)}`);if(!r.ok)throw new Error('Product search failed');const d=await r.json();if(active)setProducts(d.items||[])}catch(e){if(active)setMessage(e instanceof Error?e.message:'Search failed')}finally{if(active)setSearching(false)}},300);return()=>{active=false;clearTimeout(timer)}},[productQ]);
- const params=new URLSearchParams();if(hasReplay)params.set('hasReplay','true');if(repeat)params.set('repeat','true');if(search)params.set('q',search);if(city)params.set('city',city);if(source)params.set('source',source);if(from)params.set('from',from);if(to)params.set('to',to);
- const base=params.toString();
- const {data:dashboard,loading:dashboardLoading,error:dashboardError,reload:reloadDashboard}=useOrderData<Dashboard>(`/api/admin/orders/dashboard?${base}`);
- // Group tabs can span native statuses; the backend accepts an explicit group filter.
- if(status)params.set('status',status);else if(tab)params.set('group',tab);
- params.set('sort',sort);params.set('page',String(page));params.set('limit',String(pageSize));
- const {data,loading,error,reload}=useOrderData<{items:Order[];total:number;totalPages:number}>(`/api/admin/orders?${params}`);
- useEffect(()=>{if(data&&page>data.totalPages)setPage(data.totalPages)},[data,page]);
- const hasActiveFilters=Boolean(q.trim()||status||tab||city.trim()||source.trim()||from||to||sort!=='newest');
- const rows=data?.items||[],counts=dashboard?.counts||{},total=sum(counts);
- async function refresh(){await Promise.all([reload(),reloadDashboard()])}
- async function bulk(){if(!selected.length||!bulkStatus)return;setBusy(true);setMessage('');try{await clientApi('/api/admin/orders/bulk-status',{method:'PATCH',body:JSON.stringify({ids:selected,status:bulkStatus})},true);setSelected([]);await refresh();setMessage('Order statuses updated.')}catch(e){setMessage(e instanceof Error?e.message:'Update failed')}finally{setBusy(false)}}
- async function download(){setBusy(true);try{const p=new URLSearchParams(params);p.delete('page');p.delete('limit');const r=await adminFetch(`/api/admin/orders/export.csv?${p}`);if(!r.ok)throw new Error('Export failed. Check your export permission.');const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download='zelvomart-orders.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(e){setMessage(e instanceof Error?e.message:'Export failed')}finally{setBusy(false)}}
- async function create(event:FormEvent<HTMLFormElement>){event.preventDefault();if(!cart.length){setMessage('Add at least one product.');return}setBusy(true);setMessage('');const form=new FormData(event.currentTarget);try{const result=await clientApi<{id:string}>('/api/admin/orders',{method:'POST',body:JSON.stringify({...Object.fromEntries(form),idempotencyKey:idempotencyKey.current,terms:true,cart:cart.map(({productId,variantId,quantity})=>({productId,variantId,quantity,bundleSize:1}))})},true);createRef.current?.close();router.push(`/admin/orders/${result.id}`)}catch(e){setMessage(e instanceof Error?e.message:'Order creation failed')}finally{setBusy(false)}}
- const segments=groups.map(g=>({...g,count:sum(counts,g.statuses)}));let cursor=0;const gradient=segments.map(g=>{const start=cursor;cursor+=total?g.count/total*100:0;return `${g.color} ${start}% ${cursor}%`}).join(',');
- return <div className="od-dashboard">
-  {dashboardLoading&&<span role="status" className="od-sr-only">Loading order summary and insights…</span>}
-  <header className="od-title"><div><h1>Orders</h1><p>Manage, track, and fulfill customer orders.</p></div><button className="od-button" onClick={()=>void refresh()} disabled={busy||loading||dashboardLoading}>↻ Refresh</button></header>
-  <div className="od-stats" aria-busy={dashboardLoading} aria-label="Order summary">{[{name:'Total Orders',statuses:undefined,color:'#187bff',icon:'▤'},...groups].map(g=>{const n=sum(counts,g.statuses),current=sum(dashboard?.current||{},g.statuses),previous=sum(dashboard?.previous||{},g.statuses);return <article className="od-stat" key={g.name} style={{'--tone':g.color} as CSSProperties}><span className="od-stat-icon">{g.icon}</span><div><span>{g.name}</span>{dashboardLoading?<StatSkeleton/>:<><strong>{n.toLocaleString()}</strong><PeriodChange current={current} previous={previous}/><small>vs. previous period</small></>}</div></article>})}</div>
-  {(message||error||dashboardError)&&<div className="od-notice" role="status">{message||error||dashboardError}<button onClick={()=>{setMessage('');void refresh()}}>Retry / refresh</button></div>}
-  <section className="od-panel">
-   <div className="od-toolbar"><h2>All Orders <span>{dashboardLoading?<Skeleton width={32} height={16}/>: `(${total.toLocaleString()})`}</span></h2><div className="od-controls"><input aria-label="Search orders" placeholder="⌕  Search orders, customers, products…" value={q} onChange={e=>setQ(e.target.value)}/><select aria-label="Sort orders" value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="highest">Highest amount</option><option value="lowest">Lowest amount</option></select><button className="od-button" onClick={download} disabled={busy}>↓ Export</button><button className="od-button od-primary" onClick={()=>{idempotencyKey.current=crypto.randomUUID();setMessage('');createRef.current?.showModal()}}>＋ Create Order</button></div></div>
-   <div className="od-tabs" role="tablist" aria-label="Order status" onKeyDown={event=>{const tabs=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=tab]'));const index=tabs.indexOf(event.target as HTMLButtonElement);let next=index;if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index-1+tabs.length)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();tabs[next]?.focus();tabs[next]?.click()}}>{[{name:'All Orders',value:'',count:total},...statuses.filter(s=>s!=='SETTLED').map(s=>({name:label(s),value:s,count:counts[s]||0}))].map((g,index)=>{const active=(status||tab)===g.value;return <button role="tab" id={`od-tab-${index}`} aria-selected={active} aria-controls="od-orders-panel" tabIndex={active?0:-1} key={g.value} className={active?'active':''} onClick={()=>{setStatus(g.value);setTab('')}}>{g.name} <span>{dashboardLoading?<Skeleton width={12} height={10}/>:g.count.toLocaleString()}</span></button>})}</div>
-   <div className="od-filters"><label>From<input type="date" value={from} max={to||undefined} onChange={e=>setFrom(e.target.value)}/></label><label>To<input type="date" value={to} min={from||undefined} onChange={e=>setTo(e.target.value)}/></label><input aria-label="City" placeholder="Filter by city" value={city} onChange={e=>setCity(e.target.value)}/><input aria-label="Source" placeholder="Filter by source" value={source} onChange={e=>setSource(e.target.value)}/><select aria-label="Exact order status" value={status} onChange={e=>{setStatus(e.target.value);setTab('')}}><option value="">All native statuses</option>{statuses.map(s=><option key={s} value={s}>{label(s)}</option>)}</select><label><input type="checkbox" checked={hasReplay} onChange={e=>setHasReplay(e.target.checked)}/> Has replay</label><label><input type="checkbox" checked={repeat} onChange={e=>setRepeat(e.target.checked)}/> Repeat customer</label>{(hasActiveFilters||hasReplay||repeat)&&<button type="button" onClick={()=>{setHasReplay(false);setRepeat(false);setQ('');setSearch('');setStatus('');setTab('');setCity('');setSource('');setFrom('');setTo('');setSort('newest');setPage(1);setSelected([])}}>Clear filters</button>}</div>
-   {!!selected.length&&<div className="od-bulk"><b>{selected.length} selected</b><select aria-label="Bulk status" value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)}><option value="">Change status…</option>{statuses.map(s=><option key={s} value={s}>{label(s)}</option>)}</select><button className="od-button od-primary" disabled={!bulkStatus||busy} onClick={bulk}>Apply</button><button onClick={()=>window.open(`/admin/orders/print?ids=${selected.join(',')}&type=invoice`,'_blank')}>Print invoices</button><button onClick={()=>window.open(`/admin/orders/print?ids=${selected.join(',')}&type=packing`,'_blank')}>Packing slips</button><button onClick={()=>setSelected([])}>Clear selection</button></div>}
-   <div id="od-orders-panel" role="tabpanel" aria-label={status?`${label(status)} orders`:tab||"All orders"} aria-busy={loading} className="od-table-scroll"><AdminTable scrollLabel="Orders" className="od-table"><thead><tr><th><input aria-label="Select page" disabled={loading} type="checkbox" checked={rows.length>0&&rows.every(o=>selected.includes(o.id))} onChange={e=>setSelected(e.target.checked?rows.map(o=>o.id):[])}/></th>{['Order ID','Customer','Items','Date','Payment','Fulfillment Status','Shipping Method','Amount','Actions'].map(t=><th key={t}>{t}</th>)}</tr></thead><tbody>{loading?<TableSkeleton rows={pageSize}/>:rows.map(o=><tr key={o.id} onClick={e=>{if(!(e.target as HTMLElement).closest('a,button,input,summary,details'))setQuick(o)}}><td><input aria-label={`Select ${o.orderNumber}`} type="checkbox" checked={selected.includes(o.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,o.id]:v.filter(id=>id!==o.id))}/></td><td><Link className="od-order-link" href={`/admin/orders/${o.id}`}>{o.orderNumber}</Link><small>{Math.max(0,Math.floor((Date.now()-Date.parse(o.createdAt))/60000))<60?`${Math.max(0,Math.floor((Date.now()-Date.parse(o.createdAt))/60000))} min ago`:`${Math.floor((Date.now()-Date.parse(o.createdAt))/3600000)} hr ago`}</small>{o.possibleDuplicate&&<small className="od-warning">Possible duplicate</small>}{o.customer&&o.customer._count.orders>1&&<small className="od-warning">Repeat buyer</small>}{!!o.customer?.refusalCount&&<small className="od-warning">{o.customer.refusalCount} earlier refusals</small>}{o.test&&<small className="od-warning">Test order</small>}{o.blocklistedAtOrder&&<small className="od-warning">Blocklisted</small>}</td><td><div className="od-customer"><span className="od-avatar">{o.fullName.split(' ').map(n=>n[0]).slice(0,2).join('')}</span><div><b>{o.fullName}</b><small>{o.phone}</small><small><a href={'tel:'+o.phone}>Call</a> · <a target="_blank" rel="noreferrer" href={'https://wa.me/'+o.phone.replace(/\D/g,'')}>WhatsApp</a> · <button onClick={()=>void navigator.clipboard.writeText(o.phone)}>Copy</button></small><small>{o.city}</small></div></div></td><td><div className="od-items">{o.items.slice(0,3).map(i=><span key={i.id} title={`${i.title} × ${i.quantity}`}><Thumb src={i.imageUrl} title={i.title}/></span>)}{o.items.length>3&&<span>+{o.items.length-3}</span>}</div></td><td><b>{date(o.createdAt)}</b><small>{new Date(o.createdAt).toLocaleTimeString('en-PK',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Karachi'})}</small></td><td><span className={`od-payment ${o.settledAt||o.status==='SETTLED'?'paid':''}`}>{o.settledAt||o.status==='SETTLED'?'● Settled':o.paymentMethod==='COD'?'◷ Cash on delivery':'◷ NayaPay · verify'}</span></td><td><Badge status={o.status}/></td><td>{o.postexTracking?<><b>PostEx</b><small>{o.postexTracking}</small></>:<><b>Not booked</b><small>{o.source||'Direct'}</small></>}</td><td className="od-amount">{money(o.total)}</td><td><button type="button" className="od-button od-quick-view" aria-label={`Quick view ${o.orderNumber}`} onClick={()=>setQuick(o)}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg><span>View</span></button><details className="od-actions"><summary aria-label={`Actions for ${o.orderNumber}`}>⋮</summary><div><Link href={`/admin/orders/${o.id}`}>View / update order</Link><Link href={`/admin/orders/${o.id}/print`}>Print invoice</Link></div></details></td></tr>)}</tbody></AdminTable>{loading?<span className="od-sr-only" role="status">Loading orders…</span>:!rows.length&&<div className="od-empty">{error?'Unable to load orders. Please retry.':'No orders match your filters.'}</div>}</div>
-   <footer className="od-pagination"><div><label className="od-page-size">Rows per page <select aria-label="Rows per page" value={pageSize} onChange={e=>setPageSize(Number(e.target.value))}>{[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}</select></label><span aria-live="polite">{loading?<Skeleton width={108}/>:data?.total?`${(page-1)*pageSize+1}–${Math.min(page*pageSize,data.total)} of ${data.total} orders`:'0 orders'}</span></div><div className="od-page-buttons"><button aria-label="First page" disabled={loading||page===1} onClick={()=>{setPage(1);setSelected([])}}>«</button><button disabled={loading||page===1} onClick={()=>{setPage(p=>p-1);setSelected([])}}>← Previous</button>{Array.from(new Set([1,page-1,page,page+1,data?.totalPages||1])).filter(n=>n>=1&&n<=(data?.totalPages||1)).sort((a,b)=>a-b).map((n,index,ns)=><span className="od-page-number" key={n}>{index>0&&n-ns[index-1]>1&&<span>…</span>}<button aria-label={`Page ${n}`} aria-current={page===n?'page':undefined} disabled={loading} onClick={()=>{setPage(n);setSelected([])}}>{n}</button></span>)}<button disabled={loading||page>=(data?.totalPages||1)} onClick={()=>{setPage(p=>p+1);setSelected([])}}>Next →</button><button aria-label="Last page" disabled={loading||page>=(data?.totalPages||1)} onClick={()=>{setPage(data?.totalPages||1);setSelected([])}}>»</button></div></footer>
-  </section>
-  <div className="od-insights" aria-busy={dashboardLoading} aria-label="Order insights">
-   <section className="od-panel"><h3>◈ Order Status Breakdown</h3>{dashboardLoading?<InsightSkeleton kind="breakdown"/>:dashboardError?<p className="od-muted">Unable to load this section.</p>:<><div className="od-breakdown"><div className="od-donut" style={{background:total?`conic-gradient(${gradient})`:'#eaf0f8'}}><div><b>{total.toLocaleString()}</b><small>Total Orders</small></div></div><div className="od-legend">{segments.map(g=><button key={g.name} onClick={()=>{setTab(g.name);setStatus('')}}><i style={{background:g.color}}/>{g.name}<span>{total?(g.count/total*100).toFixed(1):'0'}%</span><b>{g.count}</b></button>)}</div></div></>}</section>
-   <section className="od-panel"><h3>▣ Fulfillment Progress</h3>{dashboardLoading?<InsightSkeleton kind="progress"/>:dashboardError?<p className="od-muted">Unable to load this section.</p>:<>{segments.slice(0,4).map(g=><button className="od-progress" key={g.name} onClick={()=>{setTab(g.name);setStatus('')}}><span className="od-progress-icon" style={{color:g.color}}>{g.icon}</span><div><span>{g.name}<b>{g.count.toLocaleString()}</b><small>{total?(g.count/total*100).toFixed(1):'0'}%</small></span><div className="od-track"><i style={{width:`${total?g.count/total*100:0}%`,background:g.color}}/></div></div></button>)}</>}</section>
-   <section className="od-panel"><h3>♧ Recent Order Activity</h3>{dashboardLoading?<InsightSkeleton kind="activity"/>:dashboardError?<p className="od-muted">Unable to load this section.</p>:<><div className="od-activity">{dashboard?.activity.map(a=><Link key={a.id} href={`/admin/orders/${a.order.id}`}><i style={{background:groups.find(g=>g.statuses.includes(a.to))?.color}}/><span className="od-avatar">{a.order.fullName.slice(0,1)}</span><div><b>{a.order.fullName}</b><small>{a.order.orderNumber} · {label(a.to)}</small></div><time>{date(a.createdAt)}</time></Link>)}{!dashboard?.activity.length&&<p className="od-muted">No order activity in this period.</p>}</div></>}</section>
-   <section className="od-panel"><h3>♙ Top Selling Products <small>(by units)</small></h3>{dashboardLoading?<InsightSkeleton kind="products"/>:dashboardError?<p className="od-muted">Unable to load this section.</p>:<>{dashboard?.products.map(p=><div className="od-top-product" key={p.sku+p.title}><Thumb src={p.imageUrl} title={p.title}/><div><span>{p.title}<b>{p.quantity}</b></span><div className="od-track"><i style={{width:`${p.quantity/(dashboard.products[0]?.quantity||1)*100}%`}}/></div></div></div>)}{!dashboard?.products.length&&<p className="od-muted">No products sold in this period.</p>}</>}</section>
-  </div>
-  <p className="od-footnote">{dashboardLoading?<Skeleton width="65%" height={10}/>:<>Comparisons: {dashboard?`${date(dashboard.comparison.from)} – ${date(dashboard.comparison.to)}`:'current period'} versus the preceding equal-length period. Payment settlement is shown only when recorded. Cancelled and returned orders are excluded from product rankings.</>}</p>
-  {quick&&<AdminDrawer label="Order quick view" onClose={()=>setQuick(null)}><h2>{quick.orderNumber}</h2><p>{quick.fullName} · {quick.phone}</p><p>{quick.address}, {quick.city}</p><p>{quick.notes}</p>{quick.items.map(i=><p key={i.id}>{i.imageUrl&&<img src={i.imageUrl} width="40" height="40" alt=""/>} {i.title} × {i.quantity}</p>)}<strong>{money(quick.total)}</strong><p><button className="od-button od-primary" disabled={busy||quick.status!=='NEW'} onClick={async()=>{setBusy(true);try{await clientApi(`/api/admin/orders/${quick.id}/status`,{method:'PATCH',body:JSON.stringify({status:'CONFIRMED'})},true);setQuick(null);await refresh()}finally{setBusy(false)}}}>Confirm</button> <a href={'https://wa.me/'+quick.phone.replace(/\D/g,'')} target="_blank" rel="noreferrer">WhatsApp</a></p><Link href={'/admin/orders/'+quick.id}>Open full order →</Link></AdminDrawer>}
-  <dialog ref={createRef} className="od-create" onClick={e=>{if(e.target===e.currentTarget)createRef.current?.close()}}><div className="od-create-head"><h2>Create Order</h2><button aria-label="Close" onClick={()=>createRef.current?.close()}>×</button></div><form onSubmit={create}><p>Prices, shipping, and stock are validated by the backend.</p><div className="od-form-grid">{[['fullName','Full name'],['phone','Pakistani mobile number'],['email','Email'],['city','City'],['address','Delivery address'],['postcode','Postcode']].map(([name,title])=><label key={name}>{title}<input name={name} required={!['email','postcode'].includes(name)} type={name==='email'?'email':'text'} minLength={name==='address'?8:name==='fullName'?2:undefined}/></label>)}<label>Payment method<select name="paymentMethod"><option value="COD">Cash on delivery</option><option value="NAYAPAY">NayaPay</option></select></label><label>Notes<input name="orderNotes" maxLength={1000}/></label></div><label>Find products<input value={productQ} onChange={e=>setProductQ(e.target.value)} placeholder="Search catalog…"/></label><div className="od-product-results" aria-busy={searching}>{searching?<><span role="status" className="od-sr-only">Searching products…</span><InsightSkeleton kind="products"/></>:products.map(p=><div key={p.id}><span>{p.title}</span><button type="button" onClick={()=>{if(p.variants?.length)return;setCart(c=>[...c,{productId:p.id,title:p.title,quantity:1}])}} disabled={!!p.variants?.length}>Add</button>{p.variants?.map(v=><button type="button" key={v.id} onClick={()=>setCart(c=>[...c,{productId:p.id,variantId:v.id,title:`${p.title} · ${v.name}`,quantity:1}])}>{v.name} ＋</button>)}</div>)}</div>{cart.map((i,index)=><div className="od-cart-item" key={index}><span>{i.title}</span><input aria-label={`Quantity for ${i.title}`} type="number" min={1} max={20} value={i.quantity} onChange={e=>setCart(c=>c.map((v,n)=>n===index?{...v,quantity:Number(e.target.value)}:v))}/><button type="button" onClick={()=>setCart(c=>c.filter((_,n)=>n!==index))}>Remove</button></div>)}{message&&<p role="alert">{message.replaceAll('_',' ')}</p>}<button className="od-button od-primary" disabled={busy||!cart.length}>{busy?'Creating…':'Create order'}</button></form></dialog>
- </div>
+function PeriodChange({
+  current,
+  previous,
+}: {
+  current: number;
+  previous: number;
+}) {
+  const change = previous ? ((current - previous) / previous) * 100 : null;
+  const direction =
+    current > previous ? "up" : current < previous ? "down" : "flat";
+  const text =
+    change === null
+      ? current
+        ? "New"
+        : "0.0%"
+      : `${Math.abs(change).toFixed(1)}%`;
+  return (
+    <small
+      className={`od-change ${direction === "up" ? "od-positive" : direction === "down" ? "od-negative" : "od-neutral"}`}
+      aria-label={
+        direction === "flat"
+          ? "No change from previous period"
+          : `${direction === "up" ? "Increase" : "Decrease"}: ${text}${change === null ? " (no orders in previous period)" : ""}`
+      }
+    >
+      {direction === "flat" ? (
+        <span aria-hidden="true">—</span>
+      ) : (
+        <svg
+          aria-hidden="true"
+          width="13"
+          height="13"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path
+            d={
+              direction === "up"
+                ? "M8 13V3M3.5 7.5 8 3l4.5 4.5"
+                : "M8 3v10m-4.5-4.5L8 13l4.5-4.5"
+            }
+          />
+        </svg>
+      )}
+      {text}
+    </small>
+  );
+}
+
+export default function Orders() {
+  const router = useRouter();
+  const role = useAdminRole();
+  useEffect(() => {
+    const p = new URLSearchParams(location.search);
+    if (p.get("q")) setQ(p.get("q")!);
+    if (p.get("status")) setStatus(p.get("status")!);
+    if (p.get("from")) setFrom(p.get("from")!);
+    if (p.get("to")) setTo(p.get("to")!);
+  }, []);
+  const [quick, setQuick] = useState<Order | null>(null),
+    [hasReplay, setHasReplay] = useState(false),
+    [repeat, setRepeat] = useState(false);
+  const [q, setQ] = useState(""),
+    [search, setSearch] = useState(""),
+    [status, setStatus] = useState(""),
+    [tab, setTab] = useState(""),
+    [city, setCity] = useState(""),
+    [source, setSource] = useState(""),
+    [from, setFrom] = useState(""),
+    [to, setTo] = useState(""),
+    [sort, setSort] = useState("newest"),
+    [page, setPage] = useState(1),
+    [pageSize, setPageSize] = useState(10);
+  const [selected, setSelected] = useState<string[]>([]),
+    [bulkStatus, setBulkStatus] = useState(""),
+    [busy, setBusy] = useState(false),
+    [message, setMessage] = useState("");
+  const createRef = useRef<HTMLDialogElement>(null);
+  const [productQ, setProductQ] = useState(""),
+    [products, setProducts] = useState<
+      {
+        id: string;
+        title: string;
+        variants?: { id: string; name: string; active: boolean }[];
+      }[]
+    >([]),
+    [cart, setCart] = useState<
+      {
+        productId: string;
+        variantId?: string;
+        title: string;
+        quantity: number;
+      }[]
+    >([]);
+  const [searching, setSearching] = useState(false);
+  const idempotencyKey = useRef("");
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(q.trim()), 250);
+    return () => clearTimeout(t);
+  }, [q]);
+  useEffect(() => {
+    setPage(1);
+    setSelected([]);
+  }, [
+    search,
+    status,
+    tab,
+    city,
+    source,
+    from,
+    to,
+    sort,
+    pageSize,
+    hasReplay,
+    repeat,
+  ]);
+  useEffect(() => {
+    let active = true;
+    if (!productQ.trim()) {
+      setProducts([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    setProducts([]);
+    const timer = setTimeout(async () => {
+      try {
+        const r = await adminFetch(
+          `/api/admin/orders/catalog?search=${encodeURIComponent(productQ)}`,
+        );
+        if (!r.ok) throw new Error("Product search failed");
+        const d = await r.json();
+        if (active) setProducts(d.items || []);
+      } catch (e) {
+        if (active)
+          setMessage(e instanceof Error ? e.message : "Search failed");
+      } finally {
+        if (active) setSearching(false);
+      }
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [productQ]);
+  const params = new URLSearchParams();
+  if (hasReplay) params.set("hasReplay", "true");
+  if (repeat) params.set("repeat", "true");
+  if (search) params.set("q", search);
+  if (city) params.set("city", city);
+  if (source) params.set("source", source);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const base = params.toString();
+  const {
+    data: dashboard,
+    loading: dashboardLoading,
+    error: dashboardError,
+    reload: reloadDashboard,
+  } = useOrderData<Dashboard>(`/api/admin/orders/dashboard?${base}`);
+  // Group tabs can span native statuses; the backend accepts an explicit group filter.
+  if (status) params.set("status", status);
+  else if (tab) params.set("group", tab);
+  params.set("sort", sort);
+  params.set("page", String(page));
+  params.set("limit", String(pageSize));
+  const { data, loading, error, reload } = useOrderData<{
+    items: Order[];
+    total: number;
+    totalPages: number;
+  }>(`/api/admin/orders?${params}`);
+  useEffect(() => {
+    if (data && page > data.totalPages) setPage(data.totalPages);
+  }, [data, page]);
+  const hasActiveFilters = Boolean(
+    q.trim() ||
+      status ||
+      tab ||
+      city.trim() ||
+      source.trim() ||
+      from ||
+      to ||
+      sort !== "newest",
+  );
+  const rows = data?.items || [],
+    counts = dashboard?.counts || {},
+    total = sum(counts);
+  async function refresh() {
+    await Promise.all([reload(), reloadDashboard()]);
+  }
+  async function bulk() {
+    if (!selected.length || !bulkStatus) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await clientApi(
+        "/api/admin/orders/bulk-status",
+        {
+          method: "PATCH",
+          body: JSON.stringify({ ids: selected, status: bulkStatus }),
+        },
+        true,
+      );
+      setSelected([]);
+      await refresh();
+      setMessage("Order statuses updated.");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function deleteOrders(orderIds = selected) {
+    const count = orderIds.length;
+    if (!count || busy) return;
+    if (
+      !window.confirm(
+        `Delete ${count} selected order${count === 1 ? "" : "s"}? Only cancelled or already marked test orders can be removed. This action cannot be undone.`,
+      )
+    )
+      return;
+    const typedConfirmation =
+      count > 10
+        ? window.prompt(`Type DELETE to confirm removal of ${count} orders.`)
+        : undefined;
+    if (count > 10 && typedConfirmation !== "DELETE") return;
+    const ownerConfirmation =
+      role === "OWNER"
+        ? window.prompt(
+            "If deleting non-cancelled test orders, type: I understand this removes it from reports",
+          )
+        : undefined;
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await clientApi<{
+        deleted: string[];
+        skipped: { id: string; reason: string }[];
+        errors: { id: string; error: string }[];
+      }>(
+        "/api/admin/orders/bulk-delete",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            ids: orderIds,
+            confirmationCount: count,
+            typedConfirmation,
+            ownerConfirmation,
+          }),
+        },
+        true,
+      );
+      setSelected([]);
+      await refresh();
+      setMessage(
+        `${result.deleted.length} deleted; ${result.skipped.length} skipped (${[...new Set(result.skipped.map((item) => item.reason))].join(", ") || "none"}); ${result.errors.length} errors.`,
+      );
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function download() {
+    setBusy(true);
+    try {
+      const p = new URLSearchParams(params);
+      p.delete("page");
+      p.delete("limit");
+      const r = await adminFetch(`/api/admin/orders/export.csv?${p}`);
+      if (!r.ok)
+        throw new Error("Export failed. Check your export permission.");
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "zelvomart-orders.csv";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function create(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!cart.length) {
+      setMessage("Add at least one product.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await clientApi<{ id: string }>(
+        "/api/admin/orders",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            ...Object.fromEntries(form),
+            idempotencyKey: idempotencyKey.current,
+            terms: true,
+            cart: cart.map(({ productId, variantId, quantity }) => ({
+              productId,
+              variantId,
+              quantity,
+              bundleSize: 1,
+            })),
+          }),
+        },
+        true,
+      );
+      createRef.current?.close();
+      router.push(`/admin/orders/${result.id}`);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Order creation failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const segments = groups.map((g) => ({
+    ...g,
+    count: sum(counts, g.statuses),
+  }));
+  let cursor = 0;
+  const gradient = segments
+    .map((g) => {
+      const start = cursor;
+      cursor += total ? (g.count / total) * 100 : 0;
+      return `${g.color} ${start}% ${cursor}%`;
+    })
+    .join(",");
+  return (
+    <div className="od-dashboard">
+      {dashboardLoading && (
+        <span role="status" className="od-sr-only">
+          Loading order summary and insights…
+        </span>
+      )}
+      <header className="od-title">
+        <div>
+          <h1>Orders</h1>
+          <p>Manage, track, and fulfill customer orders.</p>
+        </div>
+        <button
+          className="od-button"
+          onClick={() => void refresh()}
+          disabled={busy || loading || dashboardLoading}
+        >
+          ↻ Refresh
+        </button>
+      </header>
+      <div
+        className="od-stats"
+        aria-busy={dashboardLoading}
+        aria-label="Order summary"
+      >
+        {[
+          {
+            name: "Total Orders",
+            statuses: undefined,
+            color: "#187bff",
+            icon: "▤",
+          },
+          ...groups,
+        ].map((g) => {
+          const n = sum(counts, g.statuses),
+            current = sum(dashboard?.current || {}, g.statuses),
+            previous = sum(dashboard?.previous || {}, g.statuses);
+          return (
+            <article
+              className="od-stat"
+              key={g.name}
+              style={{ "--tone": g.color } as CSSProperties}
+            >
+              <span className="od-stat-icon">{g.icon}</span>
+              <div>
+                <span>{g.name}</span>
+                {dashboardLoading ? (
+                  <StatSkeleton />
+                ) : (
+                  <>
+                    <strong>{n.toLocaleString()}</strong>
+                    <PeriodChange current={current} previous={previous} />
+                    <small>vs. previous period</small>
+                  </>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      {(message || error || dashboardError) && (
+        <div className="od-notice" role="status">
+          {message || error || dashboardError}
+          <button
+            onClick={() => {
+              setMessage("");
+              void refresh();
+            }}
+          >
+            Retry / refresh
+          </button>
+        </div>
+      )}
+      <section className="od-panel">
+        <div className="od-toolbar">
+          <h2>
+            All Orders{" "}
+            <span>
+              {dashboardLoading ? (
+                <Skeleton width={32} height={16} />
+              ) : (
+                `(${total.toLocaleString()})`
+              )}
+            </span>
+          </h2>
+          <div className="od-controls">
+            <input
+              aria-label="Search orders"
+              placeholder="⌕  Search orders, customers, products…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            <select
+              aria-label="Sort orders"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="highest">Highest amount</option>
+              <option value="lowest">Lowest amount</option>
+            </select>
+            <button className="od-button" onClick={download} disabled={busy}>
+              ↓ Export
+            </button>
+            <button
+              className="od-button od-primary"
+              onClick={() => {
+                idempotencyKey.current = crypto.randomUUID();
+                setMessage("");
+                createRef.current?.showModal();
+              }}
+            >
+              ＋ Create Order
+            </button>
+          </div>
+        </div>
+        <div
+          className="od-tabs"
+          role="tablist"
+          aria-label="Order status"
+          onKeyDown={(event) => {
+            const tabs = Array.from(
+              event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                "[role=tab]",
+              ),
+            );
+            const index = tabs.indexOf(event.target as HTMLButtonElement);
+            let next = index;
+            if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+            else if (event.key === "ArrowLeft")
+              next = (index - 1 + tabs.length) % tabs.length;
+            else if (event.key === "Home") next = 0;
+            else if (event.key === "End") next = tabs.length - 1;
+            else return;
+            event.preventDefault();
+            tabs[next]?.focus();
+            tabs[next]?.click();
+          }}
+        >
+          {[
+            { name: "All Orders", value: "", count: total },
+            ...statuses
+              .filter((s) => s !== "SETTLED")
+              .map((s) => ({
+                name: label(s),
+                value: s,
+                count: counts[s] || 0,
+              })),
+          ].map((g, index) => {
+            const active = (status || tab) === g.value;
+            return (
+              <button
+                role="tab"
+                id={`od-tab-${index}`}
+                aria-selected={active}
+                aria-controls="od-orders-panel"
+                tabIndex={active ? 0 : -1}
+                key={g.value}
+                className={active ? "active" : ""}
+                onClick={() => {
+                  setStatus(g.value);
+                  setTab("");
+                }}
+              >
+                {g.name}{" "}
+                <span>
+                  {dashboardLoading ? (
+                    <Skeleton width={12} height={10} />
+                  ) : (
+                    g.count.toLocaleString()
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="od-filters">
+          <label>
+            From
+            <input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </label>
+          <label>
+            To
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </label>
+          <input
+            aria-label="City"
+            placeholder="Filter by city"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+          />
+          <input
+            aria-label="Source"
+            placeholder="Filter by source"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+          />
+          <select
+            aria-label="Exact order status"
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setTab("");
+            }}
+          >
+            <option value="">All native statuses</option>
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {label(s)}
+              </option>
+            ))}
+          </select>
+          <label>
+            <input
+              type="checkbox"
+              checked={hasReplay}
+              onChange={(e) => setHasReplay(e.target.checked)}
+            />{" "}
+            Has replay
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={repeat}
+              onChange={(e) => setRepeat(e.target.checked)}
+            />{" "}
+            Repeat customer
+          </label>
+          {(hasActiveFilters || hasReplay || repeat) && (
+            <button
+              type="button"
+              onClick={() => {
+                setHasReplay(false);
+                setRepeat(false);
+                setQ("");
+                setSearch("");
+                setStatus("");
+                setTab("");
+                setCity("");
+                setSource("");
+                setFrom("");
+                setTo("");
+                setSort("newest");
+                setPage(1);
+                setSelected([]);
+              }}
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+        {!!selected.length && (
+          <div className="od-bulk">
+            <b>{selected.length} selected</b>
+            <select
+              aria-label="Bulk status"
+              value={bulkStatus}
+              onChange={(e) => setBulkStatus(e.target.value)}
+            >
+              <option value="">Change status…</option>
+              {statuses.map((s) => (
+                <option key={s} value={s}>
+                  {label(s)}
+                </option>
+              ))}
+            </select>
+            <button
+              className="od-button od-primary"
+              disabled={!bulkStatus || busy}
+              onClick={bulk}
+            >
+              Apply
+            </button>
+            <button
+              onClick={() =>
+                window.open(
+                  `/admin/orders/print?ids=${selected.join(",")}&type=invoice`,
+                  "_blank",
+                )
+              }
+            >
+              Print invoices
+            </button>
+            <button
+              onClick={() =>
+                window.open(
+                  `/admin/orders/print?ids=${selected.join(",")}&type=packing`,
+                  "_blank",
+                )
+              }
+            >
+              Packing slips
+            </button>
+            <button disabled={busy} onClick={() => void deleteOrders()}>
+              Delete selected
+            </button>
+            <button onClick={() => setSelected([])}>Clear selection</button>
+          </div>
+        )}
+        <div
+          id="od-orders-panel"
+          role="tabpanel"
+          aria-label={status ? `${label(status)} orders` : tab || "All orders"}
+          aria-busy={loading}
+          className="od-table-scroll"
+        >
+          <AdminTable scrollLabel="Orders" className="od-table">
+            <thead>
+              <tr>
+                <th>
+                  <input
+                    aria-label="Select page"
+                    disabled={loading}
+                    type="checkbox"
+                    checked={
+                      rows.length > 0 &&
+                      rows.every((o) => selected.includes(o.id))
+                    }
+                    onChange={(e) =>
+                      setSelected(e.target.checked ? rows.map((o) => o.id) : [])
+                    }
+                  />
+                </th>
+                {[
+                  "Order ID",
+                  "Customer",
+                  "Items",
+                  "Date",
+                  "Payment",
+                  "Fulfillment Status",
+                  "Shipping Method",
+                  "Amount",
+                  "Actions",
+                ].map((t) => (
+                  <th key={t}>{t}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <TableSkeleton rows={pageSize} />
+              ) : (
+                rows.map((o) => (
+                  <tr
+                    key={o.id}
+                    onClick={(e) => {
+                      if (
+                        !(e.target as HTMLElement).closest(
+                          "a,button,input,summary,details",
+                        )
+                      )
+                        setQuick(o);
+                    }}
+                  >
+                    <td>
+                      <input
+                        aria-label={`Select ${o.orderNumber}`}
+                        type="checkbox"
+                        checked={selected.includes(o.id)}
+                        onChange={(e) =>
+                          setSelected((v) =>
+                            e.target.checked
+                              ? [...v, o.id]
+                              : v.filter((id) => id !== o.id),
+                          )
+                        }
+                      />
+                    </td>
+                    <td>
+                      <Link
+                        className="od-order-link"
+                        href={`/admin/orders/${o.id}`}
+                      >
+                        {o.orderNumber}
+                      </Link>
+                      <small>
+                        {Math.max(
+                          0,
+                          Math.floor(
+                            (Date.now() - Date.parse(o.createdAt)) / 60000,
+                          ),
+                        ) < 60
+                          ? `${Math.max(0, Math.floor((Date.now() - Date.parse(o.createdAt)) / 60000))} min ago`
+                          : `${Math.floor((Date.now() - Date.parse(o.createdAt)) / 3600000)} hr ago`}
+                      </small>
+                      {o.possibleDuplicate && (
+                        <small className="od-warning">Possible duplicate</small>
+                      )}
+                      {o.customer && o.customer._count.orders > 1 && (
+                        <small className="od-warning">Repeat buyer</small>
+                      )}
+                      {!!o.customer?.refusalCount && (
+                        <small className="od-warning">
+                          {o.customer.refusalCount} earlier refusals
+                        </small>
+                      )}
+                      {o.test && (
+                        <small className="od-warning">Test order</small>
+                      )}
+                      {o.blocklistedAtOrder && (
+                        <small className="od-warning">Blocklisted</small>
+                      )}
+                    </td>
+                    <td>
+                      <div className="od-customer">
+                        <span className="od-avatar">
+                          {o.fullName
+                            .split(" ")
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join("")}
+                        </span>
+                        <div>
+                          <b>{o.fullName}</b>
+                          <small>{o.phone}</small>
+                          <small>
+                            <a href={"tel:" + o.phone}>Call</a> ·{" "}
+                            <a
+                              target="_blank"
+                              rel="noreferrer"
+                              href={
+                                "https://wa.me/" + o.phone.replace(/\D/g, "")
+                              }
+                            >
+                              WhatsApp
+                            </a>{" "}
+                            ·{" "}
+                            <button
+                              onClick={() =>
+                                void navigator.clipboard.writeText(o.phone)
+                              }
+                            >
+                              Copy
+                            </button>
+                          </small>
+                          <small>{o.city}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="od-items">
+                        {o.items.slice(0, 3).map((i) => (
+                          <span key={i.id} title={`${i.title} × ${i.quantity}`}>
+                            <Thumb src={i.imageUrl} title={i.title} />
+                          </span>
+                        ))}
+                        {o.items.length > 3 && (
+                          <span>+{o.items.length - 3}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <b>{date(o.createdAt)}</b>
+                      <small>
+                        {new Date(o.createdAt).toLocaleTimeString("en-PK", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: "Asia/Karachi",
+                        })}
+                      </small>
+                    </td>
+                    <td>
+                      <span
+                        className={`od-payment ${o.settledAt || o.status === "SETTLED" ? "paid" : ""}`}
+                      >
+                        {o.settledAt || o.status === "SETTLED"
+                          ? "● Settled"
+                          : o.paymentMethod === "COD"
+                            ? "◷ Cash on delivery"
+                            : "◷ NayaPay · verify"}
+                      </span>
+                    </td>
+                    <td>
+                      <Badge status={o.status} />
+                    </td>
+                    <td>
+                      {o.postexTracking ? (
+                        <>
+                          <b>PostEx</b>
+                          <small>{o.postexTracking}</small>
+                        </>
+                      ) : (
+                        <>
+                          <b>Not booked</b>
+                          <small>{o.source || "Direct"}</small>
+                        </>
+                      )}
+                    </td>
+                    <td className="od-amount">{money(o.total)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="od-button od-quick-view"
+                        aria-label={`Quick view ${o.orderNumber}`}
+                        onClick={() => setQuick(o)}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="18"
+                          height="18"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          aria-hidden="true"
+                        >
+                          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        <span>View</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void deleteOrders([o.id])}
+                      >
+                        Delete
+                      </button>
+                      <details className="od-actions">
+                        <summary aria-label={`Actions for ${o.orderNumber}`}>
+                          ⋮
+                        </summary>
+                        <div>
+                          <Link href={`/admin/orders/${o.id}`}>
+                            View / update order
+                          </Link>
+                          <Link href={`/admin/orders/${o.id}/print`}>
+                            Print invoice
+                          </Link>
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </AdminTable>
+          {loading ? (
+            <span className="od-sr-only" role="status">
+              Loading orders…
+            </span>
+          ) : (
+            !rows.length && (
+              <div className="od-empty">
+                {error
+                  ? "Unable to load orders. Please retry."
+                  : "No orders match your filters."}
+              </div>
+            )
+          )}
+        </div>
+        <footer className="od-pagination">
+          <div>
+            <label className="od-page-size">
+              Rows per page{" "}
+              <select
+                aria-label="Rows per page"
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+              >
+                {[10, 25, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span aria-live="polite">
+              {loading ? (
+                <Skeleton width={108} />
+              ) : data?.total ? (
+                `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, data.total)} of ${data.total} orders`
+              ) : (
+                "0 orders"
+              )}
+            </span>
+          </div>
+          <div className="od-page-buttons">
+            <button
+              aria-label="First page"
+              disabled={loading || page === 1}
+              onClick={() => {
+                setPage(1);
+                setSelected([]);
+              }}
+            >
+              «
+            </button>
+            <button
+              disabled={loading || page === 1}
+              onClick={() => {
+                setPage((p) => p - 1);
+                setSelected([]);
+              }}
+            >
+              ← Previous
+            </button>
+            {Array.from(
+              new Set([1, page - 1, page, page + 1, data?.totalPages || 1]),
+            )
+              .filter((n) => n >= 1 && n <= (data?.totalPages || 1))
+              .sort((a, b) => a - b)
+              .map((n, index, ns) => (
+                <span className="od-page-number" key={n}>
+                  {index > 0 && n - ns[index - 1] > 1 && <span>…</span>}
+                  <button
+                    aria-label={`Page ${n}`}
+                    aria-current={page === n ? "page" : undefined}
+                    disabled={loading}
+                    onClick={() => {
+                      setPage(n);
+                      setSelected([]);
+                    }}
+                  >
+                    {n}
+                  </button>
+                </span>
+              ))}
+            <button
+              disabled={loading || page >= (data?.totalPages || 1)}
+              onClick={() => {
+                setPage((p) => p + 1);
+                setSelected([]);
+              }}
+            >
+              Next →
+            </button>
+            <button
+              aria-label="Last page"
+              disabled={loading || page >= (data?.totalPages || 1)}
+              onClick={() => {
+                setPage(data?.totalPages || 1);
+                setSelected([]);
+              }}
+            >
+              »
+            </button>
+          </div>
+        </footer>
+      </section>
+      <div
+        className="od-insights"
+        aria-busy={dashboardLoading}
+        aria-label="Order insights"
+      >
+        <section className="od-panel">
+          <h3>◈ Order Status Breakdown</h3>
+          {dashboardLoading ? (
+            <InsightSkeleton kind="breakdown" />
+          ) : dashboardError ? (
+            <p className="od-muted">Unable to load this section.</p>
+          ) : (
+            <>
+              <div className="od-breakdown">
+                <div
+                  className="od-donut"
+                  style={{
+                    background: total
+                      ? `conic-gradient(${gradient})`
+                      : "#eaf0f8",
+                  }}
+                >
+                  <div>
+                    <b>{total.toLocaleString()}</b>
+                    <small>Total Orders</small>
+                  </div>
+                </div>
+                <div className="od-legend">
+                  {segments.map((g) => (
+                    <button
+                      key={g.name}
+                      onClick={() => {
+                        setTab(g.name);
+                        setStatus("");
+                      }}
+                    >
+                      <i style={{ background: g.color }} />
+                      {g.name}
+                      <span>
+                        {total ? ((g.count / total) * 100).toFixed(1) : "0"}%
+                      </span>
+                      <b>{g.count}</b>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+        <section className="od-panel">
+          <h3>▣ Fulfillment Progress</h3>
+          {dashboardLoading ? (
+            <InsightSkeleton kind="progress" />
+          ) : dashboardError ? (
+            <p className="od-muted">Unable to load this section.</p>
+          ) : (
+            <>
+              {segments.slice(0, 4).map((g) => (
+                <button
+                  className="od-progress"
+                  key={g.name}
+                  onClick={() => {
+                    setTab(g.name);
+                    setStatus("");
+                  }}
+                >
+                  <span className="od-progress-icon" style={{ color: g.color }}>
+                    {g.icon}
+                  </span>
+                  <div>
+                    <span>
+                      {g.name}
+                      <b>{g.count.toLocaleString()}</b>
+                      <small>
+                        {total ? ((g.count / total) * 100).toFixed(1) : "0"}%
+                      </small>
+                    </span>
+                    <div className="od-track">
+                      <i
+                        style={{
+                          width: `${total ? (g.count / total) * 100 : 0}%`,
+                          background: g.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
+        </section>
+        <section className="od-panel">
+          <h3>♧ Recent Order Activity</h3>
+          {dashboardLoading ? (
+            <InsightSkeleton kind="activity" />
+          ) : dashboardError ? (
+            <p className="od-muted">Unable to load this section.</p>
+          ) : (
+            <>
+              <div className="od-activity">
+                {dashboard?.activity.map((a) => (
+                  <Link key={a.id} href={`/admin/orders/${a.order.id}`}>
+                    <i
+                      style={{
+                        background: groups.find((g) =>
+                          g.statuses.includes(a.to),
+                        )?.color,
+                      }}
+                    />
+                    <span className="od-avatar">
+                      {a.order.fullName.slice(0, 1)}
+                    </span>
+                    <div>
+                      <b>{a.order.fullName}</b>
+                      <small>
+                        {a.order.orderNumber} · {label(a.to)}
+                      </small>
+                    </div>
+                    <time>{date(a.createdAt)}</time>
+                  </Link>
+                ))}
+                {!dashboard?.activity.length && (
+                  <p className="od-muted">No order activity in this period.</p>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+        <section className="od-panel">
+          <h3>
+            ♙ Top Selling Products <small>(by units)</small>
+          </h3>
+          {dashboardLoading ? (
+            <InsightSkeleton kind="products" />
+          ) : dashboardError ? (
+            <p className="od-muted">Unable to load this section.</p>
+          ) : (
+            <>
+              {dashboard?.products.map((p) => (
+                <div className="od-top-product" key={p.sku + p.title}>
+                  <Thumb src={p.imageUrl} title={p.title} />
+                  <div>
+                    <span>
+                      {p.title}
+                      <b>{p.quantity}</b>
+                    </span>
+                    <div className="od-track">
+                      <i
+                        style={{
+                          width: `${(p.quantity / (dashboard.products[0]?.quantity || 1)) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {!dashboard?.products.length && (
+                <p className="od-muted">No products sold in this period.</p>
+              )}
+            </>
+          )}
+        </section>
+      </div>
+      <p className="od-footnote">
+        {dashboardLoading ? (
+          <Skeleton width="65%" height={10} />
+        ) : (
+          <>
+            Comparisons:{" "}
+            {dashboard
+              ? `${date(dashboard.comparison.from)} – ${date(dashboard.comparison.to)}`
+              : "current period"}{" "}
+            versus the preceding equal-length period. Payment settlement is
+            shown only when recorded. Cancelled and returned orders are excluded
+            from product rankings.
+          </>
+        )}
+      </p>
+      {quick && (
+        <AdminDrawer label="Order quick view" onClose={() => setQuick(null)}>
+          <h2>{quick.orderNumber}</h2>
+          <p>
+            {quick.fullName} · {quick.phone}
+          </p>
+          <p>
+            {quick.address}, {quick.city}
+          </p>
+          <p>{quick.notes}</p>
+          {quick.items.map((i) => (
+            <p key={i.id}>
+              {i.imageUrl && (
+                <img src={i.imageUrl} width="40" height="40" alt="" />
+              )}{" "}
+              {i.title} × {i.quantity}
+            </p>
+          ))}
+          <strong>{money(quick.total)}</strong>
+          <p>
+            <button
+              className="od-button od-primary"
+              disabled={busy || quick.status !== "NEW"}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await clientApi(
+                    `/api/admin/orders/${quick.id}/status`,
+                    {
+                      method: "PATCH",
+                      body: JSON.stringify({ status: "CONFIRMED" }),
+                    },
+                    true,
+                  );
+                  setQuick(null);
+                  await refresh();
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Confirm
+            </button>{" "}
+            <a
+              href={"https://wa.me/" + quick.phone.replace(/\D/g, "")}
+              target="_blank"
+              rel="noreferrer"
+            >
+              WhatsApp
+            </a>
+          </p>
+          <Link href={"/admin/orders/" + quick.id}>Open full order →</Link>
+        </AdminDrawer>
+      )}
+      <dialog
+        ref={createRef}
+        className="od-create"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) createRef.current?.close();
+        }}
+      >
+        <div className="od-create-head">
+          <h2>Create Order</h2>
+          <button aria-label="Close" onClick={() => createRef.current?.close()}>
+            ×
+          </button>
+        </div>
+        <form onSubmit={create}>
+          <p>Prices, shipping, and stock are validated by the backend.</p>
+          <div className="od-form-grid">
+            {[
+              ["fullName", "Full name"],
+              ["phone", "Pakistani mobile number"],
+              ["email", "Email"],
+              ["city", "City"],
+              ["address", "Delivery address"],
+              ["postcode", "Postcode"],
+            ].map(([name, title]) => (
+              <label key={name}>
+                {title}
+                <input
+                  name={name}
+                  required={!["email", "postcode"].includes(name)}
+                  type={name === "email" ? "email" : "text"}
+                  minLength={
+                    name === "address" ? 8 : name === "fullName" ? 2 : undefined
+                  }
+                />
+              </label>
+            ))}
+            <label>
+              Payment method
+              <select name="paymentMethod">
+                <option value="COD">Cash on delivery</option>
+                <option value="NAYAPAY">NayaPay</option>
+              </select>
+            </label>
+            <label>
+              Notes
+              <input name="orderNotes" maxLength={1000} />
+            </label>
+          </div>
+          <label>
+            Find products
+            <input
+              value={productQ}
+              onChange={(e) => setProductQ(e.target.value)}
+              placeholder="Search catalog…"
+            />
+          </label>
+          <div className="od-product-results" aria-busy={searching}>
+            {searching ? (
+              <>
+                <span role="status" className="od-sr-only">
+                  Searching products…
+                </span>
+                <InsightSkeleton kind="products" />
+              </>
+            ) : (
+              products.map((p) => (
+                <div key={p.id}>
+                  <span>{p.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (p.variants?.length) return;
+                      setCart((c) => [
+                        ...c,
+                        { productId: p.id, title: p.title, quantity: 1 },
+                      ]);
+                    }}
+                    disabled={!!p.variants?.length}
+                  >
+                    Add
+                  </button>
+                  {p.variants?.map((v) => (
+                    <button
+                      type="button"
+                      key={v.id}
+                      onClick={() =>
+                        setCart((c) => [
+                          ...c,
+                          {
+                            productId: p.id,
+                            variantId: v.id,
+                            title: `${p.title} · ${v.name}`,
+                            quantity: 1,
+                          },
+                        ])
+                      }
+                    >
+                      {v.name} ＋
+                    </button>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+          {cart.map((i, index) => (
+            <div className="od-cart-item" key={index}>
+              <span>{i.title}</span>
+              <input
+                aria-label={`Quantity for ${i.title}`}
+                type="number"
+                min={1}
+                max={20}
+                value={i.quantity}
+                onChange={(e) =>
+                  setCart((c) =>
+                    c.map((v, n) =>
+                      n === index
+                        ? { ...v, quantity: Number(e.target.value) }
+                        : v,
+                    ),
+                  )
+                }
+              />
+              <button
+                type="button"
+                onClick={() => setCart((c) => c.filter((_, n) => n !== index))}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          {message && <p role="alert">{message.replaceAll("_", " ")}</p>}
+          <button
+            className="od-button od-primary"
+            disabled={busy || !cart.length}
+          >
+            {busy ? "Creating…" : "Create order"}
+          </button>
+        </form>
+      </dialog>
+    </div>
+  );
 }

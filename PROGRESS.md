@@ -283,5 +283,13 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 ## Batch 8: go-live follow-up (branch `batch-8/go-live-finish`)
 
 - Daily cron now accepts GET and POST with the same Bearer `CRON_SECRET` authorization and `JOB_MODE=cron` gate.
-- Session replay deletion now requires `settings.write`; read-only report access can no longer delete recordings.
+- Session replay deletion now requires the dedicated `replays.write` permission; read-only report access can no longer delete recordings.
 - Owner/provider actions remain pending: verify backend production environment and email sender, back up and clean the confirmed Supabase database, skip pre-launch jobs and flag sample orders, then enable the cron runner and configure cron-job.org. TikTok work is intentionally excluded at the owner's request.
+
+## Batch 8: guarded admin deletion tools (branch `batch-8/delete-tools`)
+
+- Added selected-row and selected-page replay controls, manager/owner-only deletion, exact-count confirmation and typed `DELETE` for batches over ten. Replay removal unlinks orders and removes database events/chunk metadata; R2 failures are returned with storage keys so orphaned files can be retried.
+- Added coupon permanent deletion as a separately confirmed action while preserving the existing deactivate action and historical order coupon snapshots.
+- Added single/bulk order deletion for cancelled or test orders only. Non-cancelled orders must first be marked test; owners must confirm the exact report-removal phrase. Jobs are removed transactionally, linked replays are unlinked, customers are retained and inventory is not restocked.
+- Bulk endpoints deduplicate and cap requests at 200 IDs, require an exact confirmation count, report deleted/skipped/errors, and audit each successful deletion.
+- Local validation: backend/frontend TypeScript checks and all 71 backend tests pass. Live deletion against production was not run.

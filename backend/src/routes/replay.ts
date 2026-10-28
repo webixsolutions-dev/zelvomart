@@ -394,19 +394,71 @@ export function registerReplayRoutes(app: Express) {
     });
   });
 
-  app.delete("/api/admin/session-replays/:id", requireAuth("settings.write"), async (req: AuthedRequest, res) => {
-    const id = routeParam(req, "id");
+  async function removeReplay(req: AuthedRequest, id: string) {
     const chunks = await prisma.sessionReplayChunk.findMany({
       where: { sessionId: id, storageKey: { not: null } },
       select: { storageKey: true },
     });
-    await deleteReplayChunks(chunks.map((c) => c.storageKey!));
+    const storageKeys = chunks.map((c) => c.storageKey!).filter(Boolean);
+    let storageError: string | undefined;
+    try {
+      await deleteReplayChunks(storageKeys);
+    } catch (error) {
+      storageError = error instanceof Error ? error.message : "R2_DELETE_FAILED";
+    }
     await prisma.$transaction([
       prisma.order.updateMany({ where: { replaySessionId: id }, data: { replaySessionId: null } }),
       prisma.eventLog.deleteMany({ where: { sessionReplayId: id } }),
       prisma.sessionReplay.deleteMany({ where: { id } }),
     ]);
-    await audit(req, "delete", "SessionReplay", id);
-    res.json({ ok: true });
+    await audit(req, "delete", "SessionReplay", id, {
+      storageError: Boolean(storageError),
+      storageKeyCount: storageKeys.length,
+    });
+    return {
+      id,
+      deleted: true,
+      storageKeys: storageError ? storageKeys : [],
+      ...(storageError ? { storageError } : {}),
+    };
+  }
+
+  app.delete("/api/admin/session-replays/:id", requireAuth("replays.write"), async (req: AuthedRequest, res) => {
+    const result = await removeReplay(req, routeParam(req, "id"));
+    res.json({ ok: true, ...result });
+  });
+
+  app.post("/api/admin/session-replays/bulk-delete", requireAuth("replays.write"), async (req: AuthedRequest, res) => {
+    const ids: string[] = Array.isArray(req.body?.ids)
+      ? [
+          ...new Set<string>(
+            req.body.ids.map((id: unknown) => (typeof id === "string" ? id : "")).filter((id: string) => id.length > 0),
+          ),
+        ].slice(0, 200)
+      : [];
+    if (!ids.length || Number(req.body?.confirmationCount) !== ids.length)
+      return res.status(400).json({ error: "CONFIRMATION_REQUIRED" });
+    if (ids.length > 10 && req.body?.typedConfirmation !== "DELETE")
+      return res.status(400).json({ error: "TYPE_DELETE_TO_CONFIRM" });
+    const deleted: string[] = [];
+    const skipped: string[] = [];
+    const errors: { id: string; error: string }[] = [];
+    const storageErrors: { id: string; error: string; storageKeys: string[] }[] = [];
+    for (const id of ids) {
+      try {
+        const existing = await prisma.sessionReplay.findUnique({ where: { id }, select: { id: true } });
+        if (!existing) {
+          skipped.push(id);
+          continue;
+        }
+        const result = await removeReplay(req, id);
+        deleted.push(id);
+        if (result.storageError)
+          storageErrors.push({ id, error: result.storageError, storageKeys: result.storageKeys });
+      } catch (error) {
+        errors.push({ id, error: error instanceof Error ? error.message : "DELETE_FAILED" });
+      }
+    }
+    res.json({ deleted, skipped, errors, storageErrors });
   });
 }

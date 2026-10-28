@@ -52,9 +52,65 @@ couponRouter.put("/:id", requireAuth("products.write"), async (req: AuthedReques
 });
 // Deactivate instead of deleting so historical order codes remain meaningful.
 couponRouter.delete("/:id", requireAuth("products.write"), async (req: AuthedRequest, res) => {
-  await prisma.coupon.update({ where: { id: String(req.params.id) }, data: { active: false } });
+  const id = String(req.params.id);
+  if (req.query.hard === "1") {
+    const row = await prisma.coupon.findUnique({ where: { id }, select: { id: true, code: true, usedCount: true } });
+    if (!row) return res.status(404).json({ error: "NOT_FOUND" });
+    await prisma.coupon.delete({ where: { id } });
+    await prisma.auditLog.create({
+      data: {
+        userId: req.admin?.id,
+        action: "hard_delete",
+        entity: "Coupon",
+        entityId: id,
+        details: { code: row.code, usedCount: row.usedCount },
+      },
+    });
+    return res.json({ ok: true, deleted: id });
+  }
+  await prisma.coupon.update({ where: { id }, data: { active: false } });
   await prisma.auditLog.create({
     data: { userId: req.admin?.id, action: "deactivate", entity: "Coupon", entityId: String(req.params.id) },
   });
   res.json({ ok: true });
+});
+
+couponRouter.post("/bulk-delete", requireAuth("products.write"), async (req: AuthedRequest, res) => {
+  const ids: string[] = Array.isArray(req.body?.ids)
+    ? [
+        ...new Set<string>(
+          req.body.ids.map((id: unknown) => (typeof id === "string" ? id : "")).filter((id: string) => id.length > 0),
+        ),
+      ].slice(0, 200)
+    : [];
+  if (!ids.length || Number(req.body?.confirmationCount) !== ids.length)
+    return res.status(400).json({ error: "CONFIRMATION_REQUIRED" });
+  if (ids.length > 10 && req.body?.typedConfirmation !== "DELETE")
+    return res.status(400).json({ error: "TYPE_DELETE_TO_CONFIRM" });
+  const deleted: string[] = [];
+  const skipped: string[] = [];
+  const errors: { id: string; error: string }[] = [];
+  for (const id of ids) {
+    try {
+      const row = await prisma.coupon.findUnique({ where: { id }, select: { id: true, code: true, usedCount: true } });
+      if (!row) {
+        skipped.push(id);
+        continue;
+      }
+      await prisma.coupon.delete({ where: { id } });
+      deleted.push(id);
+      await prisma.auditLog.create({
+        data: {
+          userId: req.admin?.id,
+          action: "hard_delete",
+          entity: "Coupon",
+          entityId: id,
+          details: { code: row.code, usedCount: row.usedCount },
+        },
+      });
+    } catch (error) {
+      errors.push({ id, error: error instanceof Error ? error.message : "DELETE_FAILED" });
+    }
+  }
+  res.json({ deleted, skipped, errors });
 });

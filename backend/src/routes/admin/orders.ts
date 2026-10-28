@@ -348,6 +348,61 @@ export function registerAdminOrdersRoutes(app: Express) {
     if (["CANCELLED", "RETURNED"].includes(next)) await invalidateFrontendCache(["products"]);
     res.json({ ok: true, updated });
   });
+  app.post("/api/admin/orders/bulk-delete", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
+    const ids: string[] = Array.isArray(req.body?.ids)
+      ? [
+          ...new Set<string>(
+            req.body.ids.map((id: unknown) => (typeof id === "string" ? id : "")).filter((id: string) => id.length > 0),
+          ),
+        ].slice(0, 200)
+      : [];
+    if (!ids.length || Number(req.body?.confirmationCount) !== ids.length)
+      return res.status(400).json({ error: "CONFIRMATION_REQUIRED" });
+    if (ids.length > 10 && req.body?.typedConfirmation !== "DELETE")
+      return res.status(400).json({ error: "TYPE_DELETE_TO_CONFIRM" });
+    const deleted: string[] = [];
+    const skipped: { id: string; reason: string }[] = [];
+    const errors: { id: string; error: string }[] = [];
+    for (const id of ids) {
+      try {
+        const order = await prisma.order.findUnique({
+          where: { id },
+          select: { id: true, orderNumber: true, status: true, test: true, replaySessionId: true },
+        });
+        if (!order) {
+          skipped.push({ id, reason: "NOT_FOUND" });
+          continue;
+        }
+        const safeToDelete = order.test || order.status === "CANCELLED";
+        if (!safeToDelete && !order.test) {
+          skipped.push({ id, reason: "MARK_AS_TEST_FIRST" });
+          continue;
+        }
+        if (
+          order.test &&
+          order.status !== "CANCELLED" &&
+          (req.admin?.role !== "OWNER" || req.body?.ownerConfirmation !== "I understand this removes it from reports")
+        ) {
+          skipped.push({ id, reason: "OWNER_CONFIRMATION_REQUIRED" });
+          continue;
+        }
+        await prisma.$transaction([
+          prisma.job.deleteMany({ where: { orderId: id } }),
+          prisma.order.updateMany({ where: { id, replaySessionId: { not: null } }, data: { replaySessionId: null } }),
+          prisma.order.delete({ where: { id } }),
+        ]);
+        await audit(req, "hard_delete", "Order", id, {
+          orderNumber: order.orderNumber,
+          test: order.test,
+          status: order.status,
+        });
+        deleted.push(id);
+      } catch (error) {
+        errors.push({ id, error: error instanceof Error ? error.message : "DELETE_FAILED" });
+      }
+    }
+    res.json({ deleted, skipped, errors });
+  });
   app.post("/api/admin/orders/:id/resend-purchase", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
     const id = routeParam(req, "id"),
       order = await prisma.order.findUnique({ where: { id } });

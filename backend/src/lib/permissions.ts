@@ -10,6 +10,7 @@ export type Permission =
   | "customers.write"
   | "settings.write"
   | "users.write"
+  | "replays.write"
   | "reports.read";
 
 const permissions: Record<Role, Permission[]> = {
@@ -23,6 +24,7 @@ const permissions: Record<Role, Permission[]> = {
     "customers.write",
     "settings.write",
     "users.write",
+    "replays.write",
     "reports.read",
   ],
   MANAGER: [
@@ -33,6 +35,7 @@ const permissions: Record<Role, Permission[]> = {
     "content.write",
     "customers.read",
     "customers.write",
+    "replays.write",
     "reports.read",
   ],
   ORDER_AGENT: ["orders.read", "orders.write", "customers.read", "customers.write"],
