@@ -198,10 +198,11 @@ function sendPurchase(o: { id: string; orderNumber: string; total: number; items
 }
 
 /** ViewContent once per product page. */
-export function useViewContent(p: Product | undefined, variantSku?: string | null) {
+/** ViewContent once per product (and variant). Waits until `ready` (e.g. the ?variant= URL was read). */
+export function useViewContent(p: Product | undefined, variantSku?: string | null, ready = true) {
   const sent = useRef<string | null>(null);
   useEffect(() => {
-    if (!p) return;
+    if (!p || !ready) return;
     const sku = p.variants?.options.find((option) => option.sku === variantSku)?.sku || p.sku;
     const key = `${p.id}:${sku}`;
     if (sent.current === key) return;
@@ -213,7 +214,7 @@ export function useViewContent(p: Product | undefined, variantSku?: string | nul
       value: p.price,
       currency: "PKR",
     }).catch(() => undefined);
-  }, [p, variantSku]);
+  }, [p, variantSku, ready]);
 }
 
 type CheckoutDraft = { name: string; phone: string; email: string; city: string; address: string };

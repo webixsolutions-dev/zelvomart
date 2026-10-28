@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, Heart, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/catalog";
@@ -54,9 +54,16 @@ export function ProductDetail({ slug }: { slug: string }) {
   const p = getProduct(slug)!;
   const cat = getCategory(p.category)!;
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const variantSku = searchParams.get("variant");
-  useViewContent(p, variantSku);
+  // ?variant=SKU is read in the browser after mount. useSearchParams() would need a <Suspense> boundary on
+  // this statically generated page; without one, every product page answered 500.
+  const [variantSku, setVariantSku] = useState<string | null>(null);
+  const [urlRead, setUrlRead] = useState(false);
+  useEffect(() => {
+    setVariantSku(new URLSearchParams(window.location.search).get("variant"));
+    setUrlRead(true);
+  }, [p.slug]);
+  // Fires once, after the URL is read, so the event carries the selected variant.
+  useViewContent(p, variantSku, urlRead);
   const { addToCart, toggleWish, isWished, ready } = useShop();
   const reviews = useMemo(() => approvedReviews(p.id), [p.id]);
   const summary = reviewSummary(reviews);

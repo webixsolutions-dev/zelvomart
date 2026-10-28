@@ -56,7 +56,8 @@ export function registerPublicRoutes(app: Express) {
   // Cron-job.org calls this once per minute when JOB_MODE=cron. Job rows stay durable in Postgres.
   app.post("/api/cron/jobs", async (req, res) => {
     if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
-    if (!cronAuthorized(req)) return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
+    if (!cronAuthorized(req))
+      return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
     const now = Date.now();
     const staleBefore = new Date(now - 10 * 60 * 1000);
     const retryBefore = new Date(now - 60 * 1000);
@@ -65,7 +66,17 @@ export function registerPublicRoutes(app: Express) {
       data: { status: "FAILED", error: "Worker lease expired after ten minutes.", finishedAt: new Date(now) },
     });
     const eligible = {
-      name: { in: ["order-team-email", "customer-order-email", "customer-status-email", "meta-event", "meta-purchase", "tiktok-event", "tiktok-purchase"] },
+      name: {
+        in: [
+          "order-team-email",
+          "customer-order-email",
+          "customer-status-email",
+          "meta-event",
+          "meta-purchase",
+          "tiktok-event",
+          "tiktok-purchase",
+        ],
+      },
       externalId: null,
       attempts: { lt: 5 },
       createdAt: { gte: new Date(now - 7 * 86400000) },
@@ -73,10 +84,15 @@ export function registerPublicRoutes(app: Express) {
     };
     const rows = await prisma.job.findMany({
       where: eligible,
-      orderBy: { createdAt: "asc" }, take: 25, select: { id: true },
+      orderBy: { createdAt: "asc" },
+      take: 25,
+      select: { id: true },
     });
     const deadline = now + 20 * 1000;
-    let processed = 0, succeeded = 0, failed = 0, skipped = 0;
+    let processed = 0,
+      succeeded = 0,
+      failed = 0,
+      skipped = 0;
     for (const { id } of rows) {
       // Leave enough room for one provider call (which has a 15s network timeout) and cleanup.
       if (Date.now() + 15 * 1000 >= deadline) break;
@@ -97,19 +113,30 @@ export function registerPublicRoutes(app: Express) {
   // Daily maintenance that previously depended on pg-boss schedules.
   app.post("/api/cron/daily", async (req, res) => {
     if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
-    if (!cronAuthorized(req)) return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
+    if (!cronAuthorized(req))
+      return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
     const cutoff = new Date(Date.now() - 2 * 86400000);
     const rateLimits = await prisma.rateLimitBucket.deleteMany({ where: { updatedAt: { lt: cutoff } } });
-    const configuredDays = Number(await getSetting("tracking.sessionReplayRetentionDays", process.env.SESSION_REPLAY_RETENTION_DAYS || 30));
+    const configuredDays = Number(
+      await getSetting("tracking.sessionReplayRetentionDays", process.env.SESSION_REPLAY_RETENTION_DAYS || 30),
+    );
     const retentionDays = Number.isFinite(configuredDays) && configuredDays > 0 ? Math.min(configuredDays, 365) : 30;
-    const replays = await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: new Date(Date.now() - retentionDays * 86400000) } } });
+    const replays = await prisma.sessionReplay.deleteMany({
+      where: { startedAt: { lt: new Date(Date.now() - retentionDays * 86400000) } },
+    });
     const summary = await sendDailySummary();
     const dataCutoff = new Date(Date.now() - 30 * 86400000);
     const [jobs, events] = await Promise.all([
       prisma.job.deleteMany({ where: { createdAt: { lt: dataCutoff } } }),
       prisma.eventLog.deleteMany({ where: { createdAt: { lt: dataCutoff } } }),
     ]);
-    res.json({ rateLimitBucketsRemoved: rateLimits.count, expiredReplaysRemoved: replays.count, oldJobsRemoved: jobs.count, oldEventsRemoved: events.count, summary });
+    res.json({
+      rateLimitBucketsRemoved: rateLimits.count,
+      expiredReplaysRemoved: replays.count,
+      oldJobsRemoved: jobs.count,
+      oldEventsRemoved: events.count,
+      summary,
+    });
   });
 
   // The backend is an API only; the root just says it is running (the shop is on the frontend).
@@ -377,7 +404,10 @@ export function registerPublicRoutes(app: Express) {
       const jobIds: string[] = (order as { jobIds?: string[] }).jobIds || [];
       const soldOut: string[] = (order as { soldOutSlugs?: string[] }).soldOutSlugs || [];
       const immediateJobs = await prisma.job.findMany({
-        where: { id: { in: jobIds }, name: { in: ["order-team-email", "customer-order-email", "meta-event", "meta-purchase"] } },
+        where: {
+          id: { in: jobIds },
+          name: { in: ["order-team-email", "customer-order-email", "meta-event", "meta-purchase"] },
+        },
         select: { id: true },
       });
       waitUntil(

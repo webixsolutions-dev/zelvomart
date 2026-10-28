@@ -2,7 +2,11 @@ const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.zelvo
 function canonicalSiteOrigin(value: string) {
   try {
     const url = new URL(value);
-    if (["zelvomart.com", "www.zelvomart.com", "zelvomart.vercel.app", "zelvomart-frontend.vercel.app"].includes(url.hostname))
+    if (
+      ["zelvomart.com", "www.zelvomart.com", "zelvomart.vercel.app", "zelvomart-frontend.vercel.app"].includes(
+        url.hostname,
+      )
+    )
       return "https://www.zelvomart.com";
     return url.origin;
   } catch {

@@ -251,3 +251,24 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - Footer navigation links and the footer logo now reset the viewport instantly to the top on client navigation and again when the destination pathname commits. This keeps the full header visible and avoids the upward smooth-scroll animation from the previous footer position.
 - Uses Next.js `onNavigate`, so opening links in another tab and external/social links retain their normal behavior. Other navigation and browser history are unchanged.
 - Validation: frontend TypeScript and production build pass. Browser checks: About footer at y=4881 → Privacy Policy y=0, then Privacy Policy footer y=2781 → FAQ y=0; full header top=38 px in both destinations.
+
+## Hotfix: product pages answered 500 — 28 October 2026 (branch `hotfix/product-page-500`)
+- Cause: PR #24 read `?variant=` with `useSearchParams()` in `ProductDetail.tsx`. The product page is statically
+  generated (`revalidate = 300` + `generateStaticParams`) with no `<Suspense>` boundary, so every on-demand render
+  failed with "useSearchParams() should be wrapped in a suspense boundary" → HTTP 500.
+- Fix (2 files, nothing else touched): `ProductDetail.tsx` reads the variant from `window.location.search` in an
+  effect after mount (`variantSku` + `urlRead` state); the existing effect still preselects the matching in-stock
+  variant. `useViewContent` (`storefront/lib/orders.ts`) takes a `ready` flag (default `true`) and fires once per
+  product/variant only after the URL is read.
+- Other `useSearchParams()` users checked: GoogleAnalytics, TrackingProvider and SessionReplayProvider sit inside the
+  store layout's `<Suspense>`; SearchView and OrderConfirmed are wrapped by their pages. Three admin pages
+  (orders print, bulk print, session replays list/detail) have no `<Suspense>`, but `AdminShell` renders them only
+  after the client-side session check, so they never run during server rendering. Not changed.
+- Checked locally with the backend running: the code before the fix reproduces the production error (500 on
+  every product page, same message in the log); after the fix product pages answer 200, a missing product 404,
+  `?variant=T-DB-M` preselects M, ViewContent fires exactly once with the right SKU (and with the product SKU
+  without `?variant`). `npm run build` passes with no Suspense/CSR-bailout error; backend tests 71/71 pass.
+- CI on this PR was red for a reason unrelated to the fix: since PR #24, `main` itself failed the backend Prettier
+  check (7 backend files not formatted). Those 7 files were formatted with Prettier only; their compiled JavaScript
+  is identical before and after (esbuild), so no behaviour changed. All CI steps then pass locally (prisma validate,
+  both typechecks, Prettier check, backend tests 71/71, frontend build).
