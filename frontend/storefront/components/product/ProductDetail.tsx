@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Heart, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/catalog";
 import { discountPct, money, waLink } from "@store/lib/format";
@@ -74,6 +74,10 @@ export function ProductDetail({ slug }: { slug: string }) {
   const imageSwatches = !sizeLayout && options.some((o) => o.imageUrl);
 
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const galleryThumbsRef = useRef<HTMLDivElement>(null);
+  const thumbDrag = useRef({ active: false, pointerId: -1, startX: 0, scrollLeft: 0, moved: false });
+  const [galleryScrollable, setGalleryScrollable] = useState(false);
+  const [galleryDragging, setGalleryDragging] = useState(false);
   const [qty, setQtyState] = useState(1);
   const [ordering, setOrdering] = useState(false);
   const [bundle, setBundle] = useState<1 | 2>(1);
@@ -128,6 +132,45 @@ export function ProductDetail({ slug }: { slug: string }) {
         : [{ src: p.image, alt: p.name }];
   const activeImage = gallery[Math.min(galleryIndex, gallery.length - 1)] || { src: p.image, alt: p.name };
   const mainImage = activeImage.src;
+  const galleryImageSources = gallery.map((image) => image.src).join("|");
+
+  useEffect(() => {
+    const strip = galleryThumbsRef.current;
+    if (!strip) return;
+    const measure = () => setGalleryScrollable(strip.scrollWidth > strip.clientWidth + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(strip);
+    strip.querySelectorAll("img").forEach((image) => observer.observe(image));
+    return () => observer.disconnect();
+  }, [galleryImageSources]);
+
+  useEffect(() => {
+    if (!galleryDragging) return;
+    const move = (event: PointerEvent) => {
+      const drag = thumbDrag.current;
+      const strip = galleryThumbsRef.current;
+      if (!drag.active || event.pointerId !== drag.pointerId || !strip) return;
+      const delta = event.clientX - drag.startX;
+      if (Math.abs(delta) > 4) drag.moved = true;
+      if (drag.moved) strip.scrollLeft = drag.scrollLeft - delta;
+    };
+    const end = (event: PointerEvent) => {
+      const drag = thumbDrag.current;
+      if (event.pointerId !== drag.pointerId) return;
+      drag.active = false;
+      setGalleryDragging(false);
+      window.setTimeout(() => { drag.moved = false; }, 0);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  }, [galleryDragging]);
 
   return (
     <>
@@ -171,7 +214,25 @@ export function ProductDetail({ slug }: { slug: string }) {
                   <Heart size={19} fill={wished ? "currentColor" : "none"} />
                 </button>
               </div>
-              <div className="gallery-thumbs" role="tablist" aria-label="Product images">
+              <div
+                ref={galleryThumbsRef}
+                className={`gallery-thumbs${galleryScrollable ? " is-scrollable" : ""}${galleryDragging ? " is-dragging" : ""}`}
+                role="tablist"
+                aria-label="Product images"
+                onPointerDown={(event) => {
+                  if (!galleryScrollable || event.pointerType !== "mouse" || event.button !== 0) return;
+                  const strip = galleryThumbsRef.current;
+                  if (!strip) return;
+                  thumbDrag.current = { active: true, pointerId: event.pointerId, startX: event.clientX, scrollLeft: strip.scrollLeft, moved: false };
+                  setGalleryDragging(true);
+                }}
+                onClickCapture={(event) => {
+                  if (!thumbDrag.current.moved) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  thumbDrag.current.moved = false;
+                }}
+              >
                 {gallery.map((image, i) => (
                   <button key={image.src + "-" + i} type="button" role="tab" aria-selected={galleryIndex === i} aria-label={"Product image " + (i + 1) + " of " + gallery.length} className={galleryIndex === i ? "active" : ""} onClick={() => setGalleryIndex(i)}>
                     <span>
