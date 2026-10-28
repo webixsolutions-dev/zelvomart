@@ -30,7 +30,13 @@ export function buildProductSchema(product: Product, options: { baseUrl: string;
   const description = plain(product.shortDescription) || plain(product.description) || product.name;
   const shippingDetails = {
     "@type": "OfferShippingDetails",
-    shippingRate: { "@type": "MonetaryAmount", value: productDeliveryFee(product, options.delivery), currency: "PKR" },
+    shippingRate: product.freeShipping
+      ? { "@type": "MonetaryAmount", value: 0, currency: "PKR" }
+      : {
+          "@type": "ShippingRateSettings",
+          shippingRate: { "@type": "MonetaryAmount", value: productDeliveryFee(product, options.delivery), currency: "PKR" },
+          freeShippingThreshold: { "@type": "MonetaryAmount", value: options.delivery.threshold, currency: "PKR" },
+        },
     shippingDestination: { "@type": "DefinedRegion", addressCountry: "PK" },
   };
 
@@ -52,6 +58,7 @@ export function buildProductSchema(product: Product, options: { baseUrl: string;
       itemCondition: NEW_CONDITION,
       url,
       shippingDetails,
+      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "PK", merchantReturnLink: `${base}/refund_returns/` },
     };
   } else {
     offers = {
@@ -63,6 +70,7 @@ export function buildProductSchema(product: Product, options: { baseUrl: string;
       itemCondition: NEW_CONDITION,
       url,
       shippingDetails,
+      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", applicableCountry: "PK", merchantReturnLink: `${base}/refund_returns/` },
     };
   }
 

@@ -64,13 +64,18 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const returnPolicy = {
     "@type": "MerchantReturnPolicy",
     applicableCountry: "PK",
-    returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-    merchantReturnDays: site.returns.windowDays,
-    returnMethod: "https://schema.org/ReturnByMail",
+    // Link to the actual policy instead of implying an unconditional 7-day return.
+    merchantReturnLink: `${site.url}/refund_returns/`,
   };
   const shippingDetails = {
     "@type": "OfferShippingDetails",
-    shippingRate: { "@type": "MonetaryAmount", value: p.price >= site.shipping.freeOver ? 0 : site.shipping.flatFee, currency: "PKR" },
+    shippingRate: p.freeShipping
+      ? { "@type": "MonetaryAmount", value: 0, currency: "PKR" }
+      : {
+          "@type": "ShippingRateSettings",
+          shippingRate: { "@type": "MonetaryAmount", value: site.shipping.flatFee, currency: "PKR" },
+          freeShippingThreshold: { "@type": "MonetaryAmount", value: site.shipping.freeOver, currency: "PKR" },
+        },
     shippingDestination: { "@type": "DefinedRegion", addressCountry: "PK" },
     deliveryTime: {
       "@type": "ShippingDeliveryTime",

@@ -141,6 +141,7 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
     ...(p.bundleEnabled && bundlePercent > 0 ? { bundleEnabled: true, bundleDiscountPercent: bundlePercent } : {}),
     keywords: p.tags || [],
     inStock: p.stockStatus !== "outofstock",
+    ...(p.freeShipping ?? p.catalogMeta?.freeShipping ? { freeShipping: true } : {}),
     rating: Number(p.averageRating || 0),
     ...(p.reviews?.length
       ? {

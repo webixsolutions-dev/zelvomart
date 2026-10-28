@@ -151,9 +151,19 @@ export function registerTrackingRoutes(app: Express) {
       res.status(502).json({ error: error.message || "TEST_EVENT_FAILED" });
     }
   });
-  app.get("/api/admin/jobs", requireAuth("reports.read"), async (_req, res) =>
-    res.json(await prisma.job.findMany({ orderBy: { createdAt: "desc" }, take: 500 })),
-  );
+  app.get("/api/admin/jobs", requireAuth("reports.read"), async (req, res) => {
+    const page = Math.max(1, Math.floor(Number(req.query.page) || 1));
+    const limit = Math.min(100, Math.max(10, Math.floor(Number(req.query.limit) || 50)));
+    const [items, total] = await Promise.all([
+      prisma.job.findMany({
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.job.count(),
+    ]);
+    res.json({ items, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) });
+  });
   app.get("/api/admin/tracking", requireAuth("reports.read"), async (_req, res) => {
     const since = new Date(Date.now() - 7 * 86400000);
     const [events, grouped, orders, settings] = await Promise.all([

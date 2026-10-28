@@ -79,6 +79,8 @@ export type Product = {
   keywords: string[];
   /** Omitted products are treated as in stock. */
   inStock?: boolean;
+  /** Admin-selected product-wide free shipping, separate from the cart threshold. */
+  freeShipping?: boolean;
   /** Average of approved reviews (0–5) and how many there are. Omitted = no reviews yet. */
   rating?: number;
   reviewCount?: number;
