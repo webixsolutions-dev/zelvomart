@@ -10,6 +10,8 @@ import { setSessionReplayOptOut } from "@/lib/session-replay-client";
 import { SITE_ORIGIN } from "@/lib/site-url";
 import { useAdminRole } from "@/components/admin/AdminRoleContext";
 import { clientApi } from "@/lib/client-api";
+import { notifyError } from "@/lib/app-errors";
+import { toast } from "react-toastify";
 import "../orders/orders.css";
 import "./replays.css";
 type Replay = {
@@ -68,7 +70,8 @@ export default function Replays() {
     [sort, setSort] = useState("newest");
   const [selected, setSelected] = useState<string[]>([]),
     [deleting, setDeleting] = useState(false),
-    [deleteMessage, setDeleteMessage] = useState("");
+    [confirmDelete, setConfirmDelete] = useState(false),
+    [typedConfirmation, setTypedConfirmation] = useState("");
   useEffect(() => {
     setExcluded(localStorage.getItem("zm_session_replay_opt_out") === "1");
     for (const [key, setter] of [
@@ -136,22 +139,9 @@ export default function Replays() {
   async function deleteSelected() {
     if (!selected.length || deleting) return;
     const count = selected.length;
-    if (
-      !window.confirm(
-        `Delete ${count} recording${count === 1 ? "" : "s"}? This permanently removes their database entries and attempts to delete their R2 files.`,
-      )
-    )
-      return;
+    if (count > 10 && typedConfirmation !== "DELETE") return;
     setDeleting(true);
-    setDeleteMessage("");
     try {
-      const typedConfirmation =
-        count > 10
-          ? window.prompt(
-              `Type DELETE to confirm removal of ${count} recordings.`,
-            )
-          : undefined;
-      if (count > 10 && typedConfirmation !== "DELETE") return;
       const result = await clientApi<{
         deleted: string[];
         skipped: string[];
@@ -170,14 +160,33 @@ export default function Replays() {
         true,
       );
       setSelected([]);
-      setDeleteMessage(
-        `${result.deleted.length} deleted; ${result.skipped.length} skipped; ${result.errors.length} database errors; ${result.storageErrors.length} R2 cleanup errors.${result.storageErrors.length ? ` Failed R2 keys: ${result.storageErrors.flatMap((item) => item.storageKeys).join(", ")}` : ""}`,
+      setConfirmDelete(false);
+      setTypedConfirmation("");
+      const details = [
+        `${result.deleted.length} recording${result.deleted.length === 1 ? "" : "s"} deleted`,
+        result.skipped.length ? `${result.skipped.length} skipped` : "",
+        result.errors.length
+          ? `${result.errors.length} database error${result.errors.length === 1 ? "" : "s"}`
+          : "",
+        result.storageErrors.length
+          ? `${result.storageErrors.length} R2 cleanup error${result.storageErrors.length === 1 ? "" : "s"}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      const failedKeys = result.storageErrors.flatMap(
+        (item) => item.storageKeys,
       );
+      const description = failedKeys.length
+        ? `${details}. Failed R2 keys: ${failedKeys.join(", ")}`
+        : details;
+      if (result.errors.length) toast.error(description, { autoClose: 4000 });
+      else if (result.storageErrors.length)
+        toast.warning(description, { autoClose: 4000 });
+      else toast.success(description, { autoClose: 3000 });
       await reload();
     } catch (error) {
-      setDeleteMessage(
-        error instanceof Error ? error.message : "Delete failed",
-      );
+      notifyError(error);
     } finally {
       setDeleting(false);
     }
@@ -389,9 +398,9 @@ export default function Replays() {
             <button
               className="admin-btn admin-btn-danger"
               disabled={deleting}
-              onClick={() => void deleteSelected()}
+              onClick={() => setConfirmDelete(true)}
             >
-              {deleting ? "Deleting…" : "Delete selected"}
+              Delete selected
             </button>
             <button
               className="admin-btn admin-btn-light"
@@ -401,7 +410,6 @@ export default function Replays() {
             </button>
           </div>
         )}
-        {deleteMessage && <p role="status">{deleteMessage}</p>}
         <AdminTable scrollLabel="Session replays" className="admin-table">
           <thead>
             <tr>
@@ -586,6 +594,89 @@ export default function Replays() {
         a linked order, not visitor geolocation. Unknown means no location was
         supplied.
       </p>
+      {confirmDelete && (
+        <div
+          className="replay-delete-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !deleting) {
+              setConfirmDelete(false);
+              setTypedConfirmation("");
+            }
+          }}
+        >
+          <section
+            className="replay-delete-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="replay-delete-title"
+            aria-describedby="replay-delete-description"
+            tabIndex={-1}
+            autoFocus
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !deleting) {
+                setConfirmDelete(false);
+                setTypedConfirmation("");
+              }
+            }}
+          >
+            <div className="replay-delete-icon" aria-hidden="true">
+              !
+            </div>
+            <div className="replay-delete-copy">
+              <span className="replay-delete-eyebrow">Permanent action</span>
+              <h2 id="replay-delete-title">Delete selected recordings?</h2>
+              <p id="replay-delete-description">
+                This will permanently remove{" "}
+                <strong>
+                  {selected.length} recording{selected.length === 1 ? "" : "s"}
+                </strong>{" "}
+                and their database entries. We’ll also attempt to delete their
+                files from Cloudflare R2.
+              </p>
+              {selected.length > 10 && (
+                <label className="replay-delete-confirm-field">
+                  Type <strong>DELETE</strong> to confirm this bulk removal.
+                  <input
+                    value={typedConfirmation}
+                    onChange={(event) =>
+                      setTypedConfirmation(event.target.value)
+                    }
+                    placeholder="Type DELETE"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </label>
+              )}
+            </div>
+            <div className="replay-delete-actions">
+              <button
+                type="button"
+                className="admin-btn admin-btn-light"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirmDelete(false);
+                  setTypedConfirmation("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-btn admin-btn-danger"
+                disabled={
+                  deleting ||
+                  (selected.length > 10 && typedConfirmation !== "DELETE")
+                }
+                onClick={() => void deleteSelected()}
+              >
+                {deleting
+                  ? "Deleting…"
+                  : `Delete ${selected.length} recording${selected.length === 1 ? "" : "s"}`}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
