@@ -293,3 +293,8 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - Added single/bulk order deletion for cancelled or test orders only. Non-cancelled orders must first be marked test; owners must confirm the exact report-removal phrase. Jobs are removed transactionally, linked replays are unlinked, customers are retained and inventory is not restocked.
 - Bulk endpoints deduplicate and cap requests at 200 IDs, require an exact confirmation count, report deleted/skipped/errors, and audit each successful deletion.
 - Local validation: backend/frontend TypeScript checks and all 71 backend tests pass. Live deletion against production was not run.
+
+## Batch 8: favicon cleanup (branch `batch-8/favicon`)
+
+- Replaced the ambiguous public favicon filename with `favicon-zelvomart.png`, added a root `favicon.ico`, and pointed both store and admin metadata to the new brand icon. The ICO was generated from the existing Zelvomart app icon at 16/32/48 px.
+- Needs frontend production-build verification before merge.

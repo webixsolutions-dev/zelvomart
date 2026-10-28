@@ -41,14 +41,21 @@ export const metadata: Metadata = {
     locale: site.locale,
     title: "Zelvomart — Everyday things, chosen better.",
     description: site.description,
-    images: [{ url: "/brand/og-home.jpg", width: 1200, height: 630, alt: "Zelvomart: everyday things, chosen better" }],
+    images: [
+      {
+        url: "/brand/og-home.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Zelvomart: everyday things, chosen better",
+      },
+    ],
   },
   twitter: { card: "summary_large_image" },
   // No site-wide canonical: each indexable page sets its own, so a page that forgets one never points at the home page.
   icons: {
-    icon: [{ url: "/Fav-icon%20zelvomart.png", type: "image/png" }],
-    shortcut: "/Fav-icon%20zelvomart.png",
-    apple: "/Fav-icon%20zelvomart.png",
+    icon: [{ url: "/favicon-zelvomart.png", type: "image/png" }],
+    shortcut: "/favicon-zelvomart.png",
+    apple: "/favicon-zelvomart.png",
   },
 };
 
@@ -69,10 +76,18 @@ const orgJsonLd = () => ({
   logo: `${site.url}/Zelvomart%20logo.png`,
   email: site.email,
   telephone: site.phoneDisplay,
-  address: { "@type": "PostalAddress", addressLocality: "Lahore", addressRegion: "Punjab", addressCountry: "PK" },
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Lahore",
+    addressRegion: "Punjab",
+    addressCountry: "PK",
+  },
   foundingDate: site.foundingDate,
   founder: { "@type": "Person", name: site.founder },
-  sameAs: [...Object.values(site.social), ...(site.google.maps ? [site.google.maps] : [])],
+  sameAs: [
+    ...Object.values(site.social),
+    ...(site.google.maps ? [site.google.maps] : []),
+  ],
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer service",
@@ -88,38 +103,60 @@ const orgJsonLd = () => ({
 
 export const revalidate = 300;
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [publicSettings, store] = await Promise.all([loadPublicSettings().catch(() => null), loadStore()]);
+export default async function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [publicSettings, store] = await Promise.all([
+    loadPublicSettings().catch(() => null),
+    loadStore(),
+  ]);
   const settings = publicSettings || {};
   // No answer from the backend at all (and no earlier one): load no pixels or recorder rather than guess.
-  const enabled = (key: string) => Boolean(publicSettings) && settings[key] !== false && settings[key] !== "false";
+  const enabled = (key: string) =>
+    Boolean(publicSettings) &&
+    settings[key] !== false &&
+    settings[key] !== "false";
   const pixelId = String(settings["tracking.metaPixelId"] || "");
   const tiktokPixelId = String(settings["tracking.tiktokPixelId"] || "");
   return (
     <html lang="en-PK" className={manrope.variable}>
       <body>
-        <CatalogBridge products={store.catalog.map(slimProduct)} settings={store.settings}>
-        <ShopProvider>
-          <a href="#main" className="skip-link">
-            Skip to content
-          </a>
-          <AnnouncementBar />
-          <Header />
-          <main id="main">{children}</main>
-          <Footer />
-          <MobileBottomNav />
-          <LazyCartDrawer />
-          <Toaster />
-        </ShopProvider>
+        <CatalogBridge
+          products={store.catalog.map(slimProduct)}
+          settings={store.settings}
+        >
+          <ShopProvider>
+            <a href="#main" className="skip-link">
+              Skip to content
+            </a>
+            <AnnouncementBar />
+            <Header />
+            <main id="main">{children}</main>
+            <Footer />
+            <MobileBottomNav />
+            <LazyCartDrawer />
+            <Toaster />
+          </ShopProvider>
         </CatalogBridge>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(orgJsonLd()) }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd(orgJsonLd()) }}
+        />
         <Suspense fallback={null}>
           <TrackingProvider />
           <GoogleAnalytics />
-          {enabled("tracking.sessionReplayEnabled") ? <SessionReplayProvider /> : null}
-          {enabled("tracking.metaPixelEnabled") ? <MetaPixelScript pixelId={pixelId} /> : null}
+          {enabled("tracking.sessionReplayEnabled") ? (
+            <SessionReplayProvider />
+          ) : null}
+          {enabled("tracking.metaPixelEnabled") ? (
+            <MetaPixelScript pixelId={pixelId} />
+          ) : null}
         </Suspense>
-        {enabled("tracking.tiktokPixelEnabled") ? <TikTokPixelScript pixelId={tiktokPixelId} /> : null}
+        {enabled("tracking.tiktokPixelEnabled") ? (
+          <TikTokPixelScript pixelId={tiktokPixelId} />
+        ) : null}
       </body>
     </html>
   );

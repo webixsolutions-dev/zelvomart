@@ -17,11 +17,19 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: { default: "Zelvomart Admin", template: "%s | Zelvomart Admin" },
   robots: { index: false, follow: false },
-  icons: { icon: "/images/zelvomart-logo.png" },
+  icons: {
+    icon: [{ url: "/favicon-zelvomart.png", type: "image/png" }],
+    shortcut: "/favicon-zelvomart.png",
+    apple: "/favicon-zelvomart.png",
+  },
 };
 
 /** Root layout for /admin: only the admin's own CSS loads here, never the storefront's. */
-export default function AdminRootLayout({ children }: { children: React.ReactNode }) {
+export default function AdminRootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={manrope.variable}>
