@@ -268,3 +268,7 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   every product page, same message in the log); after the fix product pages answer 200, a missing product 404,
   `?variant=T-DB-M` preselects M, ViewContent fires exactly once with the right SKU (and with the product SKU
   without `?variant`). `npm run build` passes with no Suspense/CSR-bailout error; backend tests 71/71 pass.
+- CI on this PR was red for a reason unrelated to the fix: since PR #24, `main` itself failed the backend Prettier
+  check (7 backend files not formatted). Those 7 files were formatted with Prettier only; their compiled JavaScript
+  is identical before and after (esbuild), so no behaviour changed. All CI steps then pass locally (prisma validate,
+  both typechecks, Prettier check, backend tests 71/71, frontend build).

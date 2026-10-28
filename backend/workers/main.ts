@@ -130,7 +130,8 @@ async function main() {
         where: { id: data.orderId },
         include: { items: true },
       });
-      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder || order.status === "CANCELLED") return { skipped: "ORDER_EXCLUDED" };
+      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder || order.status === "CANCELLED")
+        return { skipped: "ORDER_EXCLUDED" };
 
       const names = order.fullName.trim().split(/\s+/);
       return sendMetaServerEvent({
@@ -193,7 +194,8 @@ async function main() {
         where: { id: data.orderId },
         include: { items: true },
       });
-      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder || order.status === "CANCELLED") return { skipped: "ORDER_EXCLUDED" };
+      if (!order || order.test || order.staffCreated || order.blocklistedAtOrder || order.status === "CANCELLED")
+        return { skipped: "ORDER_EXCLUDED" };
 
       return sendTikTokServerEvent({
         eventName: data.eventName || "Purchase",

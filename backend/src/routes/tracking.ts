@@ -129,9 +129,13 @@ export function registerTrackingRoutes(app: Express) {
     const platform = routeParam(req, "platform");
     if (!["meta", "tiktok"].includes(platform)) return res.status(400).json({ error: "INVALID_PLATFORM" });
     const testKey = platform === "meta" ? "tracking.metaTestEventCode" : "tracking.tiktokTestEventCode";
-    const testEventCode = String(await getSetting(testKey, process.env[platform === "meta" ? "META_TEST_EVENT_CODE" : "TIKTOK_TEST_EVENT_CODE"] || "") || "").trim();
-    if (!testEventCode)
-      return res.status(400).json({ error: "Save a platform test event code first." });
+    const testEventCode = String(
+      (await getSetting(
+        testKey,
+        process.env[platform === "meta" ? "META_TEST_EVENT_CODE" : "TIKTOK_TEST_EVENT_CODE"] || "",
+      )) || "",
+    ).trim();
+    if (!testEventCode) return res.status(400).json({ error: "Save a platform test event code first." });
     try {
       const event = {
         eventName: "PageView",

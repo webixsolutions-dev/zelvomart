@@ -56,8 +56,11 @@ export async function catalogFeed(platform: "meta" | "tiktok" | "google") {
       const title = `${variant ? `${p.title} - ${variant.name}` : p.title}`.slice(0, 150);
       const itemGroup = p.variants.length ? tag("item_group_id", p.sku) : "";
       const googleCategoryValue =
-        typeof attributes.google_product_category === "string" ? attributes.google_product_category : p.category?.name || "";
-      const googleCategory = platform === "google" && googleCategoryValue ? tag("google_product_category", googleCategoryValue) : "";
+        typeof attributes.google_product_category === "string"
+          ? attributes.google_product_category
+          : p.category?.name || "";
+      const googleCategory =
+        platform === "google" && googleCategoryValue ? tag("google_product_category", googleCategoryValue) : "";
       const gtin = String(attributes.gtin || (variant as any)?.gtin || "").trim();
       const mpn = String(attributes.mpn || (variant as any)?.mpn || "").trim();
       const googleIdentifier = gtin ? tag("gtin", gtin) : mpn ? tag("mpn", mpn) : tag("identifier_exists", "no");

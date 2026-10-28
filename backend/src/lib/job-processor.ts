@@ -1,12 +1,7 @@
 import { prisma } from "./db";
 import { SITE_ORIGIN } from "./site-url";
 import { expiredBacklog } from "./launch-jobs";
-import {
-  sendCustomerOrderEmail,
-  sendCustomerStatusEmail,
-  sendFailureAlert,
-  sendOrderTeamEmail,
-} from "./email";
+import { sendCustomerOrderEmail, sendCustomerStatusEmail, sendFailureAlert, sendOrderTeamEmail } from "./email";
 import { sendMetaServerEvent } from "./meta";
 import { sendTikTokServerEvent } from "./tiktok";
 import { jobResultStatus } from "./jobs";
@@ -45,7 +40,10 @@ export async function processJobRow(jobLogId: string) {
     return result;
   } catch (error) {
     const message = error instanceof Error ? error.stack || error.message : String(error);
-    await prisma.job.update({ where: { id: row.id }, data: { status: "FAILED", error: message, finishedAt: new Date() } });
+    await prisma.job.update({
+      where: { id: row.id },
+      data: { status: "FAILED", error: message, finishedAt: new Date() },
+    });
     await sendFailureAlert("Zelvomart background job failed", message).catch(() => undefined);
     throw error;
   }
@@ -58,21 +56,32 @@ async function handle(row: NonNullable<Row>, data: Record<string, any>, orderId:
     case "customer-order-email":
       return sendCustomerOrderEmail(orderId);
     case "customer-status-email":
-      if (!["CONFIRMED", "BOOKED", "DELIVERED"].includes(String(data.status)))
-        return { skipped: "INVALID_STATUS" };
+      if (!["CONFIRMED", "BOOKED", "DELIVERED"].includes(String(data.status))) return { skipped: "INVALID_STATUS" };
       return sendCustomerStatusEmail(orderId, data.status as "CONFIRMED" | "BOOKED" | "DELIVERED");
     case "meta-event":
       return sendMetaServerEvent({
-        eventName: String(data.eventName), eventId: String(data.eventId), sourceUrl: data.sourceUrl || undefined,
-        userAgent: data.userAgent || undefined, ip: data.ip || undefined, fbp: data.fbp || undefined,
-        fbc: data.fbc || undefined, eventTime: data.eventTime, externalId: data.visitorId || undefined,
+        eventName: String(data.eventName),
+        eventId: String(data.eventId),
+        sourceUrl: data.sourceUrl || undefined,
+        userAgent: data.userAgent || undefined,
+        ip: data.ip || undefined,
+        fbp: data.fbp || undefined,
+        fbc: data.fbc || undefined,
+        eventTime: data.eventTime,
+        externalId: data.visitorId || undefined,
         customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
       });
     case "tiktok-event":
       return sendTikTokServerEvent({
-        eventName: String(data.eventName), eventId: String(data.eventId), sourceUrl: data.sourceUrl || undefined,
-        userAgent: data.userAgent || undefined, ip: data.ip || undefined, ttp: data.ttp || undefined,
-        ttclid: data.ttclid || undefined, eventTime: data.eventTime, externalId: data.visitorId || undefined,
+        eventName: String(data.eventName),
+        eventId: String(data.eventId),
+        sourceUrl: data.sourceUrl || undefined,
+        userAgent: data.userAgent || undefined,
+        ip: data.ip || undefined,
+        ttp: data.ttp || undefined,
+        ttclid: data.ttclid || undefined,
+        eventTime: data.eventTime,
+        externalId: data.visitorId || undefined,
         customData: data.customData && typeof data.customData === "object" ? data.customData : undefined,
       });
     case "meta-purchase":
@@ -94,26 +103,61 @@ async function purchase(name: string, orderId: string, eventName?: string) {
   const eventId = order.orderNumber;
   if (name === "meta-purchase")
     return sendMetaServerEvent({
-      eventName: eventName || "Purchase", eventId, orderId: order.id, eventTime: Math.floor(order.createdAt.getTime() / 1000),
-      sourceUrl, fbp: order.fbp || undefined, fbc: order.fbc || undefined, ip: order.clientIp || undefined,
-      userAgent: order.clientUserAgent || undefined, phone: order.phone, email: order.email || undefined,
-      firstName: names[0], lastName: names.slice(1).join(" ") || undefined, city: order.city,
-      postcode: order.postcode || undefined, externalId: order.visitorId || order.customerId || undefined,
+      eventName: eventName || "Purchase",
+      eventId,
+      orderId: order.id,
+      eventTime: Math.floor(order.createdAt.getTime() / 1000),
+      sourceUrl,
+      fbp: order.fbp || undefined,
+      fbc: order.fbc || undefined,
+      ip: order.clientIp || undefined,
+      userAgent: order.clientUserAgent || undefined,
+      phone: order.phone,
+      email: order.email || undefined,
+      firstName: names[0],
+      lastName: names.slice(1).join(" ") || undefined,
+      city: order.city,
+      postcode: order.postcode || undefined,
+      externalId: order.visitorId || order.customerId || undefined,
       customData: {
         content_ids: order.items.map((item) => item.sku),
-        contents: order.items.map((item) => ({ id: item.sku, content_id: item.sku, content_name: item.title, quantity: item.quantity, item_price: Number(item.unitPrice) })),
-        num_items: order.items.reduce((sum, item) => sum + item.quantity, 0), value: Number(order.total), currency: "PKR", order_id: order.orderNumber,
+        contents: order.items.map((item) => ({
+          id: item.sku,
+          content_id: item.sku,
+          content_name: item.title,
+          quantity: item.quantity,
+          item_price: Number(item.unitPrice),
+        })),
+        num_items: order.items.reduce((sum, item) => sum + item.quantity, 0),
+        value: Number(order.total),
+        currency: "PKR",
+        order_id: order.orderNumber,
       },
     });
   return sendTikTokServerEvent({
-    eventName: eventName || "Purchase", eventId, orderId: order.id, eventTime: Math.floor(order.createdAt.getTime() / 1000),
-    sourceUrl, ip: order.clientIp || undefined, userAgent: order.clientUserAgent || undefined,
-    ttp: order.ttp || undefined, ttclid: order.ttclid || undefined, phone: order.phone, email: order.email || undefined,
+    eventName: eventName || "Purchase",
+    eventId,
+    orderId: order.id,
+    eventTime: Math.floor(order.createdAt.getTime() / 1000),
+    sourceUrl,
+    ip: order.clientIp || undefined,
+    userAgent: order.clientUserAgent || undefined,
+    ttp: order.ttp || undefined,
+    ttclid: order.ttclid || undefined,
+    phone: order.phone,
+    email: order.email || undefined,
     externalId: order.visitorId || order.customerId || undefined,
     customData: {
       content_type: "product",
-      contents: order.items.map((item) => ({ content_id: item.sku, content_name: item.title, quantity: item.quantity, price: Number(item.unitPrice) })),
-      value: Number(order.total), currency: "PKR", order_id: order.orderNumber,
+      contents: order.items.map((item) => ({
+        content_id: item.sku,
+        content_name: item.title,
+        quantity: item.quantity,
+        price: Number(item.unitPrice),
+      })),
+      value: Number(order.total),
+      currency: "PKR",
+      order_id: order.orderNumber,
     },
   });
 }
