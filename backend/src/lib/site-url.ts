@@ -18,7 +18,7 @@ export function isStorefrontUrl(value: string) {
   try {
     const url = new URL(value),
       site = new URL(SITE_ORIGIN);
-    const hosts = ["zelvomart-frontend.vercel.app", "zelvomart.vercel.app", "zelvomart.com", "www.zelvomart.com"];
+    const hosts = ["zelvomart.com", "www.zelvomart.com"];
     if (site.protocol === "https:" && site.hostname !== "localhost") hosts.push(site.hostname);
     return url.protocol === "https:" && hosts.includes(url.hostname) && !/^\/admin(?:\/|$)/.test(url.pathname);
   } catch {
