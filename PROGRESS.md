@@ -309,3 +309,27 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - Product shipping markup now uses the live delivery fee and free-shipping threshold without incorrectly making a single high-priced item free to ship; return markup links to the actual conditional refund policy instead of advertising a blanket 7-day return.
 - Local checks: backend/frontend TypeScript checks, backend Prettier, 71 backend tests, and frontend production build passed. The production build logged backend timeouts for policy-page content during static generation; it completed using the page fallbacks.
 - Still requires owner/service access: production environment and Resend verification, Supabase backup/SQL cleanup, cron-job.org + JOB_MODE setup, Secret sensitivity flags, domain/DNS and live smoke tests. TikTok settings and events were left untouched per request.
+
+## Hotfix: checkout answered 500 — 29 October 2026 (PR #26, merged)
+- Found while testing the order-delete change: `consumeDatabaseRateLimits` (7f4ca51, merged 28 Oct) passed the checkout
+  rate-limit rules as untyped parameters in a `VALUES` list; Postgres read them as text and
+  `"windowMs" * interval` failed, so `POST /api/orders` answered 500 for every checkout with a phone number.
+- Fix: the parameters are cast (`::text`, `::int`). Checked locally: before, 500 with that error; after, orders are
+  created and the 7th attempt from one phone in 15 minutes gets 429. Backend production deploy succeeded.
+
+## Simple delete for orders, coupons and session recordings — 29 October 2026 (branch `fix/simple-order-delete`)
+- Orders: `DELETE /api/admin/orders/:id` (new) and `POST /api/admin/orders/bulk-delete` delete any order, for OWNER
+  and MANAGER only (ORDER_AGENT gets 403). The "mark as test first" rule and the typed owner phrase are gone. In one
+  transaction: the order's Job rows are deleted (no email or Meta/TikTok event is sent for it), its session recording
+  is unlinked, the order is deleted (items, history and notes cascade). No restock; the customer stays; one
+  `hard_delete` audit entry per order; at most 200 IDs per request.
+- Admin: orders list (row Delete and "Delete selected") and order detail page (new Delete button) ask one question,
+  "Delete N order(s)? This cannot be undone.", and the rows leave the table at once (no page reload); the detail page
+  returns to the list. The delete buttons show only for OWNER and MANAGER.
+- Coupons and session recordings: the typed "DELETE" step for more than 10 items is removed (frontend and backend);
+  one confirm only.
+- Checked locally: ORDER_AGENT 403; OWNER deletes a normal NEW (non-test) order; jobs, items and orders gone,
+  customer kept, stock unchanged, 3 audit entries; unknown ID skipped; 250 IDs → 200 processed. Browser: single,
+  selected and detail deletes each show exactly one dialog and the rows disappear without a reload; 11 coupons
+  bulk-deleted without the typed word, and the coupon screen shows one confirm. Backend tests 71/71, both typechecks,
+  Prettier check and frontend build pass.

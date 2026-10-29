@@ -70,8 +70,7 @@ export default function Replays() {
     [sort, setSort] = useState("newest");
   const [selected, setSelected] = useState<string[]>([]),
     [deleting, setDeleting] = useState(false),
-    [confirmDelete, setConfirmDelete] = useState(false),
-    [typedConfirmation, setTypedConfirmation] = useState("");
+    [confirmDelete, setConfirmDelete] = useState(false);
   useEffect(() => {
     setExcluded(localStorage.getItem("zm_session_replay_opt_out") === "1");
     for (const [key, setter] of [
@@ -139,7 +138,6 @@ export default function Replays() {
   async function deleteSelected() {
     if (!selected.length || deleting) return;
     const count = selected.length;
-    if (count > 10 && typedConfirmation !== "DELETE") return;
     setDeleting(true);
     try {
       const result = await clientApi<{
@@ -154,14 +152,12 @@ export default function Replays() {
           body: JSON.stringify({
             ids: selected,
             confirmationCount: count,
-            typedConfirmation,
           }),
         },
         true,
       );
       setSelected([]);
       setConfirmDelete(false);
-      setTypedConfirmation("");
       const details = [
         `${result.deleted.length} recording${result.deleted.length === 1 ? "" : "s"} deleted`,
         result.skipped.length ? `${result.skipped.length} skipped` : "",
@@ -600,7 +596,6 @@ export default function Replays() {
           onMouseDown={(event) => {
             if (event.target === event.currentTarget && !deleting) {
               setConfirmDelete(false);
-              setTypedConfirmation("");
             }
           }}
         >
@@ -615,7 +610,6 @@ export default function Replays() {
             onKeyDown={(event) => {
               if (event.key === "Escape" && !deleting) {
                 setConfirmDelete(false);
-                setTypedConfirmation("");
               }
             }}
           >
@@ -633,40 +627,20 @@ export default function Replays() {
                 and their database entries. We’ll also attempt to delete their
                 files from Cloudflare R2.
               </p>
-              {selected.length > 10 && (
-                <label className="replay-delete-confirm-field">
-                  Type <strong>DELETE</strong> to confirm this bulk removal.
-                  <input
-                    value={typedConfirmation}
-                    onChange={(event) =>
-                      setTypedConfirmation(event.target.value)
-                    }
-                    placeholder="Type DELETE"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                </label>
-              )}
             </div>
             <div className="replay-delete-actions">
               <button
                 type="button"
                 className="admin-btn admin-btn-light"
                 disabled={deleting}
-                onClick={() => {
-                  setConfirmDelete(false);
-                  setTypedConfirmation("");
-                }}
+                onClick={() => setConfirmDelete(false)}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 className="admin-btn admin-btn-danger"
-                disabled={
-                  deleting ||
-                  (selected.length > 10 && typedConfirmation !== "DELETE")
-                }
+                disabled={deleting}
                 onClick={() => void deleteSelected()}
               >
                 {deleting

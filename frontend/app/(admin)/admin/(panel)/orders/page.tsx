@@ -204,6 +204,9 @@ function PeriodChange({
 export default function Orders() {
   const router = useRouter();
   const role = useAdminRole();
+  // Only the owner and managers may delete orders (the backend checks the same).
+  const canDelete = role === "OWNER" || role === "MANAGER";
+  const [removed, setRemoved] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     const p = new URLSearchParams(location.search);
     if (p.get("q")) setQ(p.get("q")!);
@@ -336,7 +339,7 @@ export default function Orders() {
       to ||
       sort !== "newest",
   );
-  const rows = data?.items || [],
+  const rows = (data?.items || []).filter((o) => !removed.has(o.id)),
     counts = dashboard?.counts || {},
     total = sum(counts);
   async function refresh() {
@@ -366,24 +369,8 @@ export default function Orders() {
   }
   async function deleteOrders(orderIds = selected) {
     const count = orderIds.length;
-    if (!count || busy) return;
-    if (
-      !window.confirm(
-        `Delete ${count} selected order${count === 1 ? "" : "s"}? Only cancelled or already marked test orders can be removed. This action cannot be undone.`,
-      )
-    )
-      return;
-    const typedConfirmation =
-      count > 10
-        ? window.prompt(`Type DELETE to confirm removal of ${count} orders.`)
-        : undefined;
-    if (count > 10 && typedConfirmation !== "DELETE") return;
-    const ownerConfirmation =
-      role === "OWNER"
-        ? window.prompt(
-            "If deleting non-cancelled test orders, type: I understand this removes it from reports",
-          )
-        : undefined;
+    if (!count || busy || !canDelete) return;
+    if (!window.confirm(`Delete ${count} order${count === 1 ? "" : "s"}? This cannot be undone.`)) return;
     setBusy(true);
     setMessage("");
     try {
@@ -391,24 +378,17 @@ export default function Orders() {
         deleted: string[];
         skipped: { id: string; reason: string }[];
         errors: { id: string; error: string }[];
-      }>(
-        "/api/admin/orders/bulk-delete",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            ids: orderIds,
-            confirmationCount: count,
-            typedConfirmation,
-            ownerConfirmation,
-          }),
-        },
-        true,
-      );
-      setSelected([]);
-      await refresh();
+      }>("/api/admin/orders/bulk-delete", { method: "POST", body: JSON.stringify({ ids: orderIds }) }, true);
+      // The deleted rows leave the table at once; the list and counts then refresh in the background.
+      setRemoved((previous) => new Set([...previous, ...result.deleted]));
+      setSelected((previous) => previous.filter((id) => !result.deleted.includes(id)));
+      if (quick && result.deleted.includes(quick.id)) setQuick(null);
+      const problems = result.skipped.length + result.errors.length;
       setMessage(
-        `${result.deleted.length} deleted; ${result.skipped.length} skipped (${[...new Set(result.skipped.map((item) => item.reason))].join(", ") || "none"}); ${result.errors.length} errors.`,
+        `${result.deleted.length} order${result.deleted.length === 1 ? "" : "s"} deleted.` +
+          (problems ? ` ${problems} could not be deleted (${[...result.skipped.map((i) => i.reason), ...result.errors.map((i) => i.error)].join(", ")}).` : ""),
       );
+      void refresh();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Delete failed");
     } finally {
@@ -788,9 +768,11 @@ export default function Orders() {
             >
               Packing slips
             </button>
-            <button disabled={busy} onClick={() => void deleteOrders()}>
-              Delete selected
-            </button>
+            {canDelete ? (
+              <button disabled={busy} onClick={() => void deleteOrders()}>
+                Delete selected
+              </button>
+            ) : null}
             <button onClick={() => setSelected([])}>Clear selection</button>
           </div>
         )}
@@ -1005,13 +987,15 @@ export default function Orders() {
                         </svg>
                         <span>View</span>
                       </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void deleteOrders([o.id])}
-                      >
-                        Delete
-                      </button>
+                      {canDelete ? (
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void deleteOrders([o.id])}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
                       <details className="od-actions">
                         <summary aria-label={`Actions for ${o.orderNumber}`}>
                           ⋮
