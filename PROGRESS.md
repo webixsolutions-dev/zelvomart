@@ -365,8 +365,10 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   Sanitized on save and on display. Tab text may use `{free_delivery_over}` and `{delivery_fee}`, filled from
   Settings → Delivery (the defaults use them instead of "Rs 8,000"). Saving tabs already revalidates the cache;
   checked locally (edit → page shows the new text). Storefront fallback amounts are now 7,500 / 190.
-  **Data still saying Rs 8,000** (owner to edit, not code): saved product-tab text if it was saved with the old
-  default, and the announcement bar item "Free Delivery on Orders Above Rs 8,000".
+  Production's saved tabs are still the old built-in default text with a fixed "Rs 8,000" (read from the preview
+  backend); a saved tab whose text is exactly that old default is shown as the new default with live amounts
+  (Rs 7,500 / Rs 190). Hand-edited text is shown as written. **Data still saying Rs 8,000** (owner to edit): the
+  announcement bar item "Free Delivery on Orders Above Rs 8,000".
 - **1.8 Security.** next 16.3.8 → 16.4.3; body-parser 2.3.0 → 2.4.0 and qs 6.16.0 → 6.17.1 (under express);
   multer 2.4.0 → 2.5.0. `npm audit --omit=dev`: before 9 (1 critical, 5 high, 2 moderate, 1 low), after 5 (3 high,
   1 moderate, 1 low). **Prisma finding:** the remaining highs are one advisory, `deepmerge-ts` < 8 (stack exhaustion
