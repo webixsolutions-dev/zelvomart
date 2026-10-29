@@ -11,6 +11,7 @@ import {
 import { sendMetaServerEvent } from "../src/lib/meta";
 import { sendTikTokServerEvent } from "../src/lib/tiktok";
 import { Resend } from "resend";
+import { internalEmail, orderAlertRecipients } from "../src/lib/email-delivery";
 import { money } from "../src/lib/format";
 import { setSetting, getSetting } from "../src/lib/settings";
 import { assertWorkerDatabase, expiredBacklog } from "../src/lib/launch-jobs";
@@ -289,26 +290,25 @@ async function main() {
         .slice(0, 10)
         .map(([name, row]) => `<tr><td>${name}</td><td>${row.quantity}</td><td>${money(row.revenue)}</td></tr>`)
         .join("");
-      const recipients = await getSetting<string[]>(
-        "notifications.orderRecipients",
-        (process.env.ORDER_ALERT_RECIPIENTS || "zelvomart@gmail.com")
-          .split(",")
-          .map((x) => x.trim())
-          .filter(Boolean),
-      );
+      // Same recipients as the order alert (Admin -> Settings, else ORDER_ALERT_RECIPIENTS).
+      const recipients = orderAlertRecipients(await getSetting<unknown>("notifications.orderRecipients", null));
 
       const health = await trackingHealth();
       const resend = new Resend(process.env.RESEND_API_KEY);
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM || "Zelvomart Orders <orders@zelvomart.com>",
-        to: recipients,
-        subject: `Zelvomart daily summary • ${start.toISOString().slice(0, 10)}`,
-        html: `<h2>Daily summary</h2><p>Tracking health: ${health.healthy ? "Healthy" : "ACTION REQUIRED"}</p><ul>${health.issues.map((issue) => `<li>${issue}</li>`).join("")}</ul>
+      const summary = internalEmail(
+        "Orders",
+        recipients,
+        `Daily summary • ${start.toISOString().slice(0, 10)}`,
+        `<h2>Daily summary</h2><p>Tracking health: ${health.healthy ? "Healthy" : "ACTION REQUIRED"}</p><ul>${health.issues.map((issue) => `<li>${issue}</li>`).join("")}</ul>
           <p>Orders: <b>${orders.length}</b> • Revenue: <b>${money(revenue)}</b> • Meta Purchase accepted: <b>${accepted}</b> • Failed jobs: <b>${failedJobs}</b></p>
           <h3>Funnel</h3><p>PageView ${eventMap.get("PageView") || 0} → ViewContent ${eventMap.get("ViewContent") || 0} → AddToCart ${eventMap.get("AddToCart") || 0} → InitiateCheckout ${eventMap.get("InitiateCheckout") || 0} → Orders ${orders.length}</p>
           <h3>By source</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Source</th><th>Orders</th><th>Revenue</th></tr>${sourceRows || "<tr><td colspan=3>No orders</td></tr>"}</table>
           <h3>By category</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Category</th><th>Qty</th><th>Revenue</th></tr>${categoryRows || "<tr><td colspan=3>No orders</td></tr>"}</table>
           <h3>Top products</h3><table border="1" cellpadding="6" cellspacing="0"><tr><th>Product</th><th>Qty</th><th>Revenue</th></tr>${productRows || "<tr><td colspan=3>No orders</td></tr>"}</table>`,
+      );
+      await resend.emails.send({
+        from: process.env.EMAIL_FROM || "Zelvomart Orders <orders@zelvomart.com>",
+        ...summary,
       });
     });
   });
