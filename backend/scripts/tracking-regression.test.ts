@@ -43,12 +43,13 @@ test("playback starts at its first snapshot without a fixed startup delay", () =
   assert.ok(REPLAY_VISIBILITY_RULES.every((rule) => rule.includes(".public-site-main")));
 });
 test("only configured HTTPS storefront sends live ads", () => {
-  assert.equal(isStorefrontUrl("https://zelvomart.vercel.app/product/test"), true);
   assert.equal(isStorefrontUrl("https://zelvomart.com/product/test"), true);
   assert.equal(isStorefrontUrl("https://www.zelvomart.com/cart"), true);
   for (const url of [
     "http://localhost:3000",
     "https://zelvomart-preview.vercel.app",
+    "https://zelvomart.vercel.app/product/test",
+    "https://zelvomart-frontend.vercel.app/product/test",
     "https://zelvomart.vercel.app.evil.test",
     "https://zelvomart.vercel.app/admin",
     "http://zelvomart.vercel.app",
