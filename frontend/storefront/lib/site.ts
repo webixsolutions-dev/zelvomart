@@ -39,8 +39,8 @@ export const site = {
     youtube: "https://www.youtube.com/@ZelvoMart",
   },
   shipping: {
-    flatFee: 190, // decided 19 Oct 2026
-    freeOver: 8000, // decided 19 Oct 2026
+    flatFee: 190, // fallback only; the live value comes from Admin → Settings → Delivery
+    freeOver: 7500, // fallback only; the live value comes from Admin → Settings → Delivery
     // Fallback for every page; cities with their own days in Settings show those instead.
     estimate: "2–7 working days",
     minDays: 2,

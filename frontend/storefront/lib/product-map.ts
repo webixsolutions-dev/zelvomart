@@ -152,6 +152,7 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
     inBox: [],
     variants: designVariants(p),
     ...(p.bundleEnabled && bundlePercent > 0 ? { bundleEnabled: true, bundleDiscountPercent: bundlePercent } : {}),
+    ...(p.catalogMeta?.productTabs ? { tabOverrides: p.catalogMeta.productTabs } : {}),
     keywords: p.tags || [],
     inStock: p.stockStatus !== "outofstock",
     ...(p.freeShipping ?? p.catalogMeta?.freeShipping ? { freeShipping: true } : {}),

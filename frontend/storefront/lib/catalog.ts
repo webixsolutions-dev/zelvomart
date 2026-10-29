@@ -78,6 +78,8 @@ export type Product = {
   bundleEnabled?: boolean;
   /** Discount on the Buy 2 bundle, in percent. */
   bundleDiscountPercent?: number;
+  /** This product's own text for a product tab (Admin → Products → Product tabs), overriding the store-wide tab. */
+  tabOverrides?: Record<string, { override?: boolean; content?: string }>;
   keywords: string[];
   /** Omitted products are treated as in stock. */
   inStock?: boolean;

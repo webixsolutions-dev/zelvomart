@@ -497,49 +497,19 @@ export function ProductDetail({ slug }: { slug: string }) {
                         </div>
                       </div>
                     )}
-                    {t.id === "why" && (
-                      <div className="pd-why">
-                        {t.points.map((pt) => (
-                          <div key={pt.title}>
-                            <Check size={18} strokeWidth={3} />
-                            <span>
-                              <strong>{pt.title}</strong>
-                              <p>{pt.text}</p>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {t.id === "shipping" && (
+                    {"html" in t && (
                       <>
-                        <ol className="pd-ship-steps">
-                          {t.steps.map((s, i) => (
-                            <li key={s.title}>
-                              <small>{String(i + 1).padStart(2, "0")}</small>
-                              <strong>{s.title}</strong>
-                              <p>{s.text}</p>
-                            </li>
-                          ))}
-                        </ol>
-                        <p className="pd-ship-note">
-                          {t.note}{" "}
-                          <Link href="/shipping-policy/" className="link-cta">
-                            Shipping policy →
-                          </Link>
-                        </p>
+                        <div className="pd-description-content pd-tab-content" dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(t.html) }} />
+                        {t.id === "shippingProcess" && (
+                          <p className="pd-ship-note">
+                            <Link href="/shipping-policy/" className="link-cta">
+                              Shipping policy →
+                            </Link>
+                          </p>
+                        )}
                       </>
                     )}
-                    {t.id === "faq" && (
-                      <dl className="pd-faq">
-                        {t.items.map((f) => (
-                          <div key={f.q}>
-                            <dt>{f.q}</dt>
-                            <dd>{f.a}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                    {t.id === "info" && (
+                    {"rows" in t && (
                       <table className="spec-table">
                         <tbody>
                           {t.rows.map(([k, v]) => (

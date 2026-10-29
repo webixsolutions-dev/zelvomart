@@ -48,7 +48,11 @@ function ProductTabsEditor({ initial }: { initial: Record<ProductTabKey, TabCont
       <div className="admin-title">
         <div>
           <h1>Product tabs</h1>
-          <p>This text is shown on every product. Open a product and use Product tabs to replace any section for that product only.</p>
+          <p>This text is shown on every product. Open a product and use Product tabs to replace any section for that product only. Leave a section empty to hide it.</p>
+          <p>
+            Type <code>{"{free_delivery_over}"}</code> or <code>{"{delivery_fee}"}</code> to show the current delivery amounts from Settings → Delivery
+            (for example Rs 7,500 and Rs 190); they update by themselves when you change the delivery setting.
+          </p>
         </div>
         <button type="button" className="admin-btn admin-btn-primary" disabled={busy} onClick={() => void save()}>
           {busy ? "Saving..." : "Save global tabs"}

@@ -9,13 +9,13 @@ export const PRODUCT_TAB_DEFS = [
     key: "shippingProcess",
     title: "Shipping Process",
     content:
-      "<p><strong>Order confirmation.</strong> We verify the order by call or WhatsApp before it leaves.</p><p><strong>Dispatch.</strong> Parcels are handed to our delivery partners and packed for the journey.</p><p><strong>Timeline.</strong> Major cities usually take 2–4 working days. Other cities usually take 3–5 working days.</p><p><strong>Free shipping.</strong> The whole order ships free when the total is above Rs 8,000. Products with free shipping turned on ship free on their own.</p>",
+      "<p><strong>Order confirmation.</strong> We verify the order by call or WhatsApp before it leaves.</p><p><strong>Dispatch.</strong> Parcels are handed to our delivery partners and packed for the journey.</p><p><strong>Timeline.</strong> Major cities usually take 2–4 working days. Other cities usually take 3–5 working days.</p><p><strong>Delivery charge.</strong> {delivery_fee} per order. The whole order ships free when the total is above {free_delivery_over}. Products with free shipping turned on ship free on their own.</p>",
   },
   {
     key: "generalFaq",
     title: "General FAQ",
     content:
-      "<p><strong>Can I check the product before paying?</strong><br/>Riders in major cities can let you inspect the parcel. We also offer a 7-day replacement window.</p><p><strong>What if I receive a damaged product?</strong><br/>Share photos on WhatsApp within 7 days and we will arrange a replacement.</p><p><strong>When is shipping free?</strong><br/>Shipping is free on an order above Rs 8,000, and on any product whose free-shipping option is turned on.</p>",
+      "<p><strong>Can I check the product before paying?</strong><br/>Riders in major cities can let you inspect the parcel. We also offer a 7-day replacement window.</p><p><strong>What if I receive a damaged product?</strong><br/>Share photos on WhatsApp within 7 days and we will arrange a replacement.</p><p><strong>When is shipping free?</strong><br/>Shipping is free on an order above {free_delivery_over}, and on any product whose free-shipping option is turned on. Otherwise delivery is {delivery_fee}.</p>",
   },
 ] as const;
 
@@ -45,7 +45,8 @@ export function mergeGlobalProductTabs(saved: Record<string, Partial<ProductTabC
       tab.key,
       {
         title: String(saved?.[tab.key]?.title || defaults[tab.key].title),
-        content: String(saved?.[tab.key]?.content || defaults[tab.key].content),
+        // A section saved empty stays empty (the product page hides it); a section never saved shows the default.
+        content: typeof saved?.[tab.key]?.content === "string" ? String(saved[tab.key]!.content) : defaults[tab.key].content,
       },
     ]),
   ) as Record<ProductTabKey, ProductTabCopy>;
@@ -82,4 +83,30 @@ export function resolveProductTabs(globalValue: unknown, catalogMeta: unknown): 
       overridden,
     };
   });
+}
+
+/** Placeholders the tab text may use; the store fills in the live amounts from Admin → Settings → Delivery. */
+export const DELIVERY_PLACEHOLDERS = ["{free_delivery_over}", "{delivery_fee}"] as const;
+
+export function fillDeliveryAmounts(html: string, amounts: { freeOver: number; flatFee: number }) {
+  const rs = (n: number) => `Rs ${Math.round(n).toLocaleString("en-PK")}`;
+  return html.replaceAll("{free_delivery_over}", rs(amounts.freeOver)).replaceAll("{delivery_fee}", rs(amounts.flatFee));
+}
+
+const hasText = (html: string) => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim().length > 0;
+
+/**
+ * The tabs a product page shows. A product's own override wins; otherwise the saved store-wide tab; a tab that was
+ * never saved shows the default text. A tab saved empty (or an empty override) is hidden.
+ */
+export function resolveStoreProductTabs(globalValue: unknown, catalogMeta: unknown): { key: ProductTabKey; title: string; html: string }[] {
+  const saved = globalValue && typeof globalValue === "object" ? (globalValue as Record<string, Partial<ProductTabCopy> | undefined>) : {};
+  const overrides = readProductTabOverrides(catalogMeta);
+  return PRODUCT_TAB_DEFS.map((def) => {
+    const stored = saved[def.key];
+    const title = String(stored?.title || "").trim() || def.title;
+    const storeHtml = stored && typeof stored.content === "string" ? stored.content : def.content;
+    const html = overrides[def.key].override ? overrides[def.key].content : storeHtml;
+    return { key: def.key, title, html };
+  }).filter((tab) => hasText(tab.html));
 }

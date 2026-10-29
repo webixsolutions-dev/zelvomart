@@ -105,7 +105,7 @@ export async function loadPublicSettings(): Promise<Record<string, unknown>> {
 export async function loadStoreSettings(): Promise<StoreSettings> {
   const out: StoreSettings = {};
   try {
-    const s = await apiFetch<Record<string, any>>(`/api/settings/public?keys=store.info,store.delivery`, {
+    const s = await apiFetch<Record<string, any>>(`/api/settings/public?keys=store.info,store.delivery,store.productTabs`, {
       next: { revalidate: REVALIDATE, tags: ["settings"] },
     });
     const info = s["store.info"] || {};
@@ -116,6 +116,8 @@ export async function loadStoreSettings(): Promise<StoreSettings> {
     if (String(info.supportHours || "").trim()) out.supportHours = String(info.supportHours).trim();
     if (Number(delivery.flatRate) > 0) out.flatFee = Number(delivery.flatRate);
     if (Number(delivery.freeAbove) > 0) out.freeOver = Number(delivery.freeAbove);
+    const tabs = s["store.productTabs"];
+    out.productTabs = tabs && typeof tabs === "object" ? tabs : null;
   } catch {
     // keep the design values
   }
