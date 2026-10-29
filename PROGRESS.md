@@ -392,3 +392,34 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - **Still to do (Part 2, needs the owner's computer and "yes"):** env backup, Resend key, `CRON_SECRET`,
   `STORE_PROXY_SECRET`, site URLs, pg_dump + job cleanup, `JOB_MODE=cron`, unused env vars, the
   `zelvomart.vercel.app` redirect and the host-list PR, cron-job.org.
+
+## Sitemaps split like Yoast — 29 October 2026 (branch `feat/split-sitemap`)
+- **URLs.** `/sitemap_index.xml` (index; `/sitemap.xml` serves the same content, no redirect) lists only non-empty
+  children: `/page-sitemap.xml` (the 13 static pages), `/product_cat-sitemap.xml` (categories with at least one
+  published product), `/product-sitemap.xml` (published, not-noindex products with up to 10 image entries each, main
+  image first). Past 1,000 products: `/product-sitemap2.xml`, 3 … (rewrite to `/sitemaps/products/N`). Index
+  `<lastmod>` = newest inside the child. `<lastmod>` only (no priority/changefreq), values XML-escaped, www origin.
+  robots.txt points to `/sitemap_index.xml`.
+- **Code.** One module, `frontend/storefront/lib/sitemaps.ts` (data, XML, responses); route handlers in
+  `frontend/app/<file>.xml/route.ts` call `serveSitemap()` (`storefront/lib/sitemap-route.ts`). The old
+  `app/(store)/sitemap.ts` is gone. Backend `GET /api/seo/sitemap` now also returns title, category, absolute image
+  URLs, category name/image and published-product count (`backend/src/lib/seo-sitemap.ts`, same filters).
+- **Never empty.** `loadSeoIndex()` now throws instead of returning empty lists. Checked locally: built while the
+  backend was up, then backend down + revalidation → the last good file kept serving (87 products); built and run
+  while the backend was down → `503`, `Retry-After: 600`, `Cache-Control: no-store`, and 200 again once it was back.
+- **Browser view.** `frontend/public/sitemap.css` via `<?xml-stylesheet type="text/css"?>` (no XSLT, no JavaScript):
+  heading, URL count (CSS counters), "for search engines" note, one row per URL with last modified and image count;
+  larger text on phones. Links in the XML view are not clickable by design.
+- **HTML sitemap** `/sitemap/`: summary (Pages · Categories · Products, last update), the three sections with
+  products under their category, and a "For search engines" table (file, URLs, last modified). `noindex, follow`,
+  canonical `https://www.zelvomart.com/sitemap/`, "Sitemap" link in the footer. On a backend failure it shows a
+  short "updating" notice instead of empty lists.
+- **Cache.** `revalidate = 3600`; the backend's cache invalidation now also refreshes `/sitemap_index.xml`, the three
+  children and `/sitemap` (extra product sitemaps refresh through the `products` tag).
+- **Redirect table:** no rows with "sitemap" in `sourcePath`, nothing removed.
+- **Checks:** backend 90/90 tests (new: images, drafts and noindex excluded), frontend sitemap tests 8/8 (xmllint on
+  every file, only non-empty children, absolute www/R2 URLs, `&amp;`, 1,000-split, 503), both typechecks, Prettier,
+  build with and without a backend. Local run on production catalog data: 13 pages, 6 categories (Tech has no
+  published products), 87 products, 367 images, matching the database.
+- **Search Console (owner):** Sitemaps → remove old WordPress entries that show "Couldn't fetch" (keep
+  `sitemap_index.xml`), submit `sitemap_index.xml`; optionally also the three children.

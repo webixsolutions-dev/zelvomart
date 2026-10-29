@@ -100,6 +100,8 @@ const nextConfig: NextConfig = {
       "http://localhost:4000"
     ).replace(/\/$/, "");
     return [
+      // Product sitemaps past the first 1,000 products (Yoast names: product-sitemap2.xml, 3 …).
+      { source: "/product-sitemap:page(\\d+).xml", destination: "/sitemaps/products/:page" },
       {
         source: "/feeds/:platform(meta|tiktok|google).xml",
         destination: `${api}/api/feed/:platform.xml`,

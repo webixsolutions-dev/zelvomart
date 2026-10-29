@@ -1,0 +1,105 @@
+/*
+ * Browser view of the XML sitemaps (linked with <?xml-stylesheet type="text/css"?>).
+ * CSS only: Chrome is removing XSLT, and the XML files carry no JavaScript. Links here are not clickable;
+ * people use the HTML sitemap at /sitemap/. Search engines ignore this file.
+ */
+@namespace image url(http://www.google.com/schemas/sitemap-image/1.1);
+
+urlset,
+sitemapindex {
+  display: flex;
+  flex-direction: column;
+  counter-reset: urls;
+  box-sizing: border-box;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 16px 56px;
+  background: #fff;
+  color: #16191d;
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* Heading */
+urlset::before,
+sitemapindex::before {
+  order: -2;
+  display: block;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 4px solid #009fe3;
+  content: "Zelvomart sitemap";
+  font-size: 1.75em;
+  font-weight: 800;
+  line-height: 1.2;
+}
+sitemapindex::before {
+  content: "Zelvomart sitemap index";
+}
+urlset:has(image|image)::before {
+  content: "Zelvomart products sitemap";
+}
+
+/* URL count and note, moved above the list (the counter is complete only after the last row) */
+urlset::after,
+sitemapindex::after {
+  order: -1;
+  display: block;
+  margin-bottom: 18px;
+  color: #4b5563;
+  content: counter(urls) " URLs \00B7  This file is for search engines. To browse the store, open https://www.zelvomart.com/sitemap/";
+  font-size: 0.9em;
+}
+sitemapindex::after {
+  content: counter(urls) " sitemaps \00B7  This file is for search engines. To browse the store, open https://www.zelvomart.com/sitemap/";
+}
+
+/* One row per URL */
+url,
+sitemap {
+  display: block;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  counter-increment: urls;
+  counter-reset: images;
+}
+url:nth-of-type(even),
+sitemap:nth-of-type(even) {
+  background: #f2fafe;
+}
+loc {
+  display: block;
+  color: #0077ad;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+lastmod {
+  display: inline;
+  color: #4b5563;
+  font-size: 0.87em;
+}
+lastmod::before {
+  content: "Last modified: ";
+}
+
+/* Product images: counted, not shown (display: none would stop the counter) */
+image|image {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  vertical-align: top;
+  counter-increment: images;
+}
+urlset:has(image|image) url::after {
+  color: #4b5563;
+  content: " \00B7  " counter(images) " images";
+  font-size: 0.87em;
+}
+
+/* Phones open XML without a viewport tag (980px wide, zoomed out): larger text keeps it readable */
+@media (pointer: coarse) and (max-device-width: 900px) {
+  urlset,
+  sitemapindex {
+    font-size: 28px;
+  }
+}

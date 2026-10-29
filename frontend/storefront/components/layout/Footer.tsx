@@ -16,6 +16,7 @@ const customerServiceLinks = [
   { label: "Shipping Policy", href: "/shipping-policy/" },
   { label: "Returns & Refunds", href: "/refund_returns/" },
   { label: "FAQs", href: "/faqs/" },
+  { label: "Sitemap", href: "/sitemap/" },
 ] as const;
 
 function FooterNavLink({ href, children }: { href: string; children: ReactNode }) {

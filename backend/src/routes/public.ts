@@ -9,7 +9,8 @@ import {
 import { validateCoupon } from "../lib/coupons";
 import { catalogQuery } from "../lib/catalog-query";
 import { publicSettingKeys } from "../lib/public-settings";
-import { isStorefrontUrl } from "../lib/site-url";
+import { SITE_ORIGIN, isStorefrontUrl } from "../lib/site-url";
+import { seoSitemapIndex } from "../lib/seo-sitemap";
 import { replayStorageConfigured } from "../lib/replay-storage";
 import { catalogFeed } from "../lib/catalog-feed";
 import { Prisma } from "../generated/prisma/client";
@@ -36,7 +37,6 @@ import {
   jsonProductSummary,
   productInclude,
   productListSelect,
-  readCatalogMeta,
   routeParam,
   setNoStore,
   setPublicCache,
@@ -334,16 +334,31 @@ export function registerPublicRoutes(app: Express) {
   app.get("/api/seo/sitemap", async (_req, res) => {
     setPublicCache(res, 3600, 86400, ["seo"]);
     const [products, categories] = await Promise.all([
-      prisma.product
-        .findMany({ where: { status: "PUBLISHED" }, select: { slug: true, updatedAt: true, sourceUrl: true } })
-        .then((rows) =>
-          rows
-            .filter((r) => readCatalogMeta(r.sourceUrl)?.robotsIndex !== "noindex")
-            .map(({ slug, updatedAt }) => ({ slug, updatedAt })),
-        ),
-      prisma.category.findMany({ select: { slug: true, updatedAt: true } }),
+      prisma.product.findMany({
+        where: { status: "PUBLISHED" },
+        orderBy: { createdAt: "desc" },
+        select: {
+          slug: true,
+          title: true,
+          status: true,
+          updatedAt: true,
+          sourceUrl: true,
+          images: true,
+          category: { select: { slug: true } },
+        },
+      }),
+      prisma.category.findMany({
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: {
+          slug: true,
+          name: true,
+          updatedAt: true,
+          imageUrl: true,
+          _count: { select: { products: { where: { status: "PUBLISHED" } } } },
+        },
+      }),
     ]);
-    res.json({ products, categories });
+    res.json(seoSitemapIndex(products, categories, SITE_ORIGIN));
   });
   // Every redirect, for the storefront proxy: it answers old URLs with a real 301 before the page renders.
   app.get("/api/redirects/map", async (_req, res) => {

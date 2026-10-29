@@ -2497,6 +2497,80 @@ em {
   font-size: 20px;
   margin-bottom: 14px;
 }
+/* HTML sitemap (/sitemap/) */
+.sitemap-summary {
+  margin: 0 0 28px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--blue-mist);
+  font-size: 15px;
+}
+.sitemap-summary span {
+  color: var(--muted);
+}
+.sitemap-group {
+  margin-bottom: 34px;
+}
+.sitemap-group h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+.sitemap-subgroup h3 {
+  font-size: 16px;
+  margin: 18px 0 8px;
+}
+.sitemap-count {
+  display: inline-block;
+  min-width: 26px;
+  margin-left: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--blue-light);
+  color: var(--blue-deep);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+.sitemap-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 2px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sitemap-list a,
+.sitemap-subgroup h3 a {
+  display: inline-block;
+  padding: 6px 0;
+  color: var(--blue);
+  font-size: 15px;
+}
+.sitemap-xml p {
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.sitemap-xml table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.sitemap-xml th,
+.sitemap-xml td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.sitemap-xml p a,
+.sitemap-xml td a {
+  display: inline-block;
+  padding: 4px 0;
+  color: var(--blue);
+  overflow-wrap: anywhere;
+}
 .support-card {
   position: relative;
   overflow: hidden;
