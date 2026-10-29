@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { generatedImageAlts, keptImageAlts } from "@/lib/image-alt";
 import AdminRichTextEditor from "./AdminRichTextEditor";
 import { clearAdminDataCache, useAdminData } from "./useAdminData";
 import { clientApi, uploadAdminImage } from "@/lib/client-api";
@@ -27,7 +28,10 @@ type DataTab =
 type SeoTab = "general" | "advanced" | "schema";
 type SeoGroupKey = "basic" | "additional" | "title" | "content";
 type ImageMeta = {
+  /** Alt text for the main image (also the CSV column `imageAlt`). */
   alt: string;
+  /** Alt text for the other images, keyed by image URL. Empty = generated (lib/image-alt.ts). */
+  alts: Record<string, string>;
   title: string;
   fileName: string;
   fileSize: number;
@@ -46,6 +50,7 @@ const PRODUCT_TAGS: { id: string; label: string; hint: string }[] = [
 
 const EMPTY_IMAGE_META: ImageMeta = {
   alt: "",
+  alts: {},
   title: "",
   fileName: "",
   fileSize: 0,
@@ -367,6 +372,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
     const saved = catalog.imageMeta || {};
     return {
       alt: saved.alt || "",
+      alts: saved.alts && typeof saved.alts === "object" ? { ...saved.alts } : {},
       title: saved.title || "",
       fileName: saved.fileName || "",
       fileSize: Number(saved.fileSize || 0),
@@ -939,7 +945,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
         redirectUrl: redirectTarget,
         robotsIndex,
         robotsNoFollow,
-        imageMeta,
+        imageMeta: { ...imageMeta, alts: keptImageAlts(imageMeta.alts, gallery) },
       },
     };
 
@@ -1070,6 +1076,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       seoDescription,
       canonicalUrl,
       catalogMeta: {
+        imageMeta: { alt: imageMeta.alt, alts: imageMeta.alts },
         productType,
         weight,
         length,
@@ -2240,7 +2247,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                     <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button type="button" className="wp-btn-secondary" onClick={() => setImageEditorOpen(true)}>Edit details</button>
                       <button type="button" className="wp-btn-secondary" onClick={() => mainImageRef.current?.click()}>{uploadBusy === "main" ? "Uploading..." : "Replace"}</button>
-                      <button type="button" className="wp-btn-secondary" style={{ color: "#b32d2e" }} onClick={() => { setMainImage(""); setImageMeta(EMPTY_IMAGE_META); }}>Remove</button>
+                      <button type="button" className="wp-btn-secondary" style={{ color: "#b32d2e" }} onClick={() => { setMainImage(""); setImageMeta((current) => ({ ...EMPTY_IMAGE_META, alts: current.alts })); }}>Remove</button>
                     </div>
                   </div>
                 ) : (
@@ -2279,22 +2286,39 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                     event.target.value = "";
                   }}
                 />
-                {gallery.length ? (
-                  <div className="pd-gallery" style={{ marginBottom: 12 }}>
-                    {gallery.map((src) => (
-                      <figure key={src}>
-                        <img src={src} alt="" />
-                        <button
-                          type="button"
-                          aria-label="Remove gallery image"
-                          onClick={() => setGallery((current) => current.filter((item) => item !== src))}
-                        >
-                          ×
-                        </button>
-                      </figure>
-                    ))}
-                  </div>
-                ) : null}
+                {gallery.length ? (() => {
+                  // What the store shows when the field is empty (variant name or "view N").
+                  const generated = generatedImageAlts(
+                    title,
+                    [mainImage, ...gallery],
+                    variations.map((item) => ({ name: item.name, images: item.images })),
+                  );
+                  return (
+                    <div className="pd-gallery" style={{ marginBottom: 12 }}>
+                      {gallery.map((src, index) => (
+                        <figure key={src}>
+                          <img src={src} alt="" />
+                          <button
+                            type="button"
+                            aria-label="Remove gallery image"
+                            onClick={() => setGallery((current) => current.filter((item) => item !== src))}
+                          >
+                            ×
+                          </button>
+                          <input
+                            className="pd-gallery-alt"
+                            aria-label={`Alt text for gallery image ${index + 2} (optional)`}
+                            placeholder={generated[index + 1]}
+                            value={imageMeta.alts[src] || ""}
+                            onChange={(event) =>
+                              setImageMeta((current) => ({ ...current, alts: { ...current.alts, [src]: event.target.value } }))
+                            }
+                          />
+                        </figure>
+                      ))}
+                    </div>
+                  );
+                })() : null}
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <button
                     type="button"
@@ -2626,8 +2650,8 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             </p>
             <label>
               Alt text
-              <textarea rows={3} value={imageMeta.alt} onChange={(event) => setImageMeta((current) => ({ ...current, alt: event.target.value }))} placeholder="Describe the purpose of the image" />
-              <small>Leave empty if the image is purely decorative.</small>
+              <textarea rows={3} value={imageMeta.alt} onChange={(event) => setImageMeta((current) => ({ ...current, alt: event.target.value }))} placeholder={title || "Describe what the photo shows"} />
+              <small>Optional. Empty = the product title. Gallery images have their own alt field under each photo.</small>
             </label>
             <label>
               Image title

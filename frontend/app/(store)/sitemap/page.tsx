@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import { loadSeoIndex } from "@store/lib/backend";
 import { site } from "@store/lib/site";
 import { childSitemaps, sitemapData, type SitemapData, type SitemapUrl } from "@store/lib/sitemaps";
@@ -28,12 +29,14 @@ export default async function Page() {
   let data: SitemapData | null = null;
   try {
     data = sitemapData(await loadSeoIndex());
-  } catch {
-    // Backend down: a short notice instead of empty lists (refreshed with the next revalidation).
+  } catch (error) {
+    unstable_rethrow(error);
+    // Backend down or an answer of the wrong shape: a short notice instead of wrong lists.
     data = null;
   }
   const children = data ? childSitemaps(data) : [];
   const updated = children.reduce((a, c) => (c.lastmod > a ? c.lastmod : a), "");
+  const uncategorised = data ? data.products.filter((p) => !p.categoryId) : [];
 
   return (
     <>
@@ -75,7 +78,10 @@ export default async function Page() {
                     <li key={c.loc}>
                       <Link href={path(c)} prefetch={false}>
                         {c.name}
-                      </Link>
+                      </Link>{" "}
+                      <span className="sitemap-muted">
+                        ({c.productCount} {c.productCount === 1 ? "product" : "products"})
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -108,6 +114,22 @@ export default async function Page() {
                     </div>
                   );
                 })}
+                {uncategorised.length > 0 && (
+                  <div className="sitemap-subgroup">
+                    <h3>
+                      Other products <Count n={uncategorised.length} />
+                    </h3>
+                    <ul className="sitemap-list">
+                      {uncategorised.map((p) => (
+                        <li key={p.loc}>
+                          <Link href={path(p)} prefetch={false}>
+                            {p.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <div className="sitemap-group sitemap-xml">

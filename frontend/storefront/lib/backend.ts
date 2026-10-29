@@ -5,6 +5,7 @@ import { designCategoryId, setCatalog, upsertProducts, type Product } from "./ca
 import { toDesignProduct } from "./product-map";
 import { applyStoreSettings, type StoreSettings } from "./settings";
 import { pageToPolicy, type PageRow } from "./policies/html";
+import { isSeoIndex } from "./sitemaps";
 import type { PolicyDocument } from "./policies/types";
 
 /**
@@ -166,9 +167,16 @@ export type SeoIndex = {
  * never be published empty because of an outage (that tells Google every product is gone).
  */
 export async function loadSeoIndex(): Promise<SeoIndex> {
-  const index = await apiFetch<SeoIndex>(`/api/seo/sitemap`, { next: { revalidate: 3600, tags: ["seo", "products", "categories"] } });
-  if (!Array.isArray(index?.products) || !Array.isArray(index?.categories)) throw new Error("SEO_INDEX_INVALID");
-  return index;
+  // `v=2`: the response shape this storefront expects. A new key also means a cached answer from an older
+  // backend is never reused (the backend ignores the parameter).
+  const path = `/api/seo/sitemap?v=2`;
+  const index = await apiFetch<SeoIndex>(path, { next: { revalidate: 3600, tags: ["seo", "products", "categories"] } });
+  if (isSeoIndex(index)) return index;
+  // Wrong shape (e.g. an older backend still live during a deploy): ask once more, uncached, then give up
+  // so the sitemap answers 503 instead of publishing wrong data.
+  const fresh = await apiFetch<SeoIndex>(path, { cache: "no-store" });
+  if (isSeoIndex(fresh)) return fresh;
+  throw new Error("SEO_INDEX_SHAPE");
 }
 
 /** The backend's categories (GET /api/categories), as design category ids. */

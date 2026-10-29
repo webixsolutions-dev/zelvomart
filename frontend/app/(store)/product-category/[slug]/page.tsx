@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { categories, getCategoryBySlug, products, type CategoryId } from "@store/lib/catalog";
+import { categories, getCategoryBySlug, type CategoryId } from "@store/lib/catalog";
 import { CategoryArchive } from "@store/components/shop/ArchivePage";
 import { bannerOg, shareMeta } from "@store/lib/seo";
 import { loadStore } from "@store/lib/backend";
@@ -14,11 +14,9 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const c = getCategoryBySlug((await params).slug);
   if (!c) return {};
-  await loadStore();
-  // An empty listing is what Google files as a "soft 404": noindex until a product is published here.
-  const empty = !products.some((p) => p.category === c.id);
+  // Indexable even with no products yet: the page then shows a "coming soon" block, other categories and
+  // bestsellers instead of an empty grid (owner decision, 30 Oct 2026).
   return {
-    ...(empty ? { robots: { index: false, follow: true } } : {}),
     title: c.seoTitle,
     description: c.seoDescription,
     alternates: { canonical: `/product-category/${c.slug}/` },
