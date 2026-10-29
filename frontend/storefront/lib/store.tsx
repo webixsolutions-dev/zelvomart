@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { getProductById, type Product } from "./catalog";
+import { getProductById, type Product, type Variant } from "./catalog";
 import { site } from "./site";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
 import { getReplaySessionId, getReplayVisitorId, requestReplayFlush } from "@/lib/session-replay-client";
@@ -17,20 +17,107 @@ import { getReplaySessionId, getReplayVisitorId, requestReplayFlush } from "@/li
 
 /** sessionStorage: the order just placed, so the thank-you page renders it before the backend answers. */
 export const PLACED_ORDER_KEY = "zm_placed_order";
-export type CartLine = { key: string; id: string; variant?: string; qty: number; bundle?: number };
+/**
+ * One cart line. `qty` is always in pieces. A bundle line (`bundle` = the Buy 2 discount in percent) holds
+ * whole bundles only, so its `qty` is 2, 4, 6 … and the API receives `qty / 2` bundles of size 2.
+ * `variantId` is the variation's stable id; `variant` is its name, kept for display only.
+ */
+export type CartLine = { key: string; id: string; variantId?: string; variant?: string; qty: number; bundle?: number };
 
-/** Price per item for a cart line: the chosen variation's price, with any bundle discount applied. */
-export function unitPrice(p: Product, line?: Pick<CartLine, "bundle"> & { variant?: string }) {
-  const base = p.variants?.options.find((o) => o.name === line?.variant)?.price ?? p.price;
+/** Most pieces one cart line may hold (10 bundles = 20 pieces). The API checks the same number (backend validators.ts). */
+export const MAX_LINE_PIECES = 20;
+/** Pieces in one Buy 2 bundle. */
+export const BUNDLE_PIECES = 2;
+
+/** "1 bundle (2 pcs)", "3 bundles (6 pcs)". */
+export function bundleLabel(pieces: number) {
+  const bundles = Math.ceil(pieces / BUNDLE_PIECES);
+  return `${bundles} bundle${bundles === 1 ? "" : "s"} (${pieces} pcs)`;
+}
+
+/** The variation a line (or a selection) points at: by id when there is one, otherwise by name (older carts). */
+export function findVariant(p: Product, line?: { variantId?: string; variant?: string }): Variant | undefined {
+  const options = p.variants?.options ?? [];
+  if (line?.variantId) return options.find((o) => o.id === line.variantId);
+  if (line?.variant) return options.find((o) => o.name === line.variant);
+  return undefined;
+}
+
+export function lineKey(productId: string, option?: Pick<Variant, "id" | "name">, bundle?: number) {
+  const variantPart = option ? `::${option.id || option.name}` : "";
+  return productId + variantPart + (bundle ? "::bundle" : "");
+}
+
+/** Base price per piece: the chosen variation's price, else the product's. */
+function basePrice(p: Product, line?: { variantId?: string; variant?: string }) {
+  return findVariant(p, line)?.price ?? p.price;
+}
+
+/** Price per piece for display ("Rs 950 each"), with any bundle discount applied. */
+export function unitPrice(p: Product, line?: Pick<CartLine, "bundle" | "variantId" | "variant">) {
+  const base = basePrice(p, line);
   return line?.bundle ? Math.round(base * (1 - line.bundle / 100)) : base;
+}
+
+/** What a line costs. Same rounding as the server (bundleLineTotal): the discount is taken off the whole line, then rounded. */
+export function lineTotal(p: Product, line: Pick<CartLine, "bundle" | "variantId" | "variant" | "qty">) {
+  const full = basePrice(p, line) * line.qty;
+  return line.bundle ? Math.round(full * (1 - line.bundle / 100)) : full;
 }
 
 /** A cart line in the shape the backend expects (productId, variantId, quantity, bundleSize). */
 function backendLine(l: CartLine) {
   const p = getProductById(l.id);
-  const variantId = p?.variants?.options.find((o) => o.name === l.variant)?.id;
-  const bundleSize = l.bundle ? 2 : 1;
-  return { productId: l.id, variantId, quantity: bundleSize === 2 ? Math.max(1, Math.round(l.qty / 2)) : l.qty, bundleSize };
+  const variantId = (p && findVariant(p, l)?.id) || l.variantId;
+  if (l.bundle) return { productId: l.id, variantId, quantity: Math.max(1, Math.ceil(l.qty / BUNDLE_PIECES)), bundleSize: 2 as const };
+  return { productId: l.id, variantId, quantity: l.qty, bundleSize: 1 as const };
+}
+export { backendLine as cartLineForApi };
+
+/**
+ * Brings a stored or restored line up to the current rules: variant resolved to its id, bundle quantity in whole
+ * bundles (odd counts rounded up), at most MAX_LINE_PIECES, sold-out items taken out. Every change returns a note
+ * the customer sees before checkout — nothing is changed silently.
+ */
+function normalizeLine(l: CartLine): { line: CartLine | null; note?: string } {
+  const p = getProductById(l.id);
+  if (!p) return { line: l };
+  const option = findVariant(p, l);
+  const label = p.name + (option ? ` (${option.name})` : l.variant ? ` (${l.variant})` : "");
+  if (p.inStock === false || option?.soldOut) return { line: null, note: `${label} is sold out, so it was taken out of your cart.` };
+  let qty = Math.max(1, Math.floor(Number(l.qty) || 1));
+  const notes: string[] = [];
+  if (l.bundle && qty % BUNDLE_PIECES) {
+    qty += BUNDLE_PIECES - (qty % BUNDLE_PIECES);
+    notes.push(`${label} is sold in bundles of 2, so the quantity is now ${bundleLabel(qty)}.`);
+  }
+  if (qty > MAX_LINE_PIECES) {
+    qty = MAX_LINE_PIECES;
+    notes.push(`${label}: the most you can order is ${MAX_LINE_PIECES} pcs per item, so the quantity is now ${MAX_LINE_PIECES}.`);
+  }
+  const variantId = option?.id ?? l.variantId;
+  const variant = option?.name ?? l.variant;
+  const key = lineKey(l.id, option ?? (variantId || variant ? { id: variantId, name: variant || "" } : undefined), l.bundle);
+  return { line: { key, id: l.id, ...(variantId ? { variantId } : {}), ...(variant ? { variant } : {}), qty, ...(l.bundle ? { bundle: l.bundle } : {}) }, note: notes.join(" ") || undefined };
+}
+
+/** Normalizes every line and merges lines that now share a key. */
+function normalizeCart(lines: CartLine[]): { cart: CartLine[]; notes: string[] } {
+  const notes: string[] = [];
+  const out: CartLine[] = [];
+  for (const raw of Array.isArray(lines) ? lines : []) {
+    if (!raw || typeof raw.id !== "string") continue;
+    const { line, note } = normalizeLine(raw);
+    if (note) notes.push(note);
+    if (!line) continue;
+    const same = out.find((l) => l.key === line.key);
+    if (!same) out.push(line);
+    else if (same.qty + line.qty > MAX_LINE_PIECES) {
+      same.qty = MAX_LINE_PIECES;
+      notes.push(`The most you can order is ${MAX_LINE_PIECES} pcs per item, so a repeated item was reduced to ${MAX_LINE_PIECES}.`);
+    } else same.qty += line.qty;
+  }
+  return { cart: out, notes };
 }
 
 function parseJsonCookie(name: string) {
@@ -42,9 +129,10 @@ function parseJsonCookie(name: string) {
   }
 }
 
-function lineSku(l: CartLine) {
+/** The SKU sent to Meta/TikTok as content_id: the variation's SKU, else the product's. */
+export function lineSku(l: Pick<CartLine, "id" | "variantId" | "variant">) {
   const p = getProductById(l.id);
-  return p?.variants?.options.find((o) => o.name === l.variant)?.sku || p?.sku || l.id;
+  return (p && findVariant(p, l)?.sku) || p?.sku || l.id;
 }
 export type Order = {
   /** The order number (ZM-…). */
@@ -52,7 +140,8 @@ export type Order = {
   /** The private key the confirmation page needs (the backend order id). */
   key?: string;
   createdAt: string;
-  lines: (CartLine & { name: string; price: number; image: string })[];
+  /** `price` is per piece (for display); `lineTotal` is what the line costs, rounded like the server. */
+  lines: (CartLine & { name: string; price: number; lineTotal?: number; image: string })[];
   subtotal: number;
   shipping: number;
   /** Coupon discount taken off the subtotal (0 / absent when no coupon). */
@@ -64,6 +153,16 @@ export type Order = {
   customer: { name: string; phone: string; email?: string; city: string; address: string; notes?: string };
   payment: "cod";
 };
+
+/** Shown when checkout answers 429: never a raw error, always a way to finish the order on WhatsApp. */
+export const CHECKOUT_RATE_LIMIT_MESSAGE =
+  "Bohot zyada koshishen hui hain. 2 minute baad dobara try karein ya WhatsApp par order karein.";
+export class CheckoutRateLimited extends Error {
+  constructor() {
+    super(CHECKOUT_RATE_LIMIT_MESSAGE);
+    this.name = "CheckoutRateLimited";
+  }
+}
 
 /** A coupon the customer has applied; kept on the device so it follows them from cart to checkout. */
 export type AppliedCoupon = { code: string; percent?: number; amount?: number };
@@ -94,7 +193,14 @@ type Ctx = {
   payable: number;
   applyCoupon: (code: string) => Promise<{ ok: boolean; message: string }>;
   removeCoupon: () => void;
-  addToCart: (p: Product, opts?: { qty?: number; variant?: string; silent?: boolean; bundle?: number; setQuantity?: boolean }) => void;
+  /**
+   * Adds a product. `variantId` (or `variant` name for options without an id) picks the variation; without one the
+   * first in-stock variation is used. Sold-out items are not added. `qty` is in pieces. Returns false when nothing was added.
+   */
+  addToCart: (p: Product, opts?: { qty?: number; variantId?: string; variant?: string; silent?: boolean; bundle?: number; setQuantity?: boolean }) => boolean;
+  /** Changes about the cart the customer must see (rounded bundles, the 20 pcs limit, sold-out items taken out). */
+  cartNotes: string[];
+  dismissCartNotes: () => void;
   setQty: (key: string, qty: number) => void;
   removeLine: (key: string) => void;
   clearCart: () => void;
@@ -141,10 +247,18 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [cartNotes, setCartNotes] = useState<string[]>([]);
   const toastId = useRef(0);
+  const addNotes = useCallback((notes: string[]) => {
+    if (notes.length) setCartNotes((all) => [...new Set([...all, ...notes])].slice(-6));
+  }, []);
+  const dismissCartNotes = useCallback(() => setCartNotes([]), []);
 
   useEffect(() => {
-    setCart(read("zlv-cart-v2", []));
+    // Older carts kept the variant name and any bundle quantity; they are brought up to the current rules once, with a note.
+    const loaded = normalizeCart(read<CartLine[]>("zlv-cart-v2", []));
+    setCart(loaded.cart);
+    if (loaded.notes.length) setCartNotes(loaded.notes);
     setWishlist(read("zlv-wishlist-v2", []));
     setCoupon(read<AppliedCoupon | null>("zlv-coupon-v1", null));
     setReady(true);
@@ -179,16 +293,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       .then(async (r) => {
         const data = await r.json();
         if (!r.ok || controller.signal.aborted) return;
-        const lines: CartLine[] = (data.items || []).map(
+        const restored: CartLine[] = (data.items || []).map(
           (i: { productId: string; variantId?: string; quantity: number; bundleSize?: number; bundleDiscountPercent?: number }) => {
             const p = getProductById(i.productId);
-            const variant = p?.variants?.options.find((o) => o.id === i.variantId)?.name;
             const bundle = i.bundleSize === 2 ? Number(i.bundleDiscountPercent || p?.bundleDiscountPercent || 5) : undefined;
-            return { key: i.productId + (variant ? `::${variant}` : "") + (bundle ? "::bundle" : ""), id: i.productId, variant, qty: i.quantity * (i.bundleSize || 1), ...(bundle ? { bundle } : {}) };
+            const qty = Number(i.quantity) * (i.bundleSize === 2 ? BUNDLE_PIECES : 1);
+            return { key: "", id: i.productId, ...(i.variantId ? { variantId: i.variantId } : {}), qty, ...(bundle ? { bundle } : {}) };
           },
         );
+        const { cart: lines, notes } = normalizeCart(restored);
         setCart(lines);
         write("zlv-cart-v2", lines);
+        // The checkout page shows these notes before the order is placed.
+        if (notes.length) sessionStorage.setItem("zm_cart_notes", JSON.stringify(notes));
         const code = params.get("coupon");
         if (code) sessionStorage.setItem("zm_checkout_coupon", code);
         location.assign("/checkout/" + (code ? "?coupon=" + encodeURIComponent(code) : ""));
@@ -250,32 +367,67 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addToCart = useCallback<Ctx["addToCart"]>((p, opts = {}) => {
-    const qty = opts.qty ?? 1;
-    const key = p.id + (opts.variant ? `::${opts.variant}` : "") + (opts.bundle ? "::bundle" : "");
+    const options = p.variants?.options ?? [];
+    const option = opts.variantId || opts.variant ? findVariant(p, opts) : options.find((o) => !o.soldOut);
+    if (p.inStock === false || (options.length && (!option || option.soldOut))) {
+      notify({ title: "Sold out", body: p.name + (option ? ` (${option.name})` : ""), image: p.image });
+      return false;
+    }
+    const bundle = opts.bundle && p.bundleEnabled ? opts.bundle : undefined;
+    let qty = Math.max(1, Math.floor(opts.qty ?? (bundle ? BUNDLE_PIECES : 1)));
+    if (bundle && qty % BUNDLE_PIECES) qty += BUNDLE_PIECES - (qty % BUNDLE_PIECES);
+    const key = lineKey(p.id, option, bundle);
+    const current = cartRef.current.find((l) => l.key === key)?.qty ?? 0;
+    const wanted = opts.setQuantity ? qty : current + qty;
+    const next = Math.min(MAX_LINE_PIECES, wanted);
+    if (wanted > MAX_LINE_PIECES) addNotes([`The most you can order is ${MAX_LINE_PIECES} pcs per item. ${p.name} is at ${MAX_LINE_PIECES}.`]);
+    const added = next - (opts.setQuantity ? 0 : current);
     setCart((lines) => {
       const found = lines.find((l) => l.key === key);
-      if (found) return lines.map((l) => (l.key === key ? { ...l, qty: Math.min(99, opts.setQuantity ? qty : l.qty + qty) } : l));
-      return [...lines, { key, id: p.id, variant: opts.variant, qty, ...(opts.bundle ? { bundle: opts.bundle } : {}) }];
+      const q = Math.min(MAX_LINE_PIECES, opts.setQuantity ? qty : (found?.qty ?? 0) + qty);
+      if (found) return lines.map((l) => (l.key === key ? { ...l, qty: q } : l));
+      return [...lines, { key, id: p.id, ...(option?.id ? { variantId: option.id } : {}), ...(option ? { variant: option.name } : {}), qty: q, ...(bundle ? { bundle } : {}) }];
     });
     if (!opts.silent) setCartOpen(true);
-    const option = p.variants?.options.find((o) => o.name === opts.variant);
-    const price = unitPrice(p, { bundle: opts.bundle, variant: opts.variant });
+    const pieces = Math.max(added, 0) || next;
+    const sku = option?.sku || p.sku;
+    const value = lineTotal(p, { variantId: option?.id, variant: option?.name, bundle, qty: pieces });
     void trackStoreEvent("AddToCart", {
-      content_ids: [option?.sku || p.sku],
+      content_ids: [sku],
       content_type: "product",
-      contents: [{ id: option?.sku || p.sku, content_id: option?.sku || p.sku, content_name: p.name, quantity: qty, item_price: price }],
-      value: price * qty,
+      contents: [{ id: sku, content_id: sku, content_name: p.name, quantity: pieces, item_price: unitPrice(p, { variantId: option?.id, variant: option?.name, bundle }) }],
+      value,
       currency: "PKR",
     }).catch(() => undefined);
-  }, []);
+    return true;
+  }, [addNotes, notify]);
 
   const setQty = useCallback((key: string, qty: number) => {
-    setCart((lines) =>
-      qty <= 0 ? lines.filter((l) => l.key !== key) : lines.map((l) => (l.key === key ? { ...l, qty: Math.min(99, qty) } : l)),
-    );
-  }, []);
+    const line = cartRef.current.find((l) => l.key === key);
+    if (!line) return;
+    if (qty <= 0) return setCart((lines) => lines.filter((l) => l.key !== key));
+    let next = Math.floor(qty);
+    // Bundle lines move one whole bundle at a time.
+    if (line.bundle && next % BUNDLE_PIECES) next += BUNDLE_PIECES - (next % BUNDLE_PIECES);
+    if (next > MAX_LINE_PIECES) {
+      next = MAX_LINE_PIECES;
+      addNotes([`The most you can order is ${MAX_LINE_PIECES} pcs per item.`]);
+    }
+    setCart((lines) => lines.map((l) => (l.key === key ? { ...l, qty: next } : l)));
+  }, [addNotes]);
 
   const removeLine = useCallback((key: string) => setCart((lines) => lines.filter((l) => l.key !== key)), []);
+
+  // Notes saved by the restore link (it redirects to checkout before they can be shown).
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("zm_cart_notes");
+      if (saved) {
+        sessionStorage.removeItem("zm_cart_notes");
+        addNotes(JSON.parse(saved));
+      }
+    } catch {}
+  }, [addNotes]);
   const clearCart = useCallback(() => setCart([]), []);
 
   const toggleWish = useCallback(
@@ -299,7 +451,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     () =>
       cart.reduce((s, l) => {
         const p = getProductById(l.id);
-        return s + (p ? unitPrice(p, l) : 0) * l.qty;
+        return s + (p ? lineTotal(p, l) : 0);
       }, 0),
     [cart],
   );
@@ -311,14 +463,24 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const lines = cart
         .map((l) => {
           const p = getProductById(l.id);
-          return p ? { ...l, name: p.name, price: unitPrice(p, l), image: p.image } : null;
+          return p ? { ...l, name: p.name, price: unitPrice(p, l), lineTotal: lineTotal(p, l), image: p.image } : null;
         })
         .filter((l): l is NonNullable<typeof l> => !!l);
       requestReplayFlush();
+      // A retry of the same cart reuses its key (no double order); a changed cart gets a new key, so the
+      // server never answers with an earlier order for different items.
+      const apiCart = cart.map(backendLine);
+      const signature = JSON.stringify([apiCart, coupon?.code || ""]);
       let idempotencyKey = "";
       try {
-        idempotencyKey = sessionStorage.getItem("zm_checkout_idempotency") || crypto.randomUUID();
-        sessionStorage.setItem("zm_checkout_idempotency", idempotencyKey);
+        let saved: { key?: string; cart?: string } | null = null;
+        try {
+          saved = JSON.parse(sessionStorage.getItem("zm_checkout_idempotency") || "null");
+        } catch {
+          /* older format (a bare key): start a new one */
+        }
+        idempotencyKey = saved?.cart === signature && saved.key ? saved.key : crypto.randomUUID();
+        sessionStorage.setItem("zm_checkout_idempotency", JSON.stringify({ key: idempotencyKey, cart: signature }));
       } catch {
         idempotencyKey = crypto.randomUUID();
       }
@@ -338,7 +500,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
           terms: opts.terms,
           paymentMethod: "COD",
           honeypot: "",
-          cart: cart.map(backendLine),
+          cart: apiCart,
           source: { firstTouch: parseJsonCookie("zm_first_touch"), lastTouch: parseJsonCookie("zm_last_touch"), ...(parseJsonCookie("zm_last_touch") || {}) },
           fbp: readCookie("_fbp"),
           fbc: readCookie("_fbc"),
@@ -349,9 +511,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         }),
       });
       const data = await response.json().catch(() => ({}));
+      if (response.status === 429) throw new CheckoutRateLimited();
       if (!response.ok) throw new Error(String(data.message || data.error || "Could not place order").replace(/_/g, " "));
       requestReplayFlush();
-      const sub = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
+      const sub = lines.reduce((sum, l) => sum + l.lineTotal, 0);
       const order: Order = {
         id: String(data.orderNumber),
         key: String(data.id),
@@ -381,6 +544,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCart([]);
     write("zlv-cart-v2", []);
     setCoupon(null);
+    setCartNotes([]);
     try {
       sessionStorage.removeItem("zm_checkout_idempotency");
       sessionStorage.removeItem("zm_checkout_coupon");
@@ -413,6 +577,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     setCartOpen,
     toasts,
     notify,
+    cartNotes,
+    dismissCartNotes,
   };
 
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;

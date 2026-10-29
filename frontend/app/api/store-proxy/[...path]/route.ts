@@ -85,7 +85,11 @@ async function forward(
       const userAgent = request.headers.get("user-agent");
       if (userAgent) headers.set("user-agent", userAgent);
       const proxySecret = process.env.STORE_PROXY_SECRET || process.env.REVALIDATION_SECRET;
-      const realIp = request.headers.get("x-real-ip");
+      // Vercel sets x-real-ip to the shopper's IP; x-forwarded-for's first entry is the same value elsewhere.
+      const realIp =
+        request.headers.get("x-real-ip") ||
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        "";
       if (realIp && proxySecret) {
         headers.set("x-zm-client-ip", realIp);
         headers.set("x-zm-proxy-secret", proxySecret);

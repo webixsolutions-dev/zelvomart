@@ -1,7 +1,7 @@
 import type { Express, Request } from "express";
 import { randomBytes } from "node:crypto";
 import { Resend } from "resend";
-import { emailIdentity } from "./lib/email-delivery";
+import { emailIdentity, offerBcc } from "./lib/email-delivery";
 import { prisma } from "./lib/db";
 import { requireAuth, type AuthedRequest } from "./lib/auth";
 import { consumeRateLimit, requestIp } from "./lib/rate-limit";
@@ -277,6 +277,8 @@ export function registerRecovery(app: Express, findSession: (req: Request) => Pr
           {
             ...emailIdentity("offers"),
             to: cart.email,
+            // Hidden copy for the team (OFFERS_COPY_TO); the customer's subject stays as it is.
+            ...offerBcc(),
             subject: fill(templates.subject, values),
             text:
               fill(templates.email, values) +

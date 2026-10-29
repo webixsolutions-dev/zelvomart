@@ -1,4 +1,5 @@
 import { orderExtras } from "../../admin-order-edit";
+import { tiktokJobsEnabled } from "../../lib/tiktok";
 import { trackingHealth } from "../../lib/tracking-health";
 import { Prisma, OrderStatus } from "../../generated/prisma/client";
 import { prisma } from "../../lib/db";
@@ -82,11 +83,16 @@ async function enqueueOrderStatusTracking(orderId: string, status: string) {
   if (!order || order.test || order.staffCreated || order.blocklistedAtOrder) return;
   const eventName = status === "CONFIRMED" ? "OrderConfirmed" : "OrderDelivered";
   const jobs = await Promise.all(
-    ["meta-purchase", "tiktok-purchase"].map((name) =>
+    (await purchaseJobNames()).map((name) =>
       prisma.job.create({ data: { name, orderId, payload: { orderId, eventName } } }),
     ),
   );
   await Promise.allSettled(jobs.map((job) => dispatchJobRow(job.id)));
+}
+
+/** Meta always; TikTok only while its Events API is on and a pixel ID is set. */
+async function purchaseJobNames() {
+  return ["meta-purchase", ...((await tiktokJobsEnabled()) ? ["tiktok-purchase"] : [])];
 }
 
 const ORDER_DELETE_ROLES = new Set(["OWNER", "MANAGER"]);
@@ -410,7 +416,7 @@ export function registerAdminOrdersRoutes(app: Express) {
     if (!order) return res.status(404).json({ error: "NOT_FOUND" });
     if (order.test || order.staffCreated || order.blocklistedAtOrder)
       return res.status(400).json({ error: "Tracking is excluded for this order." });
-    for (const name of ["meta-purchase", "tiktok-purchase"]) {
+    for (const name of await purchaseJobNames()) {
       const existing = await prisma.job.findFirst({
         where: { orderId: id, name, status: { in: ["QUEUED", "RUNNING"] } },
       });

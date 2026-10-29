@@ -33,8 +33,9 @@ export function WishlistView() {
           type="button"
           className="btn sm"
           onClick={() => {
-            items.forEach((p) => addToCart(p, { variant: p.variants?.options[0].name, silent: true }));
-            notify({ title: "All saved items added to cart" });
+            // addToCart picks the first in-stock variation and skips sold-out items.
+            const added = items.filter((p) => addToCart(p, { silent: true })).length;
+            notify({ title: added === items.length ? "All saved items added to cart" : `${added} of ${items.length} saved items added (the rest are sold out)` });
           }}
         >
           Add all to cart

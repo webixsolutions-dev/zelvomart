@@ -6,7 +6,8 @@ import { useEffect } from "react";
 import { ArrowRight, ShieldCheck, ShoppingBag, Trash2, X } from "lucide-react";
 import { getProductById, products } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
-import { unitPrice, useShop } from "@store/lib/store";
+import { BUNDLE_PIECES, bundleLabel, lineTotal, useShop } from "@store/lib/store";
+import { CartNotes } from "@store/components/shop/CartNotes";
 import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { QtyStepper } from "@store/components/shop/QtyStepper";
 
@@ -21,7 +22,8 @@ export function CartDrawer() {
   }, [cartOpen, setCartOpen]);
 
   const inCart = new Set(cart.map((l) => l.id));
-  const upsell = products.filter((p) => !inCart.has(p.id) && p.price <= 2000).slice(0, 3);
+  const buyable = (p: (typeof products)[number]) => p.inStock !== false && (!p.variants?.options.length || p.variants.options.some((o) => !o.soldOut));
+  const upsell = products.filter((p) => !inCart.has(p.id) && p.price <= 2000 && buyable(p)).slice(0, 3);
 
   return (
     <>
@@ -51,6 +53,7 @@ export function CartDrawer() {
           <>
             <div className="drawer-body">
               <FreeShippingMeter subtotal={subtotal} />
+              <CartNotes />
               <ul className="mini-lines">
                 {cart.map((l) => {
                   const p = getProductById(l.id);
@@ -65,10 +68,10 @@ export function CartDrawer() {
                           {p.name}
                         </Link>
                         {l.variant && <small>{l.variant}</small>}
-                    {l.bundle && <small>Bundle · {l.bundle}% off</small>}
+                        {l.bundle && <small>{bundleLabel(l.qty)} · {l.bundle}% off</small>}
                         <div className="mini-row">
-                          <QtyStepper size="sm" value={l.qty} onChange={(n) => setQty(l.key, n)} />
-                          <strong>{money(unitPrice(p, l) * l.qty)}</strong>
+                          <QtyStepper size="sm" value={l.qty} step={l.bundle ? BUNDLE_PIECES : 1} label={l.bundle ? "by one bundle" : "quantity"} onChange={(n) => setQty(l.key, n)} />
+                          <strong>{money(lineTotal(p, l))}</strong>
                         </div>
                       </div>
                       <button className="icon-btn subtle" type="button" aria-label={`Remove ${p.name}`} onClick={() => removeLine(l.key)}>

@@ -46,6 +46,8 @@ export type Variant = {
   sku?: string;
   /** Variant price when it differs from the product price. */
   price?: number;
+  /** Regular price of the variant when it is on sale (shown struck through). */
+  compare?: number;
 };
 
 export type Product = {
@@ -76,6 +78,8 @@ export type Product = {
   bundleEnabled?: boolean;
   /** Discount on the Buy 2 bundle, in percent. */
   bundleDiscountPercent?: number;
+  /** This product's own text for a product tab (Admin → Products → Product tabs), overriding the store-wide tab. */
+  tabOverrides?: Record<string, { override?: boolean; content?: string }>;
   keywords: string[];
   /** Omitted products are treated as in stock. */
   inStock?: boolean;

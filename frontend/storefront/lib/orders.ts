@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { trackStoreEvent } from "@/lib/client-tracking";
 import { getReplaySessionId, getReplayVisitorId } from "@/lib/session-replay-client";
 import { getProductById, type Product } from "./catalog";
-import { PLACED_ORDER_KEY, unitPrice, useShop, type CartLine, type Order } from "./store";
+import { PLACED_ORDER_KEY, cartLineForApi, lineSku, unitPrice, useShop, type CartLine, type Order } from "./store";
 
 /**
  * Order and event hooks for the design's pages. They keep the previous storefront's behaviour:
@@ -156,7 +156,7 @@ function fireSavedPurchase(o: PlacedOrder) {
     id: o.key || o.id,
     orderNumber: o.id,
     total: Number(o.total),
-    items: o.lines.map((i) => ({ sku: i.variant || i.id, title: i.name, quantity: i.qty, unitPrice: Number(i.price) })),
+    items: o.lines.map((i) => ({ sku: lineSku(i), title: i.name, quantity: i.qty, unitPrice: Number(i.price) })),
     customer: o.customer,
   });
 }
@@ -203,15 +203,17 @@ export function useViewContent(p: Product | undefined, variantSku?: string | nul
   const sent = useRef<string | null>(null);
   useEffect(() => {
     if (!p || !ready) return;
-    const sku = p.variants?.options.find((option) => option.sku === variantSku)?.sku || p.sku;
+    const option = p.variants?.options.find((o) => o.sku === variantSku);
+    const sku = option?.sku || p.sku;
+    const price = option?.price ?? p.price;
     const key = `${p.id}:${sku}`;
     if (sent.current === key) return;
     sent.current = key;
     trackStoreEvent("ViewContent", {
       content_ids: [sku],
       content_type: "product",
-      contents: [{ id: sku, content_id: sku, content_name: p.name, quantity: 1, item_price: p.price }],
-      value: p.price,
+      contents: [{ id: sku, content_id: sku, content_name: p.name, quantity: 1, item_price: price }],
+      value: price,
       currency: "PKR",
     }).catch(() => undefined);
   }, [p, variantSku, ready]);
@@ -219,12 +221,8 @@ export function useViewContent(p: Product | undefined, variantSku?: string | nul
 
 type CheckoutDraft = { name: string; phone: string; email: string; city: string; address: string };
 
-const backendCart = (cart: CartLine[]) =>
-  cart.map((l) => {
-    const p = getProductById(l.id);
-    const variantId = p?.variants?.options.find((o) => o.name === l.variant)?.id;
-    return { productId: l.id, variantId, quantity: l.bundle ? Math.max(1, Math.round(l.qty / 2)) : l.qty, bundleSize: l.bundle ? 2 : 1 };
-  });
+/** Same contract as the order: bundle lines go as whole bundles (pieces / 2, bundleSize 2). */
+const backendCart = (cart: CartLine[]) => cart.map(cartLineForApi);
 
 function parseJsonCookie(name: string) {
   try {
@@ -247,8 +245,7 @@ export function useCheckoutTracking(form: CheckoutDraft) {
     tracked.current = true;
     const contents = cart.map((l) => {
       const p = getProductById(l.id);
-      const sku = p?.variants?.options.find((o) => o.name === l.variant)?.sku || p?.sku || l.id;
-      return { id: sku, quantity: l.qty, item_price: p ? unitPrice(p, l) : 0 };
+      return { id: lineSku(l), quantity: l.qty, item_price: p ? unitPrice(p, l) : 0 };
     });
     trackStoreEvent("InitiateCheckout", {
       content_ids: contents.map((c) => c.id),

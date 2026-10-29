@@ -15,7 +15,7 @@ import { catalogFeed } from "../lib/catalog-feed";
 import { Prisma } from "../generated/prisma/client";
 import { prisma } from "../lib/db";
 import { createOrder } from "../lib/order";
-import { checkoutSchema } from "../lib/validators";
+import { MAX_LINE_PIECES, checkoutSchema } from "../lib/validators";
 import { normalizePakistanPhone } from "../lib/phone";
 import { getSetting, getSettings, setSetting } from "../lib/settings";
 import { postexTrackingUrl } from "../lib/postex";
@@ -23,7 +23,7 @@ import { invalidateFrontendCache } from "../lib/cache-invalidation";
 import { bundleLineTotal, priceSummary, variantPriceSummary } from "../lib/pricing";
 import { sendContactTeamEmail } from "../lib/email";
 import { dispatchJobRow } from "../lib/jobs";
-import { requestIp } from "../lib/rate-limit";
+import { STORE_LIMITS, checkoutRateRules, requestIp } from "../lib/rate-limit";
 import { processJobRow } from "../lib/job-processor";
 import { sendDailySummary } from "../lib/daily-summary";
 import { waitUntil } from "@vercel/functions";
@@ -31,7 +31,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
 import {
   allowRequest,
-  allowRequests,
+  allowRules,
   jsonProduct,
   jsonProductSummary,
   productInclude,
@@ -257,7 +257,11 @@ export function registerPublicRoutes(app: Express) {
   });
 
   app.get("/api/products", async (req, res) => {
-    if (String(req.query.search || "").trim() && !(await allowRequest(req, res, "search", 60, 60 * 1000))) return;
+    if (
+      String(req.query.search || "").trim() &&
+      !(await allowRequest(req, res, "search", STORE_LIMITS.searchPerIp.limit, STORE_LIMITS.searchPerIp.windowMs))
+    )
+      return;
     const rawPage = Math.floor(Number(req.query.page)),
       rawLimit = Math.floor(Number(req.query.limit));
     const page = Number.isFinite(rawPage) ? Math.max(1, rawPage) : 1,
@@ -376,15 +380,9 @@ export function registerPublicRoutes(app: Express) {
     const rawPhone = String(req.body?.phone || "")
       .replace(/\D/g, "")
       .slice(-10);
-    if (rawPhone) {
-      if (
-        !(await allowRequests(req, res, [
-          { namespace: "checkout-ip", limit: 12, windowMs: 15 * 60 * 1000 },
-          { namespace: "checkout-phone", limit: 6, windowMs: 15 * 60 * 1000, discriminator: rawPhone },
-        ]))
-      )
-        return;
-    } else if (!(await allowRequest(req, res, "checkout-ip", 12, 15 * 60 * 1000))) return;
+    // Generous per IP (many shoppers share one mobile-network IP); 6 orders per phone number on any IP.
+    const [ipRule, phoneRule] = checkoutRateRules(requestIp(req), rawPhone);
+    if (!(await allowRules(res, rawPhone ? [ipRule, phoneRule] : [ipRule]))) return;
     const parsed = checkoutSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "VALIDATION_ERROR", issues: parsed.error.flatten() });
     try {
@@ -483,7 +481,8 @@ export function registerPublicRoutes(app: Express) {
     res.json(await getSetting("store.delivery", {}));
   });
   app.post("/api/checkout/coupon", async (req, res) => {
-    if (!(await allowRequest(req, res, "coupon", 20, 60000))) return;
+    if (!(await allowRequest(req, res, "coupon", STORE_LIMITS.couponPerIp.limit, STORE_LIMITS.couponPerIp.windowMs)))
+      return;
     try {
       const cart = Array.isArray(req.body.cart) ? req.body.cart : [];
       if (!cart.length || cart.length > 50) throw new Error("Your cart is empty.");
@@ -494,7 +493,8 @@ export function registerPublicRoutes(app: Express) {
       const discount = Number(await getSetting("store.bundleDefaultDiscountPercent", 5));
       let subtotal = 0;
       for (const item of cart) {
-        if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20)
+        const pieces = Number(item.quantity) * (item.bundleSize === 2 ? 2 : 1);
+        if (!Number.isInteger(item.quantity) || item.quantity < 1 || pieces > MAX_LINE_PIECES)
           throw new Error("Invalid quantity.");
         const p = products.find((p) => p.id === item.productId);
         if (!p) throw new Error("Product unavailable.");

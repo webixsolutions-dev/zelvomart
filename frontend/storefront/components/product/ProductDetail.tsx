@@ -9,7 +9,7 @@ import { Check, ChevronDown, Heart, PackageCheck, ShoppingBag, Truck } from "luc
 import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/catalog";
 import { discountPct, money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
-import { useShop } from "@store/lib/store";
+import { BUNDLE_PIECES, MAX_LINE_PIECES, bundleLabel, useShop } from "@store/lib/store";
 import { useViewContent } from "@store/lib/orders";
 import { deliverBy, shortDate } from "@store/lib/delivery";
 import { resolveProductTabs } from "@store/lib/productTabs";
@@ -23,6 +23,9 @@ import { ReviewCard } from "./ReviewCard";
 
 // Below the fold: its code (filters, photo upload, review form) is a separate chunk. Still rendered on the server.
 const ProductReviews = dynamic(() => import("./ProductReviews").then((m) => m.ProductReviews));
+
+/** A variation is identified by its id (names can repeat); options without an id fall back to the name. */
+const optionKey = (o: Variant) => o.id || o.name;
 
 function isSize(label: string, kind?: string) {
   return kind ? kind === "size" : /size/i.test(label);
@@ -81,9 +84,11 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [qty, setQtyState] = useState(1);
   const [ordering, setOrdering] = useState(false);
   const [bundle, setBundle] = useState<1 | 2>(1);
-  const [variant, setVariant] = useState<string | undefined>(() =>
-    (options.find((o) => o.sku === variantSku && !o.soldOut) || options.find((o) => !o.soldOut))?.name,
-  );
+  const [variantKey, setVariant] = useState<string | undefined>(() => {
+    const first = options.find((o) => o.sku === variantSku && !o.soldOut) || options.find((o) => !o.soldOut);
+    return first ? optionKey(first) : undefined;
+  });
+  const [limitNote, setLimitNote] = useState("");
   const [tab, setTab] = useState(tabs[0]?.id ?? "description");
   const [openRows, setOpenRows] = useState<string[]>(["description"]);
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
@@ -97,30 +102,43 @@ export function ProductDetail({ slug }: { slug: string }) {
   useEffect(() => {
     if (!variantSku) return;
     const match = options.find((option) => option.sku === variantSku && !option.soldOut);
-    if (match) { setVariant(match.name); setGalleryIndex(0); }
+    if (match) { setVariant(optionKey(match)); setGalleryIndex(0); }
   }, [variantSku, p.id]);
 
   const wished = ready && isWished(p.id);
-  const pct = discountPct(p.price, p.compare);
-  const inStock = p.inStock !== false;
+  const selected: Variant | undefined = options.find((o) => optionKey(o) === variantKey);
+  const variant = selected?.name;
+  // Every price on this page comes from the selected variation (else the product): main price, bundle offer,
+  // total, sticky bar and WhatsApp text. The cart and the server use the same numbers.
+  const selectedPrice = selected?.price ?? p.price;
+  const selectedCompare = selected?.compare ?? (selected?.price == null ? p.compare : undefined);
+  const pct = discountPct(selectedPrice, selectedCompare);
+  const inStock = p.inStock !== false && !selected?.soldOut && (!options.length || !!selected);
   const bundleOn = !!p.bundleEnabled && !!p.bundleDiscountPercent;
-  const bundlePct = bundleOn && bundle === 2 && qty >= 2 ? p.bundleDiscountPercent! : 0;
-  const unit = bundlePct ? Math.round(p.price * (1 - bundlePct / 100)) : p.price;
-  const total = unit * qty;
-  const twoPrice = bundleOn ? Math.round(p.price * (1 - p.bundleDiscountPercent! / 100)) * 2 : 0;
-  const selected: Variant | undefined = options.find((o) => o.name === variant);
+  const bundlePct = bundleOn && bundle === 2 ? p.bundleDiscountPercent! : 0;
+  // Same rounding as the server (bundleLineTotal): the discount comes off the whole line, then it is rounded.
+  const total = bundlePct ? Math.round(selectedPrice * qty * (1 - bundlePct / 100)) : selectedPrice * qty;
+  const twoPrice = bundleOn ? Math.round(selectedPrice * BUNDLE_PIECES * (1 - p.bundleDiscountPercent! / 100)) : 0;
 
   const setQty = (n: number) => {
-    setQtyState(n);
-    if (bundle === 2 && n < 2) setBundle(1);
+    let next = Math.max(1, Math.floor(n));
+    // In Buy 2 the quantity moves one bundle (2 pcs) at a time.
+    if (bundle === 2 && next % BUNDLE_PIECES) next += BUNDLE_PIECES - (next % BUNDLE_PIECES);
+    if (next > MAX_LINE_PIECES) {
+      setLimitNote(`The most you can order is ${MAX_LINE_PIECES} pcs per item${bundle === 2 ? ` (${MAX_LINE_PIECES / BUNDLE_PIECES} bundles)` : ""}. For more, order on WhatsApp.`);
+      next = MAX_LINE_PIECES;
+    } else setLimitNote("");
+    setQtyState(next);
   };
   const pickBundle = (b: 1 | 2) => {
     setBundle(b);
-    setQtyState(b);
+    setQtyState(b === 2 ? BUNDLE_PIECES : 1);
+    setLimitNote("");
   };
 
-  const cartOpts = { qty, variant, ...(bundlePct ? { bundle: bundlePct } : {}) };
-  const waText = `Hi Zelvomart! I'd like to order:\n• ${p.name}${variant ? ` (${variant})` : ""} × ${qty}\nTotal: ${money(total)}\nLink: ${site.url}/product/${p.slug}/`;
+  const cartOpts = { qty, variantId: selected?.id, variant, ...(bundlePct ? { bundle: bundlePct } : {}) };
+  const qtyText = bundlePct ? bundleLabel(qty) : String(qty);
+  const waText = `Hi Zelvomart! I'd like to order:\n• ${p.name}${variant ? ` (${variant})` : ""} × ${qtyText}\nTotal: ${money(total)}\nLink: ${site.url}/product/${p.slug}/`;
   const toggleRow = (id: string) => setOpenRows((r) => (r.includes(id) ? r.filter((x) => x !== id) : [...r, id]));
   const goReviews = () => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth", block: "start" });
   const gallery = selected?.images?.length
@@ -253,8 +271,8 @@ export function ProductDetail({ slug }: { slug: string }) {
               <span>{summary.count ? `${summary.count} review${summary.count === 1 ? "" : "s"}` : "Write the first review"}</span>
             </a>
             <h1>{p.name}</h1>
-            <Price price={p.price} compare={p.compare} size="lg" />
-            {pct > 0 && <p className="you-save">You save {money(p.compare! - p.price)} on the regular price</p>}
+            <Price price={selectedPrice} compare={selectedCompare} size="lg" />
+            {pct > 0 && <p className="you-save">You save {money(selectedCompare! - selectedPrice)} on the regular price</p>}
 
             <hr className="pd-divider" />
             <p className="pd-short">{p.tagline}</p>
@@ -275,11 +293,19 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {imageSwatches ? (
                   <div className="pd-swatches">
                     {options.map((o) => (
-                      <button key={o.name} type="button" className={variant === o.name ? "active" : ""} aria-pressed={variant === o.name} onClick={() => { setVariant(o.name); setGalleryIndex(0); }}>
+                      <button
+                        key={optionKey(o)}
+                        type="button"
+                        className={`${variantKey === optionKey(o) ? "active" : ""} ${o.soldOut ? "sold-out" : ""}`}
+                        aria-pressed={variantKey === optionKey(o)}
+                        disabled={o.soldOut}
+                        aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
+                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); }}
+                      >
                         <span className="pd-swatch-img">
                           <Image src={o.imageUrl || o.images?.[0] || p.image} alt="" width={64} height={64} unoptimized />
                         </span>
-                        <small>{o.name}</small>
+                        <small>{o.name}{o.soldOut ? " · Sold out" : ""}</small>
                       </button>
                     ))}
                   </div>
@@ -287,13 +313,13 @@ export function ProductDetail({ slug }: { slug: string }) {
                   <div className="pd-sizes">
                     {options.map((o) => (
                       <button
-                        key={o.name}
+                        key={optionKey(o)}
                         type="button"
-                        className={`${variant === o.name ? "active" : ""} ${o.soldOut ? "sold-out" : ""}`}
-                        aria-pressed={variant === o.name}
+                        className={`${variantKey === optionKey(o) ? "active" : ""} ${o.soldOut ? "sold-out" : ""}`}
+                        aria-pressed={variantKey === optionKey(o)}
                         disabled={o.soldOut}
                         aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
-                        onClick={() => { setVariant(o.name); setGalleryIndex(0); }}
+                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); }}
                       >
                         {o.name}
                       </button>
@@ -302,7 +328,15 @@ export function ProductDetail({ slug }: { slug: string }) {
                 ) : (
                   <div className="variant-options">
                     {options.map((o) => (
-                      <button key={o.name} type="button" className={variant === o.name ? "active" : ""} aria-pressed={variant === o.name} disabled={o.soldOut} onClick={() => { setVariant(o.name); setGalleryIndex(0); }}>
+                      <button
+                        key={optionKey(o)}
+                        type="button"
+                        className={`${variantKey === optionKey(o) ? "active" : ""} ${o.soldOut ? "sold-out" : ""}`}
+                        aria-pressed={variantKey === optionKey(o)}
+                        disabled={o.soldOut}
+                        aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
+                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); }}
+                      >
                         <span style={{ background: o.swatch }} />
                         {o.name}
                       </button>
@@ -322,14 +356,14 @@ export function ProductDetail({ slug }: { slug: string }) {
                       <strong>Buy 1</strong>
                       <small>Standard price</small>
                     </span>
-                    <span className="pd-bundle-price">{money(p.price)}</span>
+                    <span className="pd-bundle-price">{money(selectedPrice)}</span>
                   </button>
                   <button type="button" role="radio" aria-checked={bundle === 2} className={bundle === 2 ? "active" : ""} onClick={() => pickBundle(2)}>
                     <span className="pd-best">Best value</span>
                     <span className="pd-radio" aria-hidden="true" />
                     <span className="pd-bundle-copy">
                       <strong>Buy 2</strong>
-                      <span className="pd-save-pill">Save {money(p.price * 2 - twoPrice)}</span>
+                      <span className="pd-save-pill">Save {money(selectedPrice * BUNDLE_PIECES - twoPrice)}</span>
                       <small>
                         <Check size={13} strokeWidth={3} /> Great for gifting
                       </small>
@@ -339,7 +373,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                     </span>
                     <span className="pd-bundle-price">
                       {money(twoPrice)}
-                      <s>{money(p.price * 2)}</s>
+                      <s>{money(selectedPrice * BUNDLE_PIECES)}</s>
                     </span>
                   </button>
                 </div>
@@ -348,24 +382,25 @@ export function ProductDetail({ slug }: { slug: string }) {
 
             <div className="pd-buy">
               <div className="pd-buy-row">
-                <QtyStepper value={qty} onChange={setQty} />
+                <QtyStepper value={qty} step={bundle === 2 ? BUNDLE_PIECES : 1} label={bundle === 2 ? "by one bundle" : "quantity"} onChange={setQty} />
                 <span className={`pd-stock ${inStock ? "" : "out"}`}>
                   <span className="dot" aria-hidden="true" />
                   {inStock ? "In stock · Ships within 24 hours" : "Out of stock"}
                 </span>
                 <span className="pd-total">
-                  <small>Total</small>
+                  <small>Total{bundlePct ? ` · ${bundleLabel(qty)}` : ""}</small>
                   <strong>{money(total)}</strong>
                 </span>
               </div>
+              {limitNote && <p className="pd-limit-note" role="alert">{limitNote}</p>}
               <button
                 className="btn block lg pd-order"
                 type="button"
                 disabled={!inStock || !ready || ordering}
                 onClick={() => {
                   if (ordering) return;
+                  if (!addToCart(p, { ...cartOpts, silent: true, setQuantity: true })) return;
                   setOrdering(true);
-                  addToCart(p, { ...cartOpts, silent: true, setQuantity: true });
                   router.push("/checkout/");
                 }}
               >
@@ -462,49 +497,19 @@ export function ProductDetail({ slug }: { slug: string }) {
                         </div>
                       </div>
                     )}
-                    {t.id === "why" && (
-                      <div className="pd-why">
-                        {t.points.map((pt) => (
-                          <div key={pt.title}>
-                            <Check size={18} strokeWidth={3} />
-                            <span>
-                              <strong>{pt.title}</strong>
-                              <p>{pt.text}</p>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {t.id === "shipping" && (
+                    {"html" in t && (
                       <>
-                        <ol className="pd-ship-steps">
-                          {t.steps.map((s, i) => (
-                            <li key={s.title}>
-                              <small>{String(i + 1).padStart(2, "0")}</small>
-                              <strong>{s.title}</strong>
-                              <p>{s.text}</p>
-                            </li>
-                          ))}
-                        </ol>
-                        <p className="pd-ship-note">
-                          {t.note}{" "}
-                          <Link href="/shipping-policy/" className="link-cta">
-                            Shipping policy →
-                          </Link>
-                        </p>
+                        <div className="pd-description-content pd-tab-content" dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(t.html) }} />
+                        {t.id === "shippingProcess" && (
+                          <p className="pd-ship-note">
+                            <Link href="/shipping-policy/" className="link-cta">
+                              Shipping policy →
+                            </Link>
+                          </p>
+                        )}
                       </>
                     )}
-                    {t.id === "faq" && (
-                      <dl className="pd-faq">
-                        {t.items.map((f) => (
-                          <div key={f.q}>
-                            <dt>{f.q}</dt>
-                            <dd>{f.a}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                    {t.id === "info" && (
+                    {"rows" in t && (
                       <table className="spec-table">
                         <tbody>
                           {t.rows.map(([k, v]) => (
@@ -548,8 +553,8 @@ export function ProductDetail({ slug }: { slug: string }) {
 
       <div className="sticky-buy">
         <div>
-          <strong>{money(p.price)}</strong>
-          {p.compare && <s>{money(p.compare)}</s>}
+          <strong>{money(selectedPrice)}</strong>
+          {selectedCompare && selectedCompare > selectedPrice ? <s>{money(selectedCompare)}</s> : null}
         </div>
         <button className="btn grow" type="button" disabled={!inStock} onClick={() => addToCart(p, cartOpts)}>
           <ShoppingBag size={17} /> Add to Cart

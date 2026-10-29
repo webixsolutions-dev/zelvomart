@@ -7,6 +7,7 @@ import { BUY_TWO_DISCOUNT_PERCENT, bundleLineTotal, priceSummary, variantPriceSu
 import { resolveDeliveryPolicy, quoteFromPolicy } from "./shipping";
 import { canSell } from "./stock";
 import { dispatchJobRow } from "./jobs";
+import { tiktokJobsEnabled } from "./tiktok";
 
 // Far-away database: allow time to open a connection and finish (Prisma default wait is 2s).
 const ORDER_TX_OPTIONS = { maxWait: 15_000, timeout: 90_000 };
@@ -48,10 +49,11 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
   });
   if (existing) return existing;
 
-  const [deliveryRule, paymentMethods, bundleDiscount] = await Promise.all([
+  const [deliveryRule, paymentMethods, bundleDiscount, tiktokOn] = await Promise.all([
     getSetting<any>("store.delivery", {}),
     getSetting<string[]>("payments.methods", ["COD"]),
     getSetting<number>("store.bundleDefaultDiscountPercent", 5),
+    tiktokJobsEnabled(),
   ]);
   if (!paymentMethods.includes(input.paymentMethod)) throw new Error("PAYMENT_METHOD_DISABLED");
   if (!input.fullName.trim() || !input.phone || !input.city.trim() || !input.address.trim())
@@ -302,7 +304,14 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
         ? []
         : [
             tx.job.create({ data: { name: "meta-purchase", orderId: order.id, payload: { orderId: order.id } } }),
-            tx.job.create({ data: { name: "tiktok-purchase", orderId: order.id, payload: { orderId: order.id } } }),
+            // No TikTok job while TikTok is off (Events API switch and pixel ID).
+            ...(tiktokOn
+              ? [
+                  tx.job.create({
+                    data: { name: "tiktok-purchase", orderId: order.id, payload: { orderId: order.id } },
+                  }),
+                ]
+              : []),
           ]),
     ]);
 

@@ -86,9 +86,21 @@ function designVariants(p: ApiProduct): Product["variants"] {
     attributeNames.find((name) => !HIDDEN_KEYS.has(name.toLowerCase())) ||
     "Option";
   const isSize = /size/i.test(label);
+  const shortName = (v: ApiVariant) => String(v.attributes?.[label] || v.name || "").trim() || v.sku;
+  // "Red Small" and "Red Large" both read "Red" on the colour row: those show every visible attribute, so they stay apart.
+  const counts = new Map<string, number>();
+  for (const v of variants) counts.set(shortName(v), (counts.get(shortName(v)) || 0) + 1);
+  // The row's own attribute first ("Red / Small"), then the others.
+  const fullName = (v: ApiVariant) =>
+    Object.entries(v.attributes || {})
+      .filter(([key, value]) => !HIDDEN_KEYS.has(key.toLowerCase()) && typeof value === "string" && value.trim())
+      .sort(([a], [b]) => Number(b === label) - Number(a === label))
+      .map(([, value]) => String(value).trim())
+      .join(" / ") || String(v.name || "").trim() || v.sku;
   const options: Variant[] = variants.map((v) => {
-    const name = String(v.attributes?.[label] || v.name || "").trim() || v.sku;
+    const name = (counts.get(shortName(v)) || 0) > 1 ? fullName(v) : shortName(v);
     const price = v.pricing?.price ?? (v.priceOverride != null ? Number(v.priceOverride) : undefined);
+    const compare = v.pricing?.onSale && v.pricing.regularPrice > v.pricing.price ? v.pricing.regularPrice : undefined;
     return {
       name,
       id: v.id,
@@ -98,6 +110,7 @@ function designVariants(p: ApiProduct): Product["variants"] {
       ...(v.images?.length ? { images: v.images } : {}),
       ...(variantBuyable(v) ? {} : { soldOut: true }),
       ...(price != null && Number(price) !== Number(p.price) ? { price: Number(price) } : {}),
+      ...(compare != null ? { compare: Number(compare) } : {}),
     };
   });
   return { label, kind: isSize ? "size" : "colour", options };
@@ -139,6 +152,7 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
     inBox: [],
     variants: designVariants(p),
     ...(p.bundleEnabled && bundlePercent > 0 ? { bundleEnabled: true, bundleDiscountPercent: bundlePercent } : {}),
+    ...(p.catalogMeta?.productTabs ? { tabOverrides: p.catalogMeta.productTabs } : {}),
     keywords: p.tags || [],
     inStock: p.stockStatus !== "outofstock",
     ...(p.freeShipping ?? p.catalogMeta?.freeShipping ? { freeShipping: true } : {}),

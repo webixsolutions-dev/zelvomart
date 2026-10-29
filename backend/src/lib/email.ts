@@ -1,4 +1,11 @@
-import { deliverEmail, emailIdentity, emailLayout } from "./email-delivery";
+import {
+  deliverEmail,
+  emailIdentity,
+  emailLayout,
+  internalEmail,
+  orderAlertRecipients,
+  supportRecipients,
+} from "./email-delivery";
 import { prisma } from "./db";
 import { money } from "./format";
 import { getSetting } from "./settings";
@@ -17,14 +24,9 @@ function renderTemplate(template: string, values: Record<string, string>) {
   return template.replace(/\{\{([a-zA-Z0-9_]+)\}\}/g, (_match, key) => values[key] ?? "");
 }
 
-async function recipients() {
-  return getSetting<string[]>(
-    "notifications.orderRecipients",
-    (process.env.ORDER_ALERT_RECIPIENTS || "support@zelvomart.com")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean),
-  );
+/** Team order alert, daily summary and failure alerts all go to this list (see orderAlertRecipients). */
+export async function orderRecipients() {
+  return orderAlertRecipients(await getSetting<unknown>("notifications.orderRecipients", null));
 }
 
 export async function sendOrderTeamEmail(orderId: string) {
@@ -71,13 +73,14 @@ export async function sendOrderTeamEmail(orderId: string) {
     adminUrl: escapeHtml(adminUrl),
   });
 
+  const team = internalEmail(
+    "Orders",
+    await orderRecipients(),
+    `${order.orderNumber} • New COD order • ${money(order.total)}`,
+    html,
+  );
   return deliverEmail(
-    {
-      ...emailIdentity("orders"),
-      to: await recipients(),
-      subject: `${order.orderNumber} • New COD order • ${money(order.total)}`,
-      html: emailLayout(html),
-    },
+    { ...emailIdentity("orders"), to: team.to, subject: team.subject, html: emailLayout(team.html) },
     `order-team-${order.id}`,
   );
 }
@@ -132,12 +135,13 @@ export async function sendCustomerOrderEmail(orderId: string) {
 
 export async function sendFailureAlert(subject: string, details: string) {
   if (!process.env.RESEND_API_KEY) return { skipped: "Email provider is not configured" };
-  return deliverEmail({
-    ...emailIdentity("orders"),
-    to: await recipients(),
+  const alert = internalEmail(
+    "Orders",
+    await orderRecipients(),
     subject,
-    html: `<pre style="white-space:pre-wrap">${escapeHtml(details)}</pre>`,
-  });
+    `<pre style="white-space:pre-wrap">${escapeHtml(details)}</pre>`,
+  );
+  return deliverEmail({ ...emailIdentity("orders"), ...alert });
 }
 
 export async function sendContactTeamEmail(input: {
@@ -157,12 +161,13 @@ export async function sendContactTeamEmail(input: {
     ${input.sourceUrl ? `<p><strong>Source:</strong> ${escapeHtml(input.sourceUrl)}</p>` : ""}
   `;
 
+  const support = internalEmail("Support", supportRecipients(), `Contact request • ${input.name}`, html);
   return deliverEmail({
     ...emailIdentity("support"),
-    to: process.env.SUPPORT_EMAIL_TO || "support@zelvomart.com",
+    to: support.to,
     replyTo: input.email,
-    subject: `Contact request • ${input.name}`,
-    html: emailLayout(html),
+    subject: support.subject,
+    html: emailLayout(support.html),
   });
 }
 

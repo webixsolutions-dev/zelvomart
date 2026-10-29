@@ -10,7 +10,12 @@ export type StoreSettings = {
   freeOver?: number;
   /** City name (lower case) → [min, max] working days. */
   cities?: Record<string, [number, number]>;
+  /** Admin → Product tabs (store.productTabs): key → { title, content }. null when never saved. */
+  productTabs?: Record<string, { title?: string; content?: string }> | null;
 };
+
+/** The store-wide product tabs, set from the backend; product pages read them (storefront/lib/productTabs.ts). */
+export const storeProductTabs: { value: StoreSettings["productTabs"] } = { value: null };
 
 /** "0300-2026711" → "+92 300 2026711" */
 function phoneDisplay(phone: string) {
@@ -34,6 +39,7 @@ export function applyStoreSettings(s: StoreSettings) {
   if (s.supportHours) target.supportHours = s.supportHours;
   if (s.flatFee) target.shipping.flatFee = s.flatFee;
   if (s.freeOver) target.shipping.freeOver = s.freeOver;
+  if (s.productTabs !== undefined) storeProductTabs.value = s.productTabs;
   if (s.cities) {
     target.shipping.cities = Object.fromEntries(
       Object.entries(s.cities).map(([city, [min, max]]) => [city, min === max ? `${max} working days` : `${min}–${max} working days`]),

@@ -14,6 +14,7 @@ import { parseVideoUrl, VIDEO_URL_ERROR } from "../lib/product-video";
 import { cleanStockStatus, itemStockStatus, productStockStatus, trackedQuantity } from "../lib/stock";
 import { BUY_TWO_DISCOUNT_PERCENT, priceSummary, variantPriceSummary } from "../lib/pricing";
 import { consumeRateLimit, consumeRateLimits, requestIp } from "../lib/rate-limit";
+import type { LimitRule } from "../lib/store-limits";
 
 export const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
 
@@ -542,40 +543,17 @@ export async function allowRequest(
   windowMs: number,
   discriminator = "",
 ) {
-  const key = `${namespace}:${requestIp(req)}:${discriminator}`;
-  const result = await consumeRateLimit(key, limit, windowMs);
-  res.setHeader("X-RateLimit-Limit", String(limit));
-  res.setHeader("X-RateLimit-Remaining", String(result.remaining));
-  if (!result.allowed) {
-    res.setHeader("Retry-After", String(result.retryAfterSeconds));
-    res.status(429).json({ error: "RATE_LIMITED", retryAfterSeconds: result.retryAfterSeconds });
-    return false;
-  }
-  return true;
+  return allowRules(res, [{ key: `${namespace}:${requestIp(req)}:${discriminator}`, limit, windowMs }]);
 }
 
-/** Consume two independent limits in a single Postgres round trip. */
-export async function allowRequests(
-  req: express.Request,
-  res: express.Response,
-  rules: [
-    { namespace: string; limit: number; windowMs: number; discriminator?: string },
-    { namespace: string; limit: number; windowMs: number; discriminator?: string },
-  ],
-) {
-  const ip = requestIp(req);
-  const keyed = rules.map((rule) => ({ ...rule, key: `${rule.namespace}:${ip}:${rule.discriminator || ""}` })) as [
-    (typeof rules)[number] & { key: string },
-    (typeof rules)[number] & { key: string },
-  ];
-  const results = await consumeRateLimits([
-    { key: keyed[0].key, limit: keyed[0].limit, windowMs: keyed[0].windowMs },
-    { key: keyed[1].key, limit: keyed[1].limit, windowMs: keyed[1].windowMs },
-  ]);
-  const remaining = Math.min(...results.map((result) => result.remaining));
-  const limit = Math.min(...rules.map((rule) => rule.limit));
-  res.setHeader("X-RateLimit-Limit", String(limit));
-  res.setHeader("X-RateLimit-Remaining", String(remaining));
+/** Consume one or two limits with ready-made bucket keys (see lib/store-limits.ts); answers 429 when one is spent. */
+export async function allowRules(res: express.Response, rules: [LimitRule] | [LimitRule, LimitRule]) {
+  const results =
+    rules.length === 2
+      ? await consumeRateLimits(rules)
+      : [await consumeRateLimit(rules[0].key, rules[0].limit, rules[0].windowMs)];
+  res.setHeader("X-RateLimit-Limit", String(Math.min(...rules.map((rule) => rule.limit))));
+  res.setHeader("X-RateLimit-Remaining", String(Math.min(...results.map((result) => result.remaining))));
   const denied = results.find((result) => !result.allowed);
   if (denied) {
     res.setHeader("Retry-After", String(denied.retryAfterSeconds));

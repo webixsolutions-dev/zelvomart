@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ArrowRight, ShieldCheck, ShoppingBag, Trash2 } from "lucide-react";
 import { categoryPath, getCategory, getProductById, products } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
-import { unitPrice, useShop } from "@store/lib/store";
+import { BUNDLE_PIECES, bundleLabel, lineTotal, unitPrice, useShop } from "@store/lib/store";
+import { CartNotes } from "@store/components/shop/CartNotes";
 import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { QtyStepper } from "@store/components/shop/QtyStepper";
 import { CouponBox } from "@store/components/shop/CouponBox";
@@ -58,6 +59,7 @@ export function CartView() {
             <div className="checkout-grid">
               <div>
                 <FreeShippingMeter subtotal={subtotal} />
+                <CartNotes />
                 <div className="cart-table">
                   <div className="cart-head">
                     <span>Product</span>
@@ -75,12 +77,12 @@ export function CartView() {
                             <small>{getCategory(p.category)?.short}</small>
                             <strong>{p.name}</strong>
                             {l.variant && <em>{l.variant}</em>}
-                            {l.bundle && <em>Bundle · {l.bundle}% off</em>}
+                            {l.bundle && <em>{bundleLabel(l.qty)} · {l.bundle}% off</em>}
                             <span className="unit">{money(unitPrice(p, l))} each</span>
                           </span>
                         </Link>
-                        <QtyStepper size="sm" value={l.qty} onChange={(n) => setQty(l.key, n)} />
-                        <strong className="line-total">{money(unitPrice(p, l) * l.qty)}</strong>
+                        <QtyStepper size="sm" value={l.qty} step={l.bundle ? BUNDLE_PIECES : 1} label={l.bundle ? "by one bundle" : "quantity"} onChange={(n) => setQty(l.key, n)} />
+                        <strong className="line-total">{money(lineTotal(p, l))}</strong>
                         <button className="icon-btn subtle" type="button" aria-label={`Remove ${p.name}`} onClick={() => removeLine(l.key)}>
                           <Trash2 size={17} />
                         </button>

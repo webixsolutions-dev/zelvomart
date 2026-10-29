@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 import { getSetting } from "./settings";
-import { deliverEmail, emailIdentity, emailLayout } from "./email-delivery";
+import { deliverEmail, emailIdentity, emailLayout, internalEmail, orderAlertRecipients } from "./email-delivery";
 import { money } from "./format";
 
 export async function sendDailySummary(now = new Date()) {
@@ -25,22 +25,15 @@ export async function sendDailySummary(now = new Date()) {
     }),
     prisma.job.count({ where: { status: "FAILED", createdAt: { gte: start, lt: end } } }),
   ]);
-  const recipients = await getSetting<string[]>(
-    "notifications.orderRecipients",
-    (process.env.ORDER_ALERT_RECIPIENTS || "support@zelvomart.com")
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean),
+  const day = start.toISOString().slice(0, 10);
+  const summary = internalEmail(
+    "Orders",
+    orderAlertRecipients(await getSetting<unknown>("notifications.orderRecipients", null)),
+    `Daily summary • ${day}`,
+    `<h2>Daily summary</h2><p>${day}</p><ul><li>Orders: <b>${orders.length}</b></li><li>Revenue: <b>${money(orders.reduce((sum, order) => sum + Number(order.total), 0))}</b></li><li>Accepted Meta Purchase events: <b>${purchases}</b></li><li>Failed background jobs: <b>${failedJobs}</b></li></ul>`,
   );
   return deliverEmail(
-    {
-      ...emailIdentity("orders"),
-      to: recipients,
-      subject: `Zelvomart daily summary • ${start.toISOString().slice(0, 10)}`,
-      html: emailLayout(
-        `<h2>Daily summary</h2><p>${start.toISOString().slice(0, 10)}</p><ul><li>Orders: <b>${orders.length}</b></li><li>Revenue: <b>${money(orders.reduce((sum, order) => sum + Number(order.total), 0))}</b></li><li>Accepted Meta Purchase events: <b>${purchases}</b></li><li>Failed background jobs: <b>${failedJobs}</b></li></ul>`,
-      ),
-    },
+    { ...emailIdentity("orders"), to: summary.to, subject: summary.subject, html: emailLayout(summary.html) },
     `daily-summary-${start.toISOString().slice(0, 10)}`,
   );
 }

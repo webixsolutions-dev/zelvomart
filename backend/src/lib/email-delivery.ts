@@ -13,6 +13,71 @@ export function emailIdentity(kind: EmailKind) {
   };
 }
 
+/** "a@x.com, b@y.com" (or an array) → ["a@x.com", "b@y.com"]: trimmed, no blanks, no repeats. */
+export function parseEmailList(value: unknown): string[] {
+  const parts = Array.isArray(value) ? value.map(String) : String(value ?? "").split(",");
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of parts) {
+    const email = part.trim();
+    if (!email || !email.includes("@") || seen.has(email.toLowerCase())) continue;
+    seen.add(email.toLowerCase());
+    out.push(email);
+  }
+  return out;
+}
+
+/**
+ * Who gets the team order alert, the daily summary and failure alerts: Admin -> Settings
+ * (notifications.orderRecipients), else ORDER_ALERT_RECIPIENTS, else support@zelvomart.com.
+ */
+export function orderAlertRecipients(setting: unknown, env = process.env.ORDER_ALERT_RECIPIENTS) {
+  const fromSetting = parseEmailList(setting);
+  if (fromSetting.length) return fromSetting;
+  const fromEnv = parseEmailList(env);
+  return fromEnv.length ? fromEnv : ["support@zelvomart.com"];
+}
+
+/** Contact form recipients: SUPPORT_EMAIL_TO (comma list) or support@zelvomart.com. */
+export function supportRecipients(env = process.env.SUPPORT_EMAIL_TO) {
+  const list = parseEmailList(env);
+  return list.length ? list : ["support@zelvomart.com"];
+}
+
+/** Hidden copies of offer emails (OFFERS_COPY_TO, comma list). Empty means no copy. */
+export function offerCopyRecipients(env = process.env.OFFERS_COPY_TO) {
+  return parseEmailList(env);
+}
+
+/** `{ bcc: [...] }` for an offer email when OFFERS_COPY_TO is set, otherwise nothing. */
+export function offerBcc(env = process.env.OFFERS_COPY_TO): { bcc?: string[] } {
+  const copies = offerCopyRecipients(env);
+  return copies.length ? { bcc: copies } : {};
+}
+
+/** "Zelvomart mailbox: orders@zelvomart.com · copy: zelvomart@gmail.com", built from the real recipient list. */
+export function mailboxLine(recipients: string[]) {
+  const own = recipients.filter((email) => /@zelvomart\.com$/i.test(email));
+  const copies = recipients.filter((email) => !/@zelvomart\.com$/i.test(email));
+  const main = own.length ? own : copies.splice(0, 1);
+  return `Zelvomart mailbox: ${main.join(", ")}${copies.length ? ` · copy: ${copies.join(", ")}` : ""}`;
+}
+
+const escapeText = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * An email for the team (never for a customer): the subject starts with [Orders] or [Support] and the body
+ * opens with the mailbox line, so a copy in Gmail shows at a glance where it belongs.
+ */
+export function internalEmail(label: "Orders" | "Support", to: string[], subject: string, html: string) {
+  const prefix = `[${label}] `;
+  return {
+    to,
+    subject: subject.startsWith(prefix) ? subject : prefix + subject,
+    html: `<p style="margin:0 0 14px;font-size:12px;color:#64748b">${escapeText(mailboxLine(to))}</p>${html}`,
+  };
+}
+
 // Keep this transport shared so a provider rejection cannot silently complete a job.
 export async function deliverEmail(payload: Parameters<Resend["emails"]["send"]>[0], idempotencyKey?: string) {
   if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
