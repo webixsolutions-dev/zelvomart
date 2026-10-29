@@ -164,7 +164,8 @@ export function OrderConfirmed() {
                   <strong>{l.name}</strong>
                   {l.variant && <small>{l.variant}</small>}
                 </span>
-                <strong>{money(l.price * l.qty)}</strong>
+                {/* The line's own total (bundle discount included), as saved; older copies fall back to price × qty. */}
+                <strong>{money(l.lineTotal ?? l.price * l.qty)}</strong>
               </li>
             ))}
           </ul>

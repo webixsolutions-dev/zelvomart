@@ -56,6 +56,7 @@ function toDesignOrder(o: Confirmation): Order {
       qty: i.quantity,
       name: i.title,
       price: Number(i.unitPrice),
+      lineTotal: Number(i.lineTotal),
       image: i.imageUrl || getProductById(String(i.productId))?.image || "/brand/zelvomart-logo.png",
     })),
     subtotal: Number(o.subtotal),
