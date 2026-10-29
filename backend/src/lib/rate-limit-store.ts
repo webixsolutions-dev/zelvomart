@@ -41,7 +41,9 @@ export async function consumeDatabaseRateLimits(
   const [first, second] = rules;
   const rows = await store.$queryRaw<{ bucketKey: string; count: number; retryAfterSeconds: number }[]>(Prisma.sql`
     WITH limits("bucketKey", "limitCount", "windowMs") AS (
-      VALUES (${first.key}, ${first.limit}, ${first.windowMs}), (${second.key}, ${second.limit}, ${second.windowMs})
+      -- Typed explicitly: untyped parameters in VALUES are read as text, and text * interval fails (500 on checkout).
+      VALUES (${first.key}::text, ${first.limit}::int, ${first.windowMs}::int),
+             (${second.key}::text, ${second.limit}::int, ${second.windowMs}::int)
     ), upserted AS (
       INSERT INTO "RateLimitBucket" ("id", "bucketKey", "count", "windowStart", "updatedAt")
       SELECT gen_random_uuid()::text, "bucketKey", 1, statement_timestamp(), statement_timestamp() FROM limits
