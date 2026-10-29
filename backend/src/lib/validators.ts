@@ -1,12 +1,23 @@
 import { z } from "zod";
 import { normalizePakistanPhone } from "./phone";
 
-export const cartItemSchema = z.object({
-  productId: z.string().min(1),
-  variantId: z.string().nullish(),
-  quantity: z.number().int().min(1).max(20),
-  bundleSize: z.union([z.literal(1), z.literal(2)]).default(1),
-});
+/**
+ * Most pieces one cart line may hold. A bundle line sends `quantity` bundles of `bundleSize` 2, so it may
+ * hold 10 bundles. The storefront uses the same number (frontend/storefront/lib/store.tsx MAX_LINE_PIECES).
+ */
+export const MAX_LINE_PIECES = 20;
+
+export const cartItemSchema = z
+  .object({
+    productId: z.string().min(1),
+    variantId: z.string().nullish(),
+    quantity: z.number().int().min(1).max(MAX_LINE_PIECES),
+    bundleSize: z.union([z.literal(1), z.literal(2)]).default(1),
+  })
+  .refine((item) => item.quantity * item.bundleSize <= MAX_LINE_PIECES, {
+    message: `At most ${MAX_LINE_PIECES} pieces per item.`,
+    path: ["quantity"],
+  });
 
 export const checkoutSchema = z
   .object({

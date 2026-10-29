@@ -7,7 +7,11 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Banknote, CircleAlert, CreditCard, LoaderCircle, Lock, ShieldCheck, ShoppingBag } from "lucide-react";
 import { getProductById } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
-import { unitPrice, useShop } from "@store/lib/store";
+import { CheckoutRateLimited, bundleLabel, lineTotal, useShop } from "@store/lib/store";
+import { site } from "@store/lib/site";
+import { waLink } from "@store/lib/format";
+import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
+import { CartNotes } from "@store/components/shop/CartNotes";
 import { useCheckoutTracking } from "@store/lib/orders";
 import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { CouponBox } from "@store/components/shop/CouponBox";
@@ -36,6 +40,7 @@ export function CheckoutView() {
   const [terms, setTerms] = useState(false);
   const [termsError, setTermsError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [rateLimited, setRateLimited] = useState("");
   // The thank-you page is ready before the order is, so the hand-over after "Place Order" is instant.
   useEffect(() => {
     router.prefetch("/order-confirmed/");
@@ -70,6 +75,22 @@ export function CheckoutView() {
     "aria-describedby": errors[k] ? `err-${k}` : undefined,
     className: `field ${errors[k] ? "has-error" : ""}`,
   });
+  // The WhatsApp fallback carries the cart, so the customer does not have to type it again.
+  const whatsappOrderText = () =>
+    [
+      "Hi Zelvomart! I'd like to order:",
+      ...cart.map((l) => {
+        const p = getProductById(l.id);
+        if (!p) return "";
+        const qty = l.bundle ? bundleLabel(l.qty) : String(l.qty);
+        return `• ${p.name}${l.variant ? ` (${l.variant})` : ""} × ${qty} — ${money(lineTotal(p, l))}`;
+      }),
+      `Total: ${money(payable)} (COD)`,
+      form.name.trim() && `Name: ${form.name.trim()}`,
+      form.city.trim() && `City: ${form.city.trim()}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
   const err = (k: keyof Form) => errors[k] && <span className="field-error" id={`err-${k}`}>{errors[k]}</span>;
 
   async function submit(e: React.FormEvent) {
@@ -82,6 +103,7 @@ export function CheckoutView() {
       return;
     }
     setSubmitting(true);
+    setRateLimited("");
     let order;
     try {
       order = await placeOrder(
@@ -97,6 +119,10 @@ export function CheckoutView() {
       );
     } catch (error) {
       setSubmitting(false);
+      if (error instanceof CheckoutRateLimited) {
+        setRateLimited(error.message);
+        return;
+      }
       notify({ title: "We couldn't place your order", body: error instanceof Error ? error.message : "Please try again." });
       return;
     }
@@ -209,6 +235,17 @@ export function CheckoutView() {
             )}
           </div>
 
+          {rateLimited && (
+            <div className="checkout-limited" role="alert">
+              <p>
+                <CircleAlert size={16} aria-hidden="true" /> {rateLimited}
+              </p>
+              <a className="btn wa-outline" href={waLink(site.whatsappNumber, whatsappOrderText())} target="_blank" rel="noopener noreferrer">
+                <WhatsAppIcon /> Order on WhatsApp
+              </a>
+            </div>
+          )}
+
           <button className="btn block lg" type="submit" disabled={submitting}>
             <Lock size={16} /> Place Order — {money(payable)}
           </button>
@@ -216,6 +253,7 @@ export function CheckoutView() {
 
         <aside className="summary-box sticky">
           <h3>Your order</h3>
+          <CartNotes />
           <ul className="sum-items">
             {cart.map((l) => {
               const p = getProductById(l.id);
@@ -229,9 +267,9 @@ export function CheckoutView() {
                   <span>
                     <strong>{p.name}</strong>
                     {l.variant && <small>{l.variant}</small>}
-                    {l.bundle && <small>Bundle · {l.bundle}% off</small>}
+                    {l.bundle && <small>{bundleLabel(l.qty)} · {l.bundle}% off</small>}
                   </span>
-                  <strong>{money(unitPrice(p, l) * l.qty)}</strong>
+                  <strong>{money(lineTotal(p, l))}</strong>
                 </li>
               );
             })}

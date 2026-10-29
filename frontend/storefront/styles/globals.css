@@ -5437,6 +5437,67 @@ body:has(.confirm-page) {
   flex-shrink: 0;
 }
 
+/* What changed in the cart (bundles rounded up, 20 pcs limit, sold-out items taken out). */
+.cart-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #f3c9a9;
+  border-radius: var(--radius-sm);
+  background: var(--orange-light);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.cart-notes > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--orange);
+}
+.cart-notes ul {
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cart-notes li + li {
+  margin-top: 4px;
+}
+.cart-notes .icon-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+.checkout-limited {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #f3c9a9;
+  border-radius: var(--radius-sm);
+  background: var(--orange-light);
+}
+.checkout-limited p {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.checkout-limited p svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--orange);
+}
+.pd-limit-note {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 /* ---------- Thank-you page ---------- */
 .confirm-number {
   display: inline-flex;
@@ -7389,6 +7450,18 @@ body:has(.product-page) {
 }
 .pd-swatches button.active .pd-swatch-img {
   box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue);
+}
+.pd-swatches button.sold-out,
+.variant-options button.sold-out {
+  cursor: not-allowed;
+  color: #a7b0ba;
+}
+.pd-swatches button.sold-out .pd-swatch-img {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.variant-options button.sold-out {
+  text-decoration: line-through;
 }
 
 /* Bundle */

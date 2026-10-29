@@ -14,6 +14,10 @@ export function ProductCard({ p, priority = false, featured = false }: { p: Prod
   const wished = ready && isWished(p.id);
   const pct = discountPct(p.price, p.compare);
   const href = `/product/${p.slug}/`;
+  // The first variation that can be bought; none (or the product itself out of stock) means sold out.
+  const options = p.variants?.options ?? [];
+  const firstInStock = options.find((o) => !o.soldOut);
+  const soldOut = p.inStock === false || (options.length > 0 && !firstInStock);
 
   const details = (
     <>
@@ -27,8 +31,13 @@ export function ProductCard({ p, priority = false, featured = false }: { p: Prod
         <Price price={p.price} compare={p.compare} />
       </div>
       <div className="product-bottom">
-        <button className="btn block sm" type="button" onClick={() => addToCart(p, { variant: p.variants?.options[0].name })}>
-          Add to Cart
+        <button
+          className="btn block sm"
+          type="button"
+          disabled={soldOut}
+          onClick={() => addToCart(p, firstInStock ? { variantId: firstInStock.id, variant: firstInStock.name } : {})}
+        >
+          {soldOut ? "Sold out" : "Add to Cart"}
         </button>
       </div>
     </>

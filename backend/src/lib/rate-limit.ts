@@ -5,8 +5,8 @@ import {
   type RateLimitResult,
   type RateLimitRule,
 } from "./rate-limit-store";
-import { timingSafeEqual } from "node:crypto";
 export type { RateLimitResult } from "./rate-limit-store";
+export { requestIp, STORE_LIMITS, checkoutRateRules, eventsRateRule } from "./store-limits";
 
 /**
  * Database-backed rate limiter so limits still work across serverless instances.
@@ -18,23 +18,6 @@ export async function consumeRateLimit(bucketKey: string, limit: number, windowM
 
 export async function consumeRateLimits(rules: [RateLimitRule, RateLimitRule]): Promise<RateLimitResult[]> {
   return consumeDatabaseRateLimits(prisma, rules);
-}
-
-export function requestIp(req: { ip?: string; headers: Record<string, unknown> | any }) {
-  const expected = process.env.STORE_PROXY_SECRET || process.env.REVALIDATION_SECRET || "";
-  const supplied = String(req.headers?.["x-zm-proxy-secret"] || "");
-  const forwardedIp = String(req.headers?.["x-zm-client-ip"] || "").trim();
-  if (expected && supplied && forwardedIp) {
-    const left = Buffer.from(expected);
-    const right = Buffer.from(supplied);
-    if (left.length === right.length && timingSafeEqual(left, right) && isValidIp(forwardedIp)) return forwardedIp;
-  }
-  return String(req.ip || "unknown");
-}
-
-function isValidIp(value: string) {
-  // Accept plain IPv4/IPv6 values only; never let a proxy turn arbitrary text into an IP key.
-  return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(value) || /^[0-9a-f:]+$/i.test(value);
 }
 
 export function isLikelyBot(userAgent: string | undefined) {

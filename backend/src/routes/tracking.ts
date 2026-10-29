@@ -9,18 +9,19 @@ import { prisma } from "../lib/db";
 import { requireAuth, type AuthedRequest } from "../lib/auth";
 import { getSetting, getSettings } from "../lib/settings";
 import { sendMetaServerEvent } from "../lib/meta";
-import { requestIp, isLikelyBot } from "../lib/rate-limit";
+import { eventsRateRule, requestIp, isLikelyBot } from "../lib/rate-limit";
 import { dispatchJobRow } from "../lib/jobs";
 import { processJobRow } from "../lib/job-processor";
 import { waitUntil } from "@vercel/functions";
 import type { Express } from "express";
-import { META_EVENT_NAMES, allowRequest, audit, routeParam } from "../http/shared";
+import { META_EVENT_NAMES, allowRules, audit, routeParam } from "../http/shared";
 
 export function registerTrackingRoutes(app: Express) {
   app.post("/api/events", async (req, res) => {
     const userAgent = req.get("user-agent") || undefined;
     if (isLikelyBot(userAgent)) return res.json({ ok: true, ignored: "bot" });
-    if (!(await allowRequest(req, res, "events", 240, 60 * 1000))) return;
+    // Per visitor when the browser sends its visitor id, else per IP (1,200/min). The browser ignores a 429 here.
+    if (!(await allowRules(res, [eventsRateRule(requestIp(req), req.body?.visitorId)]))) return;
 
     const eventName = String(req.body.eventName || "");
     const eventId = String(req.body.eventId || "");

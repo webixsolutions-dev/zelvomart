@@ -46,6 +46,8 @@ export type Variant = {
   sku?: string;
   /** Variant price when it differs from the product price. */
   price?: number;
+  /** Regular price of the variant when it is on sale (shown struck through). */
+  compare?: number;
 };
 
 export type Product = {
