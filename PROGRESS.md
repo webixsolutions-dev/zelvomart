@@ -333,3 +333,60 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   selected and detail deletes each show exactly one dialog and the rows disappear without a reload; 11 coupons
   bulk-deleted without the typed word, and the coupon screen shows one confirm. Backend tests 71/71, both typechecks,
   Prettier check and frontend build pass.
+
+## Go-live Part 1: launch checkout fixes — 29 October 2026 (branch `fix/launch-checkout`)
+- **1.1 Bundles.** A bundle line holds whole bundles: 2, 4, 6 … pcs. −/+ on the product page, cart drawer and cart
+  page move one bundle; lines read "2 bundles (4 pcs)". The API gets `pieces / 2` bundles of size 2 (order, coupon
+  quote, abandoned-checkout save and the restore link all use the same `cartLineForApi`). Line totals use the
+  server's rounding (discount off the whole line, then rounded). Old or restored carts with an odd bundle count are
+  rounded **up** with a visible note in the cart, drawer and checkout. The checkout retry key now follows the cart, so
+  a changed cart never gets an older order back.
+- **1.2 Variant price.** The product page's main price, sale price, "You save", Buy 1 / Buy 2 prices, total, sticky
+  bar and WhatsApp text all use the selected variant's price (fallback: product price). ViewContent/AddToCart send it too.
+- **1.3 Variant by ID.** Cart lines store `variantId`; the name is for display only. Variants that would show the
+  same name show every attribute ("Red / Small", "Red / Large"). Name-only lines in localStorage are resolved to the
+  ID once. `content_ids` stay the variant SKU (the Purchase event used the variant *name* before; fixed).
+- **1.4 Sold out.** Cards add the first in-stock variant, or show a disabled "Sold out". Sold-out swatches (image,
+  colour and size) are disabled; "in stock" follows the selected variant. `addToCart` refuses sold-out items (also
+  for wishlist "Add all" and the drawer upsell, which now skips sold-out products). The server check stays.
+- **1.5 One limit.** 20 pcs per line (10 bundles), `MAX_LINE_PIECES` in `frontend/storefront/lib/store.tsx` and
+  `backend/src/lib/validators.ts`; the API now counts pieces (`quantity × bundleSize ≤ 20`). The UI stops at 20 with a
+  message; old carts above 20 are reduced with a note.
+- **1.6 Rate limits.** `backend/src/lib/store-limits.ts`: checkout 60 per 15 min per IP, 6 per phone per 15 min on
+  **any** IP (the phone bucket no longer includes the IP); events per visitor id (240/min), else 1,200/min per IP;
+  search 120/min; coupon 40/min. The store proxy also falls back to `x-forwarded-for`. A checkout 429 shows
+  "Bohot zyada koshishen hui hain. 2 minute baad dobara try karein ya WhatsApp par order karein." with a WhatsApp
+  button carrying the cart. Tests: forwarded IP only with the right secret, IPs counted apart, 7th order from one
+  phone blocked, 20 phones on one IP allowed. Local run through the proxy: 20 phones on one IP → 20 × 201, each
+  stored with `clientIp` 39.45.10.20; one phone on 7 IPs → 6 × 201 then 429; a spoofed `x-zm-client-ip` without the
+  secret is ignored. (Two real networks still to be checked in production after `STORE_PROXY_SECRET` is set.)
+- **1.7 Product tabs.** Product pages show Admin → Product tabs (`store.productTabs`, loaded with the store
+  settings); a product's override wins; a tab saved empty is hidden; never-saved tabs show the default text.
+  Sanitized on save and on display. Tab text may use `{free_delivery_over}` and `{delivery_fee}`, filled from
+  Settings → Delivery (the defaults use them instead of "Rs 8,000"). Saving tabs already revalidates the cache;
+  checked locally (edit → page shows the new text). Storefront fallback amounts are now 7,500 / 190.
+  **Data still saying Rs 8,000** (owner to edit, not code): saved product-tab text if it was saved with the old
+  default, and the announcement bar item "Free Delivery on Orders Above Rs 8,000".
+- **1.8 Security.** next 16.3.8 → 16.4.3; body-parser 2.3.0 → 2.4.0 and qs 6.16.0 → 6.17.1 (under express);
+  multer 2.4.0 → 2.5.0. `npm audit --omit=dev`: before 9 (1 critical, 5 high, 2 moderate, 1 low), after 5 (3 high,
+  1 moderate, 1 low). **Prisma finding:** the remaining highs are one advisory, `deepmerge-ts` < 8 (stack exhaustion
+  on recursive objects), reached only through `prisma` → `@prisma/config`, the CLI's config loader. It runs at build
+  time (`prisma generate`) on our own config, never at request time; `@prisma/client` and `@prisma/adapter-pg` do not
+  depend on it. The fix needs prisma 7 (a major upgrade), so it is left for a separate task. The low/moderate item is
+  `deepmerge` under `sanitize-html` (backend pins 2.17.4; 2.18.1 has the fix) — left as is.
+- **1.9 TikTok.** No `tiktok-event` / `tiktok-purchase` job is created (events, new orders, admin status changes,
+  "resend purchase") unless `tracking.tiktokEventsApiEnabled` is on and a TikTok pixel ID is set. Checked live:
+  order with TikTok off → no TikTok job; on → one.
+- **1.10 Email.** One recipient list for the team alert, daily summary (API and worker) and failure alerts:
+  `notifications.orderRecipients`, else `ORDER_ALERT_RECIPIENTS`, else support@. Contact form → `SUPPORT_EMAIL_TO`
+  (comma list) or support@. Offer emails BCC `OFFERS_COPY_TO` when set. Internal emails start with `[Orders]` /
+  `[Support]` and open with "Zelvomart mailbox: … · copy: …". Customer emails, From, Reply-To and customer subjects
+  unchanged. Checked with the real order template: "[Orders] ZM-10021 • New COD order • Rs 29,242".
+  **Before** `orders@`/`offers@` are added to any list, the owner must confirm both mailboxes exist in Hostinger.
+- **Checks:** backend 87/87 tests, both typechecks, Prettier, prisma validate, frontend build (Next 16.4.3). Browser
+  run (24 checks): variant names/prices, Buy 2 = 7,598 for Red / Large, steps of 2, cap at 20 with message, drawer +
+  adds a bundle, three lines by variant id, reload, order ZM-10021 saved 6 pcs / Rs 22,794 line / Rs 29,242 total =
+  what checkout showed, old-cart migration notes, friendly 429, sold-out card, card adds Rose Gold not sold-out Silver.
+- **Still to do (Part 2, needs the owner's computer and "yes"):** env backup, Resend key, `CRON_SECRET`,
+  `STORE_PROXY_SECRET`, site URLs, pg_dump + job cleanup, `JOB_MODE=cron`, unused env vars, the
+  `zelvomart.vercel.app` redirect and the host-list PR, cron-job.org.
