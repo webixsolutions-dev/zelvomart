@@ -17,6 +17,6 @@ export default function robots(): MetadataRoute.Robots {
       ...namedBots.map((userAgent) => ({ userAgent, allow: "/", disallow: privatePaths })),
       { userAgent: "*", allow: "/", disallow: privatePaths },
     ],
-    sitemap: `${site.url}/sitemap.xml`,
+    sitemap: `${site.url}/sitemap_index.xml`,
   };
 }

@@ -155,17 +155,20 @@ export async function loadStore() {
 }
 
 export type SeoIndex = {
-  products: { slug: string; updatedAt: string }[];
-  categories: { slug: string; updatedAt: string }[];
+  /** Published products that are not noindex. `images`: absolute URLs, main image first, at most 10. */
+  products: { slug: string; title: string; updatedAt: string; category: string | null; images: string[] }[];
+  /** Every backend category, with its number of published products. */
+  categories: { slug: string; name: string; updatedAt: string; imageUrl: string | null; publishedProducts: number }[];
 };
 
-/** What search engines may list: published, indexable products and categories (GET /api/seo/sitemap). */
+/**
+ * What search engines may list (GET /api/seo/sitemap). Throws when the backend fails: a sitemap must
+ * never be published empty because of an outage (that tells Google every product is gone).
+ */
 export async function loadSeoIndex(): Promise<SeoIndex> {
-  try {
-    return await apiFetch<SeoIndex>(`/api/seo/sitemap`, { next: { revalidate: 3600, tags: ["seo", "products"] } });
-  } catch {
-    return { products: [], categories: [] };
-  }
+  const index = await apiFetch<SeoIndex>(`/api/seo/sitemap`, { next: { revalidate: 3600, tags: ["seo", "products", "categories"] } });
+  if (!Array.isArray(index?.products) || !Array.isArray(index?.categories)) throw new Error("SEO_INDEX_INVALID");
+  return index;
 }
 
 /** The backend's categories (GET /api/categories), as design category ids. */

@@ -1,3 +1,13 @@
+/** The sitemaps and the HTML sitemap page. Extra product sitemaps (2, 3 …) refresh through the "products" tag. */
+const SITEMAP_PATHS = [
+  "/sitemap.xml",
+  "/sitemap_index.xml",
+  "/page-sitemap.xml",
+  "/product_cat-sitemap.xml",
+  "/product-sitemap.xml",
+  "/sitemap",
+];
+
 function cachePathsForTags(tags: string[]) {
   const paths = new Set<string>();
   const refreshesCatalog = tags.some(
@@ -9,7 +19,7 @@ function cachePathsForTags(tags: string[]) {
   if (refreshesCatalog) {
     paths.add("/");
     paths.add("/shop");
-    for (const path of ["/new-arrivals", "/bestsellers", "/deals-and-offers", "/llms.txt", "/sitemap.xml"])
+    for (const path of ["/new-arrivals", "/bestsellers", "/deals-and-offers", "/llms.txt", ...SITEMAP_PATHS])
       paths.add(path);
   }
   for (const tag of tags) {

@@ -53,5 +53,11 @@ jobs:
       - name: Frontend typecheck
         run: npm run typecheck --workspace frontend
 
+      # The sitemap tests check every XML file with xmllint.
+      - name: Frontend tests
+        run: |
+          command -v xmllint || (sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils)
+          npm test --workspace frontend
+
       - name: Frontend build
         run: npm run build --workspace frontend
