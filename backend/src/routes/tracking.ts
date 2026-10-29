@@ -1,7 +1,7 @@
 import { SITE_ORIGIN, isStorefrontUrl } from "../lib/site-url";
 import { privateSafeUrl } from "../lib/url-privacy";
 import { replayStorageConfigured } from "../lib/replay-storage";
-import { sendTikTokServerEvent } from "../lib/tiktok";
+import { sendTikTokServerEvent, tiktokJobsEnabled } from "../lib/tiktok";
 import { trackingHealth } from "../lib/tracking-health";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "../generated/prisma/client";
@@ -84,24 +84,27 @@ export function registerTrackingRoutes(app: Express) {
       });
       waitUntil(processJobRow(job.id).catch(() => undefined));
 
-      const ttJob = await prisma.job.create({
-        data: {
-          name: "tiktok-event",
-          payload: {
-            eventName,
-            eventId,
-            sourceUrl,
-            userAgent,
-            eventTime: Math.floor(Date.now() / 1000),
-            visitorId: req.body.visitorId || null,
-            ip: requestIp(req),
-            ttp: req.body.ttp || null,
-            ttclid: req.body.ttclid || null,
-            customData: params,
-          } as Prisma.InputJsonValue,
-        },
-      });
-      dispatchJobRow(ttJob.id).catch(() => undefined);
+      // TikTok is off unless its Events API is switched on and a pixel ID is set: then no job row at all.
+      if (await tiktokJobsEnabled()) {
+        const ttJob = await prisma.job.create({
+          data: {
+            name: "tiktok-event",
+            payload: {
+              eventName,
+              eventId,
+              sourceUrl,
+              userAgent,
+              eventTime: Math.floor(Date.now() / 1000),
+              visitorId: req.body.visitorId || null,
+              ip: requestIp(req),
+              ttp: req.body.ttp || null,
+              ttclid: req.body.ttclid || null,
+              customData: params,
+            } as Prisma.InputJsonValue,
+          },
+        });
+        dispatchJobRow(ttJob.id).catch(() => undefined);
+      }
     }
 
     res.json({ ok: true, id: row.id });

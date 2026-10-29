@@ -1,7 +1,21 @@
 import { tiktokProperties } from "./tracking-payload";
 import { prisma } from "./db";
 import { sha256 } from "./security";
-import { getSetting } from "./settings";
+import { getSetting, getSettings } from "./settings";
+
+/** TikTok events are queued only when the Events API is switched on (explicitly) and a pixel ID is set. */
+export function tiktokEventsOn(enabled: unknown, pixelId: unknown) {
+  return (enabled === true || enabled === "true") && String(pixelId || "").trim().length > 0;
+}
+
+/** Reads Admin -> Settings -> Tracking; no TikTok job rows are created while this is false. */
+export async function tiktokJobsEnabled() {
+  const settings = await getSettings(["tracking.tiktokEventsApiEnabled", "tracking.tiktokPixelId"]);
+  return tiktokEventsOn(
+    settings["tracking.tiktokEventsApiEnabled"],
+    settings["tracking.tiktokPixelId"] || process.env.TIKTOK_PIXEL_ID || process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID,
+  );
+}
 
 export type TikTokServerEvent = {
   eventName: string;
