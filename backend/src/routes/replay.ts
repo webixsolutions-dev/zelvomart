@@ -438,8 +438,6 @@ export function registerReplayRoutes(app: Express) {
       : [];
     if (!ids.length || Number(req.body?.confirmationCount) !== ids.length)
       return res.status(400).json({ error: "CONFIRMATION_REQUIRED" });
-    if (ids.length > 10 && req.body?.typedConfirmation !== "DELETE")
-      return res.status(400).json({ error: "TYPE_DELETE_TO_CONFIRM" });
     const deleted: string[] = [];
     const skipped: string[] = [];
     const errors: { id: string; error: string }[] = [];

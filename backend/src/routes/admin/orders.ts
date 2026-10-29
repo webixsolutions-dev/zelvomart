@@ -89,6 +89,29 @@ async function enqueueOrderStatusTracking(orderId: string, status: string) {
   await Promise.allSettled(jobs.map((job) => dispatchJobRow(job.id)));
 }
 
+const ORDER_DELETE_ROLES = new Set(["OWNER", "MANAGER"]);
+const canDeleteOrders = (req: AuthedRequest) => ORDER_DELETE_ROLES.has(String(req.admin?.role));
+
+/** Removes one order for good (see the routes below). Returns the deleted id, or "NOT_FOUND". */
+async function hardDeleteOrder(req: AuthedRequest, id: string) {
+  const order = await prisma.order.findUnique({
+    where: { id },
+    select: { id: true, orderNumber: true, status: true, test: true },
+  });
+  if (!order) return "NOT_FOUND" as const;
+  await prisma.$transaction([
+    prisma.job.deleteMany({ where: { orderId: id } }),
+    prisma.order.updateMany({ where: { id, replaySessionId: { not: null } }, data: { replaySessionId: null } }),
+    prisma.order.delete({ where: { id } }),
+  ]);
+  await audit(req, "hard_delete", "Order", id, {
+    orderNumber: order.orderNumber,
+    test: order.test,
+    status: order.status,
+  });
+  return order.id;
+}
+
 export function registerAdminOrdersRoutes(app: Express) {
   app.get("/api/admin/dashboard", requireAuth("orders.read"), async (_req, res) => {
     const health = await trackingHealth();
@@ -348,7 +371,17 @@ export function registerAdminOrdersRoutes(app: Express) {
     if (["CANCELLED", "RETURNED"].includes(next)) await invalidateFrontendCache(["products"]);
     res.json({ ok: true, updated });
   });
+  // Deleting orders: OWNER and MANAGER only, any order, one confirm in the admin. The order's queued jobs are removed
+  // in the same transaction (so no email or Meta/TikTok event is ever sent for it), its session recording is
+  // unlinked, and items/history/notes cascade. Stock is not put back and the customer record stays.
+  app.delete("/api/admin/orders/:id", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
+    if (!canDeleteOrders(req)) return res.status(403).json({ error: "FORBIDDEN" });
+    const result = await hardDeleteOrder(req, routeParam(req, "id"));
+    if (result === "NOT_FOUND") return res.status(404).json({ error: "NOT_FOUND" });
+    res.json({ deleted: [result] });
+  });
   app.post("/api/admin/orders/bulk-delete", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
+    if (!canDeleteOrders(req)) return res.status(403).json({ error: "FORBIDDEN" });
     const ids: string[] = Array.isArray(req.body?.ids)
       ? [
           ...new Set<string>(
@@ -356,47 +389,15 @@ export function registerAdminOrdersRoutes(app: Express) {
           ),
         ].slice(0, 200)
       : [];
-    if (!ids.length || Number(req.body?.confirmationCount) !== ids.length)
-      return res.status(400).json({ error: "CONFIRMATION_REQUIRED" });
-    if (ids.length > 10 && req.body?.typedConfirmation !== "DELETE")
-      return res.status(400).json({ error: "TYPE_DELETE_TO_CONFIRM" });
+    if (!ids.length) return res.status(400).json({ error: "NO_ORDERS_SELECTED" });
     const deleted: string[] = [];
     const skipped: { id: string; reason: string }[] = [];
     const errors: { id: string; error: string }[] = [];
     for (const id of ids) {
       try {
-        const order = await prisma.order.findUnique({
-          where: { id },
-          select: { id: true, orderNumber: true, status: true, test: true, replaySessionId: true },
-        });
-        if (!order) {
-          skipped.push({ id, reason: "NOT_FOUND" });
-          continue;
-        }
-        const safeToDelete = order.test || order.status === "CANCELLED";
-        if (!safeToDelete && !order.test) {
-          skipped.push({ id, reason: "MARK_AS_TEST_FIRST" });
-          continue;
-        }
-        if (
-          order.test &&
-          order.status !== "CANCELLED" &&
-          (req.admin?.role !== "OWNER" || req.body?.ownerConfirmation !== "I understand this removes it from reports")
-        ) {
-          skipped.push({ id, reason: "OWNER_CONFIRMATION_REQUIRED" });
-          continue;
-        }
-        await prisma.$transaction([
-          prisma.job.deleteMany({ where: { orderId: id } }),
-          prisma.order.updateMany({ where: { id, replaySessionId: { not: null } }, data: { replaySessionId: null } }),
-          prisma.order.delete({ where: { id } }),
-        ]);
-        await audit(req, "hard_delete", "Order", id, {
-          orderNumber: order.orderNumber,
-          test: order.test,
-          status: order.status,
-        });
-        deleted.push(id);
+        const result = await hardDeleteOrder(req, id);
+        if (result === "NOT_FOUND") skipped.push({ id, reason: "NOT_FOUND" });
+        else deleted.push(result);
       } catch (error) {
         errors.push({ id, error: error instanceof Error ? error.message : "DELETE_FAILED" });
       }
