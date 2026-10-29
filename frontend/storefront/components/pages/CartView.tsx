@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ShieldCheck, ShoppingBag, Trash2 } from "lucide-react";
 import { categoryPath, getCategory, getProductById, products } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
-import { BUNDLE_PIECES, bundleLabel, lineTotal, unitPrice, useShop } from "@store/lib/store";
+import { BUNDLE_PIECES, bundleLabel, bundlePrice, lineTotal, unitPrice, useShop } from "@store/lib/store";
 import { CartNotes } from "@store/components/shop/CartNotes";
 import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { QtyStepper } from "@store/components/shop/QtyStepper";
@@ -78,7 +78,8 @@ export function CartView() {
                             <strong>{p.name}</strong>
                             {l.variant && <em>{l.variant}</em>}
                             {l.bundle && <em>{bundleLabel(l.qty)} · {l.bundle}% off</em>}
-                            <span className="unit">{money(unitPrice(p, l))} each</span>
+                            {/* Bundle lines show the price of one bundle, so the numbers on the line add up. */}
+                            <span className="unit">{l.bundle ? `${money(bundlePrice(p, l))} per bundle` : `${money(unitPrice(p, l))} each`}</span>
                           </span>
                         </Link>
                         <QtyStepper size="sm" value={l.qty} step={l.bundle ? BUNDLE_PIECES : 1} label={l.bundle ? "by one bundle" : "quantity"} onChange={(n) => setQty(l.key, n)} />

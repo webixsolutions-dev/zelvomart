@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { ArrowRight, ShieldCheck, ShoppingBag, Trash2, X } from "lucide-react";
 import { getProductById, products } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
-import { BUNDLE_PIECES, bundleLabel, lineTotal, useShop } from "@store/lib/store";
+import { BUNDLE_PIECES, lineDetail, lineTotal, useShop } from "@store/lib/store";
 import { CartNotes } from "@store/components/shop/CartNotes";
 import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { QtyStepper } from "@store/components/shop/QtyStepper";
@@ -67,8 +67,7 @@ export function CartDrawer() {
                         <Link href={`/product/${p.slug}/`} className="mini-name" onClick={() => setCartOpen(false)}>
                           {p.name}
                         </Link>
-                        {l.variant && <small>{l.variant}</small>}
-                        {l.bundle && <small>{bundleLabel(l.qty)} · {l.bundle}% off</small>}
+                        {lineDetail(l) && <small>{lineDetail(l)}</small>}
                         <div className="mini-row">
                           <QtyStepper size="sm" value={l.qty} step={l.bundle ? BUNDLE_PIECES : 1} label={l.bundle ? "by one bundle" : "quantity"} onChange={(n) => setQty(l.key, n)} />
                           <strong>{money(lineTotal(p, l))}</strong>

@@ -29,6 +29,16 @@ export const MAX_LINE_PIECES = 20;
 /** Pieces in one Buy 2 bundle. */
 export const BUNDLE_PIECES = 2;
 
+/** Variant and bundle on one line: "Purple · 1 bundle (2 pcs) · 5% off". */
+export function lineDetail(line: Pick<CartLine, "variant" | "bundle" | "qty">) {
+  return [line.variant, line.bundle ? `${bundleLabel(line.qty)} · ${line.bundle}% off` : ""].filter(Boolean).join(" · ");
+}
+
+/** What one bundle costs (2 pcs, discount taken off, rounded like the server); for "per bundle" prices. */
+export function bundlePrice(p: Product, line: Pick<CartLine, "bundle" | "variantId" | "variant">) {
+  return lineTotal(p, { ...line, qty: BUNDLE_PIECES });
+}
+
 /** "1 bundle (2 pcs)", "3 bundles (6 pcs)". */
 export function bundleLabel(pieces: number) {
   const bundles = Math.ceil(pieces / BUNDLE_PIECES);
