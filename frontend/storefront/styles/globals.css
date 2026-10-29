@@ -2497,6 +2497,35 @@ em {
   font-size: 20px;
   margin-bottom: 14px;
 }
+/* Category with no products yet */
+.category-soon {
+  max-width: 720px;
+  margin: 8px auto 40px;
+  padding: 32px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--blue-mist);
+  text-align: center;
+}
+.category-soon h2 {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+.category-soon p {
+  margin: 0 auto 18px;
+  max-width: 560px;
+  color: var(--muted);
+}
+.category-soon-links {
+  margin-top: 26px;
+}
+.category-soon-links h3 {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.category-soon-picks {
+  margin-bottom: 40px;
+}
 /* HTML sitemap (/sitemap/) */
 .sitemap-summary {
   margin: 0 0 28px;
@@ -2547,6 +2576,10 @@ em {
   padding: 6px 0;
   color: var(--blue);
   font-size: 15px;
+}
+.sitemap-muted {
+  color: var(--muted);
+  font-size: 13px;
 }
 .sitemap-xml p {
   color: var(--muted);

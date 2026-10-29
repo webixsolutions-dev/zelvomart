@@ -1,5 +1,6 @@
 import type { Product as ApiProduct, Variant as ApiVariant } from "@/types/product";
 import { designCategoryId, type Product, type Variant } from "./catalog";
+import { imageAlts } from "@/lib/image-alt";
 
 /**
  * One mapping from a backend product to the design's `Product` shape, used by the server
@@ -130,6 +131,15 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
   const highlights = listItems(p.shortDescription);
   const regular = Number(p.regularPrice || p.price);
   const bundlePercent = Number(p.buyTwoDiscountPercent ?? p.bundleDiscountPercent ?? defaultBundlePercent);
+  const variants = designVariants(p);
+  const galleryImages = (p.images || []).filter((item) => item?.src);
+  const imageMeta = (p.catalogMeta?.imageMeta || {}) as { alt?: unknown; alts?: Record<string, unknown> };
+  const alts = imageAlts(
+    p.name,
+    galleryImages.map((item) => item.src),
+    // Without catalog meta (list answers) the backend's alt for image 1 is the saved one or the title.
+    { overrides: imageMeta.alts, mainAlt: imageMeta.alt ?? galleryImages[0]?.alt, variants: variants?.options },
+  );
   return {
     id: p.id,
     slug: p.slug,
@@ -139,7 +149,7 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
     price: Number(p.price),
     ...(p.onSale && regular > Number(p.price) ? { compare: regular } : {}),
     image,
-    gallery: (p.images || []).filter((item) => item?.src).map((item) => ({ src: item.src, alt: item.alt || p.name, ...(item.title ? { title: item.title } : {}) })),
+    gallery: galleryImages.map((item, i) => ({ src: item.src, alt: alts[i], ...(item.title ? { title: item.title } : {}) })),
     ...(named ? { badge: named } : isBestseller ? { badge: "Bestseller" as const } : isNew ? { badge: "New in" as const } : {}),
     isNew,
     isBestseller,
@@ -150,7 +160,7 @@ export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Produc
     idealFor: [],
     specs: [],
     inBox: [],
-    variants: designVariants(p),
+    variants,
     ...(p.bundleEnabled && bundlePercent > 0 ? { bundleEnabled: true, bundleDiscountPercent: bundlePercent } : {}),
     ...(p.catalogMeta?.productTabs ? { tabOverrides: p.catalogMeta.productTabs } : {}),
     keywords: p.tags || [],

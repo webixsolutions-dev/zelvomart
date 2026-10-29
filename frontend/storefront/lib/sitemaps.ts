@@ -3,7 +3,7 @@
  * (pages, categories, products). The XML files, the index and the HTML page /sitemap/ all read this module,
  * so they always list the same URLs. No `server-only` here: the tests import it directly.
  */
-import { categories as designCategories, designCategoryId, type CategoryId } from "./catalog";
+import { backendCategorySlugs, categories as designCategories, type CategoryId } from "./catalog";
 import { site } from "./site";
 import type { SeoIndex } from "./backend";
 
@@ -33,8 +33,9 @@ export const PRODUCTS_PER_SITEMAP = 1000;
 
 export type SitemapUrl = { loc: string; lastmod: string; images?: string[] };
 export type SitemapPage = SitemapUrl & { label: string };
-export type SitemapCategory = SitemapUrl & { id: CategoryId; name: string };
-export type SitemapProduct = SitemapUrl & { title: string; categoryId: CategoryId; images: string[] };
+export type SitemapCategory = SitemapUrl & { id: CategoryId; name: string; productCount: number };
+/** `categoryId` is null when the backend category does not match one of the seven store categories. */
+export type SitemapProduct = SitemapUrl & { title: string; categoryId: CategoryId | null; images: string[] };
 export type SitemapData = { pages: SitemapPage[]; categories: SitemapCategory[]; products: SitemapProduct[] };
 export type ChildSitemap = { file: string; label: string; urls: SitemapUrl[]; lastmod: string };
 
@@ -44,23 +45,58 @@ const iso = (value: string) => {
 };
 const newest = (dates: string[]) => dates.reduce((a, b) => (b > a ? b : a), "");
 
-/** The URLs of every sitemap, from the backend's SEO index (same rules as before the split). */
+/**
+ * The backend answer has the shape this module needs. An older backend (slug + updatedAt only) does not:
+ * during a deploy the storefront can be built against it, and that must count as a failure (503), not as
+ * "every product is in Home & Living and has no images".
+ */
+export function isSeoIndex(value: unknown): value is SeoIndex {
+  const v = value as SeoIndex | null;
+  if (!v || !Array.isArray(v.products) || !Array.isArray(v.categories)) return false;
+  const product = (p: SeoIndex["products"][number]) =>
+    !!p &&
+    typeof p.slug === "string" &&
+    typeof p.title === "string" &&
+    typeof p.updatedAt === "string" &&
+    "category" in p &&
+    (p.category === null || typeof p.category === "string") &&
+    Array.isArray(p.images) &&
+    p.images.every((i) => typeof i === "string");
+  const category = (c: SeoIndex["categories"][number]) =>
+    !!c && typeof c.slug === "string" && typeof c.updatedAt === "string" && typeof c.publishedProducts === "number";
+  return v.products.every(product) && v.categories.every(category);
+}
+
+/** A backend category slug → one of the seven store categories, exactly; no guessing, no default. */
+export function exactCategoryId(slug: string | null | undefined): CategoryId | null {
+  if (!slug) return null;
+  const match = designCategories.find((c) => c.id === slug || c.slug === slug || backendCategorySlugs[c.id] === slug);
+  return match ? match.id : null;
+}
+
+/** The URLs of every sitemap, from the backend's SEO index. Throws on a backend answer of the wrong shape. */
 export function sitemapData(seo: SeoIndex): SitemapData {
+  if (!isSeoIndex(seo)) throw new Error("SEO_INDEX_SHAPE");
   const pages = staticPages.map((p) => ({ loc: `${site.url}/${p.path ? p.path + "/" : ""}`, lastmod: iso(p.lastmod), label: p.label }));
-  const products = seo.products.map((p) => ({
-    loc: `${site.url}/product/${p.slug}/`,
-    lastmod: iso(p.updatedAt),
-    title: p.title,
-    categoryId: designCategoryId(p.category),
-    images: p.images,
-  }));
-  // A category with no published products is noindex (soft 404), so it stays out until one is published.
+  const products = seo.products.map((p) => {
+    const categoryId = exactCategoryId(p.category);
+    if (!categoryId) console.warn(`[sitemaps] product "${p.slug}" has no store category (backend category: ${p.category ?? "none"})`);
+    return { loc: `${site.url}/product/${p.slug}/`, lastmod: iso(p.updatedAt), title: p.title, categoryId, images: p.images };
+  });
+  // Every store category the admin still has (a deleted category has no row and is left out), empty ones too:
+  // an empty category page is indexable and shows a "coming soon" block (owner decision, 30 Oct 2026).
   const categories = designCategories.flatMap((c) => {
-    const rows = seo.categories.filter((row) => designCategoryId(row.slug) === c.id);
-    const published = rows.some((row) => row.publishedProducts > 0) || products.some((p) => p.categoryId === c.id);
-    if (!published) return [];
-    const lastmod = rows.length ? newest(rows.map((row) => iso(row.updatedAt))) : iso(staticPages[1].lastmod);
-    return [{ loc: `${site.url}/product-category/${c.slug}/`, lastmod, id: c.id, name: c.name }];
+    const rows = seo.categories.filter((row) => exactCategoryId(row.slug) === c.id);
+    if (!rows.length) return [];
+    return [
+      {
+        loc: `${site.url}/product-category/${c.slug}/`,
+        lastmod: newest(rows.map((row) => iso(row.updatedAt))),
+        id: c.id,
+        name: c.name,
+        productCount: products.filter((p) => p.categoryId === c.id).length,
+      },
+    ];
   });
   return { pages, categories, products };
 }
@@ -117,15 +153,19 @@ const XML_HEADERS = { "Content-Type": "application/xml; charset=utf-8", "X-Robot
 
 /**
  * The response for one sitemap file. If the backend fails: 503 with Retry-After, never an empty list.
- * `onFailure` runs first (the routes pass `connection()`, so the failure is never stored as the cached
- * version; during a background refresh Next keeps serving the last good file).
+ * `onFailure` runs first (the routes rethrow Next's own signals and call `connection()`, so the failure is
+ * never stored as the cached version; during a background refresh Next keeps serving the last good file).
  */
-export async function sitemapResponse(file: string, load: () => Promise<SeoIndex>, onFailure: () => Promise<unknown> = async () => undefined) {
+export async function sitemapResponse(
+  file: string,
+  load: () => Promise<SeoIndex>,
+  onFailure: (error: unknown) => Promise<unknown> = async () => undefined,
+) {
   let data: SitemapData;
   try {
     data = sitemapData(await load());
-  } catch {
-    await onFailure();
+  } catch (error) {
+    await onFailure(error);
     return new Response("Sitemap temporarily unavailable. Please try again in a few minutes.\n", {
       status: 503,
       headers: { "Content-Type": "text/plain; charset=utf-8", "Retry-After": "600", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },

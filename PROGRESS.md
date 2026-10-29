@@ -423,3 +423,30 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   published products), 87 products, 367 images, matching the database.
 - **Search Console (owner):** Sitemaps → remove old WordPress entries that show "Couldn't fetch" (keep
   `sitemap_index.xml`), submit `sitemap_index.xml`; optionally also the three children.
+
+## Sitemap follow-up — 30 October 2026 (branch `fix/sitemap-followup`)
+- **What went wrong after PR #31.** Storefront and backend deployed at the same moment; the storefront prerendered
+  its sitemaps against the still-old `/api/seo/sitemap` (slug + updatedAt only). Every product fell back to Home &
+  Living and had no images: live files showed 1 category and 0 image entries (cached for an hour).
+- **Shape check.** `isSeoIndex()` (`storefront/lib/sitemaps.ts`) requires `title`, `category`, `images[]` on every
+  product and a numeric `publishedProducts` on every category. `loadSeoIndex()` asks `/api/seo/sitemap?v=2` (a new
+  cache key, so an old cached answer is never reused); a wrong shape is retried once uncached, then it is a failure:
+  503 + `Retry-After: 600`, never cached. Next's own "dynamic" signal is rethrown (`unstable_rethrow`), so a build
+  against an old backend leaves the routes on-demand instead of freezing bad data. Checked locally: old shape →
+  build passes, all sitemap files 503; backend switched to the new shape → 7 categories, 87 products, 367 images.
+- **No invented category.** Sitemaps map a backend category slug to a store category exactly (`exactCategoryId`);
+  unknown/missing → no category (logged, listed under "Other products" on `/sitemap/`), never Home & Living.
+- **All categories listed (owner decision).** `product_cat-sitemap.xml` and `/sitemap/` list every category the
+  admin still has, empty ones too (`/sitemap/` shows "(0 products)"). Category pages are `index, follow` even when
+  empty; instead of an empty grid they show "New … products are coming soon", a WhatsApp button, links to the
+  other categories and four bestsellers (or newest products).
+- **Image alt text.** `frontend/lib/image-alt.ts`: image 1 = product title (or the saved main-image alt / CSV
+  `imageAlt`); a later image of a variant = "<title> in <variant>"; others = "<title> – view N"; always distinct.
+  Admin → product → gallery: an optional alt field under each photo (placeholder = generated text), saved as
+  `imageMeta.alts` (URL → text) in the catalog meta; image URLs and order unchanged. Product page thumbnails are
+  buttons labelled "Show image N of M" with `alt=""` images; cards use image 1's alt. (The image sitemap has no alt
+  field, so the XML is unchanged.)
+- **Deploy rule:** after any change to the `/api/seo/sitemap` response, deploy the **backend first**, then the
+  storefront (the shape check covers a race: 503 until both are live, never wrong data).
+- **Checks:** frontend tests 14/14 (new: old shape → 503, unknown category, all categories, alt text), backend
+  90/90, both typechecks, Prettier, CI build without a backend.

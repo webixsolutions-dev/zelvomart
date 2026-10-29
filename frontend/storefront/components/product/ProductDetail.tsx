@@ -141,8 +141,9 @@ export function ProductDetail({ slug }: { slug: string }) {
   const waText = `Hi Zelvomart! I'd like to order:\n• ${p.name}${variant ? ` (${variant})` : ""} × ${qtyText}\nTotal: ${money(total)}\nLink: ${site.url}/product/${p.slug}/`;
   const toggleRow = (id: string) => setOpenRows((r) => (r.includes(id) ? r.filter((x) => x !== id) : [...r, id]));
   const goReviews = () => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const variantAlt = p.name + (variant ? " in " + variant : "");
   const gallery = selected?.images?.length
-    ? selected.images.map((src) => ({ src, alt: p.name + (variant ? " in " + variant : "") }))
+    ? selected.images.map((src, i) => ({ src, alt: i ? `${variantAlt} – view ${i + 1}` : variantAlt }))
     : selected?.imageUrl
       ? [{ src: selected.imageUrl, alt: p.name + (variant ? " in " + variant : "") }]
       : p.gallery?.length
@@ -252,9 +253,9 @@ export function ProductDetail({ slug }: { slug: string }) {
                 }}
               >
                 {gallery.map((image, i) => (
-                  <button key={image.src + "-" + i} type="button" role="tab" aria-selected={galleryIndex === i} aria-label={"Product image " + (i + 1) + " of " + gallery.length} className={galleryIndex === i ? "active" : ""} onClick={() => setGalleryIndex(i)}>
+                  <button key={image.src + "-" + i} type="button" role="tab" aria-selected={galleryIndex === i} aria-label={"Show image " + (i + 1) + " of " + gallery.length} className={galleryIndex === i ? "active" : ""} onClick={() => setGalleryIndex(i)}>
                     <span>
-                      <Image src={image.src} alt={image.alt || ""} width={120} height={120} unoptimized />
+                      <Image src={image.src} alt="" width={120} height={120} unoptimized />
                     </span>
                   </button>
                 ))}

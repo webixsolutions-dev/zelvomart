@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import test from "node:test";
 import type { SeoIndex } from "../storefront/lib/backend";
-import { childSitemaps, sitemapData, sitemapResponse, sitemapXml, staticPages } from "../storefront/lib/sitemaps";
+import { childSitemaps, exactCategoryId, sitemapData, sitemapResponse, sitemapXml, staticPages } from "../storefront/lib/sitemaps";
 
 const WWW = "https://www.zelvomart.com";
 const R2 = "https://pub-6861daa0380241a2acc38cd5ca85b301.r2.dev/products";
@@ -50,7 +50,7 @@ test("index lists only non-empty children; /sitemap.xml serves the same index", 
   assert.deepEqual(locs(xml), [`${WWW}/page-sitemap.xml`, `${WWW}/product_cat-sitemap.xml`, `${WWW}/product-sitemap.xml`]);
   assert.equal(sitemapXml("sitemap.xml", data), xml);
   // Index lastmod = newest lastmod inside each child.
-  assert.deepEqual(locs(xml, "lastmod"), ["2026-10-21T00:00:00.000Z", "2026-10-23T08:00:00.000Z", "2026-10-27T08:00:00.000Z"]);
+  assert.deepEqual(locs(xml, "lastmod"), ["2026-10-21T00:00:00.000Z", "2026-10-28T08:00:00.000Z", "2026-10-27T08:00:00.000Z"]);
 
   const empty = sitemapData(index({ products: [], categories: [] }));
   assert.deepEqual(locs(sitemapXml("sitemap_index.xml", empty)!), [`${WWW}/page-sitemap.xml`]);
@@ -66,9 +66,34 @@ test("pages: the 13 static pages with a trailing slash", () => {
   assert.ok(urls.includes(`${WWW}/refund_returns/`));
 });
 
-test("categories: only those with published products, design URLs", () => {
-  const urls = locs(sitemapXml("product_cat-sitemap.xml", sitemapData(index()))!);
-  assert.deepEqual(urls, [`${WWW}/product-category/home-living/`, `${WWW}/product-category/tech-gadgets/`]);
+test("categories: every category the admin has, empty ones too, design URLs", () => {
+  const data = sitemapData(index());
+  const urls = locs(sitemapXml("product_cat-sitemap.xml", data)!);
+  assert.deepEqual(urls, [`${WWW}/product-category/home-living/`, `${WWW}/product-category/tech-gadgets/`, `${WWW}/product-category/kids-toys/`]);
+  assert.deepEqual(
+    data.categories.map((c) => [c.id, c.productCount]),
+    [
+      ["home-living", 1],
+      ["tech", 1],
+      ["kids", 0],
+    ],
+  );
+  // A category deleted in the admin has no row: not listed.
+  const noKids = sitemapData(index({ categories: index().categories.filter((c) => c.slug !== "kids-toys") }));
+  assert.ok(!noKids.categories.some((c) => c.id === "kids"));
+});
+
+test("an unknown or missing category is never filed under Home & Living", () => {
+  assert.equal(exactCategoryId(undefined), null);
+  assert.equal(exactCategoryId("garden-tools"), null);
+  assert.equal(exactCategoryId("beauty-personal-care"), "beauty");
+  const base = index();
+  const data = sitemapData({
+    ...base,
+    products: [...base.products, { slug: "mystery", title: "Mystery", updatedAt: "2026-10-26T08:00:00.000Z", category: "garden-tools", images: [] }],
+  });
+  assert.equal(data.products.find((p) => p.loc.endsWith("/mystery/"))?.categoryId, null);
+  assert.equal(data.categories.find((c) => c.id === "home-living")?.productCount, 1);
 });
 
 test("products: absolute URLs, absolute image URLs, escaped values", () => {
@@ -94,7 +119,7 @@ test("more than 1,000 products split into product-sitemap2.xml, 3 …", () => {
     children.map((c) => [c.file, c.urls.length]),
     [
       ["page-sitemap.xml", 13],
-      ["product_cat-sitemap.xml", 2],
+      ["product_cat-sitemap.xml", 3],
       ["product-sitemap.xml", 1000],
       ["product-sitemap2.xml", 1000],
       ["product-sitemap3.xml", 500],
@@ -118,6 +143,20 @@ test("backend down: 503 with Retry-After, not cached, never an empty sitemap", a
   assert.equal(res.headers.get("cache-control"), "no-store");
   assert.equal(failureHook, 1);
   assert.doesNotMatch(await res.text(), /urlset/);
+});
+
+test("the old backend answer (slug + updatedAt only) is a failure: 503, not a sitemap", async () => {
+  const old = {
+    products: [{ slug: "steel-tumbler", updatedAt: "2026-10-25T08:00:00.000Z" }],
+    categories: [{ slug: "home-living", updatedAt: "2026-10-22T08:00:00.000Z" }],
+  } as unknown as SeoIndex;
+  for (const file of ["sitemap_index.xml", "product-sitemap.xml", "product_cat-sitemap.xml"]) {
+    const res = await sitemapResponse(file, async () => old);
+    assert.equal(res.status, 503, file);
+    assert.equal(res.headers.get("retry-after"), "600");
+    assert.equal(res.headers.get("cache-control"), "no-store");
+  }
+  assert.throws(() => sitemapData(old), /SEO_INDEX_SHAPE/);
 });
 
 test("a good response carries the XML content type and noindex; unknown files are 404", async () => {

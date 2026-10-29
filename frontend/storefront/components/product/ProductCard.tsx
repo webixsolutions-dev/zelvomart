@@ -49,7 +49,7 @@ export function ProductCard({ p, priority = false, featured = false }: { p: Prod
         <Link href={href} tabIndex={-1} aria-hidden="true">
           <Image
             src={p.image}
-            alt={p.name}
+            alt={p.gallery?.[0]?.src === p.image ? p.gallery[0].alt || p.name : p.name}
             width={600}
             height={600}
             priority={priority}
