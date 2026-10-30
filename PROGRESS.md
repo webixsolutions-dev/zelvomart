@@ -504,3 +504,9 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - **Order quick view side panel redesigned** (`orders/page.tsx` + `orders.css`): status badge, date, alerts,
   customer block, customer note, items with thumbnails, total to collect, large Confirm button, WhatsApp, Call and
   "Open full order".
+
+## Favicon — 30 October 2026 (branch `chore/favicon`)
+
+- All site icons now come from the owner's cart-and-bag logo: `app/favicon.ico` (16/32/48, was an older blurry
+  version that browsers and Google picked first), `public/favicon-zelvomart.png` (134), `app/(store)/icon.png` (192)
+  and `app/(store)/apple-icon.png` (180, white background for iPhone home screens). No code changes.
