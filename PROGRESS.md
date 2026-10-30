@@ -450,3 +450,34 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   storefront (the shape check covers a race: 503 until both are live, never wrong data).
 - **Checks:** frontend tests 14/14 (new: old shape → 503, unknown category, all categories, alt text), backend
   90/90, both typechecks, Prettier, CI build without a backend.
+
+## Bulk rename and reprice — 30 October 2026 (branch `feat/bulk-rename`)
+- **Where:** Admin → Products → **Bulk rename** (`/admin/products/bulk-rename`). Category dropdown, "Download products
+  (CSV)" / "Copy list for Google Sheets" (title, category, price, sale_price, seo_title, seo_description), a paste box
+  (TAB or `|`: old title | new title | price | sale price | SEO title | SEO description; blank = unchanged, sale `-`
+  = remove; header and empty lines ignored; max 500) or a CSV upload (old_title,new_title,price,sale_price,seo_title,
+  seo_description), the "Create 301 redirect from the old URL" box (off by default), Preview, one "Apply N changes".
+- **Matching:** old title only, exact, case-insensitive, spaces collapsed, within the chosen category. No match or
+  more than one match (categories listed) = "Not applied"; a product named twice in one batch = error on both lines.
+  No fuzzy matching. SKU and slug never appear in the input.
+- **What changes** (`backend/src/lib/bulk-rename.ts` plans, `backend/src/routes/admin/bulk-rename.ts` writes): title
+  (max 120); slug from the new title with the existing slugify, `-2`/`-3` when taken, unchanged when the title is
+  unchanged or gives the same slug; price/sale price via `salePriceProblem` (price > 0, sale < price); SEO title
+  (≤ 60) / description (≤ 155) when given; blank SEO cells keep hand-written text, and an SEO title that was empty or a
+  copy of the old title follows the new title. Variant prices, stock, status, category, images, SKU, reviews and
+  orders are never touched. One transaction per product, one audit row per product (`bulk_rename`, before/after).
+- **Redirects:** ticked → 301 from `/product/<old>/` to `/product/<new>/` via `syncProductRedirect`; unticked → no
+  redirect (old URL stops working). Either way, redirects that already pointed at the old URL now point at the new
+  one (no chains) and one that would point at itself is removed (no loops).
+- **After apply:** one cache refresh per run with every old/new `product:` tag, `products`, `seo`,
+  `featured-products`, `categories`, category tags and `redirects` (product pages, listings, all sitemap files,
+  `/sitemap/`, feeds). Result table + "Download this report (CSV)". Apply re-plans from the same input on the server
+  (the preview is not trusted); it runs in parts of 50 lines; a batch id makes a double click / retry a no-op, and the
+  same text applied again finds nothing to change.
+- **Undo last bulk rename:** restores title, slug, prices and SEO of the last batch and removes the redirect it
+  created (old URL live again, re-pointed redirects restored). Products edited since are skipped with a message.
+- **Checks:** 10 new backend tests (paste/CSV parsing, title and category matching, ambiguous, duplicates, slug
+  suffix, prices, SEO limits/kept/follow, write fields only, apply twice no-op, redirects only when ticked, no
+  chain/loop); full run against a local Postgres copy of the schema: preview, apply (redirect off and on), repeat
+  no-op, undo restoring products and redirects exactly, double-click on Apply saving once; screens checked on desktop
+  and phone width.
