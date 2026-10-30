@@ -8,12 +8,13 @@ export default function RecoveryOfferSettings() {
   if (loading) return <AdminLoading/>;
   if (error) return <AdminError message={error}/>;
   return <SettingsForm label="Save recovery settings" onSave={async form=>{
-    await clientApi('/api/admin/recovery/templates',{method:'PUT',body:JSON.stringify({...data,discountPercent:form.get('discountPercent'),enabled:form.get('enabled')==='on'?'true':'false',coupon:String(form.get('coupon')||'').trim(),subject:String(form.get('subject')||''),email:String(form.get('email')||''),whatsapp:String(form.get('whatsapp')||'')})},true);
+    await clientApi('/api/admin/recovery/templates',{method:'PUT',body:JSON.stringify({...data,discountPercent:form.get('discountPercent'),enabled:form.get('enabled')==='on'?'true':'false',autoEmail:form.get('autoEmail')==='on'?'true':'false',coupon:String(form.get('coupon')||'').trim(),subject:String(form.get('subject')||''),email:String(form.get('email')||''),whatsapp:String(form.get('whatsapp')||'')})},true);
     await reload();
   }}>
     <label className="field"><span>Default recovery discount (%)</span><input required name="discountPercent" type="number" min="1" max="100" step="0.01" defaultValue={data?.discountPercent ?? 5}/></label>
     <label className="field"><span><input type="checkbox" name="enabled" defaultChecked={data?.enabled !== 'false'}/> Enable recovery offers</span></label>
-    <p className="full">Each cart gets a single-use code valid for 24 hours from its first draft. Changes apply to new codes; existing codes keep their original discount and expiry. Sending requires a configured email provider. Offers are sent from the abandoned carts page.</p>
+    <label className="field"><span><input type="checkbox" name="autoEmail" defaultChecked={data?.autoEmail !== 'false'}/> Send the offer email automatically 1 hour after a cart is left</span></label>
+    <p className="full">Each cart gets a single-use code valid for 24 hours from its first draft. Changes apply to new codes; existing codes keep their original discount and expiry. Sending requires a configured email provider. When automatic sending is on, every left cart with an email gets the offer once, about 1 hour later (checked every minute). You can still send it by hand from the abandoned carts page.</p>
     {data?.coupon && <p className="full">A custom coupon ({data.coupon}) currently overrides this percentage. Clear the override below to use this percentage.</p>}
 <label className="field full"><span>Coupon override (optional)</span><input name="coupon" defaultValue={data?.coupon||''} placeholder="Leave blank to use the percentage above"/></label>
     <label className="field full"><span>Offer email subject</span><input required name="subject" defaultValue={data?.subject||''}/></label>

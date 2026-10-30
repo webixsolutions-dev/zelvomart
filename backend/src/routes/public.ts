@@ -27,6 +27,7 @@ import { dispatchJobRow } from "../lib/jobs";
 import { STORE_LIMITS, checkoutRateRules, requestIp } from "../lib/rate-limit";
 import { processJobRow } from "../lib/job-processor";
 import { sendDailySummary } from "../lib/daily-summary";
+import { sendAutomaticRecoveryEmails } from "../recovery";
 import { waitUntil } from "@vercel/functions";
 import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
@@ -108,7 +109,11 @@ export function registerPublicRoutes(app: Express) {
       }
     }
     const remaining = await prisma.job.count({ where: eligible });
-    res.json({ processed, succeeded, failed, skipped, remaining });
+    // Left carts: send the 5% offer email once, about an hour after the cart was left.
+    let cartOffers: { sent: number; failed: number } | { error: string } = { sent: 0, failed: 0 };
+    if (Date.now() + 15 * 1000 < deadline)
+      cartOffers = await sendAutomaticRecoveryEmails().catch(() => ({ error: "CART_OFFER_FAILED" }));
+    res.json({ processed, succeeded, failed, skipped, remaining, cartOffers });
   });
 
   // Daily maintenance that previously depended on pg-boss schedules.

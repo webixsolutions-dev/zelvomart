@@ -1298,56 +1298,132 @@ export default function Orders() {
       </p>
       {quick && (
         <AdminDrawer label="Order quick view" onClose={() => setQuick(null)}>
-          <h2>{quick.orderNumber}</h2>
-          <p>
-            {quick.fullName} · {quick.phone}
-          </p>
-          <p>
-            {quick.address}, {quick.city}
-          </p>
-          <p>{quick.notes}</p>
-          {quick.items.map((i) => (
-            <p key={i.id}>
-              {i.imageUrl && (
-                <img src={i.imageUrl} width="40" height="40" alt="" />
-              )}{" "}
-              {i.title} × {i.quantity}
+          <div className="oq">
+            <div className="oq-head">
+              <h2>{quick.orderNumber}</h2>
+              <Badge status={quick.status} />
+            </div>
+            <p className="oq-meta">
+              {new Date(quick.createdAt).toLocaleString("en-PK", {
+                day: "numeric",
+                month: "short",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: "Asia/Karachi",
+              })}{" "}
+              · {quick.paymentMethod === "NAYAPAY" ? "NayaPay" : "Cash on Delivery"}
+              {quick.test ? " · Test order" : ""}
             </p>
-          ))}
-          <strong>{money(quick.total)}</strong>
-          <p>
-            <button
-              className="od-button od-primary"
-              disabled={busy || quick.status !== "NEW"}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await clientApi(
-                    `/api/admin/orders/${quick.id}/status`,
-                    {
-                      method: "PATCH",
-                      body: JSON.stringify({ status: "CONFIRMED" }),
-                    },
-                    true,
-                  );
-                  setQuick(null);
-                  await refresh();
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Confirm
-            </button>{" "}
-            <a
-              href={"https://wa.me/" + quick.phone.replace(/\D/g, "")}
-              target="_blank"
-              rel="noreferrer"
-            >
-              WhatsApp
-            </a>
-          </p>
-          <Link href={"/admin/orders/" + quick.id}>Open full order →</Link>
+            {(quick.possibleDuplicate || quick.blocklistedAtOrder) && (
+              <p className="oq-alert">
+                ⚠{" "}
+                {quick.possibleDuplicate
+                  ? "Possible duplicate order within 24 hours."
+                  : "Customer was blocklisted when ordering."}
+              </p>
+            )}
+            <section className="oq-card" aria-label="Customer">
+              <strong className="oq-name">{quick.fullName}</strong>
+              <dl>
+                <div>
+                  <dt>Phone</dt>
+                  <dd>
+                    <a href={"tel:" + quick.phone}>{quick.phone}</a>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Email</dt>
+                  <dd>{quick.email || <span className="oq-muted">Not given</span>}</dd>
+                </div>
+                <div>
+                  <dt>Address</dt>
+                  <dd>
+                    {quick.address ? `${quick.address}, ` : ""}
+                    {quick.city}
+                  </dd>
+                </div>
+                {quick.customer && (
+                  <div>
+                    <dt>History</dt>
+                    <dd>
+                      {quick.customer._count.orders} order
+                      {quick.customer._count.orders === 1 ? "" : "s"}
+                      {quick.customer.refusalCount
+                        ? ` · ${quick.customer.refusalCount} refused`
+                        : ""}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </section>
+            {quick.notes && (
+              <section className="oq-note" aria-label="Customer note">
+                <b>Customer note</b>
+                <p>{quick.notes}</p>
+              </section>
+            )}
+            <section aria-label="Items">
+              <ul className="oq-items">
+                {quick.items.map((i) => (
+                  <li key={i.id}>
+                    <span className="oq-thumb">
+                      <Thumb src={i.imageUrl} title={i.title} />
+                    </span>
+                    <span>{i.title}</span>
+                    <b>× {i.quantity}</b>
+                  </li>
+                ))}
+              </ul>
+              <p className="oq-total">
+                <span>Total to collect</span>
+                <strong>{money(quick.total)}</strong>
+              </p>
+            </section>
+            <div className="oq-actions">
+              {quick.status === "NEW" && (
+                <button
+                  className="admin-btn admin-btn-primary oq-confirm"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      await clientApi(
+                        `/api/admin/orders/${quick.id}/status`,
+                        {
+                          method: "PATCH",
+                          body: JSON.stringify({ status: "CONFIRMED" }),
+                        },
+                        true,
+                      );
+                      setQuick(null);
+                      await refresh();
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  ✓ Confirm order
+                </button>
+              )}
+              <a
+                className="admin-btn admin-btn-light"
+                href={"https://wa.me/" + quick.phone.replace(/\D/g, "")}
+                target="_blank"
+                rel="noreferrer"
+              >
+                WhatsApp
+              </a>
+              <a className="admin-btn admin-btn-light" href={"tel:" + quick.phone}>
+                Call
+              </a>
+              <Link
+                className="admin-btn admin-btn-light oq-open"
+                href={"/admin/orders/" + quick.id}
+              >
+                Open full order →
+              </Link>
+            </div>
+          </div>
         </AdminDrawer>
       )}
       <dialog
