@@ -16,6 +16,8 @@ export const recoveryDefaults = {
   discountPercent: "5",
   enabled: "true",
   coupon: "",
+  /** "true": the offer email goes out by itself one hour after a shopper with an email leaves the cart. */
+  autoEmail: "true",
   subject: "{name}, your cart is still waiting",
   email:
     "Hi {name},\nYou left {product} in your cart at Zelvomart. We have kept it for you.\nUse code {coupon} for {discount} off before {expiry}.\nComplete my order: {cart_link}\nQuestions? Reply to this email or message us on WhatsApp.\nTeam Zelvomart",
@@ -147,7 +149,7 @@ export function registerRecovery(app: Express, findSession: (req: Request) => Pr
     } catch {
       return res.status(400).json({ error: "Recovery discount must be between 1% and 100%." });
     }
-    if (!["true", "false"].includes(data.enabled))
+    if (!["true", "false"].includes(data.enabled) || !["true", "false"].includes(data.autoEmail))
       return res.status(400).json({ error: "Invalid recovery offer status." });
     if (!data.subject || !data.email || !data.whatsapp)
       return res.status(400).json({ error: "Complete all message templates." });
@@ -207,112 +209,183 @@ export function registerRecovery(app: Express, findSession: (req: Request) => Pr
         return res.json({ ok: true });
       }
       if (!["message", "email"].includes(action)) return res.status(404).json({ error: "NOT_FOUND" });
-      if (!cart.restoreToken)
-        cart = await prisma.abandonedCheckout.update({
-          where: { id },
-          data: { restoreToken: randomBytes(32).toString("hex"), updatedAt: cart.updatedAt },
-        });
-      const templates = { ...recoveryDefaults, ...(await getSetting("recovery.templates", recoveryDefaults)) };
-      if (templates.enabled === "false") throw new Error("Recovery offers are disabled in Settings.");
-      const baseCoupon = templates.coupon
-        ? await prisma.coupon.findUnique({ where: { code: templates.coupon.trim().toUpperCase() } })
-        : {
-            code: "DEFAULT",
-            type: "PERCENT",
-            amount: recoveryDiscountPercent(templates.discountPercent),
-            active: true,
-            expiresAt: null,
-          };
-      if (!baseCoupon) throw new Error("The selected recovery coupon no longer exists.");
-      couponDiscount(baseCoupon, 100);
-      if (baseCoupon.code.startsWith("RCV-"))
-        throw new Error("Select a regular coupon as the template, not an existing single-use recovery code.");
-      // One stable, single-use code per cart; retries never extend its original expiry.
-      const offerCode = recoveryOfferCode(cart.restoreToken!);
-      const coupon = await prisma.coupon.upsert({
-        where: { code: offerCode },
-        update: {},
-        create: {
-          code: offerCode,
-          type: baseCoupon.type,
-          amount: baseCoupon.amount,
-          active: true,
-          expiresAt: recoveryOfferExpiry(new Date(), baseCoupon.expiresAt),
-        },
-      });
-      couponDiscount(coupon, 100);
-      if (coupon.usedCount > 0) throw new Error("This recovery offer has already been used.");
-      const lines = Array.isArray(cart.cart) ? (cart.cart as any[]) : [],
-        product = lines[0] ? await prisma.product.findUnique({ where: { id: String(lines[0].productId) } }) : null;
-      const values = {
-        name: cart.fullName || "there",
-        product: product?.title || "your items",
-        coupon: coupon.code,
-        discount: coupon.type === "PERCENT" ? `${coupon.amount}%` : `Rs ${coupon.amount}`,
-        expiry: coupon.expiresAt
-          ? coupon.expiresAt.toLocaleString("en-PK", {
-              timeZone: "Asia/Karachi",
-              dateStyle: "medium",
-              timeStyle: "short",
-            }) + " PKT"
-          : "the offer ends",
-        cart_link: `${SITE_ORIGIN}/cart?restore=${cart.restoreToken}&coupon=${encodeURIComponent(coupon.code)}`,
-      };
-      if (action === "message") return res.json({ message: fill(templates.whatsapp, values), link: values.cart_link });
-      if (!cart.email) throw new Error("This cart has no email address.");
-      if (cart.emailSentAt) throw new Error("An offer email was already sent for this cart.");
-      if (await prisma.recoveryUnsubscribe.findUnique({ where: { email: cart.email.toLowerCase() } }))
-        throw new Error("This email has unsubscribed.");
-      if (!process.env.RESEND_API_KEY) throw new Error("Email delivery is not configured.");
-      const claimed = await prisma.abandonedCheckout.updateMany({
-        where: { id, emailSentAt: null, convertedAt: null, updatedAt: { lte: new Date(Date.now() - 3600000) } },
-        data: { emailSentAt: new Date(), updatedAt: cart.updatedAt },
-      });
-      if (!claimed.count) throw new Error("This cart changed or was already contacted. Refresh and try again.");
-      let rejected = false;
-      try {
-        const latest = await prisma.abandonedCheckout.findUniqueOrThrow({ where: { id } });
-        if (latest.convertedAt) throw new Error("This cart has already converted.");
-        const sent = await new Resend(process.env.RESEND_API_KEY).emails.send(
-          {
-            ...emailIdentity("offers"),
-            to: cart.email,
-            // Hidden copy for the team (OFFERS_COPY_TO); the customer's subject stays as it is.
-            ...offerBcc(),
-            subject: fill(templates.subject, values),
-            text:
-              fill(templates.email, values) +
-              `\n\nUnsubscribe: ${SITE_ORIGIN}/api/store-proxy/api/recovery/unsubscribe?token=${cart.restoreToken}`,
-          },
-          { idempotencyKey: `cart-offer-${cart.id}` },
-        );
-        if (sent.error) {
-          rejected = true;
-          throw new Error(sent.error.message);
-        }
-        await prisma.abandonedCheckout.update({
-          where: { id },
-          data: {
-            followedUpAt: cart.followedUpAt || new Date(),
-            followedUpBy: req.admin?.id,
-            updatedAt: cart.updatedAt,
-          },
-        });
-      } catch (error) {
-        if (rejected)
-          await prisma.abandonedCheckout.update({
-            where: { id },
-            data: { emailSentAt: null, updatedAt: cart.updatedAt },
-          });
-        throw error;
+      if (action === "message") {
+        const { templates, values } = await buildRecoveryOffer(id);
+        return res.json({ message: fill(templates.whatsapp, values), link: values.cart_link });
       }
-      // An uncertain network result keeps its reservation to avoid duplicate offers.
-      await prisma.auditLog.create({
-        data: { userId: req.admin?.id, action: "offer_email", entity: "AbandonedCheckout", entityId: id },
-      });
+      await sendRecoveryOfferEmail(id, req.admin?.id ?? null);
       res.json({ ok: true });
     } catch (e: any) {
       res.status(400).json({ error: e.message || "Unable to update this cart." });
     }
   });
+}
+
+/** The single-use offer code and message values for one cart (same for the email, WhatsApp text and auto email). */
+async function buildRecoveryOffer(id: string) {
+  let cart = await prisma.abandonedCheckout.findUniqueOrThrow({ where: { id } });
+  if (!cart.restoreToken)
+    cart = await prisma.abandonedCheckout.update({
+      where: { id },
+      data: { restoreToken: randomBytes(32).toString("hex"), updatedAt: cart.updatedAt },
+    });
+  const templates = { ...recoveryDefaults, ...(await getSetting("recovery.templates", recoveryDefaults)) };
+  if (templates.enabled === "false") throw new Error("Recovery offers are disabled in Settings.");
+  const baseCoupon = templates.coupon
+    ? await prisma.coupon.findUnique({ where: { code: templates.coupon.trim().toUpperCase() } })
+    : {
+        code: "DEFAULT",
+        type: "PERCENT",
+        amount: recoveryDiscountPercent(templates.discountPercent),
+        active: true,
+        expiresAt: null,
+      };
+  if (!baseCoupon) throw new Error("The selected recovery coupon no longer exists.");
+  couponDiscount(baseCoupon, 100);
+  if (baseCoupon.code.startsWith("RCV-"))
+    throw new Error("Select a regular coupon as the template, not an existing single-use recovery code.");
+  // One stable, single-use code per cart; retries never extend its original expiry.
+  const offerCode = recoveryOfferCode(cart.restoreToken!);
+  const coupon = await prisma.coupon.upsert({
+    where: { code: offerCode },
+    update: {},
+    create: {
+      code: offerCode,
+      type: baseCoupon.type,
+      amount: baseCoupon.amount,
+      active: true,
+      expiresAt: recoveryOfferExpiry(new Date(), baseCoupon.expiresAt),
+    },
+  });
+  couponDiscount(coupon, 100);
+  if (coupon.usedCount > 0) throw new Error("This recovery offer has already been used.");
+  const lines = Array.isArray(cart.cart) ? (cart.cart as any[]) : [],
+    product = lines[0] ? await prisma.product.findUnique({ where: { id: String(lines[0].productId) } }) : null;
+  const values = {
+    name: cart.fullName || "there",
+    product: product?.title || "your items",
+    coupon: coupon.code,
+    discount: coupon.type === "PERCENT" ? `${coupon.amount}%` : `Rs ${coupon.amount}`,
+    expiry: coupon.expiresAt
+      ? coupon.expiresAt.toLocaleString("en-PK", {
+          timeZone: "Asia/Karachi",
+          dateStyle: "medium",
+          timeStyle: "short",
+        }) + " PKT"
+      : "the offer ends",
+    cart_link: `${SITE_ORIGIN}/cart?restore=${cart.restoreToken}&coupon=${encodeURIComponent(coupon.code)}`,
+  };
+  return { cart, templates, values };
+}
+
+/**
+ * Sends the offer email for one cart, once. Used by Admin → Abandoned ("Send email", actorId = the admin) and by
+ * the automatic sender (actorId = null). Same checks either way: an email address, not unsubscribed, not ordered,
+ * not already emailed, and at least one hour since the shopper last touched the cart.
+ */
+export async function sendRecoveryOfferEmail(id: string, actorId: string | null) {
+  const { cart, templates, values } = await buildRecoveryOffer(id);
+  if (!cart.email) throw new Error("This cart has no email address.");
+  if (cart.emailSentAt) throw new Error("An offer email was already sent for this cart.");
+  if (await prisma.recoveryUnsubscribe.findUnique({ where: { email: cart.email.toLowerCase() } }))
+    throw new Error("This email has unsubscribed.");
+  if (!process.env.RESEND_API_KEY) throw new Error("Email delivery is not configured.");
+  const claimed = await prisma.abandonedCheckout.updateMany({
+    where: { id, emailSentAt: null, convertedAt: null, updatedAt: { lte: new Date(Date.now() - 3600000) } },
+    data: { emailSentAt: new Date(), updatedAt: cart.updatedAt },
+  });
+  if (!claimed.count) throw new Error("This cart changed or was already contacted. Refresh and try again.");
+  let rejected = false;
+  try {
+    const latest = await prisma.abandonedCheckout.findUniqueOrThrow({ where: { id } });
+    if (latest.convertedAt) throw new Error("This cart has already converted.");
+    const sent = await new Resend(process.env.RESEND_API_KEY).emails.send(
+      {
+        ...emailIdentity("offers"),
+        to: cart.email,
+        // Hidden copy for the team (OFFERS_COPY_TO); the customer's subject stays as it is.
+        ...offerBcc(),
+        subject: fill(templates.subject, values),
+        text:
+          fill(templates.email, values) +
+          `\n\nUnsubscribe: ${SITE_ORIGIN}/api/store-proxy/api/recovery/unsubscribe?token=${cart.restoreToken}`,
+      },
+      { idempotencyKey: `cart-offer-${cart.id}` },
+    );
+    if (sent.error) {
+      rejected = true;
+      throw new Error(sent.error.message);
+    }
+    await prisma.abandonedCheckout.update({
+      where: { id },
+      data: {
+        followedUpAt: cart.followedUpAt || new Date(),
+        followedUpBy: actorId ?? "auto",
+        updatedAt: cart.updatedAt,
+      },
+    });
+  } catch (error) {
+    if (rejected)
+      await prisma.abandonedCheckout.update({
+        where: { id },
+        data: { emailSentAt: null, updatedAt: cart.updatedAt },
+      });
+    throw error;
+  }
+  // An uncertain network result keeps its reservation to avoid duplicate offers.
+  await prisma.auditLog.create({
+    data: {
+      userId: actorId,
+      action: actorId ? "offer_email" : "offer_email_auto",
+      entity: "AbandonedCheckout",
+      entityId: id,
+    },
+  });
+}
+
+/** Carts the automatic sender may email now: left 1–48 hours ago, with an email, never contacted or ordered. */
+export function automaticRecoveryWhere(now: number) {
+  return {
+    email: { not: null },
+    // Google's shopping crawler fills checkout with these addresses; they are not shoppers.
+    NOT: { email: { endsWith: "joonix.net" } },
+    emailSentAt: null,
+    convertedAt: null,
+    lostAt: null,
+    followedUpAt: null,
+    // "auto-skipped" marks a cart the automatic sender could not email, so it is not retried every minute.
+    followedUpBy: null,
+    updatedAt: { lte: new Date(now - 3600000), gte: new Date(now - 48 * 3600000) },
+  };
+}
+
+/**
+ * Automatic abandoned-cart email (runs with /api/cron/jobs, every minute): the same offer email the admin can
+ * send by hand, at most `limit` per run. Off when recovery offers or "Send automatically" are switched off.
+ */
+export async function sendAutomaticRecoveryEmails(now = Date.now(), limit = 5) {
+  const templates = { ...recoveryDefaults, ...(await getSetting("recovery.templates", recoveryDefaults)) };
+  if (templates.enabled === "false" || templates.autoEmail === "false" || !process.env.RESEND_API_KEY)
+    return { sent: 0, failed: 0 };
+  const carts = await prisma.abandonedCheckout.findMany({
+    where: automaticRecoveryWhere(now),
+    orderBy: { updatedAt: "asc" },
+    take: limit,
+    select: { id: true, updatedAt: true },
+  });
+  let sent = 0,
+    failed = 0;
+  for (const { id, updatedAt } of carts) {
+    try {
+      await sendRecoveryOfferEmail(id, null);
+      sent++;
+    } catch {
+      failed++;
+      // The admin can still send it by hand from Admin → Abandoned.
+      await prisma.abandonedCheckout
+        .updateMany({ where: { id, followedUpBy: null }, data: { followedUpBy: "auto-skipped", updatedAt } })
+        .catch(() => undefined);
+    }
+  }
+  return { sent, failed };
 }

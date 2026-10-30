@@ -481,3 +481,26 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   chain/loop); full run against a local Postgres copy of the schema: preview, apply (redirect off and on), repeat
   no-op, undo restoring products and redirects exactly, double-click on Apply saving once; screens checked on desktop
   and phone width.
+
+## Order emails, automatic cart offer, order page redesign — 30 October 2026 (branch `fix/orders-emails-admin`)
+
+- **Status emails now go out at once.** Admin status changes, bulk status, tracking saves and "Resend Purchase
+  events" used to queue a job that waited for the every-minute cron (emails arrived 1–3 minutes late). They now run
+  straight away in the background (`startJob` in `backend/src/routes/admin/orders.ts`, `waitUntil`); the cron stays
+  as the retry. An order without an email address still gets no customer email (there is nowhere to send it); the
+  order page now says so next to the status control.
+- **Automatic abandoned-cart offer.** `/api/cron/jobs` also calls `sendAutomaticRecoveryEmails` (`backend/src/recovery.ts`):
+  each left cart with an email, untouched for 1 hour (up to 48 hours), not ordered, not contacted, gets the same
+  single-use 5% offer email the "Send email" button sends, once (max 5 per run). Carts it cannot email are marked
+  `followedUpBy = "auto-skipped"` so they are not retried every minute; staff can still send by hand. Google's shopping
+  crawler addresses (`…joonix.net`) are skipped. Settings → Recovery offers has a new "Send the offer email
+  automatically" box (on by default; off = manual only, as before). Test: `backend/src/recovery-auto.test.ts`.
+- **Admin order page redesigned** (`orders/[id]/page.tsx` + `order-detail.css`): header with status badge, total and
+  main actions (Confirm, WhatsApp, Call, Print invoice, Mark as test, Delete); a clear customer card (name, phone,
+  email, address, delivery estimate, highlighted customer note) with the edit fields folded under "Edit customer and
+  delivery details"; item rows with image, variant, SKU, quantity and line total; totals; status and shipping,
+  customer history, order source and staff notes as separate cards. On phones the status card comes right after the
+  customer. All actions and saves work as before (checked against a local copy of the database).
+- **Order quick view side panel redesigned** (`orders/page.tsx` + `orders.css`): status badge, date, alerts,
+  customer block, customer note, items with thumbnails, total to collect, large Confirm button, WhatsApp, Call and
+  "Open full order".

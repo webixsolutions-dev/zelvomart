@@ -105,3 +105,31 @@
 .od-dashboard .od-stat .od-neutral { color: #8291aa; font-size: 11px; }
 
 .order-quick-overlay{position:fixed;inset:0;background:#10203966;z-index:5000;display:flex;justify-content:flex-end}.order-quick-drawer{width:min(100%,460px);padding:25px;background:#fff;overflow-y:auto;box-shadow:-8px 0 35px #10203922}.order-quick-drawer p{margin:16px 0;font-size:13px;line-height:1.7}.order-quick-drawer h2{margin-top:20px}.od-table tbody tr{cursor:pointer}
+/* Order quick view (side panel) */
+.oq{display:grid;gap:16px;color:#16303f}
+.oq h2{margin:0;font-size:22px;letter-spacing:-.4px}
+.oq-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.oq-head .od-badge{font-size:11px;padding:5px 9px;border-radius:999px}
+.oq .oq-meta{margin:-8px 0 0;color:#6f8290;font-size:12px}
+.oq .oq-alert{margin:0;padding:10px 12px;border:1px solid #f3dfae;border-radius:10px;background:#fffaf0;color:#8a6516;font-size:12px;font-weight:600}
+.oq-card{padding:14px;border-radius:12px;background:#f6f9fb}
+.oq-name{display:block;margin-bottom:10px;font-size:17px}
+.oq-card dl{display:grid;gap:8px;margin:0}
+.oq-card dl div{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;font-size:13px;line-height:1.5}
+.oq-card dt{color:#6f8290;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
+.oq-card dd{margin:0;overflow-wrap:anywhere}
+.oq-card dd a{color:#16303f;font-weight:700;text-decoration:none}
+.oq-muted{color:#8a9aa6}
+.oq-note{padding:12px 14px;border-left:3px solid #eea009;border-radius:10px;background:#fffaf0}
+.oq-note b{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#8a6516}
+.oq .oq-note p{margin:4px 0 0;font-size:13px;line-height:1.5;white-space:pre-wrap}
+.oq-items{display:grid;margin:0;padding:0;list-style:none}
+.oq-items li{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #e6ecf1;font-size:13px;line-height:1.35}
+.oq-thumb{display:grid;place-items:center;width:44px;height:44px;overflow:hidden;border-radius:9px;background:#f2f5f8;color:#a6b4be}
+.oq-thumb img{width:44px;height:44px;object-fit:cover}
+.oq .oq-total{display:flex;align-items:center;justify-content:space-between;margin:12px 0 0;font-size:13px;color:#6f8290}
+.oq-total strong{color:#16303f;font-size:20px}
+.oq-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.oq-actions .admin-btn{min-height:44px;font-size:12px;text-decoration:none}
+.oq-actions .oq-confirm,.oq-actions .oq-open{grid-column:1/-1}
+.oq-actions .oq-confirm{min-height:48px;font-size:14px}

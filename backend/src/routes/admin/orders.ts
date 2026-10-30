@@ -10,6 +10,20 @@ import { getSetting } from "../../lib/settings";
 import { postexTrackingUrl } from "../../lib/postex";
 import { invalidateFrontendCache } from "../../lib/cache-invalidation";
 import { dispatchJobRow } from "../../lib/jobs";
+import { processJobRow } from "../../lib/job-processor";
+import { waitUntil } from "@vercel/functions";
+
+/**
+ * Queue a job and, in cron mode, also run it now (after the response) so status emails and tracking reach the
+ * customer within seconds instead of waiting for the next /api/cron/jobs run. The atomic claim in processJobRow
+ * keeps the cron run from sending it twice; a failure stays queued for the cron to retry.
+ */
+function startJob(jobId: string) {
+  const run = dispatchJobRow(jobId).then(() =>
+    process.env.JOB_MODE === "cron" ? processJobRow(jobId).catch(() => undefined) : undefined,
+  );
+  waitUntil(run.catch(() => undefined));
+}
 import type { Express } from "express";
 import { audit, jsonProductSummary, productListSelect, routeParam } from "../../http/shared";
 
@@ -87,7 +101,7 @@ async function enqueueOrderStatusTracking(orderId: string, status: string) {
       prisma.job.create({ data: { name, orderId, payload: { orderId, eventName } } }),
     ),
   );
-  await Promise.allSettled(jobs.map((job) => dispatchJobRow(job.id)));
+  for (const job of jobs) startJob(job.id);
 }
 
 /** Meta always; TikTok only while its Events API is on and a pixel ID is set. */
@@ -368,7 +382,7 @@ export function registerAdminOrdersRoutes(app: Express) {
         const job = await prisma.job.create({
           data: { name: "customer-status-email", orderId: id, payload: { orderId: id, status: next } },
         });
-        dispatchJobRow(job.id).catch(() => undefined);
+        startJob(job.id);
       }
       if (["CONFIRMED", "DELIVERED"].includes(next)) await enqueueOrderStatusTracking(id, next);
       updated += 1;
@@ -422,7 +436,7 @@ export function registerAdminOrdersRoutes(app: Express) {
       });
       if (!existing) {
         const job = await prisma.job.create({ data: { orderId: id, name, payload: { orderId: id } } });
-        void dispatchJobRow(job.id).catch(() => undefined);
+        void startJob(job.id);
       }
     }
     await audit(req, "resend_purchase", "Order", id);
@@ -470,7 +484,7 @@ export function registerAdminOrdersRoutes(app: Express) {
       const job = await prisma.job.create({
         data: { name: "customer-status-email", orderId: id, payload: { orderId: id, status: next } },
       });
-      dispatchJobRow(job.id).catch(() => undefined);
+      startJob(job.id);
     }
     res.json({ ok: true });
   });
@@ -490,7 +504,7 @@ export function registerAdminOrdersRoutes(app: Express) {
       const job = await prisma.job.create({
         data: { name: "customer-status-email", orderId: id, payload: { orderId: id, status: "BOOKED" } },
       });
-      dispatchJobRow(job.id).catch(() => undefined);
+      startJob(job.id);
     }
     await audit(req, "tracking_update", "Order", id, { tracking });
     res.json({ ok: true, trackingUrl: tracking ? postexTrackingUrl(tracking) : null });
