@@ -11317,3 +11317,56 @@ button.pd-video-preview:hover .pd-video-play { transform: scale(1.12); }
   .admin-shell { grid-template-columns: minmax(0, 1fr); }
   .admin-sidebar, .admin-workspace, .admin-main { min-width: 0; max-width: 100%; }
 }
+
+/* Products → Bulk rename */
+.bulk-rename { display: grid; gap: 16px; }
+.bulk-rename-back { color: #0b87bd; font-size: 12px; font-weight: 700; }
+.bulk-rename-step h2 { margin: 0 0 12px; color: #173044; font-size: 16px; }
+.bulk-rename-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-top: 12px; }
+.bulk-rename-row label { display: grid; gap: 4px; color: #4d6270; font-size: 12px; font-weight: 700; }
+.bulk-rename-row select { min-width: 200px; min-height: 40px; padding: 0 10px; border: 1px solid #d5dde5; border-radius: 10px; background: #fff; }
+.bulk-rename-paste { display: grid; gap: 6px; margin-top: 16px; color: #4d6270; font-size: 12px; font-weight: 700; }
+.bulk-rename-paste textarea { width: 100%; padding: 10px 12px; border: 1px solid #d5dde5; border-radius: 10px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+.bulk-rename-help { margin: 8px 0 0; color: #6b7d88; font-size: 12px; line-height: 1.55; }
+.bulk-rename-help code { padding: 1px 5px; border-radius: 5px; background: #f1f5f8; font-size: 11.5px; }
+.bulk-rename-link { padding: 0; border: 0; background: none; color: #0b87bd; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.bulk-rename-check { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: #173044; font-size: 13px; font-weight: 700; }
+.bulk-rename-check input { width: 18px; height: 18px; }
+.bulk-rename-error { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: #fdecec; color: #b42318; font-size: 13px; }
+.bulk-rename-note { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: #f2fafe; color: #173044; font-size: 13px; }
+.bulk-rename-export { margin-top: 12px; font-size: 12.5px; }
+.bulk-rename-export summary { cursor: pointer; color: #0b87bd; font-weight: 700; }
+.bulk-rename-export ul { max-height: 240px; margin: 8px 0 0; padding: 8px 12px; overflow: auto; border: 1px solid #e8edf0; border-radius: 10px; list-style: none; }
+.bulk-rename-export li { padding: 3px 0; }
+.bulk-rename-export li span { color: #7b8c97; }
+.bulk-rename-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.bulk-rename-table th, .bulk-rename-table td { padding: 9px 10px; border-bottom: 1px solid #eef2f5; text-align: left; vertical-align: top; }
+.bulk-rename-table th { color: #6b7d88; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
+.bulk-rename-table s { color: #8a99a3; }
+.bulk-rename-table em { display: inline-block; margin-top: 4px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 700; }
+.bulk-rename-table tr.is-error { background: #fffafa; }
+.bulk-rename-product { display: flex; align-items: center; gap: 8px; }
+.bulk-rename-product img, .bulk-rename-noimg { width: 36px; height: 36px; flex: none; border-radius: 8px; object-fit: cover; background: #f1f5f8; }
+.bulk-rename-product small { color: #6b7d88; font-size: 11px; }
+.bulk-rename .muted { color: #8a99a3; }
+.bulk-rename .flag-ok { color: #067647; background: #ecfdf3; }
+.bulk-rename .flag-warn { color: #b54708; background: #fffaeb; }
+.bulk-rename .flag-info { color: #175cd3; background: #eff8ff; }
+.bulk-rename .flag-err { color: #b42318; }
+.bulk-rename td > .flag-ok { background: none; font-weight: 700; }
+.bulk-rename-undo { margin: 10px 0 0; padding-left: 18px; font-size: 12.5px; }
+.bulk-rename-undo li.flag-ok { background: none; }
+.bulk-rename-skeleton { height: 18px; margin: 10px 0; border-radius: 8px; background: linear-gradient(90deg, #f1f5f8 25%, #e6edf2 50%, #f1f5f8 75%); background-size: 200% 100%; animation: bulkRenameShimmer 1.2s infinite; }
+@keyframes bulkRenameShimmer { to { background-position: -200% 0; } }
+@media (max-width: 760px) {
+  .bulk-rename-row > * { flex: 1 1 100%; }
+  .bulk-rename-row select { width: 100%; }
+  .bulk-rename-table thead { display: none; }
+  .bulk-rename-table, .bulk-rename-table tbody, .bulk-rename-table tr, .bulk-rename-table td { display: block; width: 100%; }
+  .bulk-rename-table tr { padding: 8px 0; border-bottom: 1px solid #e3e9ed; }
+  .bulk-rename-table td { padding: 4px 10px; border: 0; }
+  .bulk-rename-table td::before { content: attr(data-label); display: block; color: #8a99a3; font-size: 10.5px; font-weight: 700; text-transform: uppercase; }
+}
+.bulk-rename, .bulk-rename-step { min-width: 0; }
+.bulk-rename-table strong { display: inline; margin: 0; color: #173044; font-size: inherit; font-weight: 800; letter-spacing: normal; line-height: inherit; }
+.bulk-rename-help code { overflow-wrap: anywhere; word-break: break-all; }

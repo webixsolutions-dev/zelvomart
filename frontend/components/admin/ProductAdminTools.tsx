@@ -317,6 +317,9 @@ export default function ProductAdminTools({
   return (
     <div className={`admin-product-actions${compact ? " compact" : ""}`}>
       <BulkImageUpload products={products} onUploaded={refresh} />
+      <Link href="/admin/products/bulk-rename" className="admin-btn-outline">
+        <span>Bulk rename</span>
+      </Link>
       <button
         type="button"
         className="admin-btn-outline"
