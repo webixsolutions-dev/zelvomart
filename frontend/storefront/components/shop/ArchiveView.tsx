@@ -1,20 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, SlidersHorizontal, X } from "lucide-react";
-import { categories, getCategory, products, type CategoryId, categoryPath } from "@store/lib/catalog";
+import { categories, getCategory, type CategoryId, type Product, categoryPath } from "@store/lib/catalog";
+import { archiveHref, pageWindow, PRICE_CAP, type ArchiveParams, type ArchiveSort } from "@store/lib/archive";
 import { site } from "@store/lib/site";
 import { waLink } from "@store/lib/format";
 import { ProductGrid } from "@store/components/product/ProductGrid";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 
-type Sort = "featured" | "low" | "high" | "name" | "discount";
-
-const PRICE_CAP = 10000;
 const PRICE_STEP = 100;
-const PAGE = 12;
 const categoryOrder: CategoryId[] = ["home-living", "home-decor", "beauty", "tech", "kids", "fashion", "fitness"];
 
 function moneyLabel(n: number) {
@@ -107,47 +104,59 @@ function ComingSoon({ name }: { name: string }) {
 }
 
 /**
+ * One listing page (24 products) rendered on the server; filters, sort and page number live in the URL
+ * (lib/archive.ts), so changing them loads that page from the server instead of filtering a full catalog here.
  * `heading` adds an H2 above the grid (e.g. "Shop Home & Living"); without it only the product count shows, so the page H1 is not repeated.
  * `name` is what the "on the way" state calls the listing when it has no products yet (defaults to the locked category's name).
  */
-export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: string[]; heading?: string; lockedCategory?: CategoryId; name?: string }) {
+export function ArchiveView({
+  items,
+  total,
+  totalPages,
+  params,
+  basePath,
+  heading,
+  lockedCategory,
+  name,
+}: {
+  items: Product[];
+  total: number;
+  totalPages: number;
+  params: ArchiveParams;
+  basePath: string;
+  heading?: string;
+  lockedCategory?: CategoryId;
+  name?: string;
+}) {
   const router = useRouter();
-  const base = useMemo(() => products.filter((p) => ids.includes(p.id)), [ids]);
-  const [category, setCategory] = useState<string | null>(lockedCategory ?? null);
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(PRICE_CAP);
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [sort, setSort] = useState<Sort>("featured");
-  const [page, setPage] = useState(1);
+  const top = useRef<HTMLDivElement>(null);
+  const [pending, startTransition] = useTransition();
   const [sheet, setSheet] = useState(false);
+  // The slider moves freely; the page is asked for once the shopper stops dragging.
+  const [price, setPriceState] = useState({ min: params.min, max: params.max });
+  useEffect(() => setPriceState({ min: params.min, max: params.max }), [params.min, params.max]);
+  const priceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  const category = lockedCategory ?? params.category;
   const orderedCategories = categoryOrder
     .map((id) => categories.find((c) => c.id === id))
     .filter((c): c is (typeof categories)[number] => Boolean(c));
 
-  const priceActive = minPrice > 0 || maxPrice < PRICE_CAP;
-  const categoryActive = !lockedCategory && Boolean(category);
+  const priceActive = params.min > 0 || params.max < PRICE_CAP;
+  const categoryActive = !lockedCategory && Boolean(params.category);
+  const activeCount = (categoryActive ? 1 : 0) + (priceActive ? 1 : 0) + (params.stock ? 1 : 0);
 
-  const list = useMemo(() => {
-    let a = [...base];
-    if (!lockedCategory && category) a = a.filter((p) => p.category === category);
-    a = a.filter((p) => p.price >= minPrice && (maxPrice >= PRICE_CAP || p.price <= maxPrice));
-    if (inStockOnly) a = a.filter((p) => p.inStock !== false);
-    if (sort === "low") a.sort((x, y) => x.price - y.price);
-    if (sort === "high") a.sort((x, y) => y.price - x.price);
-    if (sort === "name") a.sort((x, y) => x.name.localeCompare(y.name));
-    if (sort === "discount") a.sort((x, y) => (y.compare ? (y.compare - y.price) / y.compare : 0) - (x.compare ? (x.compare - x.price) / x.compare : 0));
-    return a;
-  }, [base, category, lockedCategory, minPrice, maxPrice, inStockOnly, sort]);
-
-  const pages = Math.max(1, Math.ceil(list.length / PAGE));
-  const shown = list.slice((page - 1) * PAGE, page * PAGE);
-  const activeCount = (categoryActive ? 1 : 0) + (priceActive ? 1 : 0) + (inStockOnly ? 1 : 0);
+  /** Open the listing with changed params (filters reset the page to 1) and keep the grid in view. */
+  const go = (change: Partial<ArchiveParams>, keepPage = false) => {
+    const href = archiveHref(basePath, params, keepPage ? change : { ...change, page: 1 });
+    startTransition(() => router.push(href, { scroll: false }));
+    top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const setPrice = (min: number, max: number) => {
-    setMinPrice(min);
-    setMaxPrice(max);
-    setPage(1);
+    setPriceState({ min, max });
+    clearTimeout(priceTimer.current);
+    priceTimer.current = setTimeout(() => go({ min, max }), 500);
   };
 
   const pickCategory = (id: string) => {
@@ -155,35 +164,25 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
       if (id !== lockedCategory) router.push(categoryPath(id));
       return;
     }
-    setCategory(id);
-    setPage(1);
+    go({ category: id as CategoryId });
   };
 
-  const reset = () => {
-    if (!lockedCategory) setCategory(null);
-    setMinPrice(0);
-    setMaxPrice(PRICE_CAP);
-    setInStockOnly(false);
-    setPage(1);
-  };
+  const reset = () => go({ category: lockedCategory ? params.category : null, min: 0, max: PRICE_CAP, stock: false });
 
   const filters = (scope: string) => (
     <>
       <FilterGroup title="Price">
-        <PriceRange min={minPrice} max={maxPrice} onChange={setPrice} />
+        <PriceRange min={price.min} max={price.max} onChange={setPrice} />
       </FilterGroup>
       <FilterGroup title="Category">
         {orderedCategories.map((c) => {
-          const selected = (lockedCategory ?? category) === c.id;
+          const selected = category === c.id;
           return (
             <label
               className={`filter-choice ${selected ? "active" : ""}`}
               key={c.id}
               onClick={() => {
-                if (!lockedCategory && category === c.id) {
-                  setCategory(null);
-                  setPage(1);
-                }
+                if (!lockedCategory && params.category === c.id) go({ category: null });
               }}
             >
               <input type="radio" name={`filter-category-${scope}`} checked={selected} onChange={() => pickCategory(c.id)} />
@@ -193,22 +192,16 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
         })}
       </FilterGroup>
       <FilterGroup title="Availability">
-        <label className={`filter-choice check ${inStockOnly ? "active" : ""}`}>
-          <input
-            type="checkbox"
-            checked={inStockOnly}
-            onChange={(e) => {
-              setInStockOnly(e.target.checked);
-              setPage(1);
-            }}
-          />
+        <label className={`filter-choice check ${params.stock ? "active" : ""}`}>
+          <input type="checkbox" checked={params.stock} onChange={(e) => go({ stock: e.target.checked })} />
           <span>In stock only</span>
         </label>
       </FilterGroup>
     </>
   );
 
-  if (!base.length) {
+  // No products at all yet (not filtered to zero): no count, filters or sort, just a way on.
+  if (!total && !activeCount) {
     return (
       <div className="archive-wrap is-empty">
         <div>
@@ -226,7 +219,7 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
   }
 
   return (
-    <div className="archive-wrap">
+    <div className="archive-wrap" ref={top} style={{ scrollMarginTop: 96 }}>
       <aside className="sidebar" aria-label="Filters">
         <div className="sidebar-head">
           <h3>Filter</h3>
@@ -239,12 +232,12 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
         {filters("side")}
       </aside>
 
-      <div>
+      <div aria-busy={pending}>
         <div className="archive-toolbar">
           <div>
             {heading && <h2>{heading}</h2>}
             <p>
-              {list.length} product{list.length === 1 ? "" : "s"}
+              {total} product{total === 1 ? "" : "s"}
             </p>
           </div>
           <div className="toolbar-actions">
@@ -253,7 +246,7 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
             </button>
             <label className="sort">
               <span className="sr-only">Sort products</span>
-              <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+              <select value={params.sort} onChange={(e) => go({ sort: e.target.value as ArchiveSort })}>
                 <option value="featured">Sort: Featured</option>
                 <option value="low">Price: Low to High</option>
                 <option value="high">Price: High to Low</option>
@@ -266,18 +259,18 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
 
         {activeCount > 0 && (
           <div className="chips">
-            {categoryActive && category && (
-              <button type="button" onClick={() => (setCategory(null), setPage(1))}>
-                {getCategory(category)?.name} <X size={13} />
+            {categoryActive && params.category && (
+              <button type="button" onClick={() => go({ category: null })}>
+                {getCategory(params.category)?.name} <X size={13} />
               </button>
             )}
             {priceActive && (
-              <button type="button" onClick={() => setPrice(0, PRICE_CAP)}>
-                {moneyLabel(minPrice)} – {moneyLabel(maxPrice)} <X size={13} />
+              <button type="button" onClick={() => go({ min: 0, max: PRICE_CAP })}>
+                {moneyLabel(params.min)} – {moneyLabel(params.max)} <X size={13} />
               </button>
             )}
-            {inStockOnly && (
-              <button type="button" onClick={() => (setInStockOnly(false), setPage(1))}>
+            {params.stock && (
+              <button type="button" onClick={() => go({ stock: false })}>
                 In stock only <X size={13} />
               </button>
             )}
@@ -287,8 +280,10 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
           </div>
         )}
 
-        {shown.length ? (
-          <ProductGrid items={shown} cols={3} priorityCount={3} />
+        {items.length ? (
+          <div style={pending ? { opacity: 0.55, transition: "opacity .15s" } : undefined}>
+            <ProductGrid items={items} cols={3} priorityCount={3} />
+          </div>
         ) : (
           <div className="empty-state">
             <h3>No products match these filters.</h3>
@@ -299,13 +294,37 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
           </div>
         )}
 
-        {pages > 1 && (
+        {totalPages > 1 && (
           <nav className="pagination" aria-label="Pagination">
-            {Array.from({ length: pages }, (_, i) => (
-              <button key={i} type="button" className={page === i + 1 ? "current" : ""} onClick={() => setPage(i + 1)}>
-                {i + 1}
-              </button>
-            ))}
+            {params.page > 1 && (
+              <Link href={archiveHref(basePath, params, { page: params.page - 1 })} scroll={false} onClick={() => top.current?.scrollIntoView({ behavior: "smooth" })} rel="prev" aria-label="Previous page">
+                ‹ Prev
+              </Link>
+            )}
+            {pageWindow(params.page, totalPages).map((n, i) =>
+              n == null ? (
+                <span key={`gap-${i}`} className="gap" aria-hidden="true">
+                  …
+                </span>
+              ) : (
+                <Link
+                  key={n}
+                  href={archiveHref(basePath, params, { page: n })}
+                  scroll={false}
+                  onClick={() => top.current?.scrollIntoView({ behavior: "smooth" })}
+                  className={params.page === n ? "current" : ""}
+                  aria-current={params.page === n ? "page" : undefined}
+                  aria-label={`Page ${n}`}
+                >
+                  {n}
+                </Link>
+              ),
+            )}
+            {params.page < totalPages && (
+              <Link href={archiveHref(basePath, params, { page: params.page + 1 })} scroll={false} onClick={() => top.current?.scrollIntoView({ behavior: "smooth" })} rel="next" aria-label="Next page">
+                Next ›
+              </Link>
+            )}
           </nav>
         )}
       </div>
@@ -324,7 +343,7 @@ export function ArchiveView({ ids, heading, lockedCategory, name }: { ids: strin
             Clear
           </button>
           <button type="button" className="btn" onClick={() => setSheet(false)}>
-            Show {list.length} products
+            Show {total} products
           </button>
         </div>
       </div>

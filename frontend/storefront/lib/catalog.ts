@@ -235,24 +235,32 @@ export const categories: Category[] = [
 ];
 
 /**
- * Products come from the backend (GET /api/products). The server fills this list with
- * `loadCatalog()` (lib/backend.ts) and the browser gets the same list from the store layout
- * (CatalogBridge), so every helper below keeps working unchanged.
+ * The products this page/session has seen (not the whole catalog): the cards a page renders, the product on its
+ * own page, and the products in the cart or wishlist (loaded by id, store.tsx). Server pages load exactly what they
+ * show (lib/backend.ts loadCards / loadProduct), so getProductById/getProduct keep working for what is on screen.
  */
 export const products: Product[] = [];
 
-/** Replace the product list in place (keeps the same array, so every importer sees the update). */
-export function setCatalog(items: Product[]) {
-  if (products === items) return;
-  products.splice(0, products.length, ...items);
-}
 
-/** Add or replace single products (e.g. the full product on its own page). */
+/**
+ * Add or replace products. A light card never replaces the full product (description, reviews) already loaded
+ * for its own page; it only refreshes the card fields (price, stock, variants).
+ */
 export function upsertProducts(items: Product[]) {
   for (const item of items) {
     const at = products.findIndex((p) => p.id === item.id);
-    if (at >= 0) products[at] = item;
-    else products.push(item);
+    if (at < 0) products.push(item);
+    else if (item.description || !products[at].description) products[at] = item;
+    else
+      products[at] = {
+        ...products[at],
+        price: item.price,
+        compare: item.compare,
+        inStock: item.inStock,
+        variants: item.variants,
+        rating: item.rating,
+        reviewCount: item.reviewCount,
+      };
   }
 }
 
@@ -303,39 +311,12 @@ export function getProductById(id: string) {
   return products.find((p) => p.id === id);
 }
 
-export function productsIn(category: CategoryId) {
-  return products.filter((p) => p.category === category);
-}
 
 export function isOnSale(p: Product) {
   return !!p.compare && p.compare > p.price;
 }
 
-/** "You may also like": same category first (current product left out), topped up with bestsellers. */
-export function relatedProducts(p: Product, n = 4) {
-  const same = products.filter((x) => x.category === p.category && x.id !== p.id);
-  const best = products.filter((x) => x.isBestseller && x.id !== p.id && x.category !== p.category);
-  const rest = products.filter((x) => x.id !== p.id && x.category !== p.category && !x.isBestseller);
-  return [...same, ...best, ...rest].slice(0, n);
-}
 
-export function searchProducts(q: string) {
-  const terms = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  if (!terms.length) return [];
-  return products
-    .map((p) => {
-      const cat = getCategory(p.category)!;
-      const hay = [p.name, cat.name, p.tagline, ...p.keywords].join(" ").toLowerCase();
-      const score = terms.reduce(
-        (s, t) => s + (p.name.toLowerCase().includes(t) ? 3 : 0) + (hay.includes(t) ? 1 : 0),
-        0,
-      );
-      return { p, score, all: terms.every((t) => hay.includes(t)) };
-    })
-    .filter((r) => r.all)
-    .sort((a, b) => b.score - a.score)
-    .map((r) => r.p);
-}
 
 export type CollectionKey = "shop" | "new-arrivals" | "bestsellers" | "deals";
 

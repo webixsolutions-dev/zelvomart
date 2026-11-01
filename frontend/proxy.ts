@@ -57,6 +57,9 @@ async function findRedirect(pathname: string) {
   return redirectMap.get(withSlash) || redirectMap.get(pathname) || null;
 }
 
+/** Paginated listings: shop, the three collections and every category page. */
+const LISTING_PATH = /^\/(shop|new-arrivals|bestsellers|deals-and-offers|product-category\/[^/]+)\/?$/;
+
 const withSlash = (path: string) => (path.endsWith("/") || /\.[a-z0-9]+$/i.test(path) ? path : `${path}/`);
 
 /** Keeps the visitor's query (utm tags, the order key) on top of any query the target already has. */
@@ -93,6 +96,15 @@ export async function proxy(request: NextRequest) {
       if (target.pathname !== withSlash(pathname) || target.origin !== request.nextUrl.origin) {
         if (!/^https?:\/\//i.test(hit.destination)) withQuery(target, request);
         return NextResponse.redirect(target, hit.permanent ? 301 : 302);
+      }
+    }
+    // Listing page 1 has one URL: /shop/?page=1 (or page=0/abc) answers a 301 to /shop/ before the page renders.
+    if (LISTING_PATH.test(pathname) && request.nextUrl.searchParams.has("page")) {
+      const page = Math.floor(Number(request.nextUrl.searchParams.get("page")));
+      if (!(page > 1)) {
+        const clean = new URL(request.url);
+        clean.searchParams.delete("page");
+        return NextResponse.redirect(clean, 301);
       }
     }
     // Every storefront URL ends with "/"; the form without it answers one 301.

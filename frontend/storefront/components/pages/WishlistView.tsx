@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { ArrowRight, Heart } from "lucide-react";
-import { products } from "@store/lib/catalog";
+import { getProductById, type Product } from "@store/lib/catalog";
+import { idsUrl, useProducts } from "@store/lib/catalog-client";
 import { useShop } from "@store/lib/store";
 import { ProductGrid } from "@store/components/product/ProductGrid";
 
 export function WishlistView() {
   const { wishlist, ready, addToCart, notify } = useShop();
-  if (!ready) return <div className="container skeleton-block" />;
-  const items = products.filter((p) => wishlist.includes(p.id));
+  // Saved products are loaded by id (pages no longer carry the whole catalog).
+  const loaded = useProducts(ready && wishlist.length ? idsUrl(wishlist) : null);
+  if (!ready || (wishlist.length && loaded === null)) return <div className="container skeleton-block" />;
+  const items = wishlist.map((id) => getProductById(id)).filter((p): p is Product => Boolean(p));
   if (!items.length)
     return (
       <div className="empty-state">

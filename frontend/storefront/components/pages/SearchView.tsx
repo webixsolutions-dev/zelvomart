@@ -1,21 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { categories, products, searchProducts, categoryPath } from "@store/lib/catalog";
+import { categories, categoryPath, type Product } from "@store/lib/catalog";
 import { ProductGrid } from "@store/components/product/ProductGrid";
 import { SearchBox } from "@store/components/layout/SearchBox";
 import { SectionHead } from "@store/components/ui/SectionHead";
 
-export function SearchView() {
-  const q = useSearchParams().get("q") ?? "";
-  const results = searchProducts(q);
+/** Results come from the server (app/(store)/search/page.tsx: one limited backend query), not a browser scan. */
+export function SearchView({ q, results, total, popular }: { q: string; results: Product[]; total: number; popular: Product[] }) {
   return (
     <>
       <div className="page-intro container">
         <div className="eyebrow">Search Zelvomart</div>
         <h1>{q ? <>Results for “{q}”</> : "Search products"}</h1>
-        <p>{q ? `${results.length} product${results.length === 1 ? "" : "s"} found` : "Find exactly what you need."}</p>
+        <p>{q ? `${total} product${total === 1 ? "" : "s"} found` : "Find exactly what you need."}</p>
         <div className="search-page-box">
           <SearchBox />
         </div>
@@ -41,7 +39,7 @@ export function SearchView() {
               )}
               <div className="section">
                 <SectionHead title="Popular right now" href="/bestsellers/" linkLabel="Bestsellers" />
-                <ProductGrid items={products.filter((p) => p.isBestseller).slice(0, 4)} />
+                <ProductGrid items={popular} />
               </div>
             </>
           )}

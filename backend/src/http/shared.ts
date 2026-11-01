@@ -385,10 +385,15 @@ export function jsonProductSummary(row: any, bundleDiscount = BUY_TWO_DISCOUNT_P
   const pricing = priceSummary(row.price, row.salePrice);
   const images = Array.isArray(row.images) ? row.images.filter((x: unknown) => typeof x === "string") : [];
   const catalog = readCatalogMeta(row.sourceUrl) || {};
-  const reviewCount = Array.isArray(row.reviews) ? row.reviews.length : 0;
-  const averageRating = reviewCount
-    ? row.reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviewCount
-    : undefined;
+  // Card reads (lib/catalog-cards.ts) bring the review count and average as an aggregate instead of the rows.
+  const reviewCount = row.reviewStats ? row.reviewStats.count : Array.isArray(row.reviews) ? row.reviews.length : 0;
+  const averageRating = row.reviewStats
+    ? reviewCount
+      ? row.reviewStats.average
+      : undefined
+    : reviewCount
+      ? row.reviews.reduce((sum: number, r: any) => sum + Number(r.rating || 0), 0) / reviewCount
+      : undefined;
   const hasOptions = Array.isArray(row.variants) && row.variants.length > 0;
   const imageAlt = String(catalog.imageMeta?.alt || row.title || "");
   const imageTitle = String(catalog.imageMeta?.title || "").trim() || null;

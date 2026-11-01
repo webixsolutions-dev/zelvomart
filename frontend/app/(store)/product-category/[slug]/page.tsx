@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { categories, getCategoryBySlug, type CategoryId } from "@store/lib/catalog";
 import { CategoryArchive } from "@store/components/shop/ArchivePage";
 import { bannerOg, shareMeta } from "@store/lib/seo";
-import { loadStore } from "@store/lib/backend";
+import { categoryListing, listingMeta } from "@store/lib/archive-page";
 
 // The seven categories are built ahead; any other slug renders on demand and gets the 404 page.
 // (dynamicParams = false made every category 404 after an on-demand revalidation, e.g. saving Admin → Settings.)
@@ -11,24 +11,27 @@ export function generateStaticParams() {
   return categories.map((c) => ({ slug: c.slug }));
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
+
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const c = getCategoryBySlug((await params).slug);
   if (!c) return {};
+  const path = `/product-category/${c.slug}/`;
+  const meta = await listingMeta(path, await searchParams, c.seoTitle, { category: c.id as CategoryId });
   // Indexable even with no products yet: the page then shows a "coming soon" block, other categories and
   // bestsellers instead of an empty grid (owner decision, 30 Oct 2026).
   return {
-    title: c.seoTitle,
+    title: meta.title,
     description: c.seoDescription,
-    alternates: { canonical: `/product-category/${c.slug}/` },
-    ...shareMeta({ title: `${c.seoTitle} | Zelvomart`, description: c.seoDescription, path: `/product-category/${c.slug}/`, image: bannerOg(c.banner, c.name) }),
+    alternates: { canonical: meta.canonical },
+    ...shareMeta({ title: `${meta.title} | Zelvomart`, description: c.seoDescription, path: meta.canonical, image: bannerOg(c.banner, c.name) }),
   };
 }
 
-export const revalidate = 300;
-
-export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
-  await loadStore();
+export default async function Page({ params, searchParams }: Props) {
   const c = getCategoryBySlug((await params).slug);
   if (!c) notFound();
-  return <CategoryArchive id={c.id as CategoryId} />;
+  const path = `/product-category/${c.slug}/`;
+  const listing = await categoryListing(c.id as CategoryId, path, await searchParams);
+  return <CategoryArchive id={c.id as CategoryId} data={listing.data} params={listing.params} basePath={path} soon={listing.soon} />;
 }

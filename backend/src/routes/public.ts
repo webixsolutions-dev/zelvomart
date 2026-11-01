@@ -8,6 +8,7 @@ import {
 } from "../lib/review-staging";
 import { validateCoupon } from "../lib/coupons";
 import { catalogQuery } from "../lib/catalog-query";
+import { loadCardRows, parseIds } from "../lib/catalog-cards";
 import { publicSettingKeys } from "../lib/public-settings";
 import { SITE_ORIGIN, isStorefrontUrl } from "../lib/site-url";
 import { seoSitemapIndex } from "../lib/seo-sitemap";
@@ -249,16 +250,40 @@ export function registerPublicRoutes(app: Express) {
       .trim()
       .replace(/[^a-z0-9-]/gi, "");
     setNoStore(res);
-    const query = catalogQuery({ search, category, featured, minPrice, maxPrice, availability, tag, sort });
+    // view=card: the light card read (lib/catalog-cards.ts). ids=: only these products (cart, wishlist).
+    // exclude=: leave one product out (related products on its own page).
+    const card = String(req.query.view || "") === "card";
+    const ids = req.query.ids != null ? parseIds(req.query.ids) : undefined;
+    const exclude =
+      String(req.query.exclude || "")
+        .trim()
+        .slice(0, 64) || undefined;
+    if (ids && !ids.length) return res.json({ items: [], page: 1, limit, total: 0, totalPages: 1 });
+    const pageSize = ids ? Math.max(limit, ids.length) : limit;
+    const query = catalogQuery({
+      search,
+      category,
+      featured,
+      minPrice,
+      maxPrice,
+      availability,
+      tag,
+      sort,
+      ids,
+      exclude,
+    });
     const [rank, counts] = await Promise.all([
       prisma.$queryRaw<{ id: string; orders: bigint }[]>(
-        Prisma.sql`SELECT p.id,COALESCE(s.orders,0) AS orders ${query.from} ORDER BY ${query.order} LIMIT ${limit} OFFSET ${(page - 1) * limit}`,
+        Prisma.sql`SELECT p.id,COALESCE(s.orders,0) AS orders ${query.from} ORDER BY ${query.order} LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`,
       ),
       prisma.$queryRaw<{ total: bigint }[]>(Prisma.sql`SELECT COUNT(*) AS total ${query.from}`),
     ]);
-    const rows = rank.length
-      ? await prisma.product.findMany({ where: { id: { in: rank.map((r) => r.id) } }, select: productListSelect })
-      : [];
+    const rankIds = rank.map((r) => r.id);
+    const rows: any[] = !rankIds.length
+      ? []
+      : card
+        ? await loadCardRows(rankIds)
+        : await prisma.product.findMany({ where: { id: { in: rankIds } }, select: productListSelect });
     const byId = new Map(rows.map((row) => [row.id, row])),
       total = Number(counts[0]?.total || 0);
     const discount = Number(await getSetting("store.bundleDefaultDiscountPercent", 5));
@@ -268,9 +293,9 @@ export function registerPublicRoutes(app: Express) {
         return row ? [jsonProductSummary({ ...row, _count: { orderItems: Number(r.orders) } }, discount)] : [];
       }),
       page,
-      limit,
+      limit: pageSize,
       total,
-      totalPages: Math.max(1, Math.ceil(total / limit)),
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
     });
   });
   app.get("/api/products/slug/:slug", async (req, res) => {
@@ -309,20 +334,25 @@ export function registerPublicRoutes(app: Express) {
   });
   app.get("/api/seo/sitemap", async (_req, res) => {
     setPublicCache(res, 3600, 86400, ["seo"]);
-    const [products, categories] = await Promise.all([
-      prisma.product.findMany({
-        where: { status: "PUBLISHED" },
-        orderBy: { createdAt: "desc" },
-        select: {
-          slug: true,
-          title: true,
-          status: true,
-          updatedAt: true,
-          sourceUrl: true,
-          images: true,
-          category: { select: { slug: true } },
-        },
-      }),
+    const [rows, categories] = await Promise.all([
+      // Only what the sitemaps print: slug, title, date, category, up to 10 image URLs and the noindex flag
+      // (not the whole catalog-meta JSON).
+      prisma.$queryRaw<
+        {
+          slug: string;
+          title: string;
+          updatedAt: Date;
+          images: unknown;
+          categorySlug: string | null;
+          robotsIndex: string | null;
+        }[]
+      >(Prisma.sql`
+        SELECT p.slug, p.title, p."updatedAt", jsonb_path_query_array(p.images, '$[0 to 9]') AS images,
+          c.slug AS "categorySlug",
+          CASE WHEN left(btrim(p."sourceUrl"),1)='{' AND pg_input_is_valid(p."sourceUrl",'jsonb')
+            THEN p."sourceUrl"::jsonb #>> '{zvmCatalog,robotsIndex}' END AS "robotsIndex"
+        FROM "Product" p LEFT JOIN "Category" c ON c.id=p."categoryId"
+        WHERE p.status='PUBLISHED' ORDER BY p."createdAt" DESC`),
       prisma.category.findMany({
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         select: {
@@ -334,6 +364,15 @@ export function registerPublicRoutes(app: Express) {
         },
       }),
     ]);
+    const products = rows.map((row) => ({
+      slug: row.slug,
+      title: row.title,
+      status: "PUBLISHED",
+      updatedAt: row.updatedAt,
+      images: row.images,
+      sourceUrl: row.robotsIndex ? JSON.stringify({ zvmCatalog: { robotsIndex: row.robotsIndex } }) : null,
+      category: row.categorySlug ? { slug: row.categorySlug } : null,
+    }));
     res.json(seoSitemapIndex(products, categories, SITE_ORIGIN));
   });
   // Every redirect, for the storefront proxy: it answers old URLs with a real 301 before the page renders.
