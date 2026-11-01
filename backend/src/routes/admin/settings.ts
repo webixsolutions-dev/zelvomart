@@ -2,7 +2,7 @@ import { validateSettingsUpdate, validateCitySettings } from "../../lib/settings
 import { prisma } from "../../lib/db";
 import { requireAuth, type AuthedRequest } from "../../lib/auth";
 import { validAdminBody, redirectSchema } from "../../lib/admin-validators";
-import { setSetting } from "../../lib/settings";
+import { forgetSettings, setSetting } from "../../lib/settings";
 import { getMetaMarketingConfig, testMetaMarketingConnection } from "../../lib/meta-marketing";
 import { invalidateFrontendCache } from "../../lib/cache-invalidation";
 import type { Express } from "express";
@@ -44,7 +44,15 @@ export function registerAdminSettingsRoutes(app: Express) {
       ),
     );
     await audit(req, "update", "Settings", undefined, { keys: Object.keys(req.body || {}) });
-    await invalidateFrontendCache(["settings", "store", "products", "setting:store.bundleDefaultDiscountPercent"]);
+    forgetSettings();
+    // "product-pages": the default Buy 2 discount and similar settings show on every product page.
+    await invalidateFrontendCache([
+      "settings",
+      "store",
+      "products",
+      "product-pages",
+      "setting:store.bundleDefaultDiscountPercent",
+    ]);
     res.json({ ok: true });
   });
   app.put("/api/admin/cities", requireAuth("settings.write"), async (req: AuthedRequest, res) => {

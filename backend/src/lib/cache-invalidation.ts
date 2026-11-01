@@ -1,3 +1,6 @@
+import { forget, MEMO_TTL_MS } from "./memo";
+import { runInBackground } from "./background";
+
 /** The sitemaps and the HTML sitemap page. Extra product sitemaps (2, 3 …) refresh through the "products" tag. */
 const SITEMAP_PATHS = [
   "/sitemap.xml",
@@ -31,7 +34,45 @@ function cachePathsForTags(tags: string[]) {
   return [...paths];
 }
 
-export async function invalidateFrontendCache(tags: string[]) {
+/** Backend memo keys (lib/memo.ts) each storefront tag stands for. */
+const MEMO_PREFIXES: Record<string, string[]> = {
+  settings: ["settings:", "bootstrap"],
+  store: ["settings:", "bootstrap", "categories"],
+  categories: ["categories", "bootstrap"],
+  cities: ["cities"],
+  redirects: ["redirects"],
+  pages: ["pages:"],
+};
+
+export function memoPrefixesForTags(tags: string[]) {
+  const prefixes = new Set<string>();
+  for (const tag of tags) {
+    for (const prefix of MEMO_PREFIXES[tag] || []) prefixes.add(prefix);
+    if (tag.startsWith("setting:")) prefixes.add("settings:").add("bootstrap");
+  }
+  return [...prefixes];
+}
+
+/**
+ * Tells the storefront what changed (POST /api/revalidate: Next.js tags + page paths) after clearing the backend's
+ * own copy of the same data. On serverless another running backend instance may still hold the old copy for up to
+ * MEMO_TTL_MS; if the storefront re-fetched from that instance it would keep the old value, so for memo-backed tags
+ * the refresh is sent once more after that window.
+ */
+export async function invalidateFrontendCache(tags: string[], options: { repeat?: boolean } = {}) {
+  const prefixes = memoPrefixesForTags(tags);
+  prefixes.forEach(forget);
+  await postRevalidation(tags);
+  if (prefixes.length && process.env.VERCEL && options.repeat !== false) {
+    const memoTags = tags.filter((tag) => memoPrefixesForTags([tag]).length);
+    runInBackground("storefront refresh after cache expiry", async () => {
+      await new Promise((resolve) => setTimeout(resolve, MEMO_TTL_MS + 5_000));
+      await postRevalidation(memoTags);
+    });
+  }
+}
+
+async function postRevalidation(tags: string[]) {
   const secret = process.env.REVALIDATION_SECRET;
   const configuredFrontend = process.env.FRONTEND_URL?.split(",")
     .map((value) => value.trim())

@@ -78,7 +78,9 @@ export async function loadProduct(slug: string): Promise<Product | null> {
   try {
     const [p, pct] = await Promise.all([
       apiFetch<ApiProduct>(`/api/products/slug/${encodeURIComponent(slug)}`, {
-        next: { revalidate: 120, tags: ["products", `product:${slug}`] },
+        // Only this product's own tag (+ "product-pages" for store-wide changes): saving another product no longer
+        // empties every product page.
+        next: { revalidate: 120, tags: [`product:${slug}`, "product-pages"] },
       }),
       bundleDefault(),
     ]);

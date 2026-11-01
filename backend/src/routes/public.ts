@@ -19,6 +19,7 @@ import { createOrder } from "../lib/order";
 import { MAX_LINE_PIECES, checkoutSchema } from "../lib/validators";
 import { normalizePakistanPhone } from "../lib/phone";
 import { getSetting, getSettings, setSetting } from "../lib/settings";
+import { memo, MEMO_TTL_MS } from "../lib/memo";
 import { postexTrackingUrl } from "../lib/postex";
 import { invalidateFrontendCache } from "../lib/cache-invalidation";
 import { bundleLineTotal, priceSummary, variantPriceSummary } from "../lib/pricing";
@@ -155,13 +156,27 @@ export function registerPublicRoutes(app: Express) {
     }
   });
 
-  app.get("/api/store/bootstrap", async (_req, res) => {
-    setNoStore(res);
-    const [categories, settings] = await Promise.all([
+  // Categories with their published-product counts, shared by /api/store/bootstrap and /api/categories (60 s memo).
+  const categoriesWithCounts = () =>
+    memo("categories:withCounts", MEMO_TTL_MS, () =>
       prisma.category.findMany({
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: { _count: { select: { products: { where: { status: "PUBLISHED" } } } } },
       }),
+    );
+  const redirectMap = () =>
+    memo("redirects:map", MEMO_TTL_MS, async () => {
+      const rows = await prisma.redirect.findMany({
+        select: { sourcePath: true, destination: true, permanent: true },
+        take: 20000,
+      });
+      return new Map(rows.map((r) => [r.sourcePath, r]));
+    });
+
+  app.get("/api/store/bootstrap", async (_req, res) => {
+    setNoStore(res);
+    const [categories, settings] = await Promise.all([
+      categoriesWithCounts(),
       getSettings([
         "store.info",
         "store.delivery",
@@ -194,10 +209,7 @@ export function registerPublicRoutes(app: Express) {
 
   app.get("/api/categories", async (_req, res) => {
     setPublicCache(res, 900, 3600, ["categories"]);
-    const rows = await prisma.category.findMany({
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      include: { _count: { select: { products: { where: { status: "PUBLISHED" } } } } },
-    });
+    const rows = await categoriesWithCounts();
     res.json(
       rows.map((c) => ({
         id: c.id,
@@ -276,7 +288,9 @@ export function registerPublicRoutes(app: Express) {
         .split(",")
         .filter(Boolean),
     ];
-    const page = await prisma.page.findFirst({ where: { slug: { in: slugs }, published: true } });
+    const page = await memo(`pages:${slugs.join(",")}`, MEMO_TTL_MS, () =>
+      prisma.page.findFirst({ where: { slug: { in: slugs }, published: true } }),
+    );
     if (!page) return res.status(404).json({ error: "NOT_FOUND" });
     res.json(page);
   });
@@ -287,7 +301,11 @@ export function registerPublicRoutes(app: Express) {
   });
   app.get("/api/cities", async (_req, res) => {
     setNoStore(res);
-    res.json(await prisma.city.findMany({ where: { active: true }, orderBy: { name: "asc" } }));
+    res.json(
+      await memo("cities:active", MEMO_TTL_MS, () =>
+        prisma.city.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
+      ),
+    );
   });
   app.get("/api/seo/sitemap", async (_req, res) => {
     setPublicCache(res, 3600, 86400, ["seo"]);
@@ -321,16 +339,14 @@ export function registerPublicRoutes(app: Express) {
   // Every redirect, for the storefront proxy: it answers old URLs with a real 301 before the page renders.
   app.get("/api/redirects/map", async (_req, res) => {
     setPublicCache(res, 120, 600, ["redirects"]);
-    const rows = await prisma.redirect.findMany({
-      select: { sourcePath: true, destination: true, permanent: true },
-      take: 20000,
-    });
+    const rows = [...(await redirectMap()).values()];
     res.json(rows.map((r) => [r.sourcePath, r.destination, r.permanent ? 1 : 0]));
   });
   app.get("/api/redirects/resolve", async (req, res) => {
     setPublicCache(res, 3600, 86400, ["redirects"]);
     const sourcePath = String(req.query.path || "");
-    const row = await prisma.redirect.findUnique({ where: { sourcePath } });
+    // Looked up in the cached map: an unknown URL (bots probe many) costs no database read.
+    const row = (await redirectMap()).get(sourcePath);
     if (!row) return res.status(404).json({ error: "NOT_FOUND" });
     res.json(row);
   });

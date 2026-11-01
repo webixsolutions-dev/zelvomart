@@ -401,7 +401,7 @@ export function registerAdminProductsRoutes(app: Express) {
     const tabs = sanitizeGlobalProductTabs(req.body?.tabs ?? req.body);
     await setSetting("store.productTabs", tabs);
     await audit(req, "update", "ProductTabs", undefined, { keys: Object.keys(tabs) });
-    await invalidateFrontendCache(["settings", "store", "products", "setting:store.productTabs"]);
+    await invalidateFrontendCache(["settings", "store", "products", "product-pages", "setting:store.productTabs"]);
     res.json({ ok: true, tabs });
   });
 

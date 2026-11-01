@@ -17,7 +17,7 @@ function startJob(jobId: string) {
   runInBackground("admin order job", () => runJobsNow([jobId]));
 }
 import type { Express } from "express";
-import { audit, jsonProductSummary, productListSelect, routeParam } from "../../http/shared";
+import { audit, jsonProductSummary, orderProductTags, productListSelect, routeParam } from "../../http/shared";
 
 async function orderFilters(query: Record<string, unknown>): Promise<Prisma.OrderWhereInput> {
   const text = (key: string) => String(query[key] || "").trim();
@@ -307,7 +307,9 @@ export function registerAdminOrdersRoutes(app: Express) {
         source: { utm_source: "admin" },
       });
       await audit(req, "create", "Order", order.id);
-      await invalidateFrontendCache(["products"]);
+      // Like a shop order: only products this order sold out change on the storefront.
+      const soldOut: string[] = (order as { soldOutSlugs?: string[] }).soldOutSlugs || [];
+      if (soldOut.length) await invalidateFrontendCache(["products", ...soldOut.map((slug) => `product:${slug}`)]);
       res.status(201).json({ id: order.id, orderNumber: order.orderNumber });
     } catch (error: any) {
       res.status(400).json({ error: error.message || "ORDER_CREATE_FAILED" });
@@ -380,7 +382,7 @@ export function registerAdminOrdersRoutes(app: Express) {
       updated += 1;
     }
     await audit(req, "bulk_status_change", "Order", undefined, { ids, status: next, updated });
-    if (["CANCELLED", "RETURNED"].includes(next)) await invalidateFrontendCache(["products"]);
+    if (["CANCELLED", "RETURNED"].includes(next)) await invalidateFrontendCache(await orderProductTags(ids));
     res.json({ ok: true, updated });
   });
   // Deleting orders: OWNER and MANAGER only, any order, one confirm in the admin. The order's queued jobs are removed
@@ -471,7 +473,7 @@ export function registerAdminOrdersRoutes(app: Express) {
     if (existing.status !== next && ["CONFIRMED", "DELIVERED"].includes(next))
       await enqueueOrderStatusTracking(id, next);
     await audit(req, "status_change", "Order", id, { from: existing.status, to: next });
-    if (["CANCELLED", "RETURNED"].includes(next)) await invalidateFrontendCache(["products"]);
+    if (["CANCELLED", "RETURNED"].includes(next)) await invalidateFrontendCache(await orderProductTags([id]));
     if (existing.status !== next && ["CONFIRMED", "BOOKED", "DELIVERED"].includes(next)) {
       const job = await prisma.job.create({
         data: { name: "customer-status-email", orderId: id, payload: { orderId: id, status: next } },
