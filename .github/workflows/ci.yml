@@ -61,6 +61,10 @@ jobs:
       - name: Delivery fee integration test
         run: npm run test:delivery:integration --workspace backend
 
+      # Review import, moderation, customer submission and upload ownership (in-process PostgreSQL + fake storage).
+      - name: Review system integration test
+        run: npm run test:reviews:integration --workspace backend
+
       - name: Frontend typecheck
         run: npm run typecheck --workspace frontend
 

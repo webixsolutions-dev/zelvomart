@@ -80,6 +80,17 @@ await prisma.user.create({
     role: "OWNER",
   },
 });
+// A second, active owner: their (valid) token must not be able to use the first owner's upload tickets.
+const otherOwnerHash = await require("bcryptjs").hash("QaOther123!", 4);
+await prisma.user.create({
+  data: {
+    id: "qa-other-owner",
+    name: "Other",
+    email: "other@example.invalid",
+    passwordHash: otherOwnerHash,
+    role: "OWNER",
+  },
+});
 for (const [id, title, sku] of [
   ["p1", "QA Bag", "QA-BAG"],
   ["p2", "QA Cable", "QA-USB"],
@@ -204,7 +215,7 @@ try {
                 email: "other@example.invalid",
                 role: "OWNER",
               },
-              "no-such-account",
+              passwordStamp(otherOwnerHash),
             ),
         },
       })
