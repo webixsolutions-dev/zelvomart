@@ -4,7 +4,7 @@ import { prisma } from "./db";
 import { getSetting } from "./settings";
 import { productHasFreeShipping } from "./catalog-meta";
 import { BUY_TWO_DISCOUNT_PERCENT, bundleLineTotal, priceSummary, variantPriceSummary } from "./pricing";
-import { resolveDeliveryPolicy, quoteFromPolicy } from "./shipping";
+import { resolveDeliveryPolicy, deliveryForCart } from "./shipping";
 import { canSell } from "./stock";
 import { dispatchJobRow } from "./jobs";
 import { tiktokJobsEnabled } from "./tiktok";
@@ -126,9 +126,8 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
   const subtotal = prepared.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const bundleSaving = prepared.reduce((sum, item) => sum + item.bundleDiscount, 0);
   const discountedSubtotal = subtotal - bundleSaving;
-  const everyItemFree = prepared.length > 0 && prepared.every((item) => item.freeShipping);
-  const deliveryPolicy = resolveDeliveryPolicy(deliveryRule);
-  const deliveryFee = quoteFromPolicy(discountedSubtotal, everyItemFree, deliveryPolicy).fee;
+  // Same function the storefront uses for the amount it shows (packages/delivery).
+  const deliveryFee = deliveryForCart(prepared, discountedSubtotal, resolveDeliveryPolicy(deliveryRule)).fee;
   const total = discountedSubtotal + deliveryFee;
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);

@@ -2,10 +2,11 @@ import { Truck } from "lucide-react";
 import { money } from "@store/lib/format";
 import { site } from "@store/lib/site";
 
-export function FreeShippingMeter({ subtotal }: { subtotal: number }) {
+/** `free`: the cart already ships free (every item has free delivery), whatever the subtotal. */
+export function FreeShippingMeter({ subtotal, free = false }: { subtotal: number; free?: boolean }) {
   const goal = site.shipping.freeOver;
-  const left = Math.max(0, goal - subtotal);
-  const pct = Math.min(100, (subtotal / goal) * 100);
+  const left = free ? 0 : Math.max(0, goal - subtotal);
+  const pct = free ? 100 : Math.min(100, (subtotal / goal) * 100);
   return (
     <div className={`ship-meter ${left === 0 ? "done" : ""}`}>
       <p>

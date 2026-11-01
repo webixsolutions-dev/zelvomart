@@ -1,0 +1,23 @@
+{
+  "policy": { "flatRate": 190, "freeAbove": 7500 },
+  "products": {
+    "freeA": { "price": 1000, "freeShipping": true },
+    "freeB": { "price": 2000, "freeShipping": true },
+    "paid2000": { "price": 2000, "freeShipping": false },
+    "paid7000": { "price": 7000, "freeShipping": false },
+    "paid7499": { "price": 7499, "freeShipping": false },
+    "paid7500": { "price": 7500, "freeShipping": false },
+    "paid7501": { "price": 7501, "freeShipping": false },
+    "paid7600": { "price": 7600, "freeShipping": false }
+  },
+  "cases": [
+    { "name": "one free-delivery item", "lines": [["freeA", 1]], "fee": 0 },
+    { "name": "several free-delivery items", "lines": [["freeA", 1], ["freeB", 2]], "fee": 0 },
+    { "name": "mixed cart below the threshold pays", "lines": [["freeA", 1], ["paid2000", 1]], "fee": 190 },
+    { "name": "just below the threshold", "lines": [["paid7499", 1]], "fee": 190 },
+    { "name": "exactly at the threshold", "lines": [["paid7500", 1]], "fee": 0 },
+    { "name": "just above the threshold", "lines": [["paid7501", 1]], "fee": 0 },
+    { "name": "mixed cart above the threshold", "lines": [["freeA", 1], ["paid7000", 1]], "fee": 0 },
+    { "name": "coupon does not change delivery (threshold before coupon)", "lines": [["paid7600", 1]], "coupon": "SAVE500", "fee": 0 }
+  ]
+}

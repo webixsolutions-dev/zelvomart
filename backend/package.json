@@ -27,6 +27,7 @@
     "test:reviews:integration": "node --import tsx scripts/review-system.integration.mts",
     "test:jobs:integration": "node --import tsx scripts/jobs.integration.mts",
     "test:catalog:integration": "node --import tsx scripts/catalog.integration.mts",
+    "test:delivery:integration": "node --import tsx scripts/delivery.integration.mts",
     "db:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -38,6 +39,7 @@
     "@prisma/client": "^6.19.3",
     "@sentry/node": "^11.8.0",
     "@vercel/functions": "^2.2.13",
+    "@zelvomart/delivery": "1.0.0",
     "@zelvomart/monitoring": "1.0.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
