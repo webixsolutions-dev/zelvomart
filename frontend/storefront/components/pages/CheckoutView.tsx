@@ -274,7 +274,7 @@ export function CheckoutView() {
               );
             })}
           </ul>
-          <FreeShippingMeter subtotal={subtotal} />
+          <FreeShippingMeter subtotal={subtotal} free={shipping === 0} />
           <div className="sum-line">
             <span>Subtotal</span>
             <strong>{money(subtotal)}</strong>

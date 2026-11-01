@@ -55,7 +55,7 @@ export function CartDrawer() {
         ) : (
           <>
             <div className="drawer-body">
-              <FreeShippingMeter subtotal={subtotal} />
+              <FreeShippingMeter subtotal={subtotal} free={shipping === 0} />
               <CartNotes />
               <ul className="mini-lines">
                 {cart.map((l) => {

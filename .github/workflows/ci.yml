@@ -57,6 +57,10 @@ jobs:
       - name: Catalog card and sitemap queries integration test
         run: npm run test:catalog:integration --workspace backend
 
+      # The order endpoint saves the delivery fee the storefront shows (packages/delivery/cases.json).
+      - name: Delivery fee integration test
+        run: npm run test:delivery:integration --workspace backend
+
       - name: Frontend typecheck
         run: npm run typecheck --workspace frontend
 

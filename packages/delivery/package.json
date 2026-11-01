@@ -1,0 +1,8 @@
+{
+  "name": "@zelvomart/delivery",
+  "version": "1.0.0",
+  "private": true,
+  "main": "delivery.js",
+  "types": "delivery.d.ts",
+  "files": ["delivery.js", "delivery.d.ts", "cases.json"]
+}

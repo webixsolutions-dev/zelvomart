@@ -59,7 +59,7 @@ export function CartView() {
           ) : (
             <div className="checkout-grid">
               <div>
-                <FreeShippingMeter subtotal={subtotal} />
+                <FreeShippingMeter subtotal={subtotal} free={shipping === 0} />
                 <CartNotes />
                 <div className="cart-table">
                   <div className="cart-head">

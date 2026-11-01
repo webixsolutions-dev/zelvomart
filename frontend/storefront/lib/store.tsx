@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { getProductById, upsertProducts, type Product, type Variant } from "./catalog";
 import { fetchProducts, idsUrl } from "./catalog-client";
 import { site } from "./site";
+import { cartDeliveryFee } from "./delivery";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
 import { getReplaySessionId, getReplayVisitorId, requestReplayFlush } from "@/lib/session-replay-client";
 
@@ -247,9 +248,12 @@ function write(key: string, value: unknown) {
   }
 }
 
-export function shippingFor(subtotal: number) {
-  if (subtotal === 0) return 0;
-  return subtotal >= site.shipping.freeOver ? 0 : site.shipping.flatFee;
+/** Delivery for the current cart lines (each line's free-delivery flag + the subtotal), same rule as the order. */
+export function shippingFor(lines: Pick<CartLine, "id">[], subtotal: number) {
+  return cartDeliveryFee(
+    lines.map((l) => ({ freeShipping: getProductById(l.id)?.freeShipping })),
+    subtotal,
+  );
 }
 
 export function ShopProvider({ children }: { children: React.ReactNode }) {
@@ -492,7 +496,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [cart, catalogVersion],
   );
-  const shipping = shippingFor(subtotal);
+  const shipping = shippingFor(cart, subtotal);
   const discount = couponDiscount(coupon, subtotal);
 
   const placeOrder = useCallback<Ctx["placeOrder"]>(
@@ -558,9 +562,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         createdAt: new Date().toISOString(),
         lines,
         subtotal: Number(data.subtotal ?? sub),
-        shipping: Number(data.deliveryFee ?? shippingFor(sub)),
+        shipping: Number(data.deliveryFee ?? shippingFor(cart, sub)),
         ...(coupon ? { discount: Number(data.discount ?? discount), coupon: coupon.code } : {}),
-        total: Number(data.total ?? sub + shippingFor(sub) - discount),
+        total: Number(data.total ?? sub + shippingFor(cart, sub) - discount),
         terms: opts.terms,
         customer,
         payment: "cod",

@@ -602,3 +602,23 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   sitemap query. Frontend `scripts/archive.test.ts` (URLs, params, page numbers). Browser run: add to cart from a
   card, cart drawer add-ons, a freshly opened cart and checkout, shop page 2 and sort, search suggestions, category
   menu, wishlist, related products; no console errors.
+
+## Final list 2.1: one delivery quote everywhere — 1 November 2026 (branch `fix/delivery-quote`)
+
+- **Problem:** the order saved delivery = free when every item has free delivery or the subtotal reaches the
+  threshold, but the storefront only looked at the subtotal, so a cart of free-delivery items showed Rs 190 and
+  saved Rs 0.
+- **One function** in the shared workspace package `packages/delivery` (`@zelvomart/delivery`, like
+  `@zelvomart/monitoring`): `deliveryForCart(items, subtotal, policy)`. The backend order (`lib/order.ts`) and the
+  storefront (`storefront/lib/delivery.ts` → `shippingFor(cart, subtotal)` in `store.tsx`) both call it;
+  `backend/src/lib/shipping.ts` and `frontend/lib/shipping.ts` now re-export it instead of keeping two copies.
+  Rule: free when every item has free delivery, or the subtotal after bundle savings (before any coupon) reaches
+  the free-delivery amount from Settings (Rs 7,500 today); a mixed cart pays the normal fee.
+- **Where it shows:** cart drawer, cart page, checkout, the WhatsApp order text (its total uses the same amount),
+  the confirmation fallback before the server answers; the "add Rs X for free delivery" bar shows "unlocked" when
+  every item ships free. The free-delivery flag was already on the public product payload (and on cards).
+- **Tests:** shared cases `packages/delivery/cases.json` (one free item, several, mixed, just below / at / above
+  Rs 7,500, mixed above, coupon). `backend/scripts/delivery.integration.mts` (CI) places each as a real order
+  through `POST /api/orders` and checks the saved `deliveryFee`; `frontend/scripts/delivery.test.ts` runs the same
+  cases through the storefront function. Browser check: a free-delivery item alone shows FREE (was Rs 190), a mixed
+  cart shows Rs 190.
