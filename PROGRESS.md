@@ -510,3 +510,26 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - All site icons now come from the owner's cart-and-bag logo: `app/favicon.ico` (16/32/48, was an older blurry
   version that browsers and Google picked first), `public/favicon-zelvomart.png` (134), `app/(store)/icon.png` (192)
   and `app/(store)/apple-icon.png` (180, white background for iPhone home screens). No code changes.
+
+## Final list Part 1 (PR 1): instant order jobs, background helper, database pool — 1 November 2026 (branch `perf/jobs-connections`)
+
+- **One background helper for every host** (`backend/src/lib/background.ts`, `runInBackground`): on Vercel it hands
+  the work to `waitUntil`; on a plain Node server (VPS, Docker) the promise just keeps running. Errors are logged,
+  never thrown. All former direct `waitUntil` calls (orders, admin order actions, tracked events) use it.
+- **Order emails and events go out right after the order** (`lib/job-runner.ts`, `runJobsNow`). The order route
+  used to run one more database lookup after replying and only then call `waitUntil`, so on Vercel the function
+  could freeze first and the jobs then waited for the cron. Now the whole after-reply step is handed off at once and
+  every job of the order (team email, customer email, Meta purchase; TikTok only when switched on) is processed with
+  the same atomic claim the cron uses. A failure never fails the order: the row stays FAILED and the cron retries it.
+- **Cron = retry net** (`lib/cron-queue.ts`, same limits: 10-minute stale lease, 25 rows, 20 s deadline). An idle
+  store now costs one indexed query per run (was five). `/api/cron/daily` unchanged.
+- **Pool settings from the environment** (`lib/db-pool.ts`): `DATABASE_POOL_MAX` (default 3 on Vercel, 10 on a
+  persistent server) and `DATABASE_IDLE_TIMEOUT_MS` (default 60 s on Vercel, 5 min on a server; the old value was the
+  driver default of 10 s, so a connection was closed and re-opened, with a pooler login each time, between most
+  requests). One pool and one Prisma client per process, kept on `globalThis` in every environment.
+- **Tests:** `scripts/jobs.integration.mts` (in-process PostgreSQL + fake email API, runs in CI): order jobs sent once
+  right after the order; a cron run right after sends nothing; instant send and cron in parallel still claim each
+  job once; a failing email provider leaves the rows FAILED and the cron sends them after 60 s; idle cron = 1 query.
+  Unit tests for the helper and the pool settings.
+- **Connections (local measurement, 6 backend requests 15 s apart):** old driver defaults (10 s idle) opened 6
+  connections, one login per request; the new settings opened 1.
