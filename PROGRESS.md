@@ -656,3 +656,28 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - Frontend formatter check: not added. The frontend has no Prettier setup yet and `prettier --check` would
   reformat 243 files; that is a large reformat, so it was skipped as the list allows.
 - Branch protection: the repository is public, so GitHub Free offers it (see the report for the steps).
+
+## Final list 2.4: home videos from Cloudflare R2, no YouTube on the home page — 1 November 2026 (branch `feat/r2-home-videos`)
+
+- **YouTube removed from the home page:** no iframe, no YouTube script, no preconnect, no `i.ytimg.com` thumbnails.
+  `LazyYouTube.tsx` and `lib/youtube.ts` are deleted (nothing else used them). Product-page videos
+  (`lib/product-video.ts`) are untouched and still work, so the `i.ytimg.com` / `i.vimeocdn.com` image hosts stay.
+- **One config array** (`storefront/lib/home-videos.ts`): the five shorts in the owner's order (Handbag with Shoulder
+  Strap, Rhode Lip Tint, Sip in Style, Heart Pendant, Floor Scrubber) and the unboxing film with
+  `pack-an-order.jpg`, all from `https://pub-6861daa0380241a2acc38cd5ca85b301.r2.dev/videos/` (names with spaces
+  URL-encoded). New videos: upload the .mp4 and .jpg to R2 and add a row; never commit videos to the repo.
+  `NEXT_PUBLIC_HOME_VIDEO_BASE` can point the tiles at another folder for local testing; production leaves it unset.
+- **`VideoTile`** (`components/home/VideoTile.tsx`): `<video muted loop playsinline preload="none">` with a lazy
+  poster `<img>` on top. About 600 px before the tile reaches the screen the video gets its `src` and plays muted;
+  it pauses when it leaves that area. The poster fades out only once the video is playing (no black frame, fixed
+  9:16 frame, no layout jump). Reduced motion, data saver, or a browser that blocks autoplay: poster + play button,
+  loaded on tap only; a rejected `play()` never throws.
+- **Unboxing:** the vertical film is centred in the wide frame (`object-fit: contain`) over a blurred, darkened copy
+  of the poster, so there are no black bars.
+- **Checked in a browser** (local test video served in place of R2): no video requests at page load on desktop,
+  mobile or reduced motion; desktop: all five shorts and the unboxing film play once scrolled to and pause after
+  leaving; mobile: the fifth (off-screen) short is not loaded; reduced motion: posters with play buttons, nothing
+  loaded; no request to `youtube.com`, `youtube-nocookie.com` or `i.ytimg.com`; no console errors.
+- **Not verified:** this session's network policy blocks the R2 host, so the 12 URLs (5 shorts + posters, the
+  unboxing film, `pack-an-order.jpg`) could not be fetched from here. They are exactly the names given; check them
+  once in a browser (a missing file shows the poster, or a play button that does nothing).
