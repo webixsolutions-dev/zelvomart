@@ -3,9 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ArrowRight, Search, X } from "lucide-react";
-import { getCategory, searchProducts } from "@store/lib/catalog";
+import { getCategory } from "@store/lib/catalog";
+import { searchUrl, useProducts } from "@store/lib/catalog-client";
 import { money } from "@store/lib/format";
 import { CategoryBrowser } from "./CategoryBrowser";
 
@@ -17,7 +18,15 @@ export function SearchBox({ autoFocus = false, onDone, withCategories = false }:
   const [open, setOpen] = useState(false);
   const listId = useId();
   const wrap = useRef<HTMLFormElement>(null);
-  const results = useMemo(() => searchProducts(q).slice(0, 5), [q]);
+  // Suggestions come from a limited server search, asked 250 ms after typing stops (not a scan of every product).
+  const [term, setTerm] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setTerm(q.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [q]);
+  const found = useProducts(term.length >= 2 ? searchUrl(term, 5) : null);
+  const results = found || [];
+  const searching = Boolean(q.trim()) && (q.trim() !== term || (term.length >= 2 && found === null));
 
   function go(term: string) {
     if (!term.trim()) return;
@@ -69,7 +78,7 @@ export function SearchBox({ autoFocus = false, onDone, withCategories = false }:
       </button>
       {open && (
         <div className="search-panel" id={listId}>
-          {!q.trim() ? (
+          {q.trim().length < 2 ? (
             <div className="search-popular">
               <span>Popular searches</span>
               <div>
@@ -80,6 +89,8 @@ export function SearchBox({ autoFocus = false, onDone, withCategories = false }:
                 ))}
               </div>
             </div>
+          ) : searching && !results.length ? (
+            <p className="search-empty">Searching…</p>
           ) : results.length ? (
             <>
               <ul>

@@ -3390,18 +3390,35 @@ em {
   gap: 8px;
   padding-top: 30px;
 }
-.pagination button {
+.pagination {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.pagination button,
+.pagination a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--border);
   background: #fff;
   border-radius: 10px;
-  width: 40px;
+  min-width: 40px;
   height: 40px;
+  padding: 0 10px;
   font-weight: 700;
+  color: inherit;
+  text-decoration: none;
 }
-.pagination button.current {
+.pagination button.current,
+.pagination a.current {
   background: var(--blue);
   border-color: var(--blue);
   color: #fff;
+}
+.pagination .gap {
+  min-width: 20px;
+  text-align: center;
+  color: var(--muted, #6b7280);
 }
 .sheet {
   position: fixed;
@@ -6859,10 +6876,12 @@ body:has(.confirm-page) {
   .variant-options button,
   .toolbar-actions .btn,
   .sort select,
-  .pagination button {
+  .pagination button,
+  .pagination a {
     min-height: 44px;
   }
-  .pagination button {
+  .pagination button,
+  .pagination a {
     min-width: 44px;
   }
   .hero-buttons .btn,

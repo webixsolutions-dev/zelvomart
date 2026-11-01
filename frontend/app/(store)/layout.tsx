@@ -17,7 +17,7 @@ import SessionReplayProvider from "@/components/SessionReplayProvider";
 import MetaPixelScript from "@/components/MetaPixelScript";
 import TikTokPixelScript from "@/components/TikTokPixelScript";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
-import { loadStore, slimProduct, loadPublicSettings } from "@store/lib/backend";
+import { loadStore, loadPublicSettings } from "@store/lib/backend";
 import { CatalogBridge } from "@store/lib/bridge";
 
 const manrope = Manrope({
@@ -123,10 +123,7 @@ export default async function RootLayout({
   return (
     <html lang="en-PK" className={manrope.variable}>
       <body>
-        <CatalogBridge
-          products={store.catalog.map(slimProduct)}
-          settings={store.settings}
-        >
+        <CatalogBridge settings={store.settings}>
           <ShopProvider>
             <a href="#main" className="skip-link">
               Skip to content

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { jsonLd as serializeJsonLd } from "@/lib/json-ld";
 import { notFound } from "next/navigation";
-import { getCategory, relatedProducts, categoryPath, type Product } from "@store/lib/catalog";
-import { loadProduct, loadStore } from "@store/lib/backend";
+import { getCategory, categoryPath, type Product } from "@store/lib/catalog";
+import { loadProduct, loadRelated, loadStore } from "@store/lib/backend";
 import { ProductBridge } from "@store/lib/bridge";
 import { site } from "@store/lib/site";
 import { productOg, productTitle, shareMeta } from "@store/lib/seo";
@@ -53,9 +53,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const slug = (await params).slug;
-  await loadStore();
-  const p = await loadProduct(slug);
+  const [, p] = await Promise.all([loadStore(), loadProduct(slug)]);
   if (!p) notFound();
+  // "You may also like": 4 cards from the same category (one small query), not the whole catalog.
+  const related = await loadRelated(p);
   const cat = getCategory(p.category)!;
   const url = `${site.url}/product/${p.slug}/`;
   const [minDays, maxDays] = transitDays();
@@ -157,7 +158,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       <section className="section pd-related">
         <div className="container">
           <SectionHead eyebrow="Keep exploring" title="You may also like" sub={`More from ${cat.name}, plus customer favourites.`} href={categoryPath(cat.id)} linkLabel={`Shop ${cat.short}`} />
-          <ProductGrid items={relatedProducts(p)} />
+          <ProductGrid items={related} />
         </div>
       </section>
       <meta property="og:type" content="product" />

@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, ShoppingBag, Trash2 } from "lucide-react";
-import { categoryPath, getCategory, getProductById, products } from "@store/lib/catalog";
+import { categoryPath, getCategory, getProductById } from "@store/lib/catalog";
+import { listUrl, useProducts } from "@store/lib/catalog-client";
 import { money } from "@store/lib/format";
 import { BUNDLE_PIECES, bundleLabel, bundlePrice, lineTotal, unitPrice, useShop } from "@store/lib/store";
 import { CartNotes } from "@store/components/shop/CartNotes";
@@ -20,7 +21,7 @@ const emptyCategories = ["home-living", "beauty", "tech", "kids"];
 export function CartView() {
   const { cart, ready, setQty, removeLine, subtotal, shipping, coupon, discount, payable, clearCart } = useShop();
   const inCart = new Set(cart.map((l) => l.id));
-  const suggestions = products.filter((p) => !inCart.has(p.id) && p.isBestseller).slice(0, 4);
+  const suggestions = (useProducts(listUrl("bestsellers", 8)) || []).filter((p) => !inCart.has(p.id)).slice(0, 4);
 
   if (!ready) return <div className="container skeleton-block" />;
 

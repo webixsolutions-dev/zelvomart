@@ -54,6 +54,9 @@ jobs:
       - name: Order jobs integration test
         run: npm run test:jobs:integration --workspace backend
 
+      - name: Catalog card and sitemap queries integration test
+        run: npm run test:catalog:integration --workspace backend
+
       - name: Frontend typecheck
         run: npm run typecheck --workspace frontend
 

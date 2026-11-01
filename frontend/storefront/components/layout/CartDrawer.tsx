@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
 import { ArrowRight, ShieldCheck, ShoppingBag, Trash2, X } from "lucide-react";
-import { getProductById, products } from "@store/lib/catalog";
+import { getProductById, type Product } from "@store/lib/catalog";
+import { listUrl, useProducts } from "@store/lib/catalog-client";
 import { money } from "@store/lib/format";
 import { BUNDLE_PIECES, lineDetail, lineTotal, useShop } from "@store/lib/store";
 import { CartNotes } from "@store/components/shop/CartNotes";
@@ -22,8 +23,10 @@ export function CartDrawer() {
   }, [cartOpen, setCartOpen]);
 
   const inCart = new Set(cart.map((l) => l.id));
-  const buyable = (p: (typeof products)[number]) => p.inStock !== false && (!p.variants?.options.length || p.variants.options.some((o) => !o.soldOut));
-  const upsell = products.filter((p) => !inCart.has(p.id) && p.price <= 2000 && buyable(p)).slice(0, 3);
+  const buyable = (p: Product) => p.inStock !== false && (!p.variants?.options.length || p.variants.options.some((o) => !o.soldOut));
+  // Add-ons (in stock, up to Rs 2,000) are loaded the first time the drawer opens, not with every page.
+  const addOns = useProducts(cartOpen ? listUrl("upsell", 8) : null) || [];
+  const upsell = addOns.filter((p) => !inCart.has(p.id) && p.price <= 2000 && buyable(p)).slice(0, 3);
 
   return (
     <>

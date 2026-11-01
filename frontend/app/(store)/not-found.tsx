@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { categories, categoryPath, products } from "@store/lib/catalog";
-import { ProductGrid } from "@store/components/product/ProductGrid";
+import { categories, categoryPath } from "@store/lib/catalog";
+import { PopularGrid } from "@store/components/product/PopularGrid";
 import { SearchBox } from "@store/components/layout/SearchBox";
 import { loadStore } from "@store/lib/backend";
 
@@ -31,7 +31,7 @@ export default async function NotFound() {
           </ul>
         </div>
         <div className="section">
-          <ProductGrid items={products.filter((p) => p.isBestseller).slice(0, 4)} />
+          <PopularGrid />
         </div>
       </div>
     </section>

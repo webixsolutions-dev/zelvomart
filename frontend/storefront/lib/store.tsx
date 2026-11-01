@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { getProductById, type Product, type Variant } from "./catalog";
+import { getProductById, upsertProducts, type Product, type Variant } from "./catalog";
+import { fetchProducts, idsUrl } from "./catalog-client";
 import { site } from "./site";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
 import { getReplaySessionId, getReplayVisitorId, requestReplayFlush } from "@/lib/session-replay-client";
@@ -188,6 +189,8 @@ type Toast = { id: number; title: string; body?: string; image?: string };
 
 type Ctx = {
   ready: boolean;
+  /** Changes when cart/wishlist products finish loading. */
+  catalogVersion: number;
   cart: CartLine[];
   wishlist: string[];
   orders: Order[];
@@ -258,6 +261,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [cartOpen, setCartOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [cartNotes, setCartNotes] = useState<string[]>([]);
+  /** Bumped when products for the cart or wishlist arrive, so everything that reads them renders again. */
+  const [catalogVersion, setCatalogVersion] = useState(0);
   const toastId = useRef(0);
   const addNotes = useCallback((notes: string[]) => {
     if (notes.length) setCartNotes((all) => [...new Set([...all, ...notes])].slice(-6));
@@ -329,6 +334,25 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const cartRef = useRef(cart);
   cartRef.current = cart;
+
+  // Pages no longer carry the whole catalog: products in the cart or wishlist that this page has not loaded are
+  // fetched by id (one small cached request), then the cart is checked again (sold out, bundle sizes, 20-piece cap).
+  useEffect(() => {
+    if (!ready) return;
+    const missing = [...new Set([...cart.map((l) => l.id), ...wishlist])].filter((id) => !getProductById(id));
+    if (!missing.length) return;
+    let live = true;
+    void fetchProducts(idsUrl(missing)).then((items) => {
+      if (!live || !items.length) return;
+      setCatalogVersion((v) => v + 1);
+      const checked = normalizeCart(cartRef.current);
+      setCart(checked.cart);
+      addNotes(checked.notes);
+    });
+    return () => {
+      live = false;
+    };
+  }, [cart, wishlist, ready, addNotes]);
   // POST /api/checkout/coupon prices the coupon on the real cart; the discount it returns is what we show.
   const applyCoupon = useCallback<Ctx["applyCoupon"]>(async (raw) => {
     const code = raw.trim().toUpperCase();
@@ -377,6 +401,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addToCart = useCallback<Ctx["addToCart"]>((p, opts = {}) => {
+    // The card's product goes into the browser catalog, so the cart can show and price it right away.
+    upsertProducts([p]);
     const options = p.variants?.options ?? [];
     const option = opts.variantId || opts.variant ? findVariant(p, opts) : options.find((o) => !o.soldOut);
     if (p.inStock === false || (options.length && (!option || option.soldOut))) {
@@ -463,7 +489,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         const p = getProductById(l.id);
         return s + (p ? lineTotal(p, l) : 0);
       }, 0),
-    [cart],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cart, catalogVersion],
   );
   const shipping = shippingFor(subtotal);
   const discount = couponDiscount(coupon, subtotal);
@@ -563,6 +590,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   const value: Ctx = {
     ready,
+    catalogVersion,
     cart,
     wishlist,
     orders,

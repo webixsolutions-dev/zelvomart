@@ -550,3 +550,55 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   changes such as the Buy 2 default or product tabs), so saving one product no longer empties every product page.
   Cancelled/returned orders refresh only the pages of the products in them; a staff order only the products it sold
   out. Bulk edit, delete, import and bulk rename keep one refresh per run.
+
+## Final list Part 1 (PR 3, items 1.1 + 2.6): each page loads only what it shows; shop pages of 24 — 1 November 2026 (branch `perf/catalog-queries`)
+
+- **The whole catalog is no longer loaded.** The store layout used to load every product (all pages of
+  `/api/products?limit=100`, full fields) for every page and send it to the browser. Now:
+  - product page: that product (by slug) + 4 related cards (same category, topped up with bestsellers);
+  - shop / collections / category: 24 cards per page with the total (`/api/products?view=card&page=N…`);
+  - home: 8 bestsellers, 8 new arrivals, 8 deals;
+  - search page and search suggestions: a server search with a limit (every word must match name, SKU, category,
+    short description or keywords; name matches first), not a scan in the browser;
+  - cart and wishlist: their own products by id (`/api/catalog?ids=…`, cached), loaded when needed;
+  - category menu: counts and 6 products per group from `/api/catalog/menu` (cached 5 min), loaded on first open;
+  - 404 page bestsellers: loaded in the browser (Next.js embeds the not-found page in every page's payload).
+- **Light card read** (`backend/src/lib/catalog-cards.ts`, `?view=card`): card fields only, the main image instead of
+  the gallery, the few catalog-meta keys a card uses instead of the whole meta JSON, review count/average as an
+  aggregate. The JSON is the same as the full list (checked field by field; integration test). The default
+  `/api/products` answer is unchanged.
+- **Sitemap read** (`/api/seo/sitemap`): slug, title, date, category, up to 10 images and the noindex flag only;
+  the XML is byte-for-byte the same.
+- **Pagination (2.6):** `/shop/?page=N` (page 1 = `/shop/`), the same on the three collections and every category;
+  numbered pages with previous/next; filters and sort in the URL (`category`, `min`, `max`, `stock`, `sort`);
+  `?page=1` answers a 301 in the proxy; a page past the end shows the last page; page 2+ has its own title
+  ("… – Page 2") and self-canonical; filtered/sorted views canonicalise to the plain page. Server-rendered; the
+  product data still comes from the 5-minute cache. Sitemaps list page 1 only.
+- **Output check** (local, 96 fixture products): home, three product pages and search have identical visible text
+  before and after; shop and category show 24 instead of 12 cards per page and the numbered page links, same order.
+- **Measured** (local Postgres, 96 products, a byte counter between backend and database, one uncached render each,
+  after PR 1–3):
+
+| Page | Queries before → after | Rows before → after | DB bytes out before → after | HTML before → after |
+|---|---|---|---|---|
+| home | 53 → 12 | 1580 → 75 | 660.6 KB → 24.9 KB | 322.0 KB → 226.1 KB |
+| shop p1 | 53 → 4 | 1580 → 61 | 660.6 KB → 21.0 KB | 279.0 KB → 256.7 KB |
+| shop p2 | 53 → 4 | 1580 → 61 | 660.6 KB → 21.1 KB | 279.5 KB → 257.4 KB |
+| category | 53 → 5 | 1580 → 98 | 660.6 KB → 18.3 KB | 279.1 KB → 202.5 KB |
+| product | 67 → 14 | 1596 → 23 | 676.9 KB → 19.7 KB | 283.4 KB → 183.4 KB |
+| search | 36 → 9 | 1058 → 55 | 442.3 KB → 18.0 KB | 263.2 KB → 182.1 KB |
+| sitemap | 3 → 2 | 110 → 103 | 128.0 KB → 51.4 KB | 71.0 KB → 71.0 KB |
+
+  (HTML sizes are from `next dev`, which adds its own scripts; shop now carries 24 cards instead of 12.)
+- **For the production re-check** (`pg_stat_statements` / egress graph), the queries that changed:
+  `SELECT p.id,COALESCE(s.orders,…` rank query now runs with `LIMIT 24` (shop, collections, categories) or 4–8
+  (home rows, related) instead of `LIMIT 100` + a second `LIMIT 12` popular query on every catalog load; the big
+  `SELECT "Product"."id", … "sourceUrl", … "images"` list read is replaced on the storefront by one
+  `SELECT p.id, p.slug, … jsonb_build_object(…) … LEFT JOIN LATERAL (SELECT count(*) … "Review" …)` card query; the
+  per-request Review rating rows and Category rows disappear from listings; `/api/seo/sitemap` now runs one raw
+  query with `jsonb_path_query_array(p.images,'$[0 to 9]')`; settings, categories, cities and redirects are read at
+  most once a minute per instance (PR 2).
+- **Tests:** `scripts/catalog.integration.mts` (CI): card JSON = full JSON, ids/exclude/tags/sorts/multi-word search,
+  sitemap query. Frontend `scripts/archive.test.ts` (URLs, params, page numbers). Browser run: add to cart from a
+  card, cart drawer add-ons, a freshly opened cart and checkout, shop page 2 and sort, search suggestions, category
+  menu, wishlist, related products; no console errors.

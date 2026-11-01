@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { jsonLd } from "@/lib/json-ld";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { products, isOnSale } from "@store/lib/catalog";
 import { homeFaqs } from "@store/lib/content";
 import { site } from "@store/lib/site";
 import { shareMeta } from "@store/lib/seo";
@@ -14,7 +13,7 @@ import { ProductTabs } from "@store/components/home/ProductTabs";
 import { WatchDiscover } from "@store/components/home/WatchDiscover";
 import { BrandPromise } from "@store/components/home/BrandPromise";
 import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
-import { loadStore } from "@store/lib/backend";
+import { loadHomeLists, loadStore } from "@store/lib/backend";
 
 export const metadata: Metadata = {
   title: { absolute: "Zelvomart | Online Shopping in Pakistan, Cash on Delivery" },
@@ -42,10 +41,8 @@ const websiteJsonLd = {
 export const revalidate = 300;
 
 export default async function HomePage() {
-  await loadStore();
-  const best = products.filter((p) => p.isBestseller).slice(0, 8);
-  const fresh = products.filter((p) => p.isNew);
-  const deals = products.filter(isOnSale).slice(0, 8);
+  // Only the rows the page shows: 8 bestsellers, 8 new arrivals, 8 deals (not the whole catalog).
+  const [, { best, fresh, deals }] = await Promise.all([loadStore(), loadHomeLists()]);
 
   return (
     <>

@@ -1,7 +1,8 @@
 import "server-only";
+import { cache } from "react";
 import { apiFetch } from "@/lib/api";
 import type { Product as ApiProduct, ProductListResponse } from "@/types/product";
-import { designCategoryId, setCatalog, upsertProducts, type Product } from "./catalog";
+import { backendCategorySlugs, designCategoryId, upsertProducts, type CategoryId, type Product } from "./catalog";
 import { toDesignProduct } from "./product-map";
 import { applyStoreSettings, type StoreSettings } from "./settings";
 import { pageToPolicy, type PageRow } from "./policies/html";
@@ -17,14 +18,13 @@ import type { PolicyDocument } from "./policies/types";
 export { toDesignProduct };
 
 const REVALIDATE = 300;
-const PAGE_SIZE = 100; // the backend caps one page at 100
-const MAX_PAGES = 20;
-const NEWEST_COUNT = 24;
+/** Products per shop/category page (owner decision: 24, numbered pages). */
+export const PAGE_SIZE = 24;
 
-/** Lighter copy for the list every page carries to the browser (the product page loads the full one). */
+/** Lighter copy for cards and the browser cart (the product page loads the full one). */
 export function slimProduct(p: Product): Product {
   const { reviews: _reviews, ...rest } = p;
-  return { ...rest, description: "", highlights: p.highlights.slice(0, 4), specs: [], idealFor: [], inBox: [] };
+  return { ...rest, description: "", descriptionHtml: "", highlights: p.highlights.slice(0, 4), specs: [], idealFor: [], inBox: [] };
 }
 
 async function bundleDefault() {
@@ -38,39 +38,112 @@ async function bundleDefault() {
   }
 }
 
-/** Every published product, newest first, in the design's shape. Also fills `products` on the server. */
-export async function loadCatalog(): Promise<Product[]> {
-  const pct = await bundleDefault();
-  const items: ApiProduct[] = [];
+export type CardQuery = {
+  category?: CategoryId;
+  /** Backend sort: newest (default), popular, price-asc, price-desc, name, discount, relevance. */
+  sort?: string;
+  /** Backend collection tag: new, bestsellers, discount. */
+  tag?: string;
+  page?: number;
+  limit?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  search?: string;
+  ids?: string[];
+  exclude?: string;
+};
+export type CardPage = { items: Product[]; total: number; page: number; totalPages: number };
+
+/** The backend query string for a card list (GET /api/products?view=card&…). */
+export function cardQueryString(q: CardQuery) {
+  const params = new URLSearchParams({ view: "card", sort: q.sort || "newest", limit: String(q.limit ?? PAGE_SIZE) });
+  if (q.page && q.page > 1) params.set("page", String(q.page));
+  if (q.category) params.set("category", backendCategorySlugs[q.category] || q.category);
+  if (q.tag) params.set("tag", q.tag);
+  if (q.minPrice != null && q.minPrice > 0) params.set("minPrice", String(q.minPrice));
+  if (q.maxPrice != null) params.set("maxPrice", String(q.maxPrice));
+  if (q.inStock) params.set("availability", "instock");
+  if (q.search) params.set("search", q.search);
+  if (q.ids) params.set("ids", q.ids.join(","));
+  if (q.exclude) params.set("exclude", q.exclude);
+  return params.toString();
+}
+
+/**
+ * One page of product cards, only the fields a card shows (lib/catalog-cards.ts on the backend). Cached 5 minutes
+ * under the "products" tag; searches pass the shopper's IP (for the per-IP limit) and are not cached.
+ * Backend unreachable: an empty page, never invented products.
+ */
+export async function loadCards(q: CardQuery, opts: { clientIp?: string } = {}): Promise<CardPage> {
+  if (q.ids && !q.ids.length) return { items: [], total: 0, page: q.page || 1, totalPages: 1 };
+  return cardsByQuery(cardQueryString(q), q.search ? opts.clientIp || "" : "", q.page || 1);
+}
+
+// One request per distinct card query per page render: the page and its metadata (generateMetadata) share it.
+const cardsByQuery = cache(async (query: string, clientIp: string, page: number): Promise<CardPage> => {
+  const empty = { items: [], total: 0, page, totalPages: 1 };
+  const search = new URLSearchParams(query).has("search");
+  const proxySecret = process.env.STORE_PROXY_SECRET || process.env.REVALIDATION_SECRET;
   try {
-    for (let page = 1; page <= MAX_PAGES; page++) {
-      const res = await apiFetch<ProductListResponse>(`/api/products?limit=${PAGE_SIZE}&page=${page}&sort=newest`, {
-        next: { revalidate: REVALIDATE, tags: ["products"] },
-      });
-      items.push(...(res.items || []));
-      if (page >= (res.totalPages || 1)) break;
-    }
+    const [res, pct] = await Promise.all([
+      apiFetch<ProductListResponse>(
+        `/api/products?${query}`,
+        search
+          ? {
+              cache: "no-store",
+              headers: clientIp && proxySecret ? { "x-zm-client-ip": clientIp, "x-zm-proxy-secret": proxySecret } : {},
+            }
+          : { next: { revalidate: REVALIDATE, tags: ["products"] } },
+      ),
+      bundleDefault(),
+    ]);
+    const items = (res.items || []).map((p) => slimProduct(toDesignProduct(p, pct)));
+    upsertProducts(items);
+    return { items, total: Number(res.total || 0), page: Number(res.page || 1), totalPages: Number(res.totalPages || 1) };
   } catch {
-    // Backend unreachable: the shop shows no products rather than invented ones.
+    return empty;
   }
-  // Bestsellers = the backend's own ranking (sort=popular); New Arrivals = the newest products.
-  let popular: string[] = [];
+});
+
+/** The three product rows on the home page (8 each, newest first, like the old full-catalog filters). */
+export async function loadHomeLists() {
+  const [best, fresh, deals] = await Promise.all([
+    loadCards({ tag: "bestsellers", limit: 8 }),
+    loadCards({ tag: "new", limit: 8 }),
+    loadCards({ tag: "discount", limit: 8 }),
+  ]);
+  return { best: best.items, fresh: fresh.items, deals: deals.items };
+}
+
+/** "You may also like": same category first (this product left out), topped up with bestsellers, then anything. */
+export async function loadRelated(p: Product, n = 4): Promise<Product[]> {
+  const same = await loadCards({ category: p.category, exclude: p.id, limit: n });
+  if (same.items.length >= n) return same.items;
+  const picked = [...same.items];
+  const add = (items: Product[]) => {
+    for (const item of items) if (picked.length < n && item.id !== p.id && !picked.some((x) => x.id === item.id)) picked.push(item);
+  };
+  add((await loadCards({ tag: "bestsellers", exclude: p.id, limit: n * 2 })).items.filter((x) => x.category !== p.category));
+  if (picked.length < n) add((await loadCards({ exclude: p.id, limit: n * 3 })).items);
+  return picked;
+}
+
+/** Published products per design category, from the backend's category list. */
+export async function loadCategoryCounts(): Promise<Record<string, number>> {
   try {
-    const res = await apiFetch<ProductListResponse>(`/api/products?limit=12&sort=popular`, {
-      next: { revalidate: REVALIDATE, tags: ["products"] },
+    const rows = await apiFetch<{ slug: string; count: number }[]>(`/api/categories`, {
+      next: { revalidate: REVALIDATE, tags: ["categories"] },
     });
-    popular = (res.items || []).filter((p) => Number((p as ApiProduct & { orderCount?: number }).orderCount || 0) > 0).map((p) => p.id);
+    const out: Record<string, number> = {};
+    for (const row of rows) {
+      const id = designCategoryId(row.slug);
+      out[id] = (out[id] || 0) + Number(row.count || 0);
+    }
+    return out;
   } catch {
-    popular = [];
+    return {};
   }
-  const list = items.map((p, i) => {
-    const d = toDesignProduct(p, pct);
-    if (i < NEWEST_COUNT) d.isNew = true;
-    if (popular.includes(p.id)) d.isBestseller = true;
-    return d;
-  });
-  setCatalog(list);
-  return list;
 }
 
 /** One product with everything its page shows. */
@@ -148,13 +221,13 @@ export async function loadSettings() {
 }
 
 /**
- * Everything a storefront page needs from the backend: the catalog and the store settings.
- * Server pages await this first, so the design's helpers (getProduct, products, site…) read real data.
+ * What every storefront page needs from the backend: the store settings (phone, delivery amounts, cities).
+ * Products are no longer loaded here: each page loads only the products it shows (loadCards, loadProduct).
  */
 export async function loadStore() {
-  const [catalog, settings] = await Promise.all([loadCatalog(), loadStoreSettings()]);
+  const settings = await loadStoreSettings();
   applyStoreSettings(settings);
-  return { catalog, settings };
+  return { settings };
 }
 
 export type SeoIndex = {
