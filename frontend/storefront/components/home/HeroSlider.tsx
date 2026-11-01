@@ -167,9 +167,11 @@ export function HeroSlider() {
       onDragStart={(e) => e.preventDefault()}
     >
       <div className="slider-track" style={{ transform: `translate3d(calc(${-i * 100}% + ${dx}px), 0, 0)` }}>
-        {(restMounted ? slides : slides.slice(0, 1)).map((s, idx) => (
+        {/* Every slide's text is in the first HTML, so the hero has its final height from the first paint (the
+            tallest slide used to grow it ~24 px when it mounted, a layout shift). Only the images wait. */}
+        {slides.map((s, idx) => (
           <div key={idx} className={`slide ${idx === i ? "active" : ""}`} aria-hidden={idx !== i} role="group" aria-roledescription="slide" aria-label={`${idx + 1} of ${slides.length}`}>
-            <SlideArt slide={s} first={idx === 0} />
+            {(idx === 0 || restMounted) && <SlideArt slide={s} first={idx === 0} />}
             <div className="container hero-inner">
               <div className="hero-content">
                 <div className="eyebrow">{s.eyebrow}</div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getImageProps } from "next/image";
 import { ArrowRight } from "lucide-react";
 import { Breadcrumbs, type Crumb } from "@store/components/ui/Breadcrumbs";
 
@@ -20,14 +21,30 @@ export type HeroProps = {
   children?: React.ReactNode;
 };
 
+const DESKTOP_BANNER = { width: 2100, height: 700 };
+const MOBILE_BANNER = { width: 900, height: 600 };
+/** Next.js image srcset for a banner file (local files under /public are resized and re-encoded on request). */
+function bannerSet(src: string, size: { width: number; height: number }) {
+  return getImageProps({ src, alt: "", sizes: "100vw", ...size }).props.srcSet;
+}
+
 /** Banner art stays the desktop crop on every screen. On phones the right side is zoomed in; copy stays real HTML. */
 export function Hero({ desktop, mobile, alt = "", mobileImageFull = false, eyebrow, title, sub, buttons = [], size = "full", priority = false, as = "h1", breadcrumbs, children }: HeroProps) {
   const H = as;
   return (
     <section className={`hero hero-${size}${mobileImageFull ? " hero-mobile-image-full" : ""}`}>
+      {/* Responsive banner: the browser picks a width that fits the screen (1080, 1440, 1920 …) instead of the full file. */}
       <picture className="hero-art">
-        {mobile && <source media="(max-width: 760px)" srcSet={mobile} />}
-        <img src={desktop} alt={alt} fetchPriority={priority ? "high" : "auto"} loading={priority ? "eager" : "lazy"} decoding="async" />
+        {mobile && <source media="(max-width: 760px)" srcSet={bannerSet(mobile, MOBILE_BANNER)} sizes="100vw" />}
+        <img
+          src={desktop}
+          srcSet={bannerSet(desktop, DESKTOP_BANNER)}
+          sizes="100vw"
+          alt={alt}
+          fetchPriority={priority ? "high" : "auto"}
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
+        />
       </picture>
       <div className="container hero-inner">
         <div className="hero-content">

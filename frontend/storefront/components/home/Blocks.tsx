@@ -116,7 +116,12 @@ export function CollectionCards() {
     <div className="collection-grid">
       {promos.map((c) => (
         <Link href={categoryPath(c.id)} className="collection-card" key={c.id}>
-          <FillImage src={`${c.image}-900.webp`} srcSet={`${c.image}-600.webp 600w, ${c.image}-900.webp 900w`} sizes="(max-width:760px) 100vw, 420px" />
+          <FillImage
+            src={`${c.image}-672.webp`}
+            srcSet={`${c.image}-480.webp 480w, ${c.image}-672.webp 672w, ${c.image}-900.webp 900w`}
+            // Shown 365 px wide on phones (screen minus the page padding) and about 415 px on desktop.
+            sizes="(max-width:760px) calc(100vw - 48px), 420px"
+          />
           <span className="collection-shade" aria-hidden="true" />
           <span className="collection-copy">
             <span className="collection-kicker">{c.kicker}</span>

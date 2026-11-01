@@ -681,3 +681,40 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
 - **Not verified:** this session's network policy blocks the R2 host, so the 12 URLs (5 shorts + posters, the
   unboxing film, `pack-an-order.jpg`) could not be fetched from here. They are exactly the names given; check them
   once in a browser (a missing file shows the poster, or a play button that does nothing).
+
+## Final list 2.5: layout shift, image sizes, fonts — 1 November 2026 (branch `perf/cls-images`)
+
+- **Layout shift (CLS) fixed on every page type.** Two causes, both measured in a browser:
+  - the footer jumped (0.195 on desktop, 0.18 on mobile) when a streamed page replaced its loading placeholder,
+    which was only 62vh tall. The placeholder (`.store-loading`) is now one full screen (`100vh`/`100svh`), so the
+    footer starts below the fold and the real page never pushes it down;
+  - the home hero shifted 0.021 when the other slides mounted late. Every slide now keeps its place in the
+    track from the first paint; only slide 1 renders its picture until the visitor interacts or the timer moves on.
+  - Result: CLS 0.000 on home, shop, category and product, desktop and mobile (`bench/cls.cjs`).
+- **Right-sized images:**
+  - the three "Up to X% off" cards (`Blocks.tsx`) send a `srcSet` of 480/672/900 px with real `sizes`. The old
+    600 px files are replaced by 480 px (17–20 KB) and 672 px (27–32 KB) WebP;
+  - the hero banners use `getImageProps` with `srcSet` + `sizes="100vw"` for both the desktop and the phone art,
+    so a phone gets the 900 px phone banner, not a full-width desktop file;
+  - `deviceSizes` adds 1440 (a 1366–1440 px laptop no longer downloads the 1920 px banner);
+  - product-page thumbnails ask for 120 px images (`sizes="120px"`), not full-size ones.
+  - Lighthouse "Properly size images" now passes on home, shop and product (category mobile: 22 KiB left, from
+    product photos uploaded at one size).
+- **Fonts:** Manrope is a variable font. The fixed weight list is removed, so `next/font` serves one variable file
+  instead of five weight files; `display: swap` and the preload stay. "Font display" passes everywhere.
+- **Left as is:** render-blocking CSS (owner decision). Also "legacy JavaScript", which reports an estimated
+  13 KiB: it comes from polyfills inside Next/React's own chunks, there is no one-line fix, and changing
+  browserslist would not remove it.
+- **Lighthouse, local production build** (`next start`, same fixtures). Mobile is the median of 3 runs.
+
+  | Page | Mobile before → after (score, LCP, TBT, CLS) | Desktop before → after (score, CLS) |
+  |---|---|---|
+  | Home | 50, 4.8 s, 1,600 ms, 0 → **83, 3.5 s, 300 ms, 0** | 87, 0.195 → **97, 0** |
+  | Shop p1 | 83, 3.4 s, 120 ms, 0.18 → **88, 3.4 s, 220 ms, 0** | 90, 0.195 → **100, 0** |
+  | Category | 77, 3.9 s, 170 ms, 0.18 → **88, 3.7 s, 160 ms, 0** | 90, 0.195 → **100, 0** |
+  | Product | 80, 3.7 s, 130 ms, 0.18 → **84, 3.9 s, 240 ms, 0** | 90, 0.195 → **99, 0** |
+
+  - TBT on shop, category and product moves 100–200 ms between runs on this machine, so those changes are noise;
+    the home drop from 1,600 ms is real. It came from the late-mounted slides and the earlier YouTube removal.
+  - On mobile, about 70% of LCP is "render delay" behind the render-blocking stylesheet (28 KB). That is why LCP
+    stays above 3 s while CSS is left as is.
