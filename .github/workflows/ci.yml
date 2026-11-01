@@ -50,6 +50,10 @@ jobs:
       - name: Backend tests
         run: npm test --workspace backend
 
+      # In-process PostgreSQL (PGlite) and a fake email API: no database server or secret needed.
+      - name: Order jobs integration test
+        run: npm run test:jobs:integration --workspace backend
+
       - name: Frontend typecheck
         run: npm run typecheck --workspace frontend
 

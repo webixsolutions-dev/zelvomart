@@ -12,7 +12,7 @@ import { sendMetaServerEvent } from "../lib/meta";
 import { eventsRateRule, requestIp, isLikelyBot } from "../lib/rate-limit";
 import { dispatchJobRow } from "../lib/jobs";
 import { processJobRow } from "../lib/job-processor";
-import { waitUntil } from "@vercel/functions";
+import { runInBackground } from "../lib/background";
 import type { Express } from "express";
 import { META_EVENT_NAMES, allowRules, audit, routeParam } from "../http/shared";
 
@@ -82,7 +82,7 @@ export function registerTrackingRoutes(app: Express) {
           } as Prisma.InputJsonValue,
         },
       });
-      waitUntil(processJobRow(job.id).catch(() => undefined));
+      runInBackground("meta-event job", () => processJobRow(job.id));
 
       // TikTok is off unless its Events API is switched on and a pixel ID is set: then no job row at all.
       if (await tiktokJobsEnabled()) {

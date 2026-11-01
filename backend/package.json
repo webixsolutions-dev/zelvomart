@@ -25,6 +25,7 @@
     "setup": "prisma generate --schema=prisma/schema.prisma && prisma db push --schema=prisma/schema.prisma",
     "test:reviews": "node --import tsx --test src/lib/review-import.test.ts",
     "test:reviews:integration": "node --import tsx scripts/review-system.integration.mts",
+    "test:jobs:integration": "node --import tsx scripts/jobs.integration.mts",
     "db:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "format": "prettier --write .",
     "format:check": "prettier --check ."

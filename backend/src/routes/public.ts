@@ -23,12 +23,12 @@ import { postexTrackingUrl } from "../lib/postex";
 import { invalidateFrontendCache } from "../lib/cache-invalidation";
 import { bundleLineTotal, priceSummary, variantPriceSummary } from "../lib/pricing";
 import { sendContactTeamEmail } from "../lib/email";
-import { dispatchJobRow } from "../lib/jobs";
 import { STORE_LIMITS, checkoutRateRules, requestIp } from "../lib/rate-limit";
-import { processJobRow } from "../lib/job-processor";
 import { sendDailySummary } from "../lib/daily-summary";
 import { sendAutomaticRecoveryEmails } from "../recovery";
-import { waitUntil } from "@vercel/functions";
+import { runInBackground } from "../lib/background";
+import { runJobsNow } from "../lib/job-runner";
+import { runCronQueue } from "../lib/cron-queue";
 import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
 import {
@@ -60,60 +60,13 @@ export function registerPublicRoutes(app: Express) {
     if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
     if (!cronAuthorized(req))
       return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
-    const now = Date.now();
-    const staleBefore = new Date(now - 10 * 60 * 1000);
-    const retryBefore = new Date(now - 60 * 1000);
-    await prisma.job.updateMany({
-      where: { status: "RUNNING", startedAt: { lt: staleBefore } },
-      data: { status: "FAILED", error: "Worker lease expired after ten minutes.", finishedAt: new Date(now) },
-    });
-    const eligible = {
-      name: {
-        in: [
-          "order-team-email",
-          "customer-order-email",
-          "customer-status-email",
-          "meta-event",
-          "meta-purchase",
-          "tiktok-event",
-          "tiktok-purchase",
-        ],
-      },
-      externalId: null,
-      attempts: { lt: 5 },
-      createdAt: { gte: new Date(now - 7 * 86400000) },
-      OR: [{ status: "QUEUED" as const }, { status: "FAILED" as const, updatedAt: { lte: retryBefore } }],
-    };
-    const rows = await prisma.job.findMany({
-      where: eligible,
-      orderBy: { createdAt: "asc" },
-      take: 25,
-      select: { id: true },
-    });
-    const deadline = now + 20 * 1000;
-    let processed = 0,
-      succeeded = 0,
-      failed = 0,
-      skipped = 0;
-    for (const { id } of rows) {
-      // Leave enough room for one provider call (which has a 15s network timeout) and cleanup.
-      if (Date.now() + 15 * 1000 >= deadline) break;
-      try {
-        const result = await processJobRow(id);
-        processed++;
-        if (result && typeof result === "object" && "skipped" in result) skipped++;
-        else succeeded++;
-      } catch {
-        processed++;
-        failed++;
-      }
-    }
-    const remaining = await prisma.job.count({ where: eligible });
+    const started = Date.now();
+    const queue = await runCronQueue(started);
     // Left carts: send the 5% offer email once, about an hour after the cart was left.
     let cartOffers: { sent: number; failed: number } | { error: string } = { sent: 0, failed: 0 };
-    if (Date.now() + 15 * 1000 < deadline)
+    if (Date.now() - started < 5_000)
       cartOffers = await sendAutomaticRecoveryEmails().catch(() => ({ error: "CART_OFFER_FAILED" }));
-    res.json({ processed, succeeded, failed, skipped, remaining, cartOffers });
+    res.json({ ...queue, cartOffers });
   });
 
   // Daily maintenance that previously depended on pg-boss schedules.
@@ -406,9 +359,8 @@ export function registerPublicRoutes(app: Express) {
     const parsed = checkoutSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "VALIDATION_ERROR", issues: parsed.error.flatten() });
     try {
-      // The order is saved when createOrder returns; the customer gets the answer right away. Job dispatch and the
-      // cache refresh run after the response (waitUntil). The Job rows are already saved, so the worker's
-      // job-recovery picks up any that fail to dispatch here.
+      // The order is saved when createOrder returns; the customer gets the answer right away. Its emails and
+      // events are sent right after the response (runJobsNow); the saved Job rows let the cron retry any failure.
       const order = await createOrder(
         {
           ...parsed.data,
@@ -431,16 +383,11 @@ export function registerPublicRoutes(app: Express) {
       });
       const jobIds: string[] = (order as { jobIds?: string[] }).jobIds || [];
       const soldOut: string[] = (order as { soldOutSlugs?: string[] }).soldOutSlugs || [];
-      const immediateJobs = await prisma.job.findMany({
-        where: {
-          id: { in: jobIds },
-          name: { in: ["order-team-email", "customer-order-email", "meta-event", "meta-purchase"] },
-        },
-        select: { id: true },
-      });
-      waitUntil(
+      // Everything after the answer is handed off at once (nothing awaited first), so on Vercel the function is
+      // not frozen before the emails and events go out. The cron stays as the retry for anything that fails.
+      runInBackground("order jobs", () =>
         Promise.allSettled([
-          ...immediateJobs.map(({ id }) => processJobRow(id)),
+          runJobsNow(jobIds),
           // Only the products this order sold out change on the storefront; a normal order flushes nothing.
           ...(soldOut.length ? [invalidateFrontendCache(soldOut.map((slug) => `product:${slug}`))] : []),
         ]),

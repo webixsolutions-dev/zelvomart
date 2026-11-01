@@ -9,20 +9,12 @@ import { checkoutSchema } from "../../lib/validators";
 import { getSetting } from "../../lib/settings";
 import { postexTrackingUrl } from "../../lib/postex";
 import { invalidateFrontendCache } from "../../lib/cache-invalidation";
-import { dispatchJobRow } from "../../lib/jobs";
-import { processJobRow } from "../../lib/job-processor";
-import { waitUntil } from "@vercel/functions";
+import { runInBackground } from "../../lib/background";
+import { runJobsNow } from "../../lib/job-runner";
 
-/**
- * Queue a job and, in cron mode, also run it now (after the response) so status emails and tracking reach the
- * customer within seconds instead of waiting for the next /api/cron/jobs run. The atomic claim in processJobRow
- * keeps the cron run from sending it twice; a failure stays queued for the cron to retry.
- */
+/** Status emails and tracking jobs go out right after the response; the cron retries a failure. */
 function startJob(jobId: string) {
-  const run = dispatchJobRow(jobId).then(() =>
-    process.env.JOB_MODE === "cron" ? processJobRow(jobId).catch(() => undefined) : undefined,
-  );
-  waitUntil(run.catch(() => undefined));
+  runInBackground("admin order job", () => runJobsNow([jobId]));
 }
 import type { Express } from "express";
 import { audit, jsonProductSummary, productListSelect, routeParam } from "../../http/shared";
