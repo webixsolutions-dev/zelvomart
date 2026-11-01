@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
   images: {
     formats: ["image/avif", "image/webp"],
+    // Next's defaults plus 1440: a 1366–1440 px laptop no longer downloads the 1920 px banner.
+    deviceSizes: [640, 750, 828, 1080, 1200, 1440, 1920, 2048, 3840],
     minimumCacheTTL: 86400,
     remotePatterns: [
       { protocol: "https", hostname: "zelvomart.com" },

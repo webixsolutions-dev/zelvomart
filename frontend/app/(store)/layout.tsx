@@ -22,7 +22,7 @@ import { CatalogBridge } from "@store/lib/bridge";
 
 const manrope = Manrope({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  // Manrope is a variable font: one file covers every weight the CSS uses (400–800, incl. 650/750).
   display: "swap",
   variable: "--font-brand",
 });

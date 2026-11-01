@@ -209,7 +209,7 @@ em {
   animation: shimmer 1.3s infinite linear;
   margin-block: 30px;
 }
-.store-loading { min-height: 62vh; padding-block: 40px; }
+.store-loading { min-height: 100vh; min-height: 100svh; padding-block: 40px; }
 .store-loading-line,.store-loading-card { display: block; border-radius: var(--radius); background: linear-gradient(90deg,var(--wash),#eef3f8,var(--wash)); background-size: 200% 100%; animation: shimmer 1.3s infinite linear; }
 .store-loading-line { width: 48%; height: 14px; margin: 14px 0; }
 .store-loading-title { width: 28%; height: 28px; }

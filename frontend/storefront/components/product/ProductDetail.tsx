@@ -255,7 +255,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {gallery.map((image, i) => (
                   <button key={image.src + "-" + i} type="button" role="tab" aria-selected={galleryIndex === i} aria-label={"Show image " + (i + 1) + " of " + gallery.length} className={galleryIndex === i ? "active" : ""} onClick={() => setGalleryIndex(i)}>
                     <span>
-                      <Image src={image.src} alt="" width={120} height={120} unoptimized />
+                      <Image src={image.src} alt="" width={120} height={120} sizes="120px" />
                     </span>
                   </button>
                 ))}
