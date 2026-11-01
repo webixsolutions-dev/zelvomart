@@ -623,6 +623,27 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   cases through the storefront function. Browser check: a free-delivery item alone shows FREE (was Rs 190), a mixed
   cart shows Rs 190.
 
+## Final list 2.2: sanitizer and dependencies — 1 November 2026 (branch `fix/sanitizer-deps`)
+
+- **`poster` scheme check:** sanitize-html 2.17.4 checks URL schemes only on `href`, `src` and `cite`, so a
+  `javascript:` value in `<video poster>` survived both sanitizers. Both now set
+  `allowedSchemesAppliedToAttributes: ["href", "src", "cite", "poster"]`. Tests in both apps
+  (`backend/src/lib/sanitize.test.ts`, `frontend/scripts/sanitize.test.ts`): `javascript:` (any case), `data:` and
+  `vbscript:` removed from `a href`, `img src`, `video src`, `video poster`, `source src`; `http`, `https`, `mailto`,
+  `tel` kept; malformed HTML leaves no `<script>` or `on…` handlers. Checked that the poster test fails on the old
+  setup (2.17.4 without the setting keeps `poster="javascript:…"`).
+- **Upgrades:** sanitize-html 2.17.4 → 2.18.1 in both apps (it no longer uses deepmerge, so the deepmerge
+  prototype-poisoning advisory is gone from the tree; deepmerge has no patched release). `concurrently` 9.2.4 →
+  9.2.5 (same major; pins the patched shell-quote 1.12.0, which removes the two critical advisories; dev tooling
+  only, never in the production bundle).
+- **`npm audit --omit=dev`:** before 10 (1 low, 6 moderate, 3 high) → after 8 (5 moderate, 3 high). Left, and why:
+  - `deepmerge-ts` (high) via `prisma` → `@prisma/config`: **CLI only.** `prisma` is a backend devDependency used
+    at build time (`prisma generate`); the running app uses `@prisma/client` + `@prisma/adapter-pg`, and the
+    generated client does not import `@prisma/config` or `deepmerge-ts`. npm counts it as production because
+    `@prisma/client` lists `prisma` as an optional peer. The fix needs Prisma 7 (major upgrade: not done, owner
+    decision).
+  - `glob` / `minimatch` (moderate) via `@sentry/nextjs` → `@sentry/bundler-plugins`: **build-time only** (source
+    map upload during `next build`); the fix offered is a breaking Sentry change (not done).
 ## Final list 2.3: review integration test in CI — 1 November 2026 (branch `fix/ci-integration`)
 
 - `backend/scripts/review-system.integration.mts` failed at the upload-ownership check: it signed a token for a
