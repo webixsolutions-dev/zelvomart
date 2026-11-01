@@ -533,3 +533,20 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   Unit tests for the helper and the pool settings.
 - **Connections (local measurement, 6 backend requests 15 s apart):** old driver defaults (10 s idle) opened 6
   connections, one login per request; the new settings opened 1.
+
+## Final list Part 1 (PR 2): cached small reads and narrower storefront refreshes — 1 November 2026 (branch `perf/cache-revalidation`)
+
+- **`memo(key, ttl, loader)`** (`backend/src/lib/memo.ts`): 60 s in-memory copy, one shared load for callers that
+  arrive at the same time, failures never cached, and a save that happens during a load wins over the older value.
+- **Cached:** all settings in one query (except the large `feed.*` and `health.*` groups, read directly),
+  categories with product counts (shared by `/api/store/bootstrap` and `/api/categories`), active cities,
+  the redirect map (also used by `/api/redirects/resolve`, so unknown URLs from bots cost no read) and policy pages.
+  Local check: 30 requests to bootstrap/categories/cities/redirects/settings = 4 queries in total.
+- **Admin saves show at once:** `invalidateFrontendCache` clears the matching backend copies first (settings,
+  categories, cities, redirects, pages) and `setSetting` clears settings. On Vercel another running instance may
+  still hold the old copy for up to 60 s, so for those tags the storefront refresh is sent once more after 65 s.
+- **Narrower refreshes (1.3):** a product save refreshes the listings, the category lists, its own page and its
+  category page; product pages now carry only their own `product:<slug>` tag (plus `product-pages` for store-wide
+  changes such as the Buy 2 default or product tabs), so saving one product no longer empties every product page.
+  Cancelled/returned orders refresh only the pages of the products in them; a staff order only the products it sold
+  out. Bulk edit, delete, import and bulk rename keep one refresh per run.

@@ -346,7 +346,7 @@ reviewRouter.delete(
       },
       { isolationLevel: "Serializable" },
     );
-    await invalidateFrontendCache(["products"]);
+    await invalidateFrontendCache(["products", "product-pages"]);
     res.json({ count });
   }),
 );
@@ -374,7 +374,7 @@ reviewRouter.post(
       },
       { isolationLevel: "Serializable" },
     );
-    await invalidateFrontendCache(["products"]);
+    await invalidateFrontendCache(["products", "product-pages"]);
     res.json({ ok: true });
   }),
 );
@@ -452,7 +452,7 @@ reviewRouter.post(
       });
       return review;
     });
-    await invalidateFrontendCache(["products"]);
+    await invalidateFrontendCache(["products", "product-pages"]);
     res.status(201).json(row);
   }),
 );
@@ -560,7 +560,7 @@ reviewRouter.patch(
       },
       { isolationLevel: "Serializable" },
     );
-    await invalidateFrontendCache(["products"]);
+    await invalidateFrontendCache(["products", "product-pages"]);
     res.json(row);
   }),
 );
@@ -575,7 +575,7 @@ reviewRouter.delete(
       });
       await tx.auditLog.create({ data: auditData(req, "review_delete", id) });
     });
-    await invalidateFrontendCache(["products"]);
+    await invalidateFrontendCache(["products", "product-pages"]);
     res.json({ ok: true });
   }),
 );

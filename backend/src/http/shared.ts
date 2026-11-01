@@ -563,12 +563,28 @@ export async function allowRules(res: express.Response, rules: [LimitRule] | [Li
   return true;
 }
 
+/**
+ * Storefront tags for one product save: the listings ("products": home, shop, collections, sitemaps), the category
+ * lists and counts, this product's page and its category page. Other product pages are not touched (they carry
+ * their own `product:<slug>` tag), so adding 50 products refreshes 50 pages, not 50 × every page.
+ * Redirect changes refresh "redirects" where they are written (syncProductRedirect, bulk rename).
+ */
 export async function catalogCacheTags(slug: string, categoryId?: string | null) {
-  const tags = ["products", "featured-products", "categories", "store", "redirects", `product:${slug}`];
+  const tags = ["products", "categories", `product:${slug}`];
   if (!categoryId) return tags;
   const category = await prisma.category.findUnique({ where: { id: categoryId }, select: { slug: true } });
   if (category?.slug) tags.push(`category:${category.slug}`);
   return tags;
+}
+
+/** Tags for orders whose stock went back on the shelf: the listings plus each product's own page. */
+export async function orderProductTags(orderIds: string[]) {
+  const items = await prisma.orderItem.findMany({
+    where: { orderId: { in: orderIds }, productId: { not: null } },
+    select: { product: { select: { slug: true } } },
+  });
+  const slugs = new Set(items.map((item) => item.product?.slug).filter(Boolean));
+  return ["products", ...[...slugs].map((slug) => `product:${slug}`)];
 }
 
 export async function loadAdminProduct(id: string) {
