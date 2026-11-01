@@ -14,6 +14,8 @@ export function sanitizeDescriptionHtml(html: string) {
     },
     allowedStyles: { "*": { "text-align": [/^(left|center|right|justify)$/] } },
     allowedSchemes: ["http", "https", "mailto", "tel"],
+    // sanitize-html checks schemes only on href/src/cite by default; `poster` would keep a javascript: URL.
+    allowedSchemesAppliedToAttributes: ["href", "src", "cite", "poster"],
     transformTags: { a: sanitizeHtml.simpleTransform("a", { rel: "noopener noreferrer" }) },
   });
 }
