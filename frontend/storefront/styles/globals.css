@@ -1780,28 +1780,46 @@ em {
   border-radius: 18px;
   background: #111418;
 }
-/* Lazy YouTube: the wrapper fills the frame; iframe rules below still apply to the player inside it. */
-.yt-lazy {
+/* Self-hosted video tile (components/home/VideoTile.tsx): the poster sits on top until the video plays. */
+.video-tile {
   position: absolute;
   inset: 0;
 }
-.yt-thumb {
+.video-tile video,
+.video-tile-poster {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
-.short-frame iframe {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  /* Shorts sit inside a 16:9 player. Scale past the card so the title bar and end-screen strip are clipped. */
-  width: 373%;
-  height: 118%;
-  transform: translate(-50%, -50%);
-  border: 0;
+.video-tile-poster {
+  transition: opacity 0.35s ease;
+}
+.video-tile.is-playing .video-tile-poster {
+  opacity: 0;
   pointer-events: none;
+}
+.video-tile-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(17, 20, 23, 0.6);
+  color: #fff;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+}
+.video-tile-play:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
 }
 .short-frame video {
   width: 100%;
@@ -2739,12 +2757,15 @@ em {
   background: #000;
   box-shadow: 0 22px 50px rgba(17, 20, 23, 0.14);
 }
-.unbox-player iframe {
+/* The vertical film sits centred in the wide frame over a blurred, darkened copy of its poster. */
+.unbox-backdrop {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
+  inset: -24px;
+  background: var(--unbox-poster) center / cover no-repeat;
+  filter: blur(22px) brightness(0.55);
+}
+.unbox-player .video-tile video {
+  object-fit: contain;
 }
 .unbox-copy h2 {
   font-size: clamp(32px, 3.2vw, 48px);

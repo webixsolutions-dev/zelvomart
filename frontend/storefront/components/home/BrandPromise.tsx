@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
-import { LazyYouTube } from "./LazyYouTube";
+import { unboxingVideo } from "@store/lib/home-videos";
+import { VideoTile } from "./VideoTile";
 
 const points = [
   "Checked by hand before it’s sealed",
@@ -7,14 +8,14 @@ const points = [
   "A thank-you card in every order",
 ];
 
-const UNBOXING_ID = "RkFifzRoieE";
-
 /** Packing film plus the unboxing promise — replaces the old own-stock marketplace block. */
 export function BrandPromise() {
   return (
     <div className="unbox">
-      <div className="unbox-player">
-        <LazyYouTube id={UNBOXING_ID} title="Pack an Order With Me — Zelvomart jewellery packing" eager rootMargin={1800} />
+      {/* Vertical film in the wide frame: centred, with a blurred, darkened copy of the poster behind it (no black bars). */}
+      <div className="unbox-player" style={{ ["--unbox-poster" as string]: `url("${unboxingVideo.poster}")` }}>
+        <span className="unbox-backdrop" aria-hidden="true" />
+        <VideoTile src={unboxingVideo.src} poster={unboxingVideo.poster} title={unboxingVideo.title} width={960} height={612} />
       </div>
       <div className="unbox-copy">
         <div className="eyebrow">The unboxing</div>
