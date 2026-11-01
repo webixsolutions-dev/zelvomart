@@ -718,3 +718,39 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
     the home drop from 1,600 ms is real. It came from the late-mounted slides and the earlier YouTube removal.
   - On mobile, about 70% of LCP is "render delay" behind the render-blocking stylesheet (28 KB). That is why LCP
     stays above 3 s while CSS is left as is.
+
+## Final list 2.7: per page-type check — 1 November 2026 (local production build; hosting paused)
+
+- **PageSpeed (Lighthouse), before → after:** see the table under 2.5 above. Mobile is the median of 3 runs.
+  - Home mobile **83** (target 70+, met). TBT **300 ms** (target under 300: at the line, 300–340 ms across runs).
+    LCP **3.5 s** (target under 3 s: missed).
+  - What the report says remains on home mobile: about 70% of LCP is "render delay" behind the one render-blocking
+    stylesheet (28 KB, kept by owner decision). The rest of TBT is React hydration of the home page (one 237 ms
+    task in the main client chunk) plus the page's own style and layout work.
+  - Shop, category and product are better than before on every score, and CLS is 0 everywhere.
+  - To repeat on the live site once hosting is back: PageSpeed Insights for `/`, `/shop/`, one category and one
+    product (mobile and desktop).
+- **Functional smoke test, mobile width (Pixel 7 profile, Chromium), local backend + local Postgres:** all pass.
+  - Home loads and the WhatsApp link is present.
+  - Product page "Add to cart" works. On the cart page, quantity +1 changes the total, and the delivery line reads
+    Rs. 190.
+  - Checkout shows subtotal Rs. 2,592 + delivery Rs. 190 = total Rs. 2,782, the same amount on the
+    "Place Order — Rs. 2,782" button. The test order was saved in the local DB with the same three numbers.
+  - The confirmation page shows "Thank you" with the order number, the WhatsApp confirm button and tracking.
+  - Search "decor" returns results. Shop page 2 has 24 cards. The category page shows its 14 products.
+  - No console errors on any page. No request to `youtube.com`, `youtube-nocookie.com` or `i.ytimg.com`.
+
+## Final list 2.8: operations guide — 1 November 2026 (branch `docs/operations`)
+
+- **[docs/OPERATIONS.md](docs/OPERATIONS.md)**, plain English, names only (no values). It covers:
+  - the services and how they connect;
+  - every environment variable name per app;
+  - deploy and rollback;
+  - the cron (routes, header, every 5 minutes for now, what each run does, what to do when the queue grows);
+  - adding products and home videos;
+  - egress and CPU thresholds, and the Vercel Hobby limits;
+  - the move to a plain Node server (build/start commands, `backend/dist/src/server.js`, ports, system cron, DNS
+    checklist);
+  - database backup and restore;
+  - a weekly 5-minute check.
+- The backend README and two code comments said the cron runs "every minute"; they now say every 5 minutes.

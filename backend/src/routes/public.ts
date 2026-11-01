@@ -57,7 +57,7 @@ export function registerPublicRoutes(app: Express) {
     return expectedBytes.length === suppliedBytes.length && timingSafeEqual(expectedBytes, suppliedBytes);
   };
 
-  // Cron-job.org calls this once per minute when JOB_MODE=cron. Job rows stay durable in Postgres.
+  // Cron-job.org calls this every 5 minutes when JOB_MODE=cron (the retry net; order jobs go out instantly). Job rows stay durable in Postgres.
   app.post("/api/cron/jobs", async (req, res) => {
     if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
     if (!cronAuthorized(req))

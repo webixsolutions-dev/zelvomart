@@ -353,14 +353,14 @@ export function automaticRecoveryWhere(now: number) {
     convertedAt: null,
     lostAt: null,
     followedUpAt: null,
-    // "auto-skipped" marks a cart the automatic sender could not email, so it is not retried every minute.
+    // "auto-skipped" marks a cart the automatic sender could not email, so it is not retried on every cron run.
     followedUpBy: null,
     updatedAt: { lte: new Date(now - 3600000), gte: new Date(now - 48 * 3600000) },
   };
 }
 
 /**
- * Automatic abandoned-cart email (runs with /api/cron/jobs, every minute): the same offer email the admin can
+ * Automatic abandoned-cart email (runs with /api/cron/jobs, every 5 minutes): the same offer email the admin can
  * send by hand, at most `limit` per run. Off when recovery offers or "Send automatically" are switched off.
  */
 export async function sendAutomaticRecoveryEmails(now = Date.now(), limit = 5) {
