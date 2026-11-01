@@ -622,3 +622,16 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   through `POST /api/orders` and checks the saved `deliveryFee`; `frontend/scripts/delivery.test.ts` runs the same
   cases through the storefront function. Browser check: a free-delivery item alone shows FREE (was Rs 190), a mixed
   cart shows Rs 190.
+
+## Final list 2.3: review integration test in CI — 1 November 2026 (branch `fix/ci-integration`)
+
+- `backend/scripts/review-system.integration.mts` failed at the upload-ownership check: it signed a token for a
+  user that does not exist, which the stronger auth now rejects with 401 before the ownership rule (the test
+  expected 400). It now creates a second, active owner with a real password stamp, so the check reaches the
+  intended "another admin's upload ticket" rejection (400). All review checks pass.
+- It runs in CI on every pull request (`npm run test:reviews:integration`), next to the jobs, catalog and delivery
+  integration tests. All four use an in-process PostgreSQL (PGlite) and fake mail/storage servers: no database
+  service, no secrets, never production.
+- Frontend formatter check: not added. The frontend has no Prettier setup yet and `prettier --check` would
+  reformat 243 files; that is a large reformat, so it was skipped as the list allows.
+- Branch protection: the repository is public, so GitHub Free offers it (see the report for the steps).
