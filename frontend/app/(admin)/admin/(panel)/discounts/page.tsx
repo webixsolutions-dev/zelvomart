@@ -1,5 +1,5 @@
 "use client";
-import AdminListView from "@/components/admin/AdminListView";
+import AdminListView, { StatusBadge } from "@/components/admin/AdminListView";
 import "@/components/admin/catalog-pages.css";
 import AdminTable from '@/components/admin/AdminTable';
 
@@ -52,7 +52,7 @@ export default function DiscountsAdminPage() {
                 <tr key={product.id}>
                   <td><Link href={`/admin/products/${product.id}`}>{product.title || product.name}</Link></td>
                   <td>{labels.join(" · ") || "On sale"}</td>
-                  <td><span className="catalog-status">{product.status === "PUBLISHED" ? "Posted" : "Draft"}</span></td>
+                  <td><StatusBadge value={product.status === "PUBLISHED" ? "Posted" : "Draft"} /></td>
                   <td><Link className="admin-btn admin-btn-light" href={`/admin/products/${product.id}`}>Edit product</Link></td>
                 </tr>
               );

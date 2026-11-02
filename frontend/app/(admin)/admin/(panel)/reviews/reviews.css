@@ -1,8 +1,8 @@
 .reviews-workspace {
-  --rw-blue: #2463eb;
-  --rw-navy: #142941;
-  --rw-muted: #718198;
-  --rw-line: #e5ebf3;
+  --rw-blue: var(--adm-accent);
+  --rw-navy: var(--adm-ink);
+  --rw-muted: var(--adm-ink-muted);
+  --rw-line: var(--adm-panel-line);
   --rw-soft: #f7f9fc;
   min-width: 0;
   width: 100%;
@@ -35,20 +35,20 @@
 .reviews-workspace button:focus-visible,
 .reviews-workspace input:focus-visible,
 .reviews-workspace textarea:focus-visible {
-  outline: 2px solid #3478f6;
-  outline-offset: 3px;
+  outline: 2px solid var(--adm-focus);
+  outline-offset: 2px;
 }
 .reviews-workspace input:not([type="checkbox"]):not([type="file"]),
 .reviews-workspace textarea {
   min-width: 0;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--adm-line);
   background: white;
   color: var(--rw-navy);
-  border-radius: 9px;
-  padding: 11px 12px;
+  border-radius: 7px;
+  padding: 8px 12px;
   width: 100%;
-  min-height: 43px;
-  box-shadow: 0 1px 2px #14294103;
+  min-height: 38px;
+  box-shadow: none;
 }
 .reviews-workspace input::placeholder,
 .reviews-workspace textarea::placeholder {
@@ -91,18 +91,18 @@
   gap: 12px;
 }
 .rw-title-line h1 {
-  font-size: 29px !important;
-  font-weight: 700 !important;
+  font-size: var(--adm-fs-title) !important;
+  font-weight: 800 !important;
   line-height: 1.2;
-  letter-spacing: -1px;
+  letter-spacing: -0.8px;
 }
 .rw-page-icon {
   display: grid;
   place-items: center;
-  width: 43px;
-  height: 43px;
-  border-radius: 13px;
-  background: #eaf1ff;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--adm-accent-soft);
   color: var(--rw-blue);
   border: 1px solid #dce7ff;
 }
@@ -123,11 +123,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 14px;
-  border-radius: 9px;
-  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 7px;
+  min-height: 38px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   line-height: 1.2;
   box-shadow: 0 1px 2px #152a4103;
@@ -136,8 +136,8 @@
     border-color 0.15s;
 }
 .reviews-workspace .rw-button:hover:not(:disabled) {
-  background: #f3f7fc !important;
-  border-color: #cbd7e8 !important;
+  background: var(--adm-row-hover) !important;
+  border-color: #a6ceff !important;
 }
 .reviews-workspace .rw-button-primary {
   background: var(--rw-blue) !important;
@@ -146,8 +146,8 @@
   box-shadow: 0 3px 7px #2463eb20;
 }
 .reviews-workspace .rw-button-primary:hover:not(:disabled) {
-  background: #1b53cd !important;
-  border-color: #1b53cd !important;
+  background: var(--adm-accent-hover) !important;
+  border-color: var(--adm-accent-hover) !important;
 }
 .reviews-workspace .rw-button-danger {
   background: #fff5f4 !important;
@@ -165,16 +165,16 @@
 }
 .rw-icon-button,
 .rw-action-icon {
-  width: 33px;
-  height: 33px;
+  width: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
   background: white;
-  border: 1px solid var(--rw-line);
-  border-radius: 8px;
-  color: #708099;
+  border: 1px solid var(--adm-line);
+  border-radius: 7px;
+  color: var(--adm-ink-soft);
 }
 .rw-icon-button:hover,
 .rw-action-icon:hover {
@@ -217,13 +217,13 @@
 .rw-stats article {
   background: white;
   border: 1px solid var(--rw-line);
-  border-radius: 13px;
-  padding: 20px;
+  border-radius: 11px;
+  padding: 14px 16px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  box-shadow: 0 2px 5px #20345103;
+  box-shadow: 0 3px 15px #182e4d03;
   min-width: 0;
 }
 .rw-stats article > div {
@@ -232,23 +232,23 @@
   gap: 4px;
 }
 .rw-stats article > div > span {
-  color: #667991;
-  font-size: 12px;
-  font-weight: 500;
+  color: #52617c;
+  font-size: 11px;
+  font-weight: 700;
 }
 .rw-stats strong {
-  font-size: 30px;
-  line-height: 1.35;
-  font-weight: 700;
-  letter-spacing: -1px;
+  font-size: 22px;
+  line-height: 1.4;
+  font-weight: 800;
+  letter-spacing: -0.4px;
 }
 .rw-stats small {
   font-size: 11px;
 }
 .rw-stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -272,9 +272,9 @@
 .rw-list-panel {
   min-width: 0;
   border: 1px solid var(--rw-line);
-  border-radius: 14px;
+  border-radius: 11px;
   background: white;
-  box-shadow: 0 2px 8px #1b324804;
+  box-shadow: 0 3px 15px #182e4d03;
 }
 .rw-list-heading {
   padding: 22px 23px 18px;
@@ -284,8 +284,8 @@
   align-items: center;
 }
 .rw-list-heading h2 {
-  font-size: 17px;
-  font-weight: 650;
+  font-size: var(--adm-fs-section);
+  font-weight: 800;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -329,7 +329,7 @@
   border-bottom-color: var(--rw-blue);
 }
 .rw-tabs button > span {
-  font-size: 10px;
+  font-size: 11px;
   min-width: 20px;
   padding: 1px 6px;
   border-radius: 5px;
@@ -545,7 +545,7 @@
   overflow-wrap: anywhere;
 }
 .rw-select-options small {
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-select-options > button.is-active {
   background: #f2f6fd;
@@ -604,7 +604,7 @@
 }
 .rw-empty > small {
   max-width: 400px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-pagination {
   display: flex;
@@ -703,7 +703,7 @@
   font-weight: 600;
 }
 .rw-table-reviewer small {
-  font-size: 10px;
+  font-size: 11px;
   overflow-wrap: anywhere;
 }
 .rw-avatar {
@@ -743,7 +743,7 @@
   overflow-wrap: anywhere;
 }
 .rw-table-product small {
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-rating {
   display: flex;
@@ -788,7 +788,7 @@
   gap: 8px;
   align-items: center;
   color: #95a1b1;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 10px;
   flex-wrap: wrap;
 }
@@ -802,10 +802,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 10px;
-  font-weight: 600;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
   white-space: nowrap;
 }
 .rw-badge > span {
@@ -815,21 +815,21 @@
   background: currentColor;
 }
 .rw-badge-pending {
-  color: #b68623;
-  background: #fff6df;
+  color: var(--adm-warning);
+  background: var(--adm-warning-bg);
 }
 .rw-badge-approved {
-  color: #26845b;
-  background: #eaf8ef;
+  color: var(--adm-success);
+  background: var(--adm-success-bg);
 }
 .rw-badge-rejected {
-  color: #c66059;
-  background: #fff0ed;
+  color: var(--adm-danger);
+  background: var(--adm-danger-bg);
 }
 .rw-badge-test {
   color: #8d66c6;
   background: #f4eefa;
-  font-size: 9px;
+  font-size: 11px;
 }
 .rw-test-row {
   margin-top: 7px;
@@ -842,7 +842,7 @@
 .rw-date-cell > small {
   display: block;
   margin-top: 7px;
-  font-size: 9px;
+  font-size: 11px;
   color: #a0adbc;
 }
 .rw-row-actions {
@@ -1053,7 +1053,7 @@
   top: 0;
 }
 .rw-field > small {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
 }
 .rw-field-error {
@@ -1100,13 +1100,13 @@
   font-weight: 600;
 }
 .rw-upload-heading p {
-  font-size: 10px;
+  font-size: 11px;
   color: #8d9aab;
   margin-top: 4px !important;
 }
 .rw-upload-heading > span {
   color: #9aa7b8;
-  font-size: 10px;
+  font-size: 11px;
 }
 .reviews-workspace .rw-hidden-file {
   display: none;
@@ -1149,7 +1149,7 @@
   font-weight: 500;
 }
 .rw-dropzone small {
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-editor-media {
   display: grid;
@@ -1186,7 +1186,7 @@
 .rw-editor-media small {
   display: block;
   padding: 4px 7px;
-  font-size: 9px;
+  font-size: 11px;
 }
 .rw-editor-aside {
   gap: 16px;
@@ -1214,7 +1214,7 @@
   margin-top: 2px;
 }
 .rw-aside-note p {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.7;
 }
 .rw-reference {
@@ -1223,11 +1223,11 @@
   gap: 6px;
   padding-top: 12px;
   border-top: 1px solid var(--rw-line);
-  font-size: 10px;
+  font-size: 11px;
   color: #92a0b2;
 }
 .rw-reference code {
-  font-size: 9px;
+  font-size: 11px;
   overflow-wrap: anywhere;
   color: #6e829e;
 }
@@ -1243,13 +1243,13 @@
   min-width: 0;
 }
 .rw-avatar-editor .rw-button {
-  font-size: 10px;
+  font-size: 11px;
   min-height: 30px;
   padding: 7px 9px;
   align-self: start;
 }
 .rw-avatar-editor small {
-  font-size: 9px;
+  font-size: 11px;
 }
 .rw-mini-preview {
   border: 1px solid var(--rw-line);
@@ -1261,7 +1261,7 @@
   background: white;
 }
 .rw-eyebrow {
-  font-size: 9px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   font-weight: 600;
@@ -1284,7 +1284,7 @@
   font-weight: 600;
 }
 .rw-preview-reviewer small {
-  font-size: 9px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1317,7 +1317,7 @@
   align-items: center;
 }
 .rw-modal-footer p {
-  font-size: 10px;
+  font-size: 11px;
   color: #99a5b6;
   max-width: 460px;
 }
@@ -1425,12 +1425,12 @@
   font-weight: 600;
 }
 .rw-file-card > strong > span {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
   color: #99a8bc;
 }
 .rw-file-card small {
-  font-size: 10px;
+  font-size: 11px;
   overflow-wrap: anywhere;
   max-width: 100%;
 }
@@ -1446,12 +1446,12 @@
 .rw-file-card > .rw-text-button {
   z-index: 1;
   position: relative;
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-import-help {
   margin: 15px 0;
   color: #98a4b5;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.8;
 }
 .rw-import-help p + p {
@@ -1501,10 +1501,10 @@
   padding: 5px 8px;
   border-radius: 6px;
   color: #7a90ad;
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-product-counts b {
-  font-size: 9px;
+  font-size: 11px;
   background: white;
   border-radius: 4px;
   padding: 1px 5px;
@@ -1560,7 +1560,7 @@
 }
 .rw-preview-table td > small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   margin: 3px 0 7px;
 }
 .rw-preview-table p {
@@ -1571,7 +1571,7 @@
   margin: 7px 0;
 }
 .rw-preview-table .rw-select-trigger {
-  font-size: 10px;
+  font-size: 11px;
   min-height: 32px;
   padding: 7px;
 }
@@ -1580,7 +1580,7 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-inline-meta > span {
   white-space: nowrap;
@@ -1606,7 +1606,7 @@
   align-items: center;
   gap: 5px;
   color: #429b71;
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-warning-text {
   color: #b29a61 !important;
@@ -1651,11 +1651,11 @@
   gap: 9px;
   flex-wrap: wrap;
   color: #99a6b7;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 5px !important;
 }
 .rw-history-details code {
-  font-size: 9px;
+  font-size: 11px;
   overflow-wrap: anywhere;
 }
 .rw-history-counts {
@@ -1663,7 +1663,7 @@
   gap: 14px;
   margin-top: 12px;
   color: #9ba8b9;
-  font-size: 10px;
+  font-size: 11px;
 }
 .rw-history-counts b {
   font-weight: 600;
@@ -1678,7 +1678,7 @@
 }
 .rw-history-actions .rw-button {
   min-height: 33px;
-  font-size: 10px;
+  font-size: 11px;
   padding: 8px 10px;
 }
 .rw-spin {
@@ -1777,7 +1777,7 @@
     gap: 8px;
   }
   .rw-steps strong {
-    font-size: 10px;
+    font-size: 11px;
   }
   .rw-bulk-bar > span {
     margin-left: 0;
@@ -1819,10 +1819,10 @@
     font-size: 26px;
   }
   .rw-stats small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .rw-stats article > div > span {
-    font-size: 10px;
+    font-size: 11px;
   }
   .rw-stat-icon {
     width: 29px;
@@ -1836,7 +1836,7 @@
     padding: 17px 15px;
   }
   .rw-list-heading p {
-    font-size: 10px;
+    font-size: 11px;
   }
   .rw-list-heading h2 {
     font-size: 15px;
@@ -1872,7 +1872,7 @@
   .rw-pagination {
     padding: 13px 15px;
     flex-wrap: wrap;
-    font-size: 10px;
+    font-size: 11px;
   }
   .rw-pagination > div {
     gap: 8px;
@@ -1881,7 +1881,7 @@
   .rw-bottom-note {
     align-items: flex-start;
     justify-content: flex-start;
-    font-size: 10px;
+    font-size: 11px;
   }
   .rw-bottom-note > svg {
     flex: 0 0 auto;
@@ -1905,7 +1905,7 @@
     font-size: 18px;
   }
   .rw-modal-head p {
-    font-size: 10px;
+    font-size: 11px;
   }
   .rw-editor-body,
   .rw-import-body,
@@ -1937,7 +1937,7 @@
     padding: 10px 12px;
   }
   .rw-modal-footer p {
-    font-size: 9px;
+    font-size: 11px;
   }
   .rw-form-alert {
     margin: 0 17px 14px;
@@ -1956,7 +1956,7 @@
   .rw-steps > span {
     white-space: normal;
     align-items: flex-start;
-    font-size: 10px;
+    font-size: 11px;
   }
   .rw-steps > i {
     margin-top: 7px;
@@ -1981,7 +1981,7 @@
   }
   .rw-bulk-bar .rw-button {
     padding: 8px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .rw-empty > div {
     flex-direction: column;

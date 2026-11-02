@@ -810,4 +810,24 @@ and the screenshots must match.
     - Delivered and Settled = success;
     - Cancelled and Returned = danger.
   - Print views (`orders/print`, `orders/[id]/print`) are excluded and unchanged.
+- **PR 3, people and money (branch `admin-ui/people-money`).**
+  - Customers:
+    - tiles drop their tinted gradients for the shared white tile;
+    - status chips (Active, New, VIP, Returning, Blocked, Inactive) use `StatusBadge`;
+    - no text under 11 px.
+  - Abandoned carts:
+    - bold section title on a shared card;
+    - row actions stay on one line, so rows are about 110 px shorter;
+    - status uses `StatusBadge`;
+    - load errors show a banner with Try again;
+    - the page no longer overflows sideways at 390 px.
+  - Discounts: Posted/Draft use `StatusBadge`.
+  - Reviews:
+    - `reviews.css` points its colours at the shared tokens;
+    - 28 px / 800 title, 7 px control radius, 38 px fields;
+    - shared tile and panel style;
+    - Pending, Approved and Rejected use the shared tone colours;
+    - no text under 11 px (45 sizes raised);
+    - the review workflow is unchanged.
+  - Coupons was done in PR 1.
 
