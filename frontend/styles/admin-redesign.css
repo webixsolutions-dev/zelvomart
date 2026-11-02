@@ -2376,6 +2376,10 @@ a.dashboard-metric:hover { border-color: #b5d2ff; box-shadow: 0 4px 16px #215c9c
 .admin-main[data-ui=unified] :is(.adm-num, td.num, th.num) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .admin-main[data-ui=unified] .admin-data-table td[data-column-kind=actions] { white-space: nowrap; }
 .admin-main[data-ui=unified] .admin-data-table td[data-column-kind=actions] > * + * { margin-left: 6px; }
+.admin-main[data-ui=unified] .adm-row-actions { display: flex; flex-wrap: nowrap; gap: 6px; }
+.admin-main[data-ui=unified] .admin-title h2 { margin: 0; color: var(--adm-ink); font-size: var(--adm-fs-section); font-weight: 800; line-height: 1.35; }
+.admin-main[data-ui=unified] .admin-section-card { padding: var(--adm-space-4); border: 1px solid var(--adm-panel-line); border-radius: 11px; background: #fff; box-shadow: 0 3px 15px #182e4d03; }
+.admin-main[data-ui=unified] .admin-head-actions { display: flex; flex-wrap: wrap; gap: var(--adm-space-2); }
 .admin-main[data-ui=unified] :is(.admin-column-chooser summary, .admin-table-scroll-controls button) { min-height: 34px; border-color: var(--adm-line); border-radius: 7px; color: var(--adm-ink-soft); font-size: 12px; }
 .admin-main[data-ui=unified] .admin-table-scroll-controls button { width: 34px; height: 34px; }
 
