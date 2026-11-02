@@ -852,4 +852,30 @@ and the screenshots must match.
   - Login: plain admin background, shared card, 28 px / 800 title, shared fields and the blue primary button
     (was dark navy).
   - CRO, Experiments, Marketing and Reports only redirect to the dashboard.
+- **PR 6, final pass (branch `admin-ui/final`).**
+  - The owner chose to restyle the sidebar and top bar, which also appear on Products pages. The Products guard
+    therefore covers everything inside `main`.
+  - Sidebar:
+    - 13 px menu text (was 12);
+    - section and account labels 11 px (were 9–10);
+    - active item uses the shared accent (light blue background, blue text, left bar);
+    - hover uses the shared row colour;
+    - log out uses the danger colour.
+  - Top bar:
+    - 12 px breadcrumb;
+    - search field 38 px with a 7 px radius and the shared focus ring (it had none);
+    - "View storefront" is a secondary button;
+    - footer text 12 px.
+  - Phone drawer: 40 px close button.
+  - One focus ring for the whole shell; the keyboard walk-through of the dashboard, Orders, Coupons and a modal
+    shows a visible ring on every stop. The modal keeps focus inside and closes on Escape.
+  - 16 superseded `!important` menu rules removed.
+  - Roles: owner, manager, order agent and marketer see the same menus and landing pages as before. No reachable
+    page scrolls sideways at 390 px or logs a console error.
+  - Products guard on all 7 routes: every computed style inside `main` is identical. The content screenshots
+    match apart from 1/255 anti-aliasing noise and the footer border line, which the shell restyle changed.
+  - Totals for the whole admin redesign:
+    - admin CSS source 780 KB → 339 KB;
+    - `!important` in the two big sheets 1,357 → 165;
+    - `npm audit --omit=dev` unchanged.
 
