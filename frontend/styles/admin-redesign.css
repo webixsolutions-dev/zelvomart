@@ -2306,7 +2306,7 @@ a.dashboard-metric:hover { border-color: #b5d2ff; box-shadow: 0 4px 16px #215c9c
 /* Page frame and header */
 .admin-main[data-ui=unified] { color: var(--adm-ink); font-size: var(--adm-fs-body); }
 .admin-main[data-ui=unified] :is(.admin-title, .od-title) { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--adm-space-4); margin: 0 0 var(--adm-space-5); }
-.admin-main[data-ui=unified] :is(.admin-title, .od-title) > div:first-child { flex: 1 1 320px; min-width: 0; }
+.admin-main[data-ui=unified] :is(.admin-title, .od-title) > div:first-child { flex: 1 1 auto; min-width: 0; }
 .admin-main[data-ui=unified] :is(.admin-title, .od-title) h1 { margin: 0; color: var(--adm-ink); font-size: var(--adm-fs-title); font-weight: 800; line-height: 1.2; letter-spacing: -.8px; }
 .admin-main[data-ui=unified] :is(.admin-title, .od-title) p { max-width: 720px; margin: var(--adm-space-1) 0 0; color: var(--adm-ink-muted); font-size: 14px; line-height: 1.5; }
 .admin-main[data-ui=unified] :is(.admin-title, .od-title) > :not(div:first-child) { display: flex; flex-wrap: wrap; gap: var(--adm-space-2); }
@@ -2334,7 +2334,7 @@ a.dashboard-metric:hover { border-color: #b5d2ff; box-shadow: 0 4px 16px #215c9c
 .admin-main[data-ui=unified] :is(.field, .rw-field, .admin-list-toolbar > label) { display: flex; flex-direction: column; gap: 6px; min-width: 0; color: var(--adm-ink-soft); font-size: 12px; font-weight: 600; }
 .admin-main[data-ui=unified] :is(input:not([type=checkbox], [type=radio], [type=range], [type=file], [type=color], [type=hidden]), select, textarea) { box-sizing: border-box; min-height: 38px; border: 1px solid var(--adm-line); border-radius: 7px; background-color: #fff; box-shadow: none; padding: 8px 12px; color: var(--adm-ink); font: inherit; font-size: var(--adm-fs-body); font-weight: 400; }
 .admin-main[data-ui=unified] textarea { min-height: 88px; line-height: 1.5; }
-.admin-main[data-ui=unified] select { appearance: none; -webkit-appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23677992' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; cursor: pointer; }
+.admin-main[data-ui=unified] select:not([multiple]) { appearance: none; -webkit-appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23677992' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; cursor: pointer; }
 .admin-main[data-ui=unified] :is(input:not([type=checkbox], [type=radio]), select, textarea):focus-visible { outline: 0; border-color: var(--adm-focus); box-shadow: 0 0 0 3px #388bfa33; }
 .admin-main[data-ui=unified] :is(input, select, textarea)[aria-invalid=true] { border-color: var(--adm-danger); }
 .admin-main[data-ui=unified] :is(input[type=checkbox], input[type=radio]) { width: 16px; height: 16px; accent-color: var(--adm-accent); cursor: pointer; }
@@ -2360,7 +2360,8 @@ a.dashboard-metric:hover { border-color: #b5d2ff; box-shadow: 0 4px 16px #215c9c
 /* Search and filter bar */
 .admin-main[data-ui=unified] .admin-list-toolbar { align-items: flex-end; gap: var(--adm-space-2) var(--adm-space-3); padding: 0; border: 0; background: transparent; }
 .admin-main[data-ui=unified] .admin-list-toolbar > label { flex: 1 1 150px; font-size: var(--adm-fs-caption); }
-.admin-main[data-ui=unified] .admin-list-toolbar .admin-list-search { flex: 2 1 260px; }
+.admin-main[data-ui=unified] .admin-list-toolbar .admin-list-search { flex: 2 1 260px; flex-direction: row; align-items: center; }
+.admin-main[data-ui=unified] .admin-list-search svg { left: 11px; width: 16px; height: 16px; }
 .admin-main[data-ui=unified] .admin-list-toolbar :is(input, select) { min-height: 38px; font-size: var(--adm-fs-body); }
 .admin-main[data-ui=unified] .admin-list-results { margin: var(--adm-space-3) 0 var(--adm-space-2); color: var(--adm-ink-muted); font-size: 12px; }
 
@@ -2416,6 +2417,8 @@ a.dashboard-metric:hover { border-color: #b5d2ff; box-shadow: 0 4px 16px #215c9c
   .admin-main[data-ui=unified] :is(.admin-title, .od-title) > :is(button, a) { width: 100%; }
   .admin-main[data-ui=unified] :is(.admin-btn, .od-button) { min-height: 44px; }
   .admin-main[data-ui=unified] td :is(.admin-btn, .od-button) { min-height: 40px; }
+  .admin-main[data-ui=unified] .admin-table-scroll-controls button { width: 44px; height: 44px; }
+  .admin-main[data-ui=unified] .admin-column-chooser summary { min-height: 44px; }
   .admin-main[data-ui=unified] .admin-list-metrics article { padding: var(--adm-space-3); }
   .admin-main[data-ui=unified] .admin-list-metrics strong { font-size: 19px; }
   .admin-main[data-ui=unified] .admin-modal { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
