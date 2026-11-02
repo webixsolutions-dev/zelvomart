@@ -1,13 +1,13 @@
 "use client";
 import "@/components/admin/catalog-pages.css";
-import AdminListView from "@/components/admin/AdminListView";
+import AdminListView, { ErrorBanner, StatusBadge } from '@/components/admin/AdminListView';
 import AdminTable from '@/components/admin/AdminTable';
 
 import AdminModal from '@/components/admin/AdminModal';
 import { useState } from 'react';
 import { clientApi } from '@/lib/client-api';
 import { friendlyError } from '@/lib/app-errors';
-import { useAdminData,AdminLoading,AdminError } from '@/components/admin/useAdminData';
+import { useAdminData,AdminLoading } from '@/components/admin/useAdminData';
 
 function UserForm({onSaved}:{onSaved:()=>void}){
   const [error,setError]=useState('');
@@ -60,11 +60,11 @@ function ResetPasswordForm({user,onSaved}:{user:any;onSaved:()=>void}){
 export default function Users(){
   const {data,loading,error,reload}=useAdminData<any[]>('/api/admin/users',[]);
   if(loading)return <AdminLoading/>;
-  if(error)return <AdminError message={error}/>;
+  if(error)return <ErrorBanner message={error} onRetry={reload}/>;
   async function toggle(u:any){await clientApi(`/api/admin/users/${u.id}`,{method:'PATCH',body:JSON.stringify({active:!u.active})},true);reload()}
   async function resetTwoFactor(u:any){if(!window.confirm(`Reset two-factor sign-in for ${u.name}? They can sign in with their password only, and turn it on again in Security.`))return;await clientApi(`/api/admin/users/${u.id}`,{method:'PATCH',body:JSON.stringify({resetTwoFactor:true})},true);reload()}
   return <div className="admin-catalog-page">
     <div className="admin-title"><div><h1>Users & Roles</h1><p>Manage Owner, Manager, Order Agent and Marketer accounts. Sign-in uses email and password, plus a code from an authenticator app for anyone who turned on two-factor sign-in.</p></div><AdminModal className="catalog-modal" trigger={<>＋ Add Staff User</>} title="Add Staff User"><UserForm onSaved={reload}/></AdminModal></div>
-    <div className="admin-list-container"><AdminListView rows={data} label="Team members" paginationStyle="products" search={r=>`${r.name||''} ${r.email||''} ${r.role||''}`} searchHint="Search name, email or role" sorts={[{label:'Name',value:r=>r.name||''},{label:'Email',value:r=>r.email||''}]} filters={[{label:'Role',value:r=>r.role},{label:'Status',value:r=>r.active?'Active':'Disabled'},{label:'2FA',value:r=>r.twoFactorReady?'On':'Off'}]} metrics={[{label:'Team members',value:r=>r.length},{label:'Active',value:r=>r.filter(c=>c.active).length},{label:'Disabled',value:r=>r.filter(c=>!c.active).length},{label:'Roles in use',value:r=>new Set(r.map(c=>c.role)).size}]} onRefresh={reload}>{visibleRows=>(<AdminTable scrollLabel="Users" className="admin-modern-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>2FA</th><th>Actions</th></tr></thead><tbody>{visibleRows.map(u=><tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td>{String(u.role).replace(/_/g,' ')}</td><td>{u.active?'Active':'Disabled'}</td><td>{u.twoFactorReady?'On':'Off'}</td><td><div className="admin-row-actions"><button className="admin-btn admin-btn-light" onClick={()=>toggle(u)}>{u.active?'Disable':'Enable'}</button><AdminModal size="md" triggerClassName="admin-btn admin-btn-light" trigger="Reset password" title="Reset password"><ResetPasswordForm user={u} onSaved={reload}/></AdminModal>{u.twoFactorReady?<button className="admin-btn admin-btn-light" onClick={()=>resetTwoFactor(u)}>Reset 2FA</button>:null}</div></td></tr>)}</tbody></AdminTable>)}</AdminListView></div>
+    <div className="admin-list-container"><AdminListView rows={data} label="Team members" paginationStyle="products" search={r=>`${r.name||''} ${r.email||''} ${r.role||''}`} searchHint="Search name, email or role" sorts={[{label:'Name',value:r=>r.name||''},{label:'Email',value:r=>r.email||''}]} filters={[{label:'Role',value:r=>r.role},{label:'Status',value:r=>r.active?'Active':'Disabled'},{label:'2FA',value:r=>r.twoFactorReady?'On':'Off'}]} metrics={[{label:'Team members',value:r=>r.length},{label:'Active',value:r=>r.filter(c=>c.active).length},{label:'Disabled',value:r=>r.filter(c=>!c.active).length},{label:'Roles in use',value:r=>new Set(r.map(c=>c.role)).size}]} onRefresh={reload}>{visibleRows=>(<AdminTable scrollLabel="Users" className="admin-modern-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>2FA</th><th>Actions</th></tr></thead><tbody>{visibleRows.map(u=><tr key={u.id}><td>{u.name}</td><td>{u.email}</td><td>{String(u.role).replace(/_/g,' ')}</td><td><StatusBadge value={u.active?'Active':'Disabled'}/></td><td><StatusBadge value={u.twoFactorReady?'On':'Off'}/></td><td><div className="admin-row-actions"><button className="admin-btn admin-btn-light" onClick={()=>toggle(u)}>{u.active?'Disable':'Enable'}</button><AdminModal size="md" triggerClassName="admin-btn admin-btn-light" trigger="Reset password" title="Reset password"><ResetPasswordForm user={u} onSaved={reload}/></AdminModal>{u.twoFactorReady?<button className="admin-btn admin-btn-light" onClick={()=>resetTwoFactor(u)}>Reset 2FA</button>:null}</div></td></tr>)}</tbody></AdminTable>)}</AdminListView></div>
   </div>;
 }

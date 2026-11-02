@@ -35,9 +35,9 @@ export default function AdminListView<T>({rows,label,search,searchHint,filters=[
 /* Shared pieces of the unified admin look (styles in admin-redesign.css, "UNIFIED ADMIN UI"). */
 export type StatusTone = "success" | "warning" | "danger" | "info" | "neutral";
 const STATUS_TONES: Record<StatusTone, string[]> = {
- success: ["active", "approved", "published", "posted", "delivered", "settled", "succeeded", "success", "converted", "enabled", "on", "live", "paid", "verified", "connected", "healthy", "recovered", "ordered without follow-up"],
+ success: ["active", "approved", "published", "posted", "delivered", "settled", "succeeded", "success", "converted", "enabled", "on", "live", "paid", "verified", "connected", "healthy", "recovered", "ordered without follow-up", "ready", "configured"],
  info: ["confirmed", "booked", "in transit", "running", "processing", "open", "scheduled", "sent", "contacted", "followed up", "vip", "returning"],
- warning: ["new", "pending", "on hold", "queued", "draft", "awaiting", "action needed", "missing token", "review", "low stock", "retrying"],
+ warning: ["new", "pending", "on hold", "queued", "draft", "awaiting", "action needed", "missing token", "review", "low stock", "retrying", "missing id", "not set", "no token", "not recording", "check"],
  danger: ["cancelled", "canceled", "returned", "failed", "rejected", "blocked", "blocklisted", "error", "lost", "refused", "out of stock"],
  neutral: ["off", "disabled", "skipped", "archived", "ended", "paused", "inactive", "expired", "not booked", "unknown", "none"],
 };

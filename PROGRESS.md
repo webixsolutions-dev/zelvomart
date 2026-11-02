@@ -838,4 +838,18 @@ and the screenshots must match.
   - Brands is only a redirect to Products; nothing to change.
   - Fix: the header rule no longer forces a closed `<dialog>` (Add Category, Add Redirect) to show.
   - Modals fill the phone screen.
+- **PR 5, system pages and login (branch `admin-ui/system`).**
+  - Settings: shared title (it used a 34 px variant), shared cards, buttons that look like buttons.
+  - Users: Active/Disabled and 2FA On/Off use `StatusBadge`.
+  - Security: shared fields and button.
+  - Jobs: Succeeded/Failed/Queued/Running/Skipped use `StatusBadge`.
+  - Tracking:
+    - its nine status pills (Disabled, Ready, Missing ID/Token, Not recording, Active, Healthy, Check, Action needed) use `StatusBadge`;
+    - "Disabled" used to show orange like a warning; it is now neutral grey;
+    - cards use the shared card style.
+  - Session replays: list and viewer are on the shared system.
+  - Load errors on every one of these pages show a banner with Try again.
+  - Login: plain admin background, shared card, 28 px / 800 title, shared fields and the blue primary button
+    (was dark navy).
+  - CRO, Experiments, Marketing and Reports only redirect to the dashboard.
 

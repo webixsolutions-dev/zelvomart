@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import "@/components/admin/catalog-pages.css";
-import AdminListView from "@/components/admin/AdminListView";
+import AdminListView, { ErrorBanner, StatusBadge } from "@/components/admin/AdminListView";
 import AdminTable from "@/components/admin/AdminTable";
 import {
-  AdminError,
   AdminLoading,
   useAdminData,
 } from "@/components/admin/useAdminData";
@@ -40,7 +39,7 @@ export default function Jobs() {
   );
 
   if (loading) return <AdminLoading />;
-  if (error) return <AdminError message={error} />;
+  if (error) return <ErrorBanner message={error} onRetry={reload} />;
 
   const items = data.items || [];
   const start = data.total ? (data.page - 1) * data.limit + 1 : 0;
@@ -112,7 +111,7 @@ export default function Jobs() {
                   <tr key={job.id}>
                     <td>{new Date(job.createdAt).toLocaleString("en-PK")}</td>
                     <td>{job.name}</td>
-                    <td>{job.status}</td>
+                    <td><StatusBadge value={job.status} /></td>
                     <td>{job.attempts}</td>
                     <td>{job.orderId || "—"}</td>
                     <td style={{ maxWidth: 360, whiteSpace: "normal" }}>
