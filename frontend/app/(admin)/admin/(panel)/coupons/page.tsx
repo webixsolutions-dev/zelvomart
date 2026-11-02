@@ -1,12 +1,11 @@
 "use client";
-import AdminListView from "@/components/admin/AdminListView";
+import AdminListView, { ErrorBanner, StatusBadge } from "@/components/admin/AdminListView";
 import "@/components/admin/catalog-pages.css";
 import { useState, type FormEvent } from "react";
 import AdminTable from "@/components/admin/AdminTable";
 import {
   useAdminData,
   AdminLoading,
-  AdminError,
 } from "@/components/admin/useAdminData";
 import { clientApi } from "@/lib/client-api";
 import { clearAdminDataCache } from "@/components/admin/useAdminData";
@@ -220,7 +219,7 @@ export default function Coupons() {
       {loading ? (
         <AdminLoading />
       ) : error ? (
-        <AdminError message={error} />
+        <ErrorBanner message={error} onRetry={reload} />
       ) : (
         <AdminListView
           rows={data}
@@ -354,13 +353,15 @@ export default function Coupons() {
                         : "No expiry"}
                     </td>
                     <td>
-                      <span className="catalog-status">
-                        {!c.active
-                          ? "Off"
-                          : c.expiresAt && Date.parse(c.expiresAt) < Date.now()
-                            ? "Expired"
-                            : "Active"}
-                      </span>
+                      <StatusBadge
+                        value={
+                          !c.active
+                            ? "Off"
+                            : c.expiresAt && Date.parse(c.expiresAt) < Date.now()
+                              ? "Expired"
+                              : "Active"
+                        }
+                      />
                     </td>
                     <td>{c.usedCount}</td>
                     <td>{money(c.revenue)}</td>
