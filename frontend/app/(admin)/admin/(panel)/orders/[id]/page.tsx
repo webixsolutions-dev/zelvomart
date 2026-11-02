@@ -2,8 +2,9 @@
 import Link from 'next/link';
 import {useParams, useRouter} from 'next/navigation';
 import {useAdminRole} from '@/components/admin/AdminRoleContext';
-import {useEffect, useState, type CSSProperties, type FormEvent} from 'react';
+import {useEffect, useState, type FormEvent} from 'react';
 import {useAdminData, AdminLoading, AdminError} from '@/components/admin/useAdminData';
+import {StatusBadge} from '@/components/admin/AdminListView';
 import {clientApi} from '@/lib/client-api';
 import {money} from '@/lib/format';
 import {toast} from 'react-toastify';
@@ -12,16 +13,12 @@ import './order-detail.css';
 const STATUSES = ['NEW', 'CONFIRMED', 'ON_HOLD', 'BOOKED', 'IN_TRANSIT', 'DELIVERED', 'RETURNED', 'CANCELLED', 'SETTLED'];
 const LOCKED = ['CANCELLED', 'RETURNED', 'DELIVERED', 'SETTLED'];
 // Same colours as the orders list.
-const TONES: Record<string, string> = {
-  NEW: '#eea009', ON_HOLD: '#eea009', CONFIRMED: '#187bff', BOOKED: '#8a4cff', IN_TRANSIT: '#8a4cff',
-  DELIVERED: '#00b578', SETTLED: '#00b578', CANCELLED: '#ff4261', RETURNED: '#ed338c',
-};
 const statusLabel = (s: string) => s.replaceAll('_', ' ').toLowerCase();
 const when = (s: string) => new Date(s).toLocaleString('en-PK', {day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Karachi'});
 const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('') || '?';
 
 function Status({status}: {status: string}) {
-  return <span className="ode-status" style={{'--tone': TONES[status] || '#187bff'} as CSSProperties}>{statusLabel(status)}</span>;
+  return <StatusBadge value={status}/>;
 }
 
 export default function OrderDetail() {
@@ -104,7 +101,7 @@ export default function OrderDetail() {
           <a className="admin-btn admin-btn-light" href={'tel:' + o.phone}>Call</a>
           <Link className="admin-btn admin-btn-light" href={`/admin/orders/${id}/print?type=invoice`} target="_blank">Print invoice</Link>
           {!o.test && <button type="button" className="admin-btn admin-btn-light" disabled={busy} onClick={() => { if (window.confirm('Mark this order as a test? Pending emails and tracking jobs will be skipped.')) void action('/mark-test', {}); }}>Mark as test</button>}
-          {canDelete && <button type="button" disabled={busy} className="admin-btn ode-danger" onClick={() => void deleteOrder()}>Delete</button>}
+          {canDelete && <button type="button" disabled={busy} className="admin-btn admin-btn-danger" onClick={() => void deleteOrder()}>Delete</button>}
         </div>
       </div>
       {(o.possibleDuplicate || o.blocklistedAtOrder || o.customer?.blocklisted) && <div className="ode-alerts" role="status">

@@ -2411,6 +2411,27 @@ a.dashboard-metric:hover { border-color: #b5d2ff; box-shadow: 0 4px 16px #215c9c
 .admin-main[data-ui=unified] .admin-modal-close { width: 34px; height: 34px; border: 1px solid var(--adm-line); border-radius: 7px; background: #fff; color: var(--adm-ink-soft); font-size: 20px; line-height: 1; }
 .admin-main[data-ui=unified] .admin-modal-body { overflow-y: auto; overscroll-behavior: contain; }
 
+/* Orders and dashboard pieces built on the od- classes (shared with Products, so scoped here). */
+.admin-main[data-ui=unified] .od-dashboard { font-size: var(--adm-fs-table); }
+.admin-main[data-ui=unified] .od-dashboard .od-stat { height: auto; min-height: 100px; border: 1px solid var(--adm-panel-line); border-radius: 11px; box-shadow: 0 3px 15px #182e4d03; }
+.admin-main[data-ui=unified] .od-dashboard .od-stat > div > span:not(.od-skeleton) { color: #52617c; font-size: var(--adm-fs-caption); font-weight: 700; }
+.admin-main[data-ui=unified] .od-dashboard .od-stat strong { font-size: 22px; font-weight: 800; }
+.admin-main[data-ui=unified] .od-dashboard .od-stat :is(small, .od-neutral, .od-positive, .od-negative) { font-size: var(--adm-fs-caption); }
+.admin-main[data-ui=unified] .od-tabs button { font-size: var(--adm-fs-table); }
+.admin-main[data-ui=unified] .od-tabs button span { font-size: var(--adm-fs-caption); }
+.admin-main[data-ui=unified] .od-filters label { color: var(--adm-ink-muted); font-size: var(--adm-fs-caption); }
+.admin-main[data-ui=unified] .od-table { font-size: var(--adm-fs-table); }
+.admin-main[data-ui=unified] .od-table thead { color: #5f7089; font-size: var(--adm-fs-caption); }
+.admin-main[data-ui=unified] .od-table small { color: var(--adm-ink-muted); font-size: var(--adm-fs-caption); }
+.admin-main[data-ui=unified] :is(.od-payment, .od-badge) { padding: 3px 8px; border-radius: 999px; font-size: var(--adm-fs-caption); line-height: 1.5; white-space: nowrap; }
+.admin-main[data-ui=unified] .overview-dates :is(input, select) { min-height: 32px; border: 0; box-shadow: none; }
+.admin-main[data-ui=unified] .od-pagination { color: var(--adm-ink-muted); font-size: 12px; }
+.admin-main[data-ui=unified] .od-panel :is(h2, h3) { color: var(--adm-ink); }
+.admin-main[data-ui=unified] .order-quick-drawer { padding: var(--adm-space-5); }
+.admin-main[data-ui=unified] .oq-card { border-radius: 11px; }
+.admin-main[data-ui=unified] .oq-actions .admin-btn { min-height: 44px; }
+.admin-main[data-ui=unified] .oq-actions .oq-confirm { min-height: 48px; font-size: 14px; }
+
 @media (max-width: 650px) {
   .admin-main[data-ui=unified] :is(.admin-title, .od-title) h1 { font-size: 24px; }
   .admin-main[data-ui=unified] :is(.admin-title, .od-title) > :not(div:first-child) { width: 100%; }
@@ -2421,6 +2442,9 @@ a.dashboard-metric:hover { border-color: #b5d2ff; box-shadow: 0 4px 16px #215c9c
   .admin-main[data-ui=unified] .admin-column-chooser summary { min-height: 44px; }
   .admin-main[data-ui=unified] .admin-list-metrics article { padding: var(--adm-space-3); }
   .admin-main[data-ui=unified] .admin-list-metrics strong { font-size: 19px; }
+  .admin-main[data-ui=unified] .unified-overview .overview-metric-value { font-size: 20px; overflow-wrap: normal; }
+  .admin-main[data-ui=unified] .unified-overview > .admin-title { margin-bottom: 0; }
+  .admin-main[data-ui=unified] .od-filters label:has(> input[type=checkbox]) { flex: 0 0 auto; }
   .admin-main[data-ui=unified] .admin-modal { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
 }
 

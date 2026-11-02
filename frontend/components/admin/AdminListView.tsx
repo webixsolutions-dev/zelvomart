@@ -36,8 +36,8 @@ export default function AdminListView<T>({rows,label,search,searchHint,filters=[
 export type StatusTone = "success" | "warning" | "danger" | "info" | "neutral";
 const STATUS_TONES: Record<StatusTone, string[]> = {
  success: ["active", "approved", "published", "posted", "delivered", "settled", "succeeded", "success", "converted", "enabled", "on", "live", "paid", "verified", "connected", "healthy", "recovered"],
- info: ["new", "confirmed", "booked", "in transit", "running", "processing", "open", "scheduled", "sent", "contacted", "followed up"],
- warning: ["pending", "on hold", "queued", "draft", "awaiting", "action needed", "missing token", "review", "low stock", "retrying"],
+ info: ["confirmed", "booked", "in transit", "running", "processing", "open", "scheduled", "sent", "contacted", "followed up"],
+ warning: ["new", "pending", "on hold", "queued", "draft", "awaiting", "action needed", "missing token", "review", "low stock", "retrying"],
  danger: ["cancelled", "canceled", "returned", "failed", "rejected", "blocked", "blocklisted", "error", "lost", "refused", "out of stock"],
  neutral: ["off", "disabled", "skipped", "archived", "ended", "paused", "inactive", "expired", "not booked", "unknown", "none"],
 };
