@@ -2,7 +2,8 @@
 import "@/components/admin/catalog-pages.css";
 
 import Link from "next/link";
-import { AdminError, AdminLoading, useAdminData } from "@/components/admin/useAdminData";
+import { AdminLoading, useAdminData } from "@/components/admin/useAdminData";
+import { ErrorBanner, StatusBadge } from "@/components/admin/AdminListView";
 
 const TAGS = [
   { id: "best-selling", label: "Best selling", where: "Bestsellers" },
@@ -22,9 +23,9 @@ type Product = {
 };
 
 export default function TagsPage() {
-  const { data, loading, error } = useAdminData<Product[]>("/api/admin/products", []);
+  const { data, loading, error, reload } = useAdminData<Product[]>("/api/admin/products", []);
   if (loading) return <AdminLoading />;
-  if (error) return <AdminError message={error} />;
+  if (error) return <ErrorBanner message={error} onRetry={reload} />;
 
   return (
     <div className="admin-catalog-page">
@@ -46,7 +47,7 @@ export default function TagsPage() {
                 {products.map((product) => (
                   <li key={product.id}>
                     <Link href={`/admin/products/${product.id}`}>{product.title || product.name}</Link>
-                    <small className="catalog-status">{product.status === "PUBLISHED" ? "Posted" : "Draft"}</small>
+                    <StatusBadge value={product.status === "PUBLISHED" ? "Posted" : "Draft"} />
                   </li>
                 ))}
                 {!products.length ? <li><span>No products use this tag yet.</span></li> : null}

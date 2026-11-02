@@ -830,4 +830,12 @@ and the screenshots must match.
     - no text under 11 px (45 sizes raised);
     - the review workflow is unchanged.
   - Coupons was done in PR 1.
+- **PR 4, catalog structure (branch `admin-ui/catalog-structure`).**
+  - Categories, Tags and Redirects are on the shared system.
+    - Delete uses the shared danger button.
+    - Tag product states use `StatusBadge`.
+    - Load errors show a banner with Try again.
+  - Brands is only a redirect to Products; nothing to change.
+  - Fix: the header rule no longer forces a closed `<dialog>` (Add Category, Add Redirect) to show.
+  - Modals fill the phone screen.
 
