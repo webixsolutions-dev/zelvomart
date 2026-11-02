@@ -1,6 +1,7 @@
 "use client";
 import AdminDrawer from "@/components/admin/AdminDrawer";
 import AdminTable from "@/components/admin/AdminTable";
+import { StatusBadge } from "@/components/admin/AdminListView";
 
 import Link from "next/link";
 import {
@@ -122,15 +123,7 @@ const date = (s: string) =>
     timeZone: "Asia/Karachi",
   });
 function Badge({ status }: { status: string }) {
-  const g = groups.find((g) => g.statuses.includes(status));
-  return (
-    <span
-      className="od-badge"
-      style={{ "--tone": g?.color || "#187bff" } as CSSProperties}
-    >
-      ● {label(status)}
-    </span>
-  );
+  return <StatusBadge value={status} />;
 }
 function Thumb({ src, title }: { src: string | null; title: string }) {
   return src ? (

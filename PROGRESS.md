@@ -784,3 +784,30 @@ and the screenshots must match.
     `components/admin/AdminListView.tsx`.
   - Coupons is the first page on the system.
   - Admin CSS source in total: 780 KB → 333 KB.
+- **PR 2, dashboard and Orders (branch `admin-ui/dashboard-orders`).**
+  - Dashboard:
+    - KPI tiles use the shared tile style (full border, 11 px radius, round icons, no coloured side stripe);
+    - panels have an 11 px radius and 17 px section titles;
+    - no dashboard text is smaller than 11 px (33 sizes raised);
+    - the date range is one box again;
+    - on phones the KPI numbers fit, and the gap under the header is gone.
+  - Orders list and quick view:
+    - shared buttons and fields;
+    - stat tiles match the dashboard;
+    - table text 12 px, captions 11 px;
+    - status chips use `StatusBadge`;
+    - the payment chip no longer wraps;
+    - on phones the "Has replay" and "Repeat customer" checkboxes sit next to their labels;
+    - quick-view actions keep their 44/48 px touch height.
+  - Order detail:
+    - the old teal buttons are now the shared blue;
+    - title, card radius and card titles match the system;
+    - Delete uses the shared danger button;
+    - the status chip is `StatusBadge`.
+  - Shared status mapping, following the Orders groups:
+    - New and On hold = warning;
+    - Confirmed, Booked and In transit = info;
+    - Delivered and Settled = success;
+    - Cancelled and Returned = danger.
+  - Print views (`orders/print`, `orders/[id]/print`) are excluded and unchanged.
+
