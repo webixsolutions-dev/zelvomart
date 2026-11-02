@@ -2,15 +2,13 @@
 import AdminTable from '@/components/admin/AdminTable';
 
 
-import { useAdminData, AdminError } from "@/components/admin/useAdminData";
+import { useAdminData } from "@/components/admin/useAdminData";
+import { ErrorBanner, StatusBadge } from "@/components/admin/AdminListView";
 
 function health(value: number) {
   return value >= 99.5 ? "Healthy" : value >= 95 ? "Check" : "Action needed";
 }
 
-function statusTone(ok: boolean) {
-  return ok ? "good" : "warn";
-}
 
 interface IntegrationStatus {
   enabled: boolean;
@@ -79,7 +77,7 @@ interface TrackingData {
 }
 
 export default function Tracking() {
-  const { data, error } = useAdminData<TrackingData>("/api/admin/tracking", {
+  const { data, error, reload } = useAdminData<TrackingData>("/api/admin/tracking", {
     browser: {},
     server: {},
     tiktokServer: {},
@@ -95,7 +93,7 @@ export default function Tracking() {
     config: {},
   });
 
-  if (error) return <AdminError message={error || "Unable to load tracking"} />;
+  if (error) return <ErrorBanner message={error || "Unable to load tracking"} onRetry={reload} />;
 
   const names = [
     "PageView",
@@ -149,9 +147,7 @@ export default function Tracking() {
         <article className="admin-tracking-card" style={{ minHeight: 120 }}>
           <div>
             <small>Meta Pixel</small>
-            <span className={`admin-health-pill ${statusTone(Boolean(metaPixel?.enabled && metaPixel?.configured))}`}>
-              {!metaPixel?.enabled ? "Disabled" : metaPixel?.configured ? "Ready" : "Missing ID"}
-            </span>
+            <StatusBadge value={!metaPixel?.enabled ? "Disabled" : metaPixel?.configured ? "Ready" : "Missing ID"} />
           </div>
           <strong className="status-copy">
             {!metaPixel?.enabled ? "Disabled" : metaPixel?.configured ? "Active" : "Not Set"}
@@ -164,9 +160,7 @@ export default function Tracking() {
         <article className="admin-tracking-card" style={{ minHeight: 120 }}>
           <div>
             <small>Meta Conversions API</small>
-            <span className={`admin-health-pill ${statusTone(Boolean(metaCapi?.enabled && metaCapi?.configured))}`}>
-              {!metaCapi?.enabled ? "Disabled" : metaCapi?.configured ? "Ready" : "Missing Token"}
-            </span>
+            <StatusBadge value={!metaCapi?.enabled ? "Disabled" : metaCapi?.configured ? "Ready" : "Missing Token"} />
           </div>
           <strong className="status-copy">
             {!metaCapi?.enabled ? "Disabled" : metaCapi?.configured ? "Configured" : "No Token"}
@@ -179,9 +173,7 @@ export default function Tracking() {
         <article className="admin-tracking-card" style={{ minHeight: 120 }}>
           <div>
             <small>TikTok Pixel</small>
-            <span className={`admin-health-pill ${statusTone(Boolean(tiktokPixel?.enabled && tiktokPixel?.configured))}`}>
-              {!tiktokPixel?.enabled ? "Disabled" : tiktokPixel?.configured ? "Ready" : "Missing ID"}
-            </span>
+            <StatusBadge value={!tiktokPixel?.enabled ? "Disabled" : tiktokPixel?.configured ? "Ready" : "Missing ID"} />
           </div>
           <strong className="status-copy">
             {!tiktokPixel?.enabled ? "Disabled" : tiktokPixel?.configured ? "Active" : "Not Set"}
@@ -194,9 +186,7 @@ export default function Tracking() {
         <article className="admin-tracking-card" style={{ minHeight: 120 }}>
           <div>
             <small>TikTok Events API</small>
-            <span className={`admin-health-pill ${statusTone(Boolean(tiktokEventsApi?.enabled && tiktokEventsApi?.configured))}`}>
-              {!tiktokEventsApi?.enabled ? "Disabled" : tiktokEventsApi?.configured ? "Ready" : "Missing Token"}
-            </span>
+            <StatusBadge value={!tiktokEventsApi?.enabled ? "Disabled" : tiktokEventsApi?.configured ? "Ready" : "Missing Token"} />
           </div>
           <strong className="status-copy">
             {!tiktokEventsApi?.enabled ? "Disabled" : tiktokEventsApi?.configured ? "Configured" : "No Token"}
@@ -209,9 +199,7 @@ export default function Tracking() {
         <article className="admin-tracking-card" style={{ minHeight: 120 }}>
           <div>
             <small>CRO Session Replay</small>
-            <span className={`admin-health-pill ${statusTone(Boolean(sessionReplay?.enabled && sessionReplay?.configured))}`}>
-              {!sessionReplay?.enabled ? "Disabled" : !sessionReplay?.configured ? "Not recording" : "Active"}
-            </span>
+            <StatusBadge value={!sessionReplay?.enabled ? "Disabled" : !sessionReplay?.configured ? "Not recording" : "Active"} />
           </div>
           <strong className="status-copy">
             {!sessionReplay?.enabled ? "Disabled" : !sessionReplay?.configured ? "R2 bucket not configured" : `${sessionReplay?.retentionDays || 30}-Day Retention`}
@@ -226,9 +214,7 @@ export default function Tracking() {
         <article className="admin-tracking-card">
           <div>
             <small>Meta Purchase Coverage</small>
-            <span className={`admin-health-pill ${statusTone(metaPurchaseCoverage >= 95)}`}>
-              {health(metaPurchaseCoverage)}
-            </span>
+            <StatusBadge value={health(metaPurchaseCoverage)} />
           </div>
           <strong>{Number(metaPurchaseCoverage).toFixed(1)}%</strong>
           <p>{metaAccepted}/{data.orders} orders accepted by Meta CAPI</p>
@@ -238,9 +224,7 @@ export default function Tracking() {
         <article className="admin-tracking-card">
           <div>
             <small>Meta Browser ↔ Server Pairing</small>
-            <span className={`admin-health-pill ${statusTone(metaDedupeCoverage >= 95)}`}>
-              {health(metaDedupeCoverage)}
-            </span>
+            <StatusBadge value={health(metaDedupeCoverage)} />
           </div>
           <strong>{Number(metaDedupeCoverage).toFixed(1)}%</strong>
           <p>{metaPaired}/{data.pairEligible} event IDs paired</p>
@@ -250,9 +234,7 @@ export default function Tracking() {
         <article className="admin-tracking-card">
           <div>
             <small>TikTok Purchase Coverage</small>
-            <span className={`admin-health-pill ${statusTone(tiktokPurchaseCoverage >= 95)}`}>
-              {health(tiktokPurchaseCoverage)}
-            </span>
+            <StatusBadge value={health(tiktokPurchaseCoverage)} />
           </div>
           <strong>{Number(tiktokPurchaseCoverage).toFixed(1)}%</strong>
           <p>{tiktokAccepted}/{data.orders} orders accepted by TikTok Events API</p>
@@ -262,9 +244,7 @@ export default function Tracking() {
         <article className="admin-tracking-card">
           <div>
             <small>TikTok Browser ↔ Server Pairing</small>
-            <span className={`admin-health-pill ${statusTone(tiktokDedupeCoverage >= 95)}`}>
-              {health(tiktokDedupeCoverage)}
-            </span>
+            <StatusBadge value={health(tiktokDedupeCoverage)} />
           </div>
           <strong>{Number(tiktokDedupeCoverage).toFixed(1)}%</strong>
           <p>{tiktokPaired}/{data.pairEligible} event IDs paired</p>

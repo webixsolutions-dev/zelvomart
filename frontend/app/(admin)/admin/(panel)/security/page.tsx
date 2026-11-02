@@ -2,7 +2,8 @@
 import "@/components/admin/catalog-pages.css";
 import { FormEvent, useState } from "react";
 import { clientApi } from "@/lib/client-api";
-import { useAdminData, AdminLoading, AdminError } from "@/components/admin/useAdminData";
+import { useAdminData, AdminLoading } from "@/components/admin/useAdminData";
+import { ErrorBanner } from "@/components/admin/AdminListView";
 
 type Me = { user: { id: string; name: string; email: string; role: string }; twoFactorReady: boolean };
 type Setup = { qr: string; secret: string };
@@ -12,7 +13,7 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error && e.mes
 
 /** The signed-in admin's own security: optional two-factor sign-in and password change. */
 export default function Security() {
-  const { data, loading, error } = useAdminData<Me | null>("/api/auth/me", null);
+  const { data, loading, error, reload } = useAdminData<Me | null>("/api/auth/me", null);
   const [setup, setSetup] = useState<Setup | null>(null);
   const [twoFactor, setTwoFactor] = useState<boolean | null>(null);
   const [turningOff, setTurningOff] = useState(false);
@@ -21,7 +22,7 @@ export default function Security() {
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordBusy, setPasswordBusy] = useState(false);
   if (loading) return <AdminLoading />;
-  if (error || !data) return <AdminError message={error || "Could not load your account."} />;
+  if (error || !data) return <ErrorBanner message={error || "Could not load your account."} onRetry={reload} />;
   const on = twoFactor ?? data.twoFactorReady;
 
   async function start() {
