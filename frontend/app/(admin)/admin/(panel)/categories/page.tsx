@@ -1,12 +1,12 @@
 "use client";
-import AdminListView from "@/components/admin/AdminListView";
+import AdminListView, { ErrorBanner } from "@/components/admin/AdminListView";
 import "@/components/admin/catalog-pages.css";
 import AdminTable from '@/components/admin/AdminTable';
 
 
 import { useEffect, useState } from "react";
 import AdminModal from "@/components/admin/AdminModal";
-import { AdminError, AdminLoading, clearAdminDataCache, useAdminData } from "@/components/admin/useAdminData";
+import { AdminLoading, clearAdminDataCache, useAdminData } from "@/components/admin/useAdminData";
 import { clientApi } from "@/lib/client-api";
 
 type CategoryRow = {
@@ -119,7 +119,7 @@ export default function Categories() {
   const { data, loading, error, reload } = useAdminData<CategoryRow[]>("/api/admin/categories", []);
 
   if (loading) return <AdminLoading />;
-  if (error) return <AdminError message={error} />;
+  if (error) return <ErrorBanner message={error} onRetry={reload} />;
 
   async function del(id: string) {
     if (!confirm("Delete category?")) return;
@@ -168,7 +168,7 @@ export default function Categories() {
                     <AdminModal className="catalog-modal" trigger="Edit" triggerClassName="admin-btn admin-btn-light" title={`Edit ${c.name}`}>
                       <CategoryForm key={`${c.id}:${c.updatedAt ?? ""}`} initial={c} onSaved={afterSave} />
                     </AdminModal>
-                    <button className="admin-btn admin-row-action-danger" type="button" onClick={() => del(c.id)}>
+                    <button className="admin-btn admin-btn-danger" type="button" onClick={() => del(c.id)}>
                       Delete
                     </button>
                   </div>

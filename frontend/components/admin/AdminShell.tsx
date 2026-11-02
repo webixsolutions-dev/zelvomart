@@ -14,7 +14,7 @@ import {AdminRoleContext} from './AdminRoleContext';
  * Routes that use the unified admin look (styles/admin-redesign.css, "UNIFIED ADMIN UI").
  * Products (/admin/products/*, /admin/product-tabs) never do: those pages stay exactly as they are.
  */
-const UNIFIED_UI_ROUTES = ["/admin/coupons", "/admin/orders", "/admin/customers", "/admin/discounts", "/admin/reviews"];
+const UNIFIED_UI_ROUTES = ["/admin/coupons", "/admin/orders", "/admin/customers", "/admin/discounts", "/admin/reviews", "/admin/categories", "/admin/tags", "/admin/redirects"];
 function usesUnifiedUi(pathname: string) {
   if (/^\/admin\/(products|product-tabs)(\/|$)/.test(pathname)) return false;
   if (/\/print\/?$/.test(pathname)) return false; // print views keep their print layout
