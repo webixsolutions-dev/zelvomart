@@ -754,3 +754,33 @@ search-path SQL and rollback; run the complete CI checks and record the manual r
   - database backup and restore;
   - a weekly 5-minute check.
 - The backend README and two code comments said the cron runs "every minute"; they now say every 5 minutes.
+
+## Admin: one consistent design for every page except Products — 2 November 2026
+
+Products (`/admin/products/*`, `/admin/product-tabs`) is left exactly as it is. Every PR is checked against the
+original build: every computed CSS property of every element on all Products routes and form tabs must be equal,
+and the screenshots must match.
+
+- **PR 1, foundation (branch `admin-ui/foundation`).**
+  - Dead CSS removed: rules whose selectors need a class that no source file uses.
+    - `admin-base.css`: 544 KB → 105 KB. `admin-redesign.css`: 89 KB → 64 KB.
+    - `!important` in those two sheets: 1,357 → 175.
+    - Computed styles on every admin page (Products, order detail, both print views, replay viewer and login
+      included) are unchanged.
+  - One system in `styles/admin-redesign.css` ("UNIFIED ADMIN UI"):
+    - spacing, type and status-colour tokens;
+    - one button family (primary, secondary, ghost, danger, icon; sizes md and sm; one focus ring, one disabled
+      style and one loading style);
+    - one field style;
+    - cards and stat tiles;
+    - one table look; phones scroll the table inside its card;
+    - pagination;
+    - status badge;
+    - empty, loading and error states;
+    - modal.
+  - It applies only where `AdminShell` sets `data-ui="unified"` on `<main>` (a route list in `AdminShell.tsx`,
+    never Products).
+  - `StatusBadge` (one colour per status word everywhere), `EmptyState` and `ErrorBanner` (with Try again) live in
+    `components/admin/AdminListView.tsx`.
+  - Coupons is the first page on the system.
+  - Admin CSS source in total: 780 KB → 333 KB.

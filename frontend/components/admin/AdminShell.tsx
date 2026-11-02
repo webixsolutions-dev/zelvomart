@@ -10,6 +10,16 @@ import { clientApi, logoutAdminSession } from "@/lib/client-api";
 import { clearAdminDataCache, prefetchAdminData } from "./useAdminData";
 import {AdminRoleContext} from './AdminRoleContext';
 
+/**
+ * Routes that use the unified admin look (styles/admin-redesign.css, "UNIFIED ADMIN UI").
+ * Products (/admin/products/*, /admin/product-tabs) never do: those pages stay exactly as they are.
+ */
+const UNIFIED_UI_ROUTES = ["/admin/coupons"];
+function usesUnifiedUi(pathname: string) {
+  if (/^\/admin\/(products|product-tabs)(\/|$)/.test(pathname)) return false;
+  return UNIFIED_UI_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
 
 
 type User = { id: string; name: string; email: string; role: string };
@@ -18,6 +28,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
   const sectionName = pathname.split("/")[2]?.replace(/-/g, " ") || "Dashboard";
+  const unifiedUi = usesUnifiedUi(pathname);
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -228,7 +239,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </header>
 
         {/* Content area */}
-        <AdminRoleContext.Provider value={user.role}><main className="admin-main">{children}</main></AdminRoleContext.Provider>
+        <AdminRoleContext.Provider value={user.role}><main className="admin-main" data-ui={unifiedUi ? "unified" : undefined}>{children}</main></AdminRoleContext.Provider>
         <footer className="admin-workspace-footer">
           <span>© {new Date().getUTCFullYear()} <strong>Zelvomart.</strong> All rights reserved.</span>
           <Link href="/contact-us" target="_blank" rel="noopener noreferrer" className="admin-footer-support">Help &amp; support <span aria-hidden="true">→</span></Link>

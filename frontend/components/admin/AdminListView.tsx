@@ -31,3 +31,30 @@ export default function AdminListView<T>({rows,label,search,searchHint,filters=[
   </section>
  </div>;
 }
+
+/* Shared pieces of the unified admin look (styles in admin-redesign.css, "UNIFIED ADMIN UI"). */
+export type StatusTone = "success" | "warning" | "danger" | "info" | "neutral";
+const STATUS_TONES: Record<StatusTone, string[]> = {
+ success: ["active", "approved", "published", "posted", "delivered", "settled", "succeeded", "success", "converted", "enabled", "on", "live", "paid", "verified", "connected", "healthy", "recovered"],
+ info: ["new", "confirmed", "booked", "in transit", "running", "processing", "open", "scheduled", "sent", "contacted", "followed up"],
+ warning: ["pending", "on hold", "queued", "draft", "awaiting", "action needed", "missing token", "review", "low stock", "retrying"],
+ danger: ["cancelled", "canceled", "returned", "failed", "rejected", "blocked", "blocklisted", "error", "lost", "refused", "out of stock"],
+ neutral: ["off", "disabled", "skipped", "archived", "ended", "paused", "inactive", "expired", "not booked", "unknown", "none"],
+};
+/** One colour per status word, used by every page: success, warning, danger, info or neutral. */
+export function statusTone(value: string): StatusTone {
+ const word = value.replace(/_/g, " ").trim().toLowerCase();
+ return (Object.keys(STATUS_TONES) as StatusTone[]).find((tone) => STATUS_TONES[tone].includes(word)) || "neutral";
+}
+export function StatusBadge({ value, label, tone }: { value: string; label?: ReactNode; tone?: StatusTone }) {
+ const text = value.replace(/_/g, " ").toLowerCase();
+ return <span className={`adm-badge tone-${tone || statusTone(value)}`}>{label ?? text.charAt(0).toUpperCase() + text.slice(1)}</span>;
+}
+/** Empty list or panel: icon, one line, optional action. */
+export function EmptyState({ title, message, action }: { title: string; message?: string; action?: ReactNode }) {
+ return <div className="adm-empty" role="status"><span className="adm-empty-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 7h16M6 7v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span><strong>{title}</strong>{message ? <p>{message}</p> : null}{action}</div>;
+}
+/** A load or save that failed, in plain words, with a retry button when it can be retried. */
+export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => unknown }) {
+ return <div className="adm-error" role="alert"><span>{message.replace(/_/g, " ")}</span>{onRetry ? <button type="button" className="admin-btn admin-btn-sm" onClick={() => void onRetry()}>Try again</button> : null}</div>;
+}
