@@ -2,7 +2,7 @@ import { prisma } from "./db";
 import { SITE_ORIGIN } from "./site-url";
 import { canSell } from "./stock";
 import { catalogImageCopies, feedImage } from "./catalog-images";
-import sanitizeHtml from "sanitize-html";
+import sanitizeHtml from "./sanitizer-runtime";
 const xml = (v: unknown) =>
   String(v ?? "")
     .replace(/&/g, "&amp;")
