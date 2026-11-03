@@ -1,4 +1,4 @@
-import sanitizeHtml from "sanitize-html";
+import sanitizeHtml from "./sanitizer-runtime";
 
 export function cleanHtml(html: string) {
   return sanitizeHtml(html, {

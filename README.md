@@ -13,7 +13,7 @@ frontend/
 backend/
   src/server.ts     app setup;  src/routes/  the REST API by area (public, auth, replay, tracking, admin/*)
   src/http/shared.ts  helpers the routes share;  src/lib/  orders, coupons, email, tracking, storage
-  src/generated/    Prisma client, made by `prisma generate` (not committed)
+  src/generated/    generated Prisma client and sanitizer runtime bundle (not committed)
   prisma/           schema, migrations and seed;  workers/  background jobs;  scripts/  tests and tools
 import-templates/   CSV templates for the admin's product import
 deployment/         rollout notes, R2 rules and the worker env template
@@ -32,6 +32,10 @@ npm run dev                 # frontend on :3000, backend on :4000
 ```
 
 `npm run dev:frontend` and `npm run dev:backend` start one side; `npm run worker` runs the background jobs. Backend tests: `npm test --workspace backend` (no database needed). Format the backend with `npm run format --workspace backend`.
+
+Backend postinstall and `prisma:generate` also bundle the pinned HTML sanitizer and its ESM parser into CommonJS.
+This supports Vercel's function loader without downgrading the security-patched sanitizer. The same generated
+bundle is copied into `dist/` for plain Node deployments; neither generated copy is committed.
 
 ## Environment variables
 
