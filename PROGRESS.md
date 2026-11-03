@@ -919,3 +919,33 @@ and the screenshots must match.
   - without `JOB_MODE` the warning is logged and the cron route answers 409;
   - with 3 stuck fixture jobs the Tracking page shows "3 background jobs have been waiting more than 15 minutes".
 
+
+## Final setup Group 2: database repeat-reads — 3 November 2026 (branch `perf/repeat-reads`)
+
+- `/api/products` keeps the bestseller/"orders count" ranking and the listing `COUNT(*)` for 60 s per filter
+  (search, category, featured, price, availability, tag, exclude; the ranking also per sort and page),
+  in the same memo cache as settings and categories. Requests by product IDs are never cached.
+- Any admin save of a product, variant, category, image, import, bulk action, product tabs or setting clears them at once
+  (`catalog:` memo keys, `lib/cache-invalidation.ts`).
+- Reads that skipped the cache, now fixed:
+  - the sitemap read `Category` directly → shares the 60 s category list;
+  - order tracking, order confirmation and new orders read `City` per call → a 60 s copy of the city table (`lib/cities.ts`);
+  - the Google/Meta feed images read `Setting` on every feed request → 60 s, cleared on save;
+  - each feed request wrote `health.feed.*` to `Setting` → at most once every 10 minutes per platform.
+- Left as they are (low volume, admin only): the city lookup on the admin order page and the category slug lookup after a product save.
+- The `Category` reads still in the counters come from loading a product together with its category
+  (product page, listings), one query per product read, not a cache bypass.
+- Measured on local Postgres with 96 products (`pg_stat_statements`), backend calls each page makes, main → this branch:
+
+  | Page | First view | Next 5 views (within 60 s) |
+  | --- | --- | --- |
+  | Home | 15 → 15 | 60 → 30 |
+  | Shop page 1 | 4 → 4 | 20 → 10 |
+  | One category | 4 → 4 | 20 → 10 |
+  | One product | 9 → 9 | 45 → 35 |
+  | Search | 9 → 8 | 45 → 25 |
+
+  Every JSON response is byte-identical to main's. 3 order confirmations read `City` once instead of 3 times.
+- Tests:
+  - the catalog integration test now also checks a repeat read is served from the cache and a product save clears it;
+  - the cache-key unit test is updated.

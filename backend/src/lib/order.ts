@@ -8,6 +8,7 @@ import { resolveDeliveryPolicy, deliveryForCart } from "./shipping";
 import { canSell } from "./stock";
 import { dispatchJobRow } from "./jobs";
 import { tiktokJobsEnabled } from "./tiktok";
+import { cityByName } from "./cities";
 
 // Far-away database: allow time to open a connection and finish (Prisma default wait is 2s).
 const ORDER_TX_OPTIONS = { maxWait: 15_000, timeout: 90_000 };
@@ -140,7 +141,7 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
 
   const existingCustomer = await prisma.customer.findUnique({ where: { phone: input.phone } });
   const blocklisted = Boolean(existingCustomer?.blocklisted);
-  const cityKnown = await prisma.city.findUnique({ where: { name: input.city } });
+  const cityKnown = await cityByName(input.city);
   const initialStatus: OrderStatus = blocklisted ? "ON_HOLD" : "NEW";
 
   const result = await prisma.$transaction(async (tx) => {

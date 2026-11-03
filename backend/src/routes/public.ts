@@ -34,6 +34,7 @@ import { runJobsNow } from "../lib/job-runner";
 import { runCronQueue } from "../lib/cron-queue";
 import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
+import { cityByName } from "../lib/cities";
 import {
   allowRequest,
   allowRules,
@@ -273,12 +274,23 @@ export function registerPublicRoutes(app: Express) {
       ids,
       exclude,
     });
-    const [rank, counts] = await Promise.all([
+    // The ranking (with order counts) and the total are the heaviest reads; listings repeat the same filters, so
+    // both are kept 60 s per filter key and cleared by any product, category, tag or setting save
+    // (lib/cache-invalidation.ts, "catalog:" prefix). Cart and wishlist lookups (ids=) are per visitor: not cached.
+    const filterKey = JSON.stringify([search, category, featured, minPrice, maxPrice, availability, tag, exclude]);
+    const readRank = () =>
       prisma.$queryRaw<{ id: string; orders: bigint }[]>(
         Prisma.sql`SELECT p.id,COALESCE(s.orders,0) AS orders ${query.from} ORDER BY ${query.order} LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`,
-      ),
-      prisma.$queryRaw<{ total: bigint }[]>(Prisma.sql`SELECT COUNT(*) AS total ${query.from}`),
-    ]);
+      );
+    const readCount = () => prisma.$queryRaw<{ total: bigint }[]>(Prisma.sql`SELECT COUNT(*) AS total ${query.from}`);
+    const [rank, counts] = await Promise.all(
+      ids
+        ? [readRank(), readCount()]
+        : [
+            memo(`catalog:rank:${filterKey}:${sort}:${page}:${pageSize}`, MEMO_TTL_MS, readRank),
+            memo(`catalog:count:${filterKey}`, MEMO_TTL_MS, readCount),
+          ],
+    );
     const rankIds = rank.map((r) => r.id);
     const rows: any[] = !rankIds.length
       ? []
@@ -354,16 +366,8 @@ export function registerPublicRoutes(app: Express) {
             THEN p."sourceUrl"::jsonb #>> '{zvmCatalog,robotsIndex}' END AS "robotsIndex"
         FROM "Product" p LEFT JOIN "Category" c ON c.id=p."categoryId"
         WHERE p.status='PUBLISHED' ORDER BY p."createdAt" DESC`),
-      prisma.category.findMany({
-        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        select: {
-          slug: true,
-          name: true,
-          updatedAt: true,
-          imageUrl: true,
-          _count: { select: { products: { where: { status: "PUBLISHED" } } } },
-        },
-      }),
+      // Same rows and order as /api/categories (shared 60 s memo).
+      categoriesWithCounts(),
     ]);
     const products = rows.map((row) => ({
       slug: row.slug,
@@ -390,15 +394,20 @@ export function registerPublicRoutes(app: Express) {
     if (!row) return res.status(404).json({ error: "NOT_FOUND" });
     res.json(row);
   });
+  const feedHealthWrittenAt: Record<string, number> = {};
   for (const platform of ["meta", "tiktok", "google"] as const) {
     app.get(`/api/feed/${platform}.xml`, async (_req, res) => {
       setPublicCache(res, 300, 600, ["products", "feed"]);
       const feed = await catalogFeed(platform);
-      void setSetting("health.feed." + platform, {
-        at: new Date().toISOString(),
-        count: feed.count,
-        missingImages: feed.missingImages.length,
-      }).catch(() => undefined);
+      // Feed health for the admin dashboard: written at most every 10 minutes per platform (feed fetches repeat).
+      if (Date.now() - (feedHealthWrittenAt[platform] || 0) > 10 * 60_000) {
+        feedHealthWrittenAt[platform] = Date.now();
+        void setSetting("health.feed." + platform, {
+          at: new Date().toISOString(),
+          count: feed.count,
+          missingImages: feed.missingImages.length,
+        }).catch(() => undefined);
+      }
       res.setHeader("X-Catalog-Items", String(feed.count));
       res.setHeader("X-Catalog-Missing-Images", String(feed.missingImages.length));
       res.type("application/xml").send(feed.xml);
@@ -465,7 +474,7 @@ export function registerPublicRoutes(app: Express) {
       select: { orderNumber: true, status: true, postexTracking: true, createdAt: true, total: true, city: true },
     });
     if (!order) return res.status(404).json({ error: "NOT_FOUND" });
-    const city = await prisma.city.findUnique({ where: { name: order.city } });
+    const city = await cityByName(order.city);
     res.json({
       ...order,
       deliveryEstimate: `${city?.deliveryMinDays ?? 2}–${city?.deliveryMaxDays ?? 7} working days`,
@@ -482,7 +491,7 @@ export function registerPublicRoutes(app: Express) {
     // The confirmation page contains private delivery details, so the public order number alone is not enough.
     // The opaque database ID is returned only to the browser that placed the order and is kept in the success URL.
     if (String(req.query.key || "") !== order.id) return res.status(404).json({ error: "NOT_FOUND" });
-    const city = await prisma.city.findUnique({ where: { name: order.city } });
+    const city = await cityByName(order.city);
     res.json({
       ...order,
       subtotal: Number(order.subtotal),
