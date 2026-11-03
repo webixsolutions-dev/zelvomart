@@ -1,4 +1,5 @@
 import PgBoss from "pg-boss";
+import { getJobMode } from "./job-mode";
 import { prisma } from "./db";
 import { databaseConnection } from "./db-ssl";
 
@@ -48,7 +49,7 @@ export async function dispatchJobRow(jobId: string) {
 
   // In serverless cron mode, leave the durable Prisma job row for /api/cron/jobs.
   // Starting pg-boss from each web invocation defeats its worker model and leaks pools.
-  if (process.env.JOB_MODE === "cron") return row;
+  if (getJobMode() === "cron") return row;
 
   const queue = await getSender();
   const payload = row.payload && typeof row.payload === "object" ? (row.payload as Record<string, unknown>) : {};

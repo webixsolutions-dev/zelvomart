@@ -41,7 +41,7 @@ Set them in each hosting project (or in a `.env` file on a server). Only names a
 | `JWT_SECRET` (or `AUTH_SECRET`) | Signs admin and customer logins. |
 | `REVALIDATION_SECRET` | Shared with the storefront; lets the backend refresh storefront pages after a save. |
 | `STORE_PROXY_SECRET` | Shared with the storefront; lets the storefront pass the visitor's real IP (fair rate limits). |
-| `JOB_MODE` | `cron` = jobs are sent instantly and retried by the cron routes (current setup). |
+| `JOB_MODE` | `cron` = jobs are sent instantly and retried by the cron routes (current setup); `worker` = the always-on worker sends them. If it is missing, the backend uses `cron` on Vercel and `worker` elsewhere, and logs one `[jobs] JOB_MODE is not set` warning at start. Always set it explicitly. |
 | `CRON_SECRET` | Password the cron service sends as `Authorization: Bearer …`. |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | Email sending. |
 | `ORDERS_EMAIL_FROM`, `OFFERS_EMAIL_FROM` | Optional sender names for order and offer emails. |
@@ -97,6 +97,7 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
   the safety net.
 - `backend/vercel.json` also schedules `/api/cron/daily` on Vercel. Use either that or cron-job.org for the daily
   call, not both, or the daily summary arrives twice.
+- **Stuck jobs:** Admin → Tracking shows a red warning with the count when jobs are still QUEUED after 15 minutes. That means the cron is not calling `/api/cron/jobs`, or `JOB_MODE` is not `cron` (the cron route then answers 409).
 - **Reading a run:** cron-job.org shows each response. `processed` is jobs handled in that run, `failed` is jobs
   that failed again (they retry later), and `remaining` is jobs still waiting after the run.
 - **When the queue grows** (`remaining` above 0 on several runs in a row, or many failed jobs in Admin → Jobs):

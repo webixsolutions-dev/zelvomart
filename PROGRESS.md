@@ -903,3 +903,19 @@ and the screenshots must match.
   - product mobile score 85–88, the same as before.
 - The `.pd-steps` classes are used nowhere else.
 
+## Final setup Group 1: job mode safety — 3 November 2026 (branch `fix/job-mode-safety`)
+
+- One helper, `getJobMode()` (`backend/src/lib/job-mode.ts`), decides the job mode:
+  - `JOB_MODE` when it is set;
+  - otherwise `cron` on Vercel and `worker` elsewhere.
+- One warning is logged at start when it had to fall back.
+- It is used by the instant order jobs (`job-runner.ts`), the queue dispatch (`jobs.ts`) and both cron routes.
+  Before, a missing `JOB_MODE` on Vercel left orders QUEUED for ever.
+- Admin → Tracking shows a red warning with the count when jobs have been QUEUED for more than 15 minutes.
+- Tests:
+  - 4 new unit tests (explicit value, Vercel fallback, other-host fallback, warning logged once);
+  - the jobs integration test still passes.
+- Checked locally:
+  - without `JOB_MODE` the warning is logged and the cron route answers 409;
+  - with 3 stuck fixture jobs the Tracking page shows "3 background jobs have been waiting more than 15 minutes".
+

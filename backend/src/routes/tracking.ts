@@ -16,6 +16,8 @@ import { runInBackground } from "../lib/background";
 import type { Express } from "express";
 import { META_EVENT_NAMES, allowRules, audit, routeParam } from "../http/shared";
 
+const STUCK_JOB_MINUTES = 15;
+
 export function registerTrackingRoutes(app: Express) {
   app.post("/api/events", async (req, res) => {
     const userAgent = req.get("user-agent") || undefined;
@@ -170,7 +172,8 @@ export function registerTrackingRoutes(app: Express) {
   });
   app.get("/api/admin/tracking", requireAuth("reports.read"), async (_req, res) => {
     const since = new Date(Date.now() - 7 * 86400000);
-    const [events, grouped, orders, settings] = await Promise.all([
+    const stuckSince = new Date(Date.now() - STUCK_JOB_MINUTES * 60000);
+    const [events, grouped, orders, settings, stuckJobs] = await Promise.all([
       prisma.eventLog.findMany({ where: { createdAt: { gte: since } }, orderBy: { createdAt: "desc" }, take: 3000 }),
       prisma.eventLog.groupBy({
         by: ["eventName", "channel"],
@@ -193,6 +196,8 @@ export function registerTrackingRoutes(app: Express) {
         "tracking.sessionReplayEnabled",
         "tracking.sessionReplayRetentionDays",
       ]),
+      // Jobs still waiting after 15 minutes mean the cron or the job mode is not working.
+      prisma.job.count({ where: { status: "QUEUED", createdAt: { lt: stuckSince } } }),
     ]);
     const browser: Record<string, number> = {};
     const server: Record<string, number> = {};
@@ -289,6 +294,7 @@ export function registerTrackingRoutes(app: Express) {
       .slice(0, 100);
 
     res.json({
+      stuckJobs: { count: stuckJobs, olderThanMinutes: STUCK_JOB_MINUTES },
       browser,
       server,
       tiktokServer,

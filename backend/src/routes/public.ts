@@ -1,4 +1,5 @@
 import { customerReviewUpload, storeReviewFiles } from "../admin-reviews";
+import { getJobMode } from "../lib/job-mode";
 import {
   stageReviewUpload,
   hydrateReviewUploads,
@@ -57,9 +58,9 @@ export function registerPublicRoutes(app: Express) {
     return expectedBytes.length === suppliedBytes.length && timingSafeEqual(expectedBytes, suppliedBytes);
   };
 
-  // Cron-job.org calls this every 5 minutes when JOB_MODE=cron (the retry net; order jobs go out instantly). Job rows stay durable in Postgres.
+  // Cron-job.org calls this every 5 minutes in cron job mode (lib/job-mode.ts) (the retry net; order jobs go out instantly). Job rows stay durable in Postgres.
   app.post("/api/cron/jobs", async (req, res) => {
-    if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
+    if (getJobMode() !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
     if (!cronAuthorized(req))
       return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
     const started = Date.now();
@@ -73,7 +74,7 @@ export function registerPublicRoutes(app: Express) {
 
   // Daily maintenance that previously depended on pg-boss schedules.
   const runDailyCron = async (req: any, res: any) => {
-    if (process.env.JOB_MODE !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
+    if (getJobMode() !== "cron") return res.status(409).json({ error: "CRON_JOB_MODE_DISABLED" });
     if (!cronAuthorized(req))
       return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
     const cutoff = new Date(Date.now() - 2 * 86400000);
