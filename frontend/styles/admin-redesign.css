@@ -2387,7 +2387,7 @@ a.dashboard-metric:hover { border-color: #b5d2ff; box-shadow: 0 4px 16px #215c9c
 .admin-main[data-ui=unified] :is(.admin-list-empty, .adm-empty) p { margin: 0; color: var(--adm-ink-muted); font-size: var(--adm-fs-body); }
 .admin-main[data-ui=unified] .adm-empty-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--adm-accent-soft); color: var(--adm-accent); }
 .admin-main[data-ui=unified] .admin-loading-state { border: 1px solid var(--adm-panel-line); border-radius: 11px; box-shadow: none; }
-.admin-main[data-ui=unified] .adm-error { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--adm-space-3); padding: 14px var(--adm-space-4); border: 1px solid #f4c7cf; border-radius: 11px; background: var(--adm-danger-bg); color: var(--adm-danger); font-size: var(--adm-fs-body); font-weight: 600; }
+.admin-main[data-ui=unified] .adm-error { margin-bottom: var(--adm-space-4); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--adm-space-3); padding: 14px var(--adm-space-4); border: 1px solid #f4c7cf; border-radius: 11px; background: var(--adm-danger-bg); color: var(--adm-danger); font-size: var(--adm-fs-body); font-weight: 600; }
 .admin-main[data-ui=unified] .admin-bulk-bar { align-items: center; gap: var(--adm-space-2); margin: 0; padding: 10px var(--adm-space-3); border: 1px solid #a6ceff; border-radius: 11px; background: var(--adm-accent-soft); }
 .admin-main[data-ui=unified] .admin-bulk-bar b { color: var(--adm-ink); font-size: var(--adm-fs-body); }
 

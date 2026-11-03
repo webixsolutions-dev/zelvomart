@@ -1,5 +1,6 @@
 "use client";
 import AdminTable from '@/components/admin/AdminTable';
+import Link from 'next/link';
 
 
 import { useAdminData } from "@/components/admin/useAdminData";
@@ -19,6 +20,7 @@ interface IntegrationStatus {
 }
 
 interface TrackingData {
+  stuckJobs?: { count: number; olderThanMinutes: number };
   browser: Record<string, number>;
   server: Record<string, number>;
   tiktokServer: Record<string, number>;
@@ -140,6 +142,16 @@ export default function Tracking() {
           </p>
         </div>
       </div>
+      {data.stuckJobs && data.stuckJobs.count > 0 ? (
+        <div className="adm-error" role="alert">
+          <span>
+            {data.stuckJobs.count.toLocaleString()} background {data.stuckJobs.count === 1 ? "job has" : "jobs have"} been
+            waiting more than {data.stuckJobs.olderThanMinutes} minutes (order emails or ad events). Check that the cron
+            calls /api/cron/jobs and that JOB_MODE=cron is set on the backend.
+          </span>
+          <Link href="/admin/jobs" className="admin-btn admin-btn-sm">Open jobs</Link>
+        </div>
+      ) : null}
 
       {/* 6 Integration Status Cards */}
       <div className="admin-tracking-integrations-grid">

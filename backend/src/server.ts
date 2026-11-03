@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { warnIfJobModeFallback } from "./lib/job-mode";
 import { installErrorMonitoring } from "./instrument";
 import { prisma } from "./lib/db";
 import { requireAuth } from "./lib/auth";
@@ -26,6 +27,7 @@ import { findStoreSession, setNoStore } from "./http/shared";
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
+warnIfJobModeFallback();
 // Without a database URL nothing can work. Answer every request with the missing variable name
 // (never its value) so a misconfigured deployment explains itself instead of crashing.
 if (!process.env.DATABASE_URL) {
