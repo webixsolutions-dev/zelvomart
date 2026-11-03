@@ -7807,42 +7807,55 @@ body:has(.product-page) {
   grid-template-columns: repeat(3, 1fr);
   position: relative;
 }
-.pd-steps::before {
+.pd-steps::before,
+.pd-steps::after {
   content: "";
   position: absolute;
   top: 11px;
   left: 16.6%;
   right: 16.6%;
-  border-top: 2px dotted #bcd9ea;
-}
-.pd-steps::after {
-  content: "";
-  position: absolute;
-  z-index: 1;
-  top: 7px;
-  left: 16.6%;
-  width: 13px;
-  height: 13px;
-  border: 3px solid #fff;
-  border-radius: 50%;
-  background: #00a6d8;
-  box-shadow: 0 0 0 3px rgba(0, 119, 173, 0.16), 0 0 14px 5px rgba(0, 159, 227, 0.28);
-  transform: translateX(-50%);
+  height: 2px;
+  border-radius: 2px;
   pointer-events: none;
-  animation: pd-step-travel 5.4s cubic-bezier(0.45, 0, 0.2, 1) infinite alternate, pd-step-glow 1.5s ease-in-out infinite;
 }
-@keyframes pd-step-travel {
-  from { left: 16.6%; }
-  to { left: 83.4%; }
+.pd-steps::before {
+  background: #d6e9f4;
 }
-@keyframes pd-step-glow {
-  0%, 100% { opacity: 0.78; box-shadow: 0 0 0 3px rgba(0, 119, 173, 0.12), 0 0 9px 3px rgba(0, 159, 227, 0.2); }
-  50% { opacity: 1; box-shadow: 0 0 0 6px rgba(0, 119, 173, 0.16), 0 0 18px 7px rgba(0, 159, 227, 0.34); }
+/* Progress fill. Default (no JS, reduced motion, or after playing) is the finished state: line full. */
+.pd-steps::after {
+  background: var(--blue);
+  transform-origin: left center;
+  transform: scaleX(1);
 }
-@media (prefers-reduced-motion: reduce) {
-  .pd-steps::after {
-    animation: none;
+/* Played once when the tracker scrolls into view (ProductDetail adds .is-playing):
+   Ordered is done, the bar fills to Dispatched, Dispatched lights up, the bar continues, Delivered lights up. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .pd-steps:not(.is-playing)::after {
+    transform: scaleX(0);
   }
+  .pd-steps:not(.is-playing) li:not(.done) .pd-step-dot {
+    background: var(--blue-light);
+    color: var(--blue);
+  }
+  .pd-steps.is-playing::after {
+    animation: pd-step-fill 2.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  .pd-steps.is-playing li:nth-child(2) .pd-step-dot {
+    animation: pd-step-on 0.25s ease-out 1.1s both;
+  }
+  .pd-steps.is-playing li:nth-child(3) .pd-step-dot {
+    animation: pd-step-on 0.25s ease-out 2.4s both;
+  }
+}
+@keyframes pd-step-fill {
+  0%, 7.7% { transform: scaleX(0); }
+  42.3%, 57.7% { transform: scaleX(0.5); }
+  92.3%, 100% { transform: scaleX(1); }
+}
+@keyframes pd-step-on {
+  0% { background-color: var(--blue-light); color: var(--blue); transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { background-color: var(--blue); color: #fff; transform: scale(1); }
 }
 .pd-steps li {
   position: relative;
@@ -7852,18 +7865,16 @@ body:has(.product-page) {
   gap: 2px;
 }
 .pd-step-dot {
+  position: relative;
+  z-index: 2;
   width: 24px;
   height: 24px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--blue-light);
-  color: var(--blue);
-  margin-bottom: 4px;
-}
-.pd-steps li.done .pd-step-dot {
   background: var(--blue);
   color: #fff;
+  margin-bottom: 4px;
 }
 .pd-steps strong {
   font-size: 13px;
