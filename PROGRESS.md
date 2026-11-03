@@ -879,3 +879,27 @@ and the screenshots must match.
     - `!important` in the two big sheets 1,357 → 165;
     - `npm audit --omit=dev` unchanged.
 
+## Product page delivery tracker — 3 November 2026 (branch `fix/delivery-tracker-animation`)
+
+- The tracker under "Order now — get it by …" now plays one calm sequence:
+  - Ordered is done from the start;
+  - a blue bar fills to Dispatched, which lights up (small pop) at about 1.1 s;
+  - the bar continues to Delivered, which lights up at about 2.4 s;
+  - it then rests in that final state.
+- Removed:
+  - the old dot that looped back and forth for ever over the icons (it animated `left`);
+  - its glow loop.
+- How it works:
+  - the fill is a 2 px line animated with `transform: scaleX()` only;
+  - the step icons sit above the line;
+  - it plays once, the first time the tracker is 40% on screen (`IntersectionObserver` in `ProductDetail.tsx`);
+  - without JavaScript, or with reduced motion, the final state shows straight away.
+- Checked at 390 and 1440 px:
+  - every frame in order;
+  - no icon covered at any moment;
+  - box height unchanged throughout (CLS 0);
+  - no replay after scrolling away and back;
+  - Lighthouse lists no non-composited animation;
+  - product mobile score 85–88, the same as before.
+- The `.pd-steps` classes are used nowhere else.
+
