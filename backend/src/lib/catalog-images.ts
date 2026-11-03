@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { prisma } from "./db";
 import { uploadObject } from "./storage";
 import { setSetting } from "./settings";
+import { forget, memo, MEMO_TTL_MS } from "./memo";
 /** Site images: WebP, at most 1600 px wide, quality 82, metadata removed. */
 export const SITE_IMAGE_MAX_WIDTH = 1600;
 export const SITE_IMAGE_QUALITY = 82;
@@ -50,14 +51,18 @@ export async function saveCatalogImage(sourceUrl: string, bytes: Uint8Array) {
     .toBuffer();
   const url = await uploadObject(`catalog-images/${hash}.jpg`, jpg, "image/jpeg");
   await setSetting(imageCopyKey(sourceUrl), url);
+  forget("feed-images");
   return url;
 }
+/** Feed image copies (one row per copied image), kept 60 s; a new copy clears it (saveCatalogImage). */
 export async function catalogImageCopies() {
-  return Object.fromEntries(
-    (await prisma.setting.findMany({ where: { key: { startsWith: "feed.image." } } })).map((row) => [
-      row.key,
-      String(row.value),
-    ]),
+  return memo("feed-images", MEMO_TTL_MS, async () =>
+    Object.fromEntries(
+      (await prisma.setting.findMany({ where: { key: { startsWith: "feed.image." } } })).map((row) => [
+        row.key,
+        String(row.value),
+      ]),
+    ),
   );
 }
 export function feedImage(source: string | undefined, platform: string, copies: Record<string, string>) {

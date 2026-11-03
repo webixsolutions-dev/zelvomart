@@ -131,6 +131,31 @@ assert.deepEqual(seo.products.map((p: any) => p.slug).sort(), ["old-lamp", "stee
 assert.equal(seo.products.find((p: any) => p.slug === "steel-bottle").images.length, 2);
 console.log("PASS: sitemap query (noindex flag, images) without the full meta JSON");
 
+// Group 2: the listing rank and COUNT are kept for 60 s per filter, and an admin save clears them at once.
+const { invalidateFrontendCache } = await import("../src/lib/cache-invalidation");
+const beautyList = "/api/products?view=card&category=beauty-personal-care";
+const countBefore = (await get(beautyList)).total;
+await prisma.product.create({
+  data: {
+    title: "Cache Probe",
+    slug: "cache-probe",
+    sku: "CP-1",
+    price: 900,
+    status: "PUBLISHED",
+    categoryId: beauty.id,
+    images: [],
+  },
+});
+assert.equal((await get(beautyList)).total, countBefore, "repeat read within 60 s comes from the cache");
+await invalidateFrontendCache(["products", "product:cache-probe"]);
+const afterSave = await get(beautyList);
+assert.equal(afterSave.total, countBefore + 1, "a product save clears the cached count");
+assert.ok(
+  afterSave.items.some((p: any) => p.slug === "cache-probe"),
+  "and the cached ranking",
+);
+console.log("PASS: cached listing rank/count, cleared by a product save");
+
 server.close();
 await prisma.$disconnect();
 await socket.stop();

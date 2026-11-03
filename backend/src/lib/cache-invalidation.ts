@@ -36,9 +36,11 @@ function cachePathsForTags(tags: string[]) {
 
 /** Backend memo keys (lib/memo.ts) each storefront tag stands for. */
 const MEMO_PREFIXES: Record<string, string[]> = {
-  settings: ["settings:", "bootstrap"],
-  store: ["settings:", "bootstrap", "categories"],
-  categories: ["categories", "bootstrap"],
+  settings: ["settings:", "bootstrap", "catalog:"],
+  store: ["settings:", "bootstrap", "categories", "catalog:"],
+  categories: ["categories", "bootstrap", "catalog:"],
+  products: ["catalog:"],
+  "featured-products": ["catalog:"],
   cities: ["cities"],
   redirects: ["redirects"],
   pages: ["pages:"],
@@ -48,7 +50,8 @@ export function memoPrefixesForTags(tags: string[]) {
   const prefixes = new Set<string>();
   for (const tag of tags) {
     for (const prefix of MEMO_PREFIXES[tag] || []) prefixes.add(prefix);
-    if (tag.startsWith("setting:")) prefixes.add("settings:").add("bootstrap");
+    if (tag.startsWith("setting:")) prefixes.add("settings:").add("bootstrap").add("catalog:");
+    if (tag.startsWith("product:") || tag.startsWith("category:")) prefixes.add("catalog:");
   }
   return [...prefixes];
 }
