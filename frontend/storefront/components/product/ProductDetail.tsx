@@ -77,6 +77,25 @@ export function ProductDetail({ slug }: { slug: string }) {
   const imageSwatches = !sizeLayout && options.some((o) => o.imageUrl);
 
   const [galleryIndex, setGalleryIndex] = useState(0);
+  // Delivery tracker: plays once, the first time it is mostly on screen (CSS keeps the finished state otherwise).
+  const stepsRef = useRef<HTMLOListElement>(null);
+  const [stepsPlaying, setStepsPlaying] = useState(false);
+  useEffect(() => {
+    const el = stepsRef.current;
+    if (!el || stepsPlaying || typeof IntersectionObserver === "undefined") return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setStepsPlaying(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [stepsPlaying]);
   const galleryThumbsRef = useRef<HTMLDivElement>(null);
   const thumbDrag = useRef({ active: false, pointerId: -1, startX: 0, scrollLeft: 0, moved: false });
   const [galleryScrollable, setGalleryScrollable] = useState(false);
@@ -424,7 +443,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                     Order now — get it by <strong suppressHydrationWarning>{eta ?? `within ${site.shipping.estimate}`}</strong>
                   </span>
                 </p>
-                <ol className="pd-steps">
+                <ol ref={stepsRef} className={`pd-steps${stepsPlaying ? " is-playing" : ""}`}>
                   <li className="done">
                     <span className="pd-step-dot" aria-hidden="true">
                       <Check size={12} strokeWidth={3} />
