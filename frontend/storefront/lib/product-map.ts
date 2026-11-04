@@ -1,6 +1,7 @@
 import type { Product as ApiProduct, Variant as ApiVariant } from "@/types/product";
 import { designCategoryId, type Product, type Variant } from "./catalog";
 import { imageAlts } from "@/lib/image-alt";
+import { withMediaUrls } from "@/lib/media";
 
 /**
  * One mapping from a backend product to the design's `Product` shape, used by the server
@@ -120,7 +121,9 @@ function designVariants(p: ApiProduct): Product["variants"] {
 type DesignBadge = NonNullable<Product["badge"]>;
 const BADGES: DesignBadge[] = ["Bestseller", "New in", "Popular", "Gift pick", "Limited"];
 
-export function toDesignProduct(p: ApiProduct, defaultBundlePercent = 5): Product {
+export function toDesignProduct(stored: ApiProduct, defaultBundlePercent = 5): Product {
+  // Images, gallery, variant and review photos and description HTML: old R2 host -> media domain (read time only).
+  const p = withMediaUrls(stored);
   const backendSlug = p.categories?.[0]?.slug || p.categorySlugs?.[0];
   const createdAt = p.createdAt ? Date.parse(p.createdAt) : 0;
   const isNew = !!createdAt && Date.now() - createdAt < NEW_FOR_DAYS * 86400000;
