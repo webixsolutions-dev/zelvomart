@@ -2,7 +2,7 @@
 import AdminTable from '@/components/admin/AdminTable';
 import './bulk-image-upload.css';
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { clientApi, uploadAdminImage } from "@/lib/client-api";
+import { clientApi, uploadAdminImage } from "@/lib/bulk-upload-review-api";
 import {
   hasFeaturedImage,
   matchImages,
