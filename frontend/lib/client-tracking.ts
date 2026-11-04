@@ -3,6 +3,7 @@ import {privateSafeUrl} from "./url-privacy";
 
 import {tiktokProperties} from "./tracking-payload";
 import {adsAllowed,staffDevice,trackingSettingEnabled} from "./tracking-policy";
+import {adsHostAllowed} from "./ads-policy";
 import {getReplayVisitorId} from "./session-replay-client";
 import { getReplaySessionId } from "@/lib/session-replay-client";
 
@@ -26,7 +27,8 @@ export async function trackStoreEvent(
 ) {
   const eventId = options.eventId || crypto.randomUUID();
   if(staffDevice())return eventId;
-  if(adsAllowed()&&!eventName.startsWith("Replay")){
+  // Meta/TikTok only on NEXT_PUBLIC_SITE_URL's exact host (lib/ads-policy.ts); the pixels are not loaded elsewhere.
+  if(adsAllowed()&&adsHostAllowed(location.host)&&!eventName.startsWith("Replay")){
     const deliver=(platform:'meta'|'tiktok',attempt=0)=>{
       if(!trackingSettingEnabled(platform==='meta'?'tracking.metaPixelEnabled':'tracking.tiktokPixelEnabled'))return;
       try{

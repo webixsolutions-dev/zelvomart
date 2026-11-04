@@ -1,3 +1,4 @@
+import { adsAllowedForUrl } from "./ads-policy";
 import { prisma } from "./db";
 import { sha256 } from "./security";
 import { getSetting } from "./settings";
@@ -48,6 +49,9 @@ export function metaUserData(event: MetaServerEvent) {
 }
 
 export async function sendMetaServerEvent(event: MetaServerEvent) {
+  // Only events from the real shop (APP_ENV=production, NEXT_PUBLIC_SITE_URL host): lib/ads-policy.ts.
+  // The admin "send test event" button (a platform test code) still works everywhere: it never counts as a conversion.
+  if (!event.testEventCode && !adsAllowedForUrl(event.sourceUrl)) return { ok: false, skipped: "NOT_PRODUCTION_SITE" };
   const isCapiEnabled = await getSetting<boolean | string>("tracking.metaCapiEnabled", true);
   if (isCapiEnabled === false || isCapiEnabled === "false") {
     return { ok: false, skipped: "META_CAPI_DISABLED" };

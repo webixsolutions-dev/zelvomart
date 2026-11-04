@@ -15,6 +15,7 @@ import { Suspense } from "react";
 import TrackingProvider from "@/components/TrackingProvider";
 import SessionReplayProvider from "@/components/SessionReplayProvider";
 import MetaPixelScript from "@/components/MetaPixelScript";
+import { adsEnvironment, adsSiteHost } from "@/lib/ads-policy";
 import TikTokPixelScript from "@/components/TikTokPixelScript";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { loadStore, loadPublicSettings } from "@store/lib/backend";
@@ -118,6 +119,8 @@ export default async function RootLayout({
     Boolean(publicSettings) &&
     settings[key] !== false &&
     settings[key] !== "false";
+  // Ad pixels only on the real shop: APP_ENV=production and NEXT_PUBLIC_SITE_URL set (the scripts also check the host).
+  const adsLive = adsEnvironment(process.env.APP_ENV, settings["app.env"]) && !!adsSiteHost();
   const pixelId = String(settings["tracking.metaPixelId"] || "");
   const tiktokPixelId = String(settings["tracking.tiktokPixelId"] || "");
   return (
@@ -147,11 +150,11 @@ export default async function RootLayout({
           {enabled("tracking.sessionReplayEnabled") ? (
             <SessionReplayProvider />
           ) : null}
-          {enabled("tracking.metaPixelEnabled") ? (
+          {adsLive && enabled("tracking.metaPixelEnabled") ? (
             <MetaPixelScript pixelId={pixelId} />
           ) : null}
         </Suspense>
-        {enabled("tracking.tiktokPixelEnabled") ? (
+        {adsLive && enabled("tracking.tiktokPixelEnabled") ? (
           <TikTokPixelScript pixelId={tiktokPixelId} />
         ) : null}
       </body>
