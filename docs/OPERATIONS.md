@@ -1,32 +1,115 @@
 # Zelvomart operations guide
 
 How the shop runs, what to watch, and what to do when something needs attention. It contains no secrets and no
-values, only names. Keep the values in the hosting dashboards and your password manager.
+values except public addresses. Keep secret values in the hosting dashboards and your password manager.
 
-## 1. The services and how they connect
+## 1. Architecture today
 
 ```
-Visitor ─► Storefront (Next.js, frontend/) ─► Backend API (Express, backend/) ─► Supabase Postgres
-                 │                                   │                  └──► Cloudflare R2 (images, recordings)
-                 └── home videos, product images ◄── Cloudflare R2         └──► Resend (emails)
-cron-job.org ─► Backend /api/cron/jobs and /api/cron/daily
+Visitor ─► Cloudflare DNS ─► Vercel: storefront (Next.js, frontend/) ─► Vercel: backend API (Express, backend/)
+                                     │                                        ├──► Supabase Postgres (Sydney today)
+                                     └── images, videos ◄── media.zelvomart.com├──► Cloudflare R2 (uploads, recordings)
+                                         (Cloudflare R2 + CDN cache)          └──► Resend (emails)
+cron-job.org ─► backend /api/cron/jobs        Vercel cron ─► backend /api/cron/daily
 ```
 
 | Service | What it does |
 |---|---|
-| **Hosting** (Vercel today: two projects from this repo, `frontend` and `backend`, region `bom1` Mumbai) | Runs the storefront and the API. Each project builds only when its own folder (or `packages/`) changed. Both apps also run on a plain Node server (section 8). |
-| **Supabase Postgres** | The only database: products, orders, customers, settings, job queue. The app connects through the Supabase pooler (`DATABASE_URL`); schema tools use the direct connection (`DIRECT_URL`). |
-| **Cloudflare R2, bucket `zelvomart-media`** | Product and admin uploads (`S3_*` variables) and the home-page videos and posters (folder `videos/`). Served from the bucket's public URL, so these files cost the database nothing. |
-| **Cloudflare R2, bucket `zelvomart-replays`** | Session recordings (`REPLAY_S3_BUCKET`). They are not stored in Postgres. |
+| **GitHub** (`webixsolutions-dev/zelvomart`) | The code. Merging into `main` deploys both projects. CI ("Typecheck, tests, build") must be green first. |
+| **Vercel**, team `zelvomart` (Hobby plan today) | Two projects from this repo, both in region `bom1` (Mumbai): `zelvomart-storefront` (`frontend/`, domains `zelvomart.com` → 308 → `www.zelvomart.com`) and `zelvomart-backend` (`backend/`, public URL `zelvomart-backend-eta.vercel.app`). |
+| **Supabase Postgres** (project in `ap-southeast-2`, Sydney) | The only database: products, orders, customers, settings, job queue. The app connects through the pooler (`DATABASE_URL`); schema tools use the direct connection (`DIRECT_URL`). Moving it to Mumbai: section 10. |
+| **Cloudflare** (Free plan) | DNS for `zelvomart.com` (section 2), R2 storage and the CDN in front of `media.zelvomart.com` (section 3). |
+| **Hostinger** | Domain registration and the mailbox only. Nameservers point to Cloudflare. |
 | **Resend** | Sends every email: order alerts to the team, customer confirmations and status updates, the cart offer, the contact form, the daily summary. |
-| **cron-job.org** | Calls the backend on a schedule: retries any job that did not go out at once, sends the cart offer, and runs the daily clean-up. |
+| **cron-job.org** | Calls `/api/cron/jobs` every 5 minutes: retries anything that did not go out at once and sends the cart offer (section 7). |
 
-## 2. Environment variables (names only)
+## 2. DNS (Cloudflare)
 
-Set them in each hosting project (or in a `.env` file on a server). Only names are listed here. A name with
-`NEXT_PUBLIC_` is baked into the storefront at build time, so changing it needs a new build.
+Nameservers are at Cloudflare; registration stays at Hostinger. There are **15 records**, copied one by one from
+Hostinger, and **every one is "DNS only" (grey cloud)**. Never switch a record to "Proxied" (orange): Vercel
+issues its own certificates, and mail records must never be proxied.
 
-### Backend (`backend/`)
+| # | Type | Name | Points to / content | Used by |
+|---|---|---|---|---|
+| 1 | A | `@` | `216.198.79.1` | Vercel (apex, redirects to www) |
+| 2 | CNAME | `www` | Vercel's target, as shown in Vercel → storefront → Domains | Vercel (the shop) |
+| 3 | CNAME | `hostingermail-a._domainkey` | Hostinger DKIM | Mailbox signing |
+| 4 | CNAME | `hostingermail-b._domainkey` | Hostinger DKIM | Mailbox signing |
+| 5 | CNAME | `hostingermail-c._domainkey` | Hostinger DKIM | Mailbox signing |
+| 6 | CNAME | `autoconfig` | Hostinger | Mail app set-up |
+| 7 | CNAME | `autodiscover` | Hostinger | Mail app set-up |
+| 8 | (as copied) | `rsend` | Resend | Sending domain for Resend |
+| 9 | (as copied) | `send` | Resend | Sending domain for Resend |
+| 10 | MX | `@` | `mx1` (Hostinger), priority 5 | Incoming mail |
+| 11 | MX | `@` | `mx2` (Hostinger), priority 10 | Incoming mail |
+| 12 | TXT | `@` | SPF (`v=spf1 …`) | Who may send mail for the domain |
+| 13 | TXT | `_dmarc` | DMARC (`v=DMARC1; …`) | Mail policy |
+| 14 | TXT | `_vercel` | Vercel verification | Domain ownership in Vercel |
+| 15 | TXT | `_vercel` | Vercel verification | Domain ownership in Vercel |
+
+**Do not touch MX, SPF, DKIM, DMARC, `rsend` or `send`.** Changing or deleting one of them breaks the mailbox or
+order emails, often silently.
+
+**Adding a record:** Cloudflare → `zelvomart.com` → DNS → Records → Add record: choose the type, the name (without
+`.zelvomart.com`), the content, TTL "Auto", and set **Proxy status to "DNS only"** before saving. Note the change
+and the reason in this file.
+
+**DNSSEC is off.** If someone turns it on in Cloudflare, the DS record Cloudflare shows must also be added at the
+registrar (Hostinger → Domains → DNSSEC). Without the DS record at Hostinger the whole domain stops resolving.
+
+## 3. Media
+
+- **`https://media.zelvomart.com`** is the custom domain of the R2 bucket `zelvomart-media` (APAC). Cloudflare
+  caches it. It serves the same keys as before: `/products/<hash>.webp`, `/videos/<name>.mp4` and posters.
+- The database still stores full URLs on the old public host
+  `https://pub-6861daa0380241a2acc38cd5ca85b301.r2.dev` (product images, descriptions). The storefront and the
+  catalog feeds rewrite them to `NEXT_PUBLIC_MEDIA_BASE_URL` when they read them (`packages/media`). The database is
+  never changed.
+- Uploads already set `Cache-Control: public, max-age=31536000, immutable`. New uploads use `S3_PUBLIC_BASE_URL`;
+  once that is set to `https://media.zelvomart.com`, new products get the media domain directly.
+- Session recordings live in the separate private bucket `REPLAY_S3_BUCKET` and are never public.
+- **Keep the old `r2.dev` public URL enabled** until the "Later" step below.
+
+**Later (after at least a week of clean production):** search the HTML of home, shop, a category, a product, the
+sitemaps and the product JSON-LD for `r2.dev`. Only when nothing references it any more: Cloudflare → R2 →
+`zelvomart-media` → Settings → Public Development URL → Disable. If anything breaks, enable it again (same URL).
+
+## 4. Watching usage and the limits runbook
+
+### Vercel Hobby limits (per month, whole team)
+
+| Limit | Allowance | Where to read it |
+|---|---|---|
+| Active CPU (functions) | 4 CPU-hours | Vercel → team `zelvomart` → Usage → Functions |
+| Fast Origin Transfer | 10 GB | Usage → Networking |
+| Function invocations | 1,000,000 | Usage → Functions |
+| ISR writes | 200,000 | Usage → ISR |
+
+- **Going over any limit pauses the whole team (both projects) for up to 30 days.** Check the live numbers on the
+  Usage page; Vercel can change them.
+- **Hobby is for non-commercial use.** Move to Pro before running ads or any real sales push.
+
+| When | Do this |
+|---|---|
+| Any limit at 50% before day 15 | Look for the cause: Vercel → Logs (a bot hammering one URL → block it in Firewall), cron every 5 minutes not every minute, a deploy that started the jump (roll back). |
+| 75% | Fix the cause the same day. Cron down to 15–30 minutes if the job queue is calm. Plan the Pro upgrade. |
+| 90% or a warning email | Upgrade to Pro now (owner decision) or move to a plain server (section 11). Do not wait for the pause. |
+| Paused | Fastest way back: Pro upgrade, or the plain Node server (section 11, code runs unchanged). |
+
+### Other usage
+
+| What | Where | Safe | Act when |
+|---|---|---|---|
+| Supabase egress (free plan: 5 GB/month) | Supabase → Usage → Egress | under about 100 MB/day | above 150 MB/day two days in a row |
+| Slow or heavy queries | Supabase → Database → Query performance (`pg_stat_statements`) | top query under 20% of total time | one query grows suddenly after a deploy |
+| Cloudflare | Cloudflare → `zelvomart.com` → Analytics; R2 → `zelvomart-media` → Metrics | cache hit ratio for media high | many uncached media requests, or R2 class-A/B operations rising fast |
+
+## 5. Environment variables (names only)
+
+Set them in each Vercel project (or a `.env` file on a server). A `NEXT_PUBLIC_` name is baked into the storefront at
+build time, so changing it needs a redeploy.
+
+### Backend project (`zelvomart-backend`, folder `backend/`)
 
 | Name | What it is for |
 |---|---|
@@ -36,7 +119,8 @@ Set them in each hosting project (or in a `.env` file on a server). Only names a
 | `DATABASE_IDLE_TIMEOUT_MS` | Optional. How long an unused connection stays open (default 60 s on Vercel, 5 min on a server). |
 | `DATABASE_SSL`, `DATABASE_SSL_VERIFY`, `DATABASE_CA_CERT` | Optional TLS controls. Leave unset for Supabase (TLS is verified automatically). `DATABASE_SSL_VERIFY=false` is for emergencies only. |
 | `FRONTEND_URL` | Storefront address(es), comma-separated. Allowed browser origins, **and the first one receives the "refresh these pages" calls** after admin saves, so put the live shop URL first. |
-| `NEXT_PUBLIC_SITE_URL` | The public shop URL (used in emails and links). |
+| `NEXT_PUBLIC_SITE_URL` | The public shop URL (emails, links). Its host is also the only host where Meta/TikTok server events are sent (see "What changes at cutover" below). |
+| `NEXT_PUBLIC_MEDIA_BASE_URL` | Media domain (`https://media.zelvomart.com`). Stored old-host image URLs are printed with it in the catalog feeds. Falls back to `S3_PUBLIC_BASE_URL`. |
 | `PORT` | Port on a plain server (default 4000). Not needed on Vercel. |
 | `JWT_SECRET` (or `AUTH_SECRET`) | Signs admin and customer logins. |
 | `REVALIDATION_SECRET` | Shared with the storefront; lets the backend refresh storefront pages after a save. |
@@ -52,29 +136,42 @@ Set them in each hosting project (or in a `.env` file on a server). Only names a
 | `META_PIXEL_ID`, `META_CAPI_TOKEN`, `META_TEST_EVENT_CODE`, `META_GRAPH_VERSION`, `META_PAGE_ID`, `META_INSTAGRAM_ACCOUNT_ID`, `META_AD_ACCOUNT_ID`, `META_MARKETING_ACCESS_TOKEN` | Meta Pixel / Conversions API and Meta marketing tools. |
 | `TIKTOK_PIXEL_ID`, `TIKTOK_ACCESS_TOKEN`, `TIKTOK_EVENTS_API_TOKEN`, `TIKTOK_TEST_EVENT_CODE` | TikTok events (off unless switched on). |
 | `POSTEX_TRACKING_BASE_URL` | Courier tracking link used in emails. |
-| `STORE_SESSION_DAYS`, `STORE_TIMEZONE`, `APP_ENV` | Customer login length (days), shop time zone, environment label. |
+| `APP_ENV` | `production` only on the live shop. Meta/TikTok server events (and, through the store bootstrap, the browser pixels) run only when it is `production`. |
+| `STORE_SESSION_DAYS`, `STORE_TIMEZONE` | Customer login length (days), shop time zone. |
 | `SENTRY_DSN` | Optional error monitoring. |
 | `WORKER_DATABASE_URL`, `WORKER_BACKLOG_REVIEWED` | Only for the optional always-on worker (`compose.worker.yml`); not used in cron mode. |
 
-### Storefront (`frontend/`)
+### Storefront project (`zelvomart-storefront`, folder `frontend/`)
 
 | Name | What it is for |
 |---|---|
 | `BACKEND_URL` | Backend address used by the storefront server. |
 | `NEXT_PUBLIC_API_URL` | Backend address used in the browser (requests go through the storefront's own `/api/store-proxy`). |
-| `NEXT_PUBLIC_SITE_URL` | The public shop URL (canonical links, sitemaps, share images). |
+| `NEXT_PUBLIC_SITE_URL` | The public shop URL (canonical links, sitemaps, share images). Meta/TikTok pixels load only on exactly this host. |
+| `NEXT_PUBLIC_MEDIA_BASE_URL` | Media domain (`https://media.zelvomart.com`). Product images, descriptions, sitemaps, JSON-LD, share images and home videos use it. Unset = the old `r2.dev` host. |
+| `APP_ENV` | Optional here. If set, it decides whether the pixels may load (`production` only); if unset, the backend's `APP_ENV` decides. |
 | `REVALIDATION_SECRET` | Same value as the backend; protects `/api/revalidate`. |
 | `STORE_PROXY_SECRET` | Same value as the backend. |
 | `NEXT_PUBLIC_IMAGE_HOSTS` | Extra image hosts allowed for product photos (comma-separated). |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Google Analytics. |
 | `NEXT_PUBLIC_META_PIXEL_ID`, `NEXT_PUBLIC_TIKTOK_PIXEL_ID` | Browser pixel IDs. |
 | `NEXT_PUBLIC_SESSION_REPLAY_ENABLED` | Turns session recording on or off. |
-| `NEXT_PUBLIC_HOME_VIDEO_BASE` | **Testing only.** Points the home videos at another folder. Leave it unset in production. |
+| `NEXT_PUBLIC_SESSION_REPLAY_SAMPLE_RATE` | Share of visits recorded, 0 to 1 (default `0.25`). |
+| `NEXT_PUBLIC_HOME_VIDEO_BASE` | Optional override for the home videos folder. Unset = `<NEXT_PUBLIC_MEDIA_BASE_URL>/videos/`. |
 | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | Optional error monitoring and source maps. |
 
 Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_COMMIT_SHA`, `NODE_ENV`, `NEXT_RUNTIME`.
 
-## 3. Deploy and roll back
+### What changes at cutover (owner, with an explicit "yes")
+
+1. Both projects: `NEXT_PUBLIC_MEDIA_BASE_URL=https://media.zelvomart.com`.
+2. Both projects: `NEXT_PUBLIC_SITE_URL=https://www.zelvomart.com`.
+3. Backend: `FRONTEND_URL` = the www and apex origins (live shop first, without the vercel.app one).
+4. Backend: `APP_ENV=production` (and the storefront's own `APP_ENV`, if it has one).
+5. Redeploy both projects. Check canonical, `og:url`, the sitemap and robots on the live domain.
+6. Later, owner decision: backend `S3_PUBLIC_BASE_URL=https://media.zelvomart.com`.
+
+## 6. Deploy and roll back
 
 - **Deploy:** merge a pull request into `main` after CI is green ("Typecheck, tests, build"). Vercel builds the
   project(s) whose folder changed and switches traffic when the build succeeds. A failed build never replaces the
@@ -86,78 +183,83 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 - **Database schema:** never changed by a deploy. Follow `deployment/DATABASE-MIGRATIONS.md`: backup first, test on
   a copy, then apply.
 
-## 4. Cron (scheduled calls)
+## 7. Cron (scheduled calls)
 
-| Route | Method | Header | Interval | What it does |
-|---|---|---|---|---|
-| `/api/cron/jobs` | POST | `Authorization: Bearer <CRON_SECRET>` | **Every 5 minutes now.** Later 15–30 minutes, once instant sending has been reliable for a few weeks. | Retries order emails and Meta/TikTok events that did not go out at once (up to 25 per call, 20 s limit; a job stuck in "running" for 10 minutes is picked up again), then sends the 5% cart offer about an hour after a cart was left. An empty queue costs one small database query. |
-| `/api/cron/daily` | GET or POST | same | Once a day | Removes old rate-limit rows, expired recordings, and jobs and events older than 30 days; sends the daily summary email. |
+| URL | Method | Auth header | Interval | What it does | Answers |
+|---|---|---|---|---|---|
+| `https://<backend>/api/cron/jobs` | POST | `Authorization: Bearer <CRON_SECRET>` | every 5 minutes (cron-job.org) | Retries order emails and Meta/TikTok events that did not go out at once (up to 25 per call), then sends the 5% cart offer about an hour after a cart was left. | 200 with `processed`, `failed`, `remaining`; **409** if `JOB_MODE` is not `cron` (checked first); **401** on a wrong or missing secret (503 if `CRON_SECRET` is not set at all). |
+| `https://<backend>/api/cron/daily` | GET or POST | same | **Vercel cron, daily at 00:00 UTC** (`backend/vercel.json`) | Removes old rate-limit rows, expired recordings, and jobs and events older than 30 days; sends the daily summary email. | 200; 401 on a wrong secret. |
 
-- Orders do not wait for the cron: their emails and events are sent right after the order is saved. The cron is
-  the safety net.
-- `backend/vercel.json` also schedules `/api/cron/daily` on Vercel. Use either that or cron-job.org for the daily
-  call, not both, or the daily summary arrives twice.
-- **Stuck jobs:** Admin → Tracking shows a red warning with the count when jobs are still QUEUED after 15 minutes. That means the cron is not calling `/api/cron/jobs`, or `JOB_MODE` is not `cron` (the cron route then answers 409).
-- **Reading a run:** cron-job.org shows each response. `processed` is jobs handled in that run, `failed` is jobs
-  that failed again (they retry later), and `remaining` is jobs still waiting after the run.
-- **When the queue grows** (`remaining` above 0 on several runs in a row, or many failed jobs in Admin → Jobs):
-  1. open Admin → Jobs and read the error on the failed rows;
-  2. the usual causes are email (Resend key or sender domain), a Meta/TikTok token, or the database being
-     unreachable;
-  3. fix the cause; the next cron runs send the backlog automatically, 25 per call;
-  4. if a large backlog has to clear faster, trigger the job once by hand in cron-job.org ("Run now") a few
-     times. Do not shorten the schedule permanently.
+- `<backend>` is `zelvomart-backend-eta.vercel.app` today. After any backend URL change, update the cron-job.org job.
+- Cost of an empty `/api/cron/jobs` run: one function call and one small database query. Every 5 minutes is about
+  8,600 calls a month, under 1% of the Hobby invocation allowance.
+- Do not also call `/api/cron/daily` from cron-job.org, or the daily summary arrives twice.
+- Orders do not wait for the cron: their emails and events go out right after the order is saved.
+- **Stuck jobs:** Admin → Tracking shows a red warning when jobs are still QUEUED after 15 minutes. The cron is not
+  calling `/api/cron/jobs`, or `JOB_MODE` is not `cron`.
+- **When the queue grows** (`remaining` above 0 on several runs, or failed rows in Admin → Jobs): read the error on
+  the failed rows (usually Resend, a Meta/TikTok token, or the database), fix it, and the next runs clear the
+  backlog 25 per call. Use cron-job.org "Run now" a few times for a large backlog; do not shorten the schedule.
 
-## 5. Adding products and videos
+## 8. Adding products and videos
 
-- **Products:** Admin → Products (one at a time) or the CSV import (templates in `import-templates/`). Photos
-  upload to R2 from the admin. Saving refreshes only the affected pages.
-- **Home videos:**
-  1. upload the `.mp4` (short, vertical, compressed for phones) and a `.jpg` poster of the first frame to the
-     `zelvomart-media` bucket, folder `videos/`;
-  2. add one row (title, file, poster) to `frontend/storefront/lib/home-videos.ts` and merge it.
-  - Never commit video files to the repository.
-  - File names with spaces work; they are URL-encoded automatically.
+- **Products:** Admin → Products (one at a time) or the CSV import (`import-templates/`). Photos upload to R2.
+  Saving refreshes only the affected pages.
+- **Home videos:** upload the `.mp4` (short, vertical, compressed) and a `.jpg` poster to `zelvomart-media`, folder
+  `videos/`; add one row to `frontend/storefront/lib/home-videos.ts` and merge it. Never commit video files.
 
-## 6. Watching usage: database egress and CPU
+## 9. Session recordings
 
-| What | Where to read it | Safe | Act when |
-|---|---|---|---|
-| Supabase egress (free plan: 5 GB/month) | Supabase → Project → Usage → Egress (mostly "Shared Pooler Egress") | under about 100 MB/day (≈3 GB/month) | above 150 MB/day for two days in a row, or 4 GB used before the month ends |
-| Slow or heavy queries | Supabase → Database → Query performance (`pg_stat_statements`) | top query under 20% of total time | one query grows suddenly after a deploy (roll back, then investigate) |
-| Vercel CPU (Hobby: 4 CPU-hours/month) | Vercel → Usage → function CPU (Active CPU) | under about 6 minutes/day | above 8 minutes/day (≈4 hours/month) |
-| Vercel transfer and invocations | Vercel → Usage | under 70% of the monthly allowance by mid-month | 80% reached before day 20 |
+- `NEXT_PUBLIC_SESSION_REPLAY_SAMPLE_RATE` (default 0.25) of visits are recorded; `/admin` never is.
+- A recording ends after 10 minutes, or once the tab has been hidden for more than a minute.
+- Recordings stay un-masked (owner decision) and are kept `SESSION_REPLAY_RETENTION_DAYS` (admin setting wins).
 
-If egress or CPU jumps:
+## 10. Database
 
-- check Vercel → Logs for a bot hammering one URL (block it in Firewall);
-- check that the cron runs every 5 minutes, not every minute;
-- check that recordings still go to R2 (`REPLAY_S3_BUCKET` set; Admin → Session replays still plays new ones);
-- roll back the last deploy if the jump started with it.
+### Backup and restore
 
-## 7. Vercel Hobby limits
+- Supabase keeps daily backups on its side (see Database → Backups for what the current plan includes).
+- Keep your own copy too: once a week, and always before any schema change or bulk edit, run
+  `pg_dump --format=custom --no-owner "<DIRECT_URL>" > zelvomart-YYYY-MM-DD.dump` from a trusted computer. Store
+  the file off the server.
+- **Restore** into a new, empty database first (never over the live one):
+  `pg_restore --no-owner --dbname "<new database URL>" zelvomart-YYYY-MM-DD.dump`. Check it, then point
+  `DATABASE_URL`/`DIRECT_URL` at it only if you really need to switch.
+- Never run imports, scripts or migrations against the live database without a fresh backup.
 
-The Hobby plan includes, per month:
 
-- 4 CPU-hours of active function time;
-- 10 GB of data transfer;
-- 1 million function calls.
+### Moving the database to Mumbai (runbook only; the owner runs it with an explicit "yes")
 
-Going over can pause the team's projects for up to 30 days. Check the live numbers on the Usage page; they can
-change. If a warning email arrives:
+Functions run in Mumbai (`bom1`) while the database is in Sydney, so every query crosses the ocean. Moving it to
+Supabase `ap-south-1` (Mumbai) removes that delay.
 
-1. find the cause with section 6, fix it, and roll back if a deploy caused it;
-2. lower the cost of traffic: keep the cron at 15–30 minutes, and block abusive bots in the Firewall;
-3. if the team is paused, the fastest way back without waiting is the plain Node server in section 8 (the code
-   runs unchanged).
+1. Create a new Supabase project in region `ap-south-1` (same plan). Save its connection strings in the password
+   manager.
+2. From a trusted computer, dump the old project (direct connection):
+   `pg_dump --schema=public --no-owner --no-privileges -Fc "<old DIRECT_URL>" > zelvomart-move.dump`
+3. Restore into the new project: `pg_restore --no-owner --no-privileges --dbname "<new DIRECT_URL>" zelvomart-move.dump`
+4. Compare row counts table by table (Product, Order, OrderItem, Customer, Setting, Category, City, Job, Review);
+   they must match.
+5. With `DIRECT_URL` pointing at the new project, run `npx prisma migrate deploy` in `backend/` (it should report
+   nothing to apply).
+6. **Short order freeze** (announce 10 minutes): turn on maintenance or pause checkout, take a final dump and
+   restore of only what changed if any orders arrived after step 2 (or repeat steps 2–4).
+7. The owner sets on the backend project, with his "yes":
+   - `DATABASE_URL` = new project's **transaction pooler**, port **6543**, with `?pgbouncer=true`;
+   - `DIRECT_URL` = new project's direct/session connection.
+8. Redeploy the backend.
+9. Smoke test: home, a product, add to cart, a real test order, admin login, Admin → Jobs (the order's jobs leave
+   QUEUED), emails arrive.
+10. Keep the old project untouched for 7 days as the rollback (switch the two variables back and redeploy). Then
+    pause or delete it.
 
-## 8. Moving to a plain Node server (VPS)
+## 11. Moving to a plain Node server (VPS)
 
 Both apps run on any Linux server with Node 22. Nothing in the code needs Vercel: background work keeps running
 in the same process, and the pool keeps connections open longer.
 
 1. **Install:** Node 22, git, and a process manager (for example `pm2` or systemd). Clone the repo.
-2. **Configure:** create `backend/.env` and `frontend/.env.local` with the variables in section 2, then:
+2. **Configure:** create `backend/.env` and `frontend/.env.local` with the variables in section 5, then:
    - backend: `PORT=4000` and `JOB_MODE=cron`;
    - storefront: `BACKEND_URL=http://127.0.0.1:4000`;
    - `FRONTEND_URL` and `NEXT_PUBLIC_SITE_URL`: the public `https://` shop address.
@@ -181,23 +283,15 @@ in the same process, and the pool keeps connections open longer.
 8. **Updates:** `git pull && npm ci && npm run build:backend && npm run build:frontend`, then restart both
    processes.
 
-## 9. Database backup and restore
+## 12. Weekly health checklist (about 10 minutes)
 
-- Supabase keeps daily backups on its side (see Database → Backups for what the current plan includes).
-- Keep your own copy too: once a week, and always before any schema change or bulk edit, run
-  `pg_dump --format=custom --no-owner "<DIRECT_URL>" > zelvomart-YYYY-MM-DD.dump` from a trusted computer. Store
-  the file off the server.
-- **Restore** into a new, empty database first (never over the live one):
-  `pg_restore --no-owner --dbname "<new database URL>" zelvomart-YYYY-MM-DD.dump`. Check it, then point
-  `DATABASE_URL`/`DIRECT_URL` at it only if you really need to switch.
-- Never run imports, scripts or migrations against the live database without a fresh backup.
-
-## 10. Weekly 5-minute health check
-
-1. Open the shop on a phone: home, a category, a product; add to cart; open checkout (no order needed).
-2. Admin → Orders: last week's orders came in; customers received confirmations (spot-check one).
-3. Admin → Jobs: no failed jobs piling up. cron-job.org: last runs green, `remaining` is 0.
-4. Supabase → Usage: egress on track (section 6).
-5. Vercel → Usage: CPU, transfer and invocations under 70% for the point in the month.
-6. Resend → Logs: no bounces or failures from the sender domain.
-7. Make sure this week's database dump exists (section 9).
+1. **Vercel → Usage:** CPU, Fast Origin Transfer, invocations and ISR writes under 50% for the point in the month
+   (section 4).
+2. **Supabase:** Usage → egress on track; Database → Query performance → the top queries look normal.
+3. **Cloudflare:** Analytics for `zelvomart.com` and R2 metrics for `zelvomart-media` look normal; no DNS record
+   changed by accident (all 15 still grey cloud).
+4. **Jobs:** Admin → Tracking shows no stuck-jobs warning; Admin → Jobs has no failed rows piling up;
+   cron-job.org runs are green with `remaining` 0.
+5. **Mail test:** send a mail to and from the zelvomart mailbox; check Resend → Logs for bounces or failures.
+6. **Backups:** this week's database dump exists (section 10).
+7. Open the shop on a phone: home, a category, a product, add to cart, open checkout.
