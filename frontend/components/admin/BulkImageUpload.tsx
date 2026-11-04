@@ -1,7 +1,6 @@
 "use client";
 import AdminTable from '@/components/admin/AdminTable';
-
-
+import './bulk-image-upload.css';
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { clientApi, uploadAdminImage } from "@/lib/client-api";
 import {
@@ -276,18 +275,18 @@ export default function BulkImageUpload({ products, onUploaded }: { products: Bu
         <span>Bulk Image Upload</span>
       </button>
 
-      <dialog ref={dialogRef} className="admin-modal admin-modal-xl">
+      <dialog ref={dialogRef} className="admin-modal admin-modal-xl admin-bulk-modal" aria-labelledby="bulk-image-upload-title">
         <div className="admin-modal-shell">
           <div className="admin-modal-head">
             <div>
-              <h2>Bulk Product Image Upload</h2>
+              <h2 id="bulk-image-upload-title">Bulk Product Image Upload</h2>
               <p>Select an image folder or product ZIP file(s). Images are matched to product titles, slugs or SKUs; nothing is uploaded until you confirm.</p>
             </div>
-            <button type="button" className="admin-modal-close" onClick={() => dialogRef.current?.close()}>×</button>
+            <button type="button" className="admin-modal-close" aria-label="Close bulk image upload" onClick={() => dialogRef.current?.close()}>×</button>
           </div>
           <div className="admin-modal-body">
-            <div className="admin-bulk-help">
-              <b>Naming examples</b>
+            <details className="admin-bulk-help">
+              <summary>How to name your folders and images</summary>
               <p>
                 Product: <b>HP EliteBook 840 G8 Laptop</b> → images can be named <b>HP EliteBook 840 G8 Laptop.jpg</b>, <b>HP EliteBook 840 G8 Laptop-1.jpg</b>,{" "}
                 <b>HP EliteBook 840 G8 Laptop-front.webp</b>.
@@ -307,7 +306,7 @@ export default function BulkImageUpload({ products, onUploaded }: { products: Bu
               <button type="button" className="admin-import-alt" disabled={!products.length} onClick={downloadNameList}>
                 Download product names CSV
               </button>
-            </div>
+            </details>
 
             <div className="admin-bulk-inputs">
               <label className="admin-bulk-input">
@@ -488,14 +487,18 @@ export default function BulkImageUpload({ products, onUploaded }: { products: Bu
               </>
             ) : null}
 
+          </div>
+          <div className="admin-bulk-footer">
+            <div className="admin-bulk-footer-summary" role="status" aria-live="polite">
+              <strong>{busy ? (match ? "Uploading your images…" : "Checking your files…") : waiting.length ? `${waitingImages} image${waitingImages === 1 ? "" : "s"} ready to upload` : match ? "Review your upload results" : "Choose a folder or ZIP to get started"}</strong>
+              <span>{match ? `${rows.length} matched product${rows.length === 1 ? "" : "s"} · ${unassignedLeft} unassigned · ${match.skipped.length} skipped` : "Review the matches before uploading. Existing images are kept."}</span>
+            </div>
             <div className="admin-modal-footer-actions">
               <button type="button" className="admin-btn admin-btn-light" onClick={() => dialogRef.current?.close()}>
                 Close
               </button>
               <button type="button" className="admin-btn admin-btn-primary" disabled={!waiting.length || busy} onClick={confirmUpload}>
-                {busy && match
-                  ? "Uploading…"
-                  : `Confirm and upload${waitingImages ? ` ${waitingImages} image${waitingImages === 1 ? "" : "s"} to ${waiting.length} product${waiting.length === 1 ? "" : "s"}` : ""}`}
+                {busy ? "Please wait…" : `Upload${waitingImages ? ` ${waitingImages} image${waitingImages === 1 ? "" : "s"}` : " images"}`}
               </button>
             </div>
           </div>
