@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { getImageProps } from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { preload } from "react-dom";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { site } from "@store/lib/site";
 import { waLink } from "@store/lib/format";
@@ -71,8 +72,13 @@ const MOBILE = { width: 900, height: 1350 };
  */
 function SlideArt({ slide, first }: { slide: Slide; first: boolean }) {
   const common = { alt: slide.alt, sizes: "100vw", draggable: false, decoding: "async" as const, ...(first ? { fetchPriority: "high" as const, loading: "eager" as const } : { loading: "lazy" as const }) };
-  const { props: { srcSet: desktop } } = getImageProps({ ...common, ...DESKTOP, src: slide.desktop });
+  const { props: { srcSet: desktop, src: desktopSrc } } = getImageProps({ ...common, ...DESKTOP, src: slide.desktop });
   const { props: { srcSet: mobile, ...img } } = getImageProps({ ...common, ...MOBILE, src: slide.mobile });
+  if (first) {
+    // The home page's largest image: preloaded in the <head> for the matching screen size only.
+    preload(img.src, { as: "image", fetchPriority: "high", imageSrcSet: mobile, imageSizes: "100vw", media: "(max-width: 760px)" });
+    preload(desktopSrc, { as: "image", fetchPriority: "high", imageSrcSet: desktop, imageSizes: "100vw", media: "(min-width: 761px)" });
+  }
   return (
     <picture className="hero-art">
       <source media="(max-width: 760px)" srcSet={mobile} />

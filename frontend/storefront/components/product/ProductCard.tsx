@@ -9,7 +9,7 @@ import { useShop } from "@store/lib/store";
 import { Price } from "@store/components/ui/Price";
 import { Stars } from "@store/components/ui/Stars";
 
-export function ProductCard({ p, priority = false, featured = false }: { p: Product; priority?: boolean; featured?: boolean }) {
+export function ProductCard({ p, eager = false, featured = false }: { p: Product; eager?: boolean; featured?: boolean }) {
   const { addToCart, toggleWish, isWished, ready } = useShop();
   const wished = ready && isWished(p.id);
   const pct = discountPct(p.price, p.compare);
@@ -52,7 +52,7 @@ export function ProductCard({ p, priority = false, featured = false }: { p: Prod
             alt={p.gallery?.[0]?.src === p.image ? p.gallery[0].alt || p.name : p.name}
             width={600}
             height={600}
-            priority={priority}
+            loading={eager ? "eager" : "lazy"}
             sizes={featured ? "(max-width:760px) 100vw, 560px" : "(max-width:760px) 50vw, 300px"}
           />
         </Link>

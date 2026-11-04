@@ -1,11 +1,14 @@
+import { MEDIA_BASE } from "@/lib/media";
+
 /**
  * Home page videos: compressed MP4 files and posters on Cloudflare R2 (bucket zelvomart-media, folder videos/).
  * To add or change a video, upload the .mp4 and its .jpg poster to R2 and edit a row here. Videos are never
  * committed to the repo. Names with spaces must be URL-encoded (%20). The shorts play in this order.
  */
 const R2_VIDEOS =
-  // Local testing only: point the tiles at another server. Production uses the R2 folder.
-  process.env.NEXT_PUBLIC_HOME_VIDEO_BASE || "https://pub-6861daa0380241a2acc38cd5ca85b301.r2.dev/videos/";
+  // NEXT_PUBLIC_HOME_VIDEO_BASE overrides (local testing); otherwise the videos/ folder on the media domain
+  // (NEXT_PUBLIC_MEDIA_BASE_URL, else the old R2 host).
+  process.env.NEXT_PUBLIC_HOME_VIDEO_BASE || `${MEDIA_BASE}/videos/`;
 
 export type HomeVideo = { id: string; title: string; src: string; poster: string };
 

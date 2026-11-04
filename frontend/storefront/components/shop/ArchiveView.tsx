@@ -282,7 +282,8 @@ export function ArchiveView({
 
         {items.length ? (
           <div style={pending ? { opacity: 0.55, transition: "opacity .15s" } : undefined}>
-            <ProductGrid items={items} cols={3} priorityCount={3} />
+            {/* The first row on a phone (two columns) loads at once; nothing is preloaded. */}
+            <ProductGrid items={items} cols={3} eagerCount={2} />
           </div>
         ) : (
           <div className="empty-state">

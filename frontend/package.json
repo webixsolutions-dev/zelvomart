@@ -17,6 +17,7 @@
     "@rrweb/replay": "^2.1.6",
     "@sentry/nextjs": "^11.8.0",
     "@zelvomart/delivery": "1.0.0",
+    "@zelvomart/media": "1.0.0",
     "@zelvomart/monitoring": "1.0.0",
     "lucide-react": "^1.59.0",
     "next": "^16.4.3",

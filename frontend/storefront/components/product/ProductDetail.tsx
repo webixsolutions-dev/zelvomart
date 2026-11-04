@@ -232,7 +232,6 @@ export function ProductDetail({ slug }: { slug: string }) {
                   width={600}
                   height={600}
                   priority
-                  unoptimized
                   sizes="(max-width:760px) 100vw, 620px"
                   style={zoom ? { transform: "scale(1.8)", transformOrigin: zoom.x + "% " + zoom.y + "%" } : undefined}
                 />
@@ -323,7 +322,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                         onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); }}
                       >
                         <span className="pd-swatch-img">
-                          <Image src={o.imageUrl || o.images?.[0] || p.image} alt="" width={64} height={64} unoptimized />
+                          <Image src={o.imageUrl || o.images?.[0] || p.image} alt="" width={64} height={64} sizes="64px" />
                         </span>
                         <small>{o.name}{o.soldOut ? " · Sold out" : ""}</small>
                       </button>
