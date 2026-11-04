@@ -17,6 +17,9 @@ import { setSetting, getSetting } from "../src/lib/settings";
 import { assertWorkerDatabase, expiredBacklog } from "../src/lib/launch-jobs";
 import { SITE_ORIGIN } from "../src/lib/site-url";
 import { replayCutoff, replayRetentionDays } from "../src/lib/replay-retention";
+import { ADVANCE_JOB_NAMES } from "../src/lib/advance-email";
+import { runAdvanceSweep } from "../src/lib/advance-sweep";
+import { processJobRow } from "../src/lib/job-processor";
 
 async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>) {
   if (jobLogId) {
@@ -83,6 +86,8 @@ async function main() {
     "rate-limit-cleanup",
     "session-replay-retention-cleanup",
     "job-recovery",
+    "advance-payment-sweep",
+    ...ADVANCE_JOB_NAMES,
   ])
     await boss.createQueue(name);
   const heartbeat = () =>
@@ -367,10 +372,18 @@ async function main() {
     return stranded.length;
   });
 
+  // Advance payment emails: the same handler (and atomic claim) as the HTTP cron (lib/job-processor.ts).
+  for (const name of ADVANCE_JOB_NAMES)
+    await boss.work(name, async ([job]) => processJobRow(String((job.data as any).jobLogId)));
+
+  // Reminder rows it creates are sent by "job-recovery" (every 5 minutes) like any other stranded row.
+  await boss.work("advance-payment-sweep", async () => runAdvanceSweep());
+
   await boss.schedule("daily-summary", "0 4 * * *", {}); // 9:00 Pakistan time
   await boss.schedule("tracking-health-check", "*/15 * * * *", {});
   await boss.schedule("abandoned-checkout-scan", "*/15 * * * *", {});
   await boss.schedule("job-recovery", "*/5 * * * *", {});
+  await boss.schedule("advance-payment-sweep", "*/5 * * * *", {});
   await boss.schedule("rate-limit-cleanup", "30 3 * * *", {});
   await boss.schedule("session-replay-retention-cleanup", "0 3 * * *", {});
 

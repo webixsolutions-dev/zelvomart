@@ -10,6 +10,8 @@ import { prisma } from "./db";
 import { money } from "./format";
 import { getSetting } from "./settings";
 import { SITE_ORIGIN } from "./site-url";
+import { advanceOrderEmailBlock } from "./advance-email";
+import { loadAdvanceSettings } from "./advance-payment";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -45,6 +47,9 @@ export async function sendOrderTeamEmail(orderId: string) {
       .join("<br/>") +
     (Number(order.couponDiscount) > 0
       ? `<br/>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}`
+      : "") +
+    (Number(order.advanceDiscount) > 0
+      ? `<br/>Advance payment discount: -${escapeHtml(money(order.advanceDiscount))} (do not dispatch until the payment is verified)`
       : "");
 
   const adminUrl = `${SITE_ORIGIN}/admin/orders/${order.id}`;
@@ -76,7 +81,9 @@ export async function sendOrderTeamEmail(orderId: string) {
   const team = internalEmail(
     "Orders",
     await orderRecipients(),
-    `${order.orderNumber} • New COD order • ${money(order.total)}`,
+    order.paymentMethod === "ADVANCE_EASYPAISA"
+      ? `${order.orderNumber} • New order • advance payment pending (not paid yet) • ${money(order.total)}`
+      : `${order.orderNumber} • New COD order • ${money(order.total)}`,
     html,
   );
   return deliverEmail(
@@ -102,18 +109,28 @@ export async function sendCustomerOrderEmail(orderId: string) {
       .join("") +
     (Number(order.couponDiscount) > 0
       ? `<li>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}</li>`
+      : "") +
+    (Number(order.advanceDiscount) > 0
+      ? `<li>Advance payment discount: -${escapeHtml(money(order.advanceDiscount))}</li>`
       : "");
+  const advance = order.paymentMethod === "ADVANCE_EASYPAISA" && order.paymentStatus === "AWAITING_PAYMENT";
+  const paymentNote = advance
+    ? advanceOrderEmailBlock(order, (await loadAdvanceSettings()).expiryHours)
+    : "<p>Cash on Delivery: pay cash when your parcel arrives.</p>";
   const defaultTemplate = `
     <h2>Thanks for your order, {{customerName}}.</h2>
     <p>Your order number is <strong>{{orderNumber}}</strong>.</p>
     <ul>{{items}}</ul>
     <p><strong>Total: {{total}}</strong></p>
-    <p>Cash on Delivery: pay cash when your parcel arrives.</p>
+    {{paymentNote}}
     <p>What happens next: our team confirms your order by phone or WhatsApp, then dispatches it.</p>
   `;
   const configuredTemplate = await getSetting<string>("notifications.customerOrderTemplate", defaultTemplate);
-  const template = configuredTemplate.trim() ? configuredTemplate : defaultTemplate;
+  let template = configuredTemplate.trim() ? configuredTemplate : defaultTemplate;
+  // An admin template written before advance payment has no {{paymentNote}}: the pay link is added after it.
+  if (advance && !template.includes("{{paymentNote}}")) template += "{{paymentNote}}";
   const html = renderTemplate(template, {
+    paymentNote,
     customerName: escapeHtml(order.fullName),
     orderNumber: escapeHtml(order.orderNumber),
     items,

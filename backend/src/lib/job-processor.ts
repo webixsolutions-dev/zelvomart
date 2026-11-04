@@ -5,6 +5,13 @@ import { sendCustomerOrderEmail, sendCustomerStatusEmail, sendFailureAlert, send
 import { sendMetaServerEvent } from "./meta";
 import { sendTikTokServerEvent } from "./tiktok";
 import { jobResultStatus } from "./jobs";
+import {
+  sendAdvanceIssueEmail,
+  sendAdvanceProofCustomerEmail,
+  sendAdvanceProofTeamEmail,
+  sendAdvanceReminderEmail,
+  sendAdvanceVerifiedEmail,
+} from "./advance-email";
 
 type Row = Awaited<ReturnType<typeof prisma.job.findUnique>>;
 
@@ -87,6 +94,16 @@ async function handle(row: NonNullable<Row>, data: Record<string, any>, orderId:
     case "meta-purchase":
     case "tiktok-purchase":
       return purchase(row.name, orderId, data.eventName);
+    case "advance-proof-team-email":
+      return sendAdvanceProofTeamEmail(orderId, String(data.proofId));
+    case "advance-proof-customer-email":
+      return sendAdvanceProofCustomerEmail(orderId, String(data.proofId));
+    case "advance-verified-email":
+      return sendAdvanceVerifiedEmail(orderId);
+    case "advance-issue-email":
+      return sendAdvanceIssueEmail(orderId, String(data.proofId));
+    case "advance-reminder-email":
+      return sendAdvanceReminderEmail(orderId);
     default:
       throw new Error(`Unsupported cron job: ${row.name}`);
   }

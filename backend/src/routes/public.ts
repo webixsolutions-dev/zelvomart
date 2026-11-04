@@ -31,6 +31,7 @@ import { sendDailySummary } from "../lib/daily-summary";
 import { sendAutomaticRecoveryEmails } from "../recovery";
 import { runInBackground } from "../lib/background";
 import { runJobsNow } from "../lib/job-runner";
+import { runAdvanceSweep } from "../lib/advance-sweep";
 import { runCronQueue } from "../lib/cron-queue";
 import { paymentPath } from "../lib/advance-payment";
 import { replayCutoff, replayRetentionDays } from "../lib/replay-retention";
@@ -68,12 +69,14 @@ export function registerPublicRoutes(app: Express) {
     if (!cronAuthorized(req))
       return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
     const started = Date.now();
+    // Advance payment: reminder jobs and expiry first, so the reminders go out in this same run.
+    const advance = await runAdvanceSweep(started).catch(() => ({ error: "ADVANCE_SWEEP_FAILED" }));
     const queue = await runCronQueue(started);
     // Left carts: send the 5% offer email once, about an hour after the cart was left.
     let cartOffers: { sent: number; failed: number } | { error: string } = { sent: 0, failed: 0 };
     if (Date.now() - started < 5_000)
       cartOffers = await sendAutomaticRecoveryEmails().catch(() => ({ error: "CART_OFFER_FAILED" }));
-    res.json({ ...queue, cartOffers });
+    res.json({ ...queue, cartOffers, advance });
   });
 
   // Daily maintenance that previously depended on pg-boss schedules.

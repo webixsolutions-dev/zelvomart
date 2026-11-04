@@ -12,6 +12,11 @@ import type { AddressInfo } from "node:net";
 const require = createRequire(import.meta.url);
 const delivery = require("@zelvomart/delivery");
 
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import sharp from "sharp";
+const proofDir = mkdtempSync(path.join(tmpdir(), "zm-proofs-"));
 const db = await PGlite.create();
 await db.exec(
   execFileSync(
@@ -28,6 +33,10 @@ await db.exec(
     { encoding: "utf8" },
   ),
 );
+// The partial unique index on live TIDs is written by hand in the migration (Prisma cannot express it).
+await db.exec(
+  `CREATE UNIQUE INDEX "PaymentProof_tidNormalized_live_key" ON "PaymentProof"("tidNormalized") WHERE "tidNormalized" IS NOT NULL AND "status" <> 'REJECTED';`,
+);
 const socket = new PGLiteSocketServer({ db, port: 55481, host: "127.0.0.1" });
 await socket.start();
 Object.assign(process.env, {
@@ -40,6 +49,8 @@ Object.assign(process.env, {
   VERCEL: "1",
   REVALIDATION_SECRET: "",
   RESEND_API_KEY: "",
+  PAYMENT_PROOF_LOCAL_DIR: proofDir,
+  STORE_PROXY_SECRET: "isolated-proxy-secret",
 });
 delete process.env.APP_ENV;
 const { prisma } = await import("../src/lib/db");
@@ -258,6 +269,250 @@ function storefrontTotal(subtotal: number, coupon: number, advance: Record<strin
   assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: row.id } })).paymentMethod, "ADVANCE_EASYPAISA");
   console.log("ok - no switch after a proof");
 }
+
+// Payment proof upload: real multipart through the route, private storage, metadata removed, flags, resubmission.
+const { runAdvanceSweep } = await import("../src/lib/advance-sweep");
+const shot = (seed: number) =>
+  sharp({ create: { width: 500, height: 1000, channels: 3, background: { r: 30 + seed * 9, g: 140, b: 210 } } })
+    .composite([
+      {
+        input: Buffer.from(
+          `<svg width="500" height="1000"><rect x="30" y="${80 + seed * 13}" width="${260 + seed * 7}" height="140" fill="#000"/><circle cx="${120 + seed * 17}" cy="700" r="110" fill="#fff"/></svg>`,
+        ),
+      },
+    ])
+    .withExif({ IFD0: { Artist: "secret-phone-owner" } })
+    .jpeg()
+    .toBuffer();
+async function sendProof(
+  orderNumber: string,
+  token: string,
+  fields: Record<string, string>,
+  file: Buffer | null = null,
+  type = "image/jpeg",
+) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.set(k, v);
+  if (file) form.set("screenshot", new Blob([new Uint8Array(file)], { type }), "proof.jpg");
+  const res = await fetch(`${base}/api/pay/${orderNumber}/proof?t=${encodeURIComponent(token)}`, {
+    method: "POST",
+    body: form,
+    // As the storefront proxy sends it: a different shopper IP per call, so the per-IP limit is not the one tested.
+    headers: {
+      "x-zm-proxy-secret": "isolated-proxy-secret",
+      "x-zm-client-ip": `10.9.${n}.${Math.floor(Math.random() * 250)}`,
+    },
+  });
+  return { status: res.status, body: (await res.json()) as any };
+}
+const good = (amount: number, tid = "41000" + String(n).padStart(5, "0")) => ({
+  method: "TILL",
+  tid,
+  amount: String(amount),
+  senderName: "Ali Raza",
+  senderLast4: "4321",
+});
+await setAdvance({});
+{
+  const r = await order("ADVANCE_EASYPAISA", 1);
+  const { orderNumber, payToken, total } = r.body;
+  const tid1 = good(total).tid;
+  assert.equal((await sendProof(orderNumber, "wrong", good(total), await shot(1))).status, 404, "token");
+  const missing = await sendProof(orderNumber, payToken, good(total));
+  assert.deepEqual([missing.status, missing.body.error], [400, "PROOF_SCREENSHOT_REQUIRED"]);
+  const badTid = await sendProof(orderNumber, payToken, { ...good(total), tid: "12" }, await shot(1));
+  assert.deepEqual([badTid.status, badTid.body.error], [400, "PROOF_FIELDS_INVALID"]);
+  const notImage = await sendProof(orderNumber, payToken, good(total), Buffer.from("hello"), "image/png");
+  assert.deepEqual([notImage.status, notImage.body.error], [400, "PROOF_IMAGE_INVALID"]);
+  const gif = await sharp({ create: { width: 20, height: 20, channels: 3, background: "#f00" } })
+    .gif()
+    .toBuffer();
+  assert.equal((await sendProof(orderNumber, payToken, good(total), gif, "image/gif")).status, 400, "gif");
+  const huge = await sendProof(orderNumber, payToken, good(total), Buffer.alloc(5 * 1024 * 1024 + 10));
+  assert.deepEqual([huge.status, huge.body.error], [413, "PROOF_TOO_LARGE"]);
+  assert.equal(await prisma.paymentProof.count({ where: { order: { orderNumber } } }), 0, "nothing saved");
+
+  const sent = await sendProof(orderNumber, payToken, good(total), await shot(1));
+  assert.equal(sent.status, 201, JSON.stringify(sent.body));
+  assert.deepEqual(
+    [sent.body.paymentStatus, sent.body.proof.status, sent.body.proof.amountSent, sent.body.canSubmitProof],
+    ["SUBMITTED", "SUBMITTED", total, false],
+  );
+  assert.equal(sent.body.canSwitchToCod, false, "no COD switch after a proof");
+  const raw = JSON.stringify(sent.body);
+  for (const secret of ["4321", "Ali Raza", "41000", "payment-proofs", "sha256"])
+    assert.equal(raw.includes(secret), false, `no ${secret} in the public answer`);
+  const row = await prisma.order.findUniqueOrThrow({ where: { orderNumber }, include: { paymentProofs: true } });
+  assert.deepEqual([row.status, row.paymentStatus], ["ON_HOLD", "SUBMITTED"], "never paid automatically");
+  const proof = row.paymentProofs[0];
+  assert.match(proof.screenshotKey, /^payment-proofs\/ZM-\d+\/[0-9a-f]{24}\.webp$/);
+  const stored = readFileSync(path.join(proofDir, proof.screenshotKey));
+  const meta = await sharp(stored).metadata();
+  assert.deepEqual([meta.format, meta.exif], ["webp", undefined]);
+  assert.equal(stored.includes(Buffer.from("secret-phone-owner")), false, "EXIF removed");
+  assert.match(proof.sha256, /^[0-9a-f]{64}$/);
+  assert.match(proof.dhash || "", /^[0-9a-f]{16}$/);
+  assert.deepEqual(
+    [proof.tidNormalized, proof.amountMismatch, proof.tidDuplicate, proof.imageDuplicate],
+    [tid1, false, false, false],
+  );
+  const jobs = await prisma.job.findMany({ where: { orderId: row.id, name: { startsWith: "advance-proof" } } });
+  assert.deepEqual(jobs.map((job) => job.name).sort(), ["advance-proof-customer-email", "advance-proof-team-email"]);
+  assert.equal((await sendProof(orderNumber, payToken, good(total), await shot(2))).status, 409, "one proof");
+  assert.equal(
+    (await fetch(`${base}/api/pay/${orderNumber}/cod?t=${encodeURIComponent(payToken)}`, { method: "POST" })).status,
+    409,
+  );
+
+  // Same TID and the same screenshot (re-saved smaller) on another order: both flagged, stored, still SUBMITTED.
+  const other = await order("ADVANCE_EASYPAISA", 1);
+  const resaved = await sharp(await shot(1))
+    .resize(380)
+    .jpeg({ quality: 60 })
+    .toBuffer();
+  const dup = await sendProof(other.body.orderNumber, other.body.payToken, good(total, tid1), resaved);
+  assert.equal(dup.status, 201, JSON.stringify(dup.body));
+  const dupRow = await prisma.paymentProof.findFirstOrThrow({
+    where: { order: { orderNumber: other.body.orderNumber } },
+  });
+  assert.deepEqual(
+    [dupRow.tidDuplicate, dupRow.tidNormalized, dupRow.imageDuplicate, dupRow.status],
+    [true, null, true, "SUBMITTED"],
+  );
+  console.log("ok - proof upload: validation, private storage, metadata removed, flags, no public data");
+}
+
+// Amount mismatch, one resubmission, then closed.
+{
+  const r = await order("ADVANCE_EASYPAISA", 1);
+  const { orderNumber, payToken, total } = r.body;
+  const tid2 = good(total).tid;
+  const off = await sendProof(orderNumber, payToken, good(total - 400, tid2), await shot(5));
+  assert.deepEqual(
+    [off.status, off.body.paymentStatus, off.body.canSubmitProof, off.body.proofsLeft],
+    [201, "MISMATCH", true, 1],
+  );
+  // Correcting the amount with the same TID on the same order is not a duplicate.
+  const again = await sendProof(orderNumber, payToken, good(total, tid2), await shot(6));
+  assert.equal(again.status, 201, JSON.stringify(again.body));
+  assert.deepEqual(
+    [again.body.paymentStatus, again.body.canSubmitProof, again.body.proofsLeft],
+    ["SUBMITTED", false, 0],
+  );
+  const proofs = await prisma.paymentProof.findMany({
+    where: { order: { orderNumber } },
+    orderBy: { createdAt: "asc" },
+  });
+  assert.deepEqual(
+    proofs.map((p) => [p.status, p.tidDuplicate]),
+    [
+      ["MISMATCH", false],
+      ["SUBMITTED", false],
+    ],
+  );
+  assert.equal((await sendProof(orderNumber, payToken, good(total), await shot(7))).status, 409, "no third proof");
+  console.log("ok - mismatch and one resubmission");
+}
+
+// Reminder once after reminderHours, EXPIRED after expiryHours (never cancelled); a late proof is still accepted.
+{
+  await setAdvance({ reminderHours: 2, expiryHours: 24 });
+  const r = await order("ADVANCE_EASYPAISA", 1, { email: "buyer@example.com" });
+  const id = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: r.body.orderNumber } })).id;
+  const at = (hours: number) =>
+    prisma.order.update({ where: { id }, data: { createdAt: new Date(Date.now() - hours * 3_600_000) } });
+  await at(1);
+  await runAdvanceSweep();
+  assert.equal(await prisma.job.count({ where: { orderId: id, name: "advance-reminder-email" } }), 0, "too early");
+  await at(3);
+  await runAdvanceSweep();
+  await runAdvanceSweep();
+  assert.equal(await prisma.job.count({ where: { orderId: id, name: "advance-reminder-email" } }), 1, "exactly one");
+  await at(25);
+  const swept = await runAdvanceSweep();
+  assert.ok(swept.expired >= 1);
+  const row = await prisma.order.findUniqueOrThrow({ where: { id } });
+  assert.deepEqual([row.status, row.paymentStatus], ["ON_HOLD", "EXPIRED"]);
+  const late = await sendProof(r.body.orderNumber, r.body.payToken, good(r.body.total), await shot(9));
+  assert.deepEqual([late.status, late.body.paymentStatus], [201, "SUBMITTED"]);
+  console.log("ok - reminder once, expiry without cancelling, late proof");
+}
+
+// Production with no private bucket: the upload is refused (never written to the server's disk).
+{
+  const r = await order("ADVANCE_EASYPAISA", 1);
+  process.env.APP_ENV = "production";
+  const res = await sendProof(r.body.orderNumber, r.body.payToken, good(r.body.total), await shot(11));
+  delete process.env.APP_ENV;
+  assert.deepEqual([res.status, res.body.error], [503, "PROOF_STORAGE_NOT_CONFIGURED"]);
+  console.log("ok - production needs the private bucket");
+}
+
+// Emails (Resend intercepted): order email carries the pay link; team proof email warns and has no screenshot;
+// customer gets the exact "pending verification" message; the reminder is skipped once a proof is in.
+{
+  const sent: any[] = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: any, init?: any) => {
+    const url = String(input?.url || input);
+    if (!url.startsWith("https://api.resend.com")) return realFetch(input, init);
+    sent.push(JSON.parse(String(init?.body || "{}")));
+    return new Response(JSON.stringify({ id: `email-${sent.length}` }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+  process.env.RESEND_API_KEY = "re_isolated_test";
+  const { processJobRow } = await import("../src/lib/job-processor");
+  try {
+    await setAdvance({ verificationHours: "10am – 8pm" });
+    const r = await order("ADVANCE_EASYPAISA", 1, { email: "buyer@example.com" });
+    const id = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: r.body.orderNumber } })).id;
+    const runAll = async (name: string) => {
+      for (const job of await prisma.job.findMany({ where: { orderId: id, name } })) {
+        await prisma.job.update({ where: { id: job.id }, data: { status: "QUEUED", attempts: 0 } });
+        await processJobRow(job.id);
+      }
+    };
+    await runAll("customer-order-email");
+    await runAll("order-team-email");
+    const orderMail = sent.find((m) => m.to === "buyer@example.com" || m.to?.[0] === "buyer@example.com");
+    assert.ok(orderMail, "customer order email");
+    assert.ok(orderMail.html.includes(`/pay/${r.body.orderNumber}/?t=${r.body.payToken}`), "pay link in the email");
+    assert.match(orderMail.html, /Cash on Delivery instead/);
+    assert.equal(orderMail.html.includes("pay cash when your parcel arrives"), false);
+    const teamOrder = sent.find((m) => String(m.subject).includes("New order • advance payment pending"));
+    assert.ok(teamOrder, "team order subject says not paid yet");
+
+    const tid = "EMAILTID" + n;
+    const proof = await sendProof(r.body.orderNumber, r.body.payToken, good(r.body.total, tid), await shot(14));
+    assert.equal(proof.status, 201);
+    sent.length = 0;
+    await runAll("advance-proof-team-email");
+    await runAll("advance-proof-customer-email");
+    const team = sent.find((m) => String(m.subject).startsWith("[Orders]"));
+    assert.match(team.subject, new RegExp(`${r.body.orderNumber} • Advance payment proof`));
+    assert.match(team.html, /A screenshot is never proof on its own/);
+    assert.ok(team.html.includes(tid));
+    assert.equal(/payment-proofs\/|\.webp/.test(team.html), false, "no screenshot link or key in email");
+    const customer = sent.find((m) => !String(m.subject).startsWith("[Orders]"));
+    assert.match(customer.subject, /Payment proof received/);
+    assert.match(
+      customer.html,
+      /Order received – advance payment pending verification\.[\s\S]*We verify during 10am – 8pm and confirm on WhatsApp\/email\. Your order is safe\./,
+    );
+    // A reminder that was due before the proof arrived is skipped, not sent.
+    await prisma.job.create({ data: { name: "advance-reminder-email", orderId: id, payload: { orderId: id } } });
+    sent.length = 0;
+    await runAll("advance-reminder-email");
+    assert.equal(sent.length, 0);
+    console.log("ok - emails: pay link, team warning without screenshot, customer message, reminder skipped");
+  } finally {
+    globalThis.fetch = realFetch;
+    process.env.RESEND_API_KEY = "";
+  }
+}
+rmSync(proofDir, { recursive: true, force: true });
 
 server.close();
 await prisma.$disconnect();

@@ -1,6 +1,7 @@
 import type { Prisma } from "../generated/prisma/client";
 import { prisma } from "./db";
 import { processJobRow } from "./job-processor";
+import { ADVANCE_JOB_NAMES } from "./advance-email";
 
 /** Job types the HTTP cron sends (everything an order, a status change or a tracked event creates). */
 export const CRON_JOB_NAMES = [
@@ -11,6 +12,7 @@ export const CRON_JOB_NAMES = [
   "meta-purchase",
   "tiktok-event",
   "tiktok-purchase",
+  ...ADVANCE_JOB_NAMES,
 ];
 
 const LIMITS = { take: 25, deadlineMs: 20_000, reserveMs: 15_000, staleMs: 10 * 60_000, retryMs: 60_000 };

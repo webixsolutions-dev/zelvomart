@@ -133,6 +133,8 @@ build time, so changing it needs a redeploy.
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`, `S3_FORCE_PATH_STYLE` | R2 media bucket for uploads. |
 | `LOCAL_UPLOAD_DIR` | Only when R2 is not configured: a folder on the server for uploads. |
 | `REPLAY_S3_BUCKET`, `SESSION_REPLAY_RETENTION_DAYS` | R2 bucket for recordings and how many days to keep them: 14 (admin setting wins; anything above 14 is treated as 14, because the R2 lifecycle rule deletes the files after 14 days). |
+| `PAYMENT_PROOF_S3_BUCKET` | Optional. Private R2 bucket for advance-payment screenshots. Unset: they go to `REPLAY_S3_BUCKET` under `payment-proofs/` (the 14-day lifecycle rule must cover `replays/` only). The public media bucket is always refused; production without either refuses uploads. |
+| `PAYMENT_PROOF_LOCAL_DIR` | Local testing only: folder for proof screenshots when no bucket is set. Ignored on production. |
 | `META_PIXEL_ID`, `META_CAPI_TOKEN`, `META_TEST_EVENT_CODE`, `META_GRAPH_VERSION`, `META_PAGE_ID`, `META_INSTAGRAM_ACCOUNT_ID`, `META_AD_ACCOUNT_ID`, `META_MARKETING_ACCESS_TOKEN` | Meta Pixel / Conversions API and Meta marketing tools. |
 | `TIKTOK_PIXEL_ID`, `TIKTOK_ACCESS_TOKEN`, `TIKTOK_EVENTS_API_TOKEN`, `TIKTOK_TEST_EVENT_CODE` | TikTok events (off unless switched on). |
 | `POSTEX_TRACKING_BASE_URL` | Courier tracking link used in emails. |
