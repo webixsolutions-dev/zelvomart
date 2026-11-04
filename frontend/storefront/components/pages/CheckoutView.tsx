@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowRight, Banknote, CircleAlert, CreditCard, LoaderCircle, Lock, ShieldCheck, ShoppingBag } from "lucide-react";
+import { ArrowRight, Banknote, CircleAlert, CreditCard, LoaderCircle, Lock, ShieldCheck, ShoppingBag, Smartphone, TriangleAlert } from "lucide-react";
 import { getProductById } from "@store/lib/catalog";
 import { money } from "@store/lib/format";
 import { CheckoutRateLimited, bundleLabel, lineTotal, useShop } from "@store/lib/store";
@@ -15,6 +15,7 @@ import { CartNotes } from "@store/components/shop/CartNotes";
 import { useCheckoutTracking } from "@store/lib/orders";
 import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { CouponBox } from "@store/components/shop/CouponBox";
+import { advanceQuote, useAdvanceOffer } from "@store/lib/payments";
 
 const cities = ["Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Quetta", "Sialkot", "Gujranwala", "Hyderabad", "Bahawalpur", "Sargodha", "Abbottabad"];
 
@@ -33,7 +34,10 @@ function validate(f: Form) {
 
 export function CheckoutView() {
   const router = useRouter();
-  const { cart, ready, subtotal, shipping, coupon, discount, payable, placeOrder, notify } = useShop();
+  const { cart, ready, subtotal, shipping, coupon, discount, payable, placeOrder, completeOrder, notify } = useShop();
+  // Advance payment is offered only when the backend says so (never on the real shop with demo values).
+  const advanceOffer = useAdvanceOffer();
+  const [pay, setPay] = useState<"cod" | "advance">("cod");
   const [form, setForm] = useState<Form>(empty);
   useCheckoutTracking(form);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({});
@@ -47,6 +51,10 @@ export function CheckoutView() {
   }, [router]);
 
   if (!ready) return <div className="container skeleton-block" />;
+  const payMethod = advanceOffer.available ? pay : "cod";
+  const advance = advanceQuote(advanceOffer, subtotal, payable);
+  const advanceOff = payMethod === "advance" ? advance.discount : 0;
+  const total = payable - advanceOff;
 
   if (cart.length === 0 && !submitting) {
     return (
@@ -115,7 +123,7 @@ export function CheckoutView() {
       address: form.address.trim(),
       notes: form.notes.trim() || undefined,
       },
-      { terms: true },
+      { terms: true, payment: payMethod },
       );
     } catch (error) {
       setSubmitting(false);
@@ -124,6 +132,12 @@ export function CheckoutView() {
         return;
       }
       notify({ title: "We couldn't place your order", body: error instanceof Error ? error.message : "Please try again." });
+      return;
+    }
+    // Advance payment: straight to the payment page (it is also linked from the emails and the thank-you page).
+    if (order.payPath) {
+      completeOrder();
+      router.replace(order.payPath);
       return;
     }
     // replace: the back button returns to the cart, not to a checkout for an order already placed.
@@ -189,27 +203,53 @@ export function CheckoutView() {
             <span className="step-no">2</span>
             <div>
               <h2>Payment</h2>
-              <p>No advance payment needed.</p>
+              <p>{advanceOffer.available ? "Cash on delivery, or pay in advance and save." : "No advance payment needed."}</p>
             </div>
           </div>
-          <div className="pay-options">
-            <label className="pay-option active">
-              <input type="radio" name="pay" defaultChecked />
+          {advanceOffer.available && advanceOffer.demo && (
+            <p className="pay-demo-banner" role="note">
+              <TriangleAlert size={16} aria-hidden="true" /> DEMO – do not send money. Advance payment is in test mode.
+            </p>
+          )}
+          <div className="pay-options" role="radiogroup" aria-label="Payment method">
+            <label className={`pay-option ${payMethod === "cod" ? "active" : ""}`}>
+              <input type="radio" name="pay" value="cod" checked={payMethod === "cod"} onChange={() => setPay("cod")} />
               <Banknote size={22} />
               <span>
                 <strong>Cash on Delivery</strong>
-                <small>Pay the rider in cash when your parcel arrives.</small>
+                <small>Pay cash when your parcel arrives / Parcel milne par cash dein.</small>
               </span>
             </label>
-            <label className="pay-option disabled">
-              <input type="radio" name="pay" disabled />
-              <CreditCard size={22} />
-              <span>
-                <strong>Card / JazzCash / Easypaisa</strong>
-                <small>Coming soon</small>
-              </span>
-            </label>
+            {advanceOffer.available ? (
+              <label className={`pay-option ${payMethod === "advance" ? "active" : ""}`}>
+                <input type="radio" name="pay" value="advance" checked={payMethod === "advance"} onChange={() => setPay("advance")} />
+                <Smartphone size={22} />
+                <span>
+                  <strong>
+                    Pay in advance – Save {money(advance.flat)} <em className="pay-badge">Faster dispatch</em>
+                  </strong>
+                  <small>
+                    Pay to our verified Easypaisa merchant account &lsquo;{advanceOffer.accountName || "Zelvomart"}&rsquo;. Works with Easypaisa, JazzCash, Raast and all bank apps.
+                  </small>
+                  <small className="pay-note">Payment is checked before dispatch.</small>
+                </span>
+              </label>
+            ) : (
+              <label className="pay-option disabled">
+                <input type="radio" name="pay" disabled />
+                <CreditCard size={22} />
+                <span>
+                  <strong>Card / JazzCash / Easypaisa</strong>
+                  <small>Coming soon</small>
+                </span>
+              </label>
+            )}
           </div>
+          {payMethod === "advance" && advance.shortfall > 0 && (
+            <p className="pay-shortfall">
+              Add {money(advance.shortfall)} more to save {money(advance.flat)} with advance payment.
+            </p>
+          )}
 
           <div className={`terms-check ${termsError ? "has-error" : ""}`}>
             <label>
@@ -247,8 +287,9 @@ export function CheckoutView() {
           )}
 
           <button className="btn block lg" type="submit" disabled={submitting}>
-            <Lock size={16} /> Place Order — {money(payable)}
+            <Lock size={16} /> Place Order — {money(total)}
           </button>
+          {payMethod === "advance" && <p className="pay-safety">We never ask for your PIN or OTP.</p>}
         </form>
 
         <aside className="summary-box sticky">
@@ -290,16 +331,22 @@ export function CheckoutView() {
               <strong>−{money(discount)}</strong>
             </div>
           )}
+          {advanceOff > 0 && (
+            <div className="sum-line discount">
+              <span>Advance payment discount</span>
+              <strong>−{money(advanceOff)}</strong>
+            </div>
+          )}
           <div className="sum-line total">
             <span>Total (PKR)</span>
-            <strong>{money(payable)}</strong>
+            <strong>{money(total)}</strong>
           </div>
           <ul className="summary-assure">
             <li>
               <ShieldCheck size={16} /> Every item checked before dispatch
             </li>
             <li>
-              <Banknote size={16} /> Pay only when you receive it
+              <Banknote size={16} /> {payMethod === "advance" ? "Payment is checked before dispatch" : "Pay only when you receive it"}
             </li>
           </ul>
         </aside>

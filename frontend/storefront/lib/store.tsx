@@ -163,7 +163,10 @@ export type Order = {
   /** Customer ticked “I agree to the Terms & Conditions…” — required for storefront orders. */
   terms?: boolean;
   customer: { name: string; phone: string; email?: string; city: string; address: string; notes?: string };
-  payment: "cod";
+  payment: "cod" | "advance";
+  /** Advance payment only: the discount the backend saved and the payment page link. */
+  advanceDiscount?: number;
+  payPath?: string;
 };
 
 /** Shown when checkout answers 429: never a raw error, always a way to finish the order on WhatsApp. */
@@ -221,7 +224,7 @@ type Ctx = {
   toggleWish: (id: string) => void;
   isWished: (id: string) => boolean;
   /** Places the order on the backend (POST /api/orders) and returns it with the real order number. */
-  placeOrder: (customer: Order["customer"], opts: { terms: true }) => Promise<Order>;
+  placeOrder: (customer: Order["customer"], opts: { terms: true; payment?: "cod" | "advance" }) => Promise<Order>;
   completeOrder: () => void;
   cartOpen: boolean;
   setCartOpen: (v: boolean) => void;
@@ -539,7 +542,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
           address: customer.address,
           orderNotes: customer.notes || "",
           terms: opts.terms,
-          paymentMethod: "COD",
+          paymentMethod: opts.payment === "advance" ? "ADVANCE_EASYPAISA" : "COD",
           honeypot: "",
           cart: apiCart,
           source: { firstTouch: parseJsonCookie("zm_first_touch"), lastTouch: parseJsonCookie("zm_last_touch"), ...(parseJsonCookie("zm_last_touch") || {}) },
@@ -567,7 +570,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         total: Number(data.total ?? sub + shippingFor(cart, sub) - discount),
         terms: opts.terms,
         customer,
-        payment: "cod",
+        payment: opts.payment === "advance" ? "advance" : "cod",
+        ...(data.payPath ? { advanceDiscount: Number(data.advanceDiscount || 0), payPath: String(data.payPath) } : {}),
       };
       // The cart stays as it is until the thank-you page has mounted (completeOrder), so the checkout never
       // re-renders from an empty cart (Rs 0 / free delivery) while the next page loads. The thank-you page

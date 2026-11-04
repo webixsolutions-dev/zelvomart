@@ -198,6 +198,67 @@ function storefrontTotal(subtotal: number, coupon: number, advance: Record<strin
   console.log("ok - confirmation carries the link, not the hash");
 }
 
+// Checkout offer: demo off production; hidden in production on demo values.
+{
+  await setAdvance({});
+  const offer = (await (await fetch(`${base}/api/payments/advance`)).json()) as any;
+  assert.deepEqual(offer, { available: true, demo: true, accountName: "Zelvomart", discount: 200, minSubtotal: 0 });
+  process.env.APP_ENV = "production";
+  assert.deepEqual(await (await fetch(`${base}/api/payments/advance`)).json(), { available: false });
+  delete process.env.APP_ENV;
+  console.log("ok - checkout offer and production demo guard");
+}
+
+// Payment page: token required, first name only, switch to COD before any proof.
+{
+  const r = await order("ADVANCE_EASYPAISA", 2);
+  const url = (t: string, extra = "") => `${base}/api/pay/${r.body.orderNumber}${extra}?t=${encodeURIComponent(t)}`;
+  for (const bad of ["", "wrong", paymentToken("ZM-1")])
+    assert.equal((await fetch(url(bad))).status, 404, `bad token ${JSON.stringify(bad)}`);
+  assert.equal((await fetch(`${base}/api/pay/${r.body.orderNumber}`)).status, 404, "missing token");
+  assert.equal((await fetch(`${base}/api/pay/ZM-999999?t=${r.body.payToken}`)).status, 404, "other order");
+  const page = (await (await fetch(url(r.body.payToken))).json()) as any;
+  assert.deepEqual(
+    [page.firstName, page.total, page.advanceDiscount, page.paymentStatus, page.tillId, page.demo, page.canSwitchToCod],
+    ["Advance", 2990, 200, "AWAITING_PAYMENT", "DEMO-TILL", true, true],
+  );
+  assert.equal(page.qrUrl, "/images/payments/demo-raast-qr.png");
+  const raw = JSON.stringify(page);
+  for (const secret of ["0300", "Model Town", "Advance Test", "paymentTokenHash"])
+    assert.equal(raw.includes(secret), false, `no ${secret} on the payment page`);
+
+  const switched = await fetch(url(r.body.payToken, "/cod"), { method: "POST" });
+  assert.equal(switched.status, 200);
+  const after = (await switched.json()) as any;
+  assert.deepEqual(
+    [after.paymentMethod, after.paymentStatus, after.total, after.advanceDiscount, after.canSwitchToCod],
+    ["COD", "NOT_REQUIRED", 3190, 0, false],
+  );
+  const row = await prisma.order.findUniqueOrThrow({
+    where: { orderNumber: r.body.orderNumber },
+    include: { statusHistory: { orderBy: { createdAt: "desc" } } },
+  });
+  assert.deepEqual([row.status, Number(row.total), row.paymentMethod], ["NEW", 3190, "COD"]);
+  assert.match(row.statusHistory[0].note || "", /Cash on Delivery/);
+  assert.equal((await fetch(url(r.body.payToken, "/cod"), { method: "POST" })).status, 409, "only once");
+  console.log("ok - payment page token, privacy, switch to COD");
+}
+
+// A proof already sent blocks the switch.
+{
+  const r = await order("ADVANCE_EASYPAISA", 1);
+  const row = await prisma.order.findUniqueOrThrow({ where: { orderNumber: r.body.orderNumber } });
+  await prisma.paymentProof.create({
+    data: { orderId: row.id, tid: "T1", amountSent: 1490, senderName: "X", screenshotKey: "k", sha256: "s" },
+  });
+  const res = await fetch(`${base}/api/pay/${r.body.orderNumber}/cod?t=${encodeURIComponent(r.body.payToken)}`, {
+    method: "POST",
+  });
+  assert.equal(res.status, 409);
+  assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: row.id } })).paymentMethod, "ADVANCE_EASYPAISA");
+  console.log("ok - no switch after a proof");
+}
+
 server.close();
 await prisma.$disconnect();
 await socket.stop();

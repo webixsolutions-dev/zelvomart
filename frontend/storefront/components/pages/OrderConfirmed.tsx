@@ -101,7 +101,7 @@ export function OrderConfirmed() {
     );
   }
 
-  const waText = `Hi Zelvomart! Confirming my order ${order.id}.\n${order.lines.map((l) => `• ${l.name}${l.variant ? ` (${l.variant})` : ""} × ${l.qty}`).join("\n")}\nTotal: ${money(order.total)} (COD)\nName: ${order.customer.name}\nCity: ${order.customer.city}`;
+  const waText = `Hi Zelvomart! Confirming my order ${order.id}.\n${order.lines.map((l) => `• ${l.name}${l.variant ? ` (${l.variant})` : ""} × ${l.qty}`).join("\n")}\nTotal: ${money(order.total)} (${order.payment === "advance" ? "advance payment" : "COD"})\nName: ${order.customer.name}\nCity: ${order.customer.city}`;
 
   return (
     <section className="section pt-sm confirm-page">
@@ -120,6 +120,14 @@ export function OrderConfirmed() {
             <CopyOrderNumber id={order.id} />
           </div>
           <p className="confirm-save">Save this number to track your order.</p>
+          {order.payment === "advance" && order.payPath && (
+            <p className="confirm-pay">
+              <strong>Advance payment pending.</strong> Pay {money(order.total)} to finish your order, or switch to cash on delivery.{" "}
+              <Link className="btn" href={order.payPath}>
+                Complete your advance payment
+              </Link>
+            </p>
+          )}
           <p>
             Your order has been received. Our team will call or WhatsApp you on <strong>{order.customer.phone}</strong> to confirm before
             dispatch.
@@ -183,8 +191,14 @@ export function OrderConfirmed() {
               <strong>−{money(order.discount)}</strong>
             </div>
           ) : null}
+          {order.advanceDiscount ? (
+            <div className="sum-line discount">
+              <span>Advance payment discount</span>
+              <strong>−{money(order.advanceDiscount)}</strong>
+            </div>
+          ) : null}
           <div className="sum-line total">
-            <span>Total — Cash on Delivery</span>
+            <span>{order.payment === "advance" ? "Total — Advance payment" : "Total — Cash on Delivery"}</span>
             <strong>{money(order.total)}</strong>
           </div>
           <div className="ship-to">

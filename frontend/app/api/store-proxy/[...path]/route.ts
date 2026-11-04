@@ -11,6 +11,9 @@ const SAFE_PREFIXES = [
   "/api/settings/delivery",
   "/api/settings/public",
   "/api/cities",
+  // Advance payment (Easypaisa Till / Raast QR): checkout offer, payment page, proof upload.
+  "/api/payments/advance",
+  "/api/pay/",
 ];
 
 function backendCandidates(request: NextRequest): string[] {
