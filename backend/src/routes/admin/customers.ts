@@ -3,6 +3,7 @@ import { requireAuth, type AuthedRequest } from "../../lib/auth";
 import { normalizePakistanPhone } from "../../lib/phone";
 import type { Express } from "express";
 import { audit, routeParam } from "../../http/shared";
+import { canHardDelete, hardDeleteCustomer } from "../../lib/hard-delete";
 
 function customerInput(body: any) {
   if (
@@ -82,6 +83,47 @@ export function registerAdminCustomersRoutes(app: Express) {
     });
     await audit(req, "bulk_blocklist", "Customer", undefined, { ids, blocklisted: req.body.blocklisted });
     res.json({ updated: result.count });
+  });
+  // Deleting customers: OWNER and MANAGER only, one confirm in the admin. By default their orders stay in Orders
+  // (unlinked; each order keeps its own name/phone/address). With withOrders, those orders are deleted too, exactly
+  // like deleting them from Orders. See lib/hard-delete.ts.
+  app.post("/api/admin/customers/bulk-delete", requireAuth("customers.write"), async (req: AuthedRequest, res) => {
+    if (!canHardDelete(req)) return res.status(403).json({ error: "FORBIDDEN" });
+    const ids: string[] = Array.isArray(req.body?.ids)
+      ? [
+          ...new Set<string>(
+            req.body.ids.map((id: unknown) => (typeof id === "string" ? id : "")).filter((id: string) => id.length > 0),
+          ),
+        ].slice(0, 100)
+      : [];
+    if (!ids.length) return res.status(400).json({ error: "NO_CUSTOMERS_SELECTED" });
+    const withOrders = req.body?.withOrders === true;
+    const deleted: string[] = [];
+    const skipped: { id: string; reason: string }[] = [];
+    const errors: { id: string; error: string }[] = [];
+    let ordersDeleted = 0;
+    let ordersKept = 0;
+    for (const id of ids) {
+      try {
+        const result = await hardDeleteCustomer(req, id, withOrders);
+        if (result === "NOT_FOUND") skipped.push({ id, reason: "NOT_FOUND" });
+        else {
+          deleted.push(result.id);
+          ordersDeleted += result.ordersDeleted;
+          ordersKept += result.ordersKept;
+        }
+      } catch (error) {
+        errors.push({ id, error: error instanceof Error ? error.message : "DELETE_FAILED" });
+      }
+    }
+    res.json({ deleted, skipped, errors, ordersDeleted, ordersKept });
+  });
+  app.delete("/api/admin/customers/:id", requireAuth("customers.write"), async (req: AuthedRequest, res) => {
+    if (!canHardDelete(req)) return res.status(403).json({ error: "FORBIDDEN" });
+    const withOrders = ["1", "true"].includes(String(req.query.withOrders || ""));
+    const result = await hardDeleteCustomer(req, routeParam(req, "id"), withOrders);
+    if (result === "NOT_FOUND") return res.status(404).json({ error: "NOT_FOUND" });
+    res.json({ deleted: [result.id], ordersDeleted: result.ordersDeleted, ordersKept: result.ordersKept });
   });
   app.get("/api/admin/customers/:id", requireAuth("customers.read"), async (req, res) => {
     const row = await prisma.customer.findUnique({

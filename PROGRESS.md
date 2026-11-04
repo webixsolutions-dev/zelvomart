@@ -1036,3 +1036,21 @@ and the screenshots must match.
   an empty run); environment variable names per project and what changes at cutover; the Vercel Hobby limits runbook;
   the database move to Mumbai runbook (not run); the weekly health checklist.
 - Deploy/roll back, backup/restore and the plain-server sections are kept.
+
+## Database in Mumbai, new cron, delete customers — 4 November 2026 (branch `claude/relaxed-bardeen-9s3pa8`)
+
+- **Database moved** from Supabase Sydney to `zelvomart-mumbai` (`ap-south-1`, Free plan).
+  - All 29 tables were copied and matched by row count and content checksum.
+  - The backend now uses role `zelvomart_app` through the Mumbai pooler.
+  - Test order ZM-10017 sent both emails.
+  - Sydney is untouched until 11 Nov as the rollback (docs/OPERATIONS.md section 10).
+- **Cron:** cron-job.org had stopped reaching the backend, so 3 jobs of order ZM-10016 (3 Nov) never went out.
+  - These jobs were handed to the old worker queue (`externalId` set), so the cron skips them.
+  - `/api/cron/jobs` is now called every 5 minutes by Supabase pg_cron from inside the database, with `CRON_SECRET` rotated and kept in the Vault (section 7).
+- **Delete customers** (Admin → Customers), for Owner and Manager only, like deleting orders:
+  - from the row ⋯ menu, or as a bulk action;
+  - the confirm dialog offers "Delete customer, keep orders" (orders stay in Orders, unlinked; each keeps its own name, phone and address) or "Delete customer and N orders" (those orders are deleted exactly as from Orders: their jobs go too, so nothing is sent);
+  - the audit log keeps only the last 4 digits of the phone.
+  - Backend: `POST /api/admin/customers/bulk-delete` and `DELETE /api/admin/customers/:id?withOrders=1`. The order delete code moved to `backend/src/lib/hard-delete.ts` with no change in behaviour.
+  - Tests: `backend/scripts/customer-delete-routes.test.ts`.
+  - The row ⋯ menu on Customers now floats above the table, so its top items are no longer cut off. Both dialogs on the page are centred.
