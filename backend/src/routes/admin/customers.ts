@@ -4,6 +4,7 @@ import { normalizePakistanPhone } from "../../lib/phone";
 import type { Express } from "express";
 import { audit, routeParam } from "../../http/shared";
 import { canHardDelete, hardDeleteCustomer } from "../../lib/hard-delete";
+import { listCustomers, parseCustomerListQuery } from "../../lib/customer-list";
 
 function customerInput(body: any) {
   if (
@@ -32,28 +33,11 @@ function customerInput(body: any) {
 }
 
 export function registerAdminCustomersRoutes(app: Express) {
-  app.get("/api/admin/customers", requireAuth("customers.read"), async (_req, res) => {
-    const rows = await prisma.customer.findMany({
-      include: {
-        orders: {
-          select: { id: true, orderNumber: true, total: true, status: true, city: true, createdAt: true },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
-    res.json(
-      rows.map((c) => ({
-        ...c,
-        orders: c.orders.map((o) => ({ ...o, total: Number(o.total) })),
-        totalSpent: c.orders
-          .filter((o) => ["DELIVERED", "SETTLED"].includes(o.status))
-          .reduce((sum, o) => sum + Number(o.total), 0),
-        orderCount: c.orders.length,
-        city: c.orders[0]?.city || null,
-        lastOrder: c.orders[0]?.createdAt || null,
-      })),
-    );
+  // One page of customer summaries (SQL aggregates), plus the store-wide stats the screen shows. Query string:
+  // page, pageSize (default 10, max 100), q (name, phone, email or city), segment, sort, state, city, from, to,
+  // export=1 (every matching row, for the CSV). See lib/customer-list.ts.
+  app.get("/api/admin/customers", requireAuth("customers.read"), async (req, res) => {
+    res.json(await listCustomers(parseCustomerListQuery(req.query as Record<string, unknown>)));
   });
   app.post("/api/admin/customers", requireAuth("customers.write"), async (req: AuthedRequest, res) => {
     const data = customerInput(req.body);

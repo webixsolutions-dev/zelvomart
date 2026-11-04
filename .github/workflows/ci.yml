@@ -57,6 +57,10 @@ jobs:
       - name: Catalog card and sitemap queries integration test
         run: npm run test:catalog:integration --workspace backend
 
+      # Admin Customers paging: page boundaries, search, SQL summaries, stats equal to the old in-browser rules.
+      - name: Customers list integration test
+        run: npm run test:customers:integration --workspace backend
+
       # The order endpoint saves the delivery fee the storefront shows (packages/delivery/cases.json).
       - name: Delivery fee integration test
         run: npm run test:delivery:integration --workspace backend
