@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { advanceUsesDemoValues } from "./advance-payment";
+import { adsEnvironment } from "./ads-policy";
 const percent = z.number().finite().min(0).max(100);
 const positive = z.number().finite().positive();
 const schemas: Record<string, z.ZodType> = {
@@ -16,6 +18,30 @@ const schemas: Record<string, z.ZodType> = {
   "store.delivery": z.object({ mode: z.literal("FREE_ABOVE"), flatRate: positive, freeAbove: positive }),
   "store.bundleDefaultDiscountPercent": percent,
   "tracking.sessionReplayRetentionDays": z.number().int().min(1).max(90),
+  // Advance payment (lib/advance-payment.ts). Production refuses "enabled" while demo values are saved.
+  "payments.advance": z
+    .object({
+      enabled: z.boolean(),
+      accountName: z.string().trim().min(2).max(60),
+      tillId: z.string().trim().max(40),
+      qrImageUrl: z
+        .string()
+        .trim()
+        .max(1000)
+        .refine((url) => !url || /^https:\/\//i.test(url), "The QR image must be an https URL."),
+      discount: z.number().int().min(0).max(5000),
+      minSubtotal: z.number().int().min(0).max(1000000),
+      reminderHours: z.number().int().min(1).max(72),
+      expiryHours: z.number().int().min(1).max(168),
+      verificationHours: z.string().trim().min(1).max(60),
+      autoRead: z.boolean(),
+    })
+    .refine((v) => v.expiryHours > v.reminderHours, {
+      message: "The expiry window must be longer than the reminder window.",
+    })
+    .refine((v) => !(v.enabled && adsEnvironment() && advanceUsesDemoValues(v)), {
+      message: "Save the real Easypaisa Till ID and merchant QR image before enabling advance payment.",
+    }),
 };
 export function validateSettingsUpdate(input: unknown) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Settings must be an object.");

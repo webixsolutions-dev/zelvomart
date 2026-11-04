@@ -9,6 +9,13 @@ import { canSell } from "./stock";
 import { dispatchJobRow } from "./jobs";
 import { tiktokJobsEnabled } from "./tiktok";
 import { cityByName } from "./cities";
+import {
+  advanceAvailability,
+  advanceDiscount,
+  loadAdvanceSettings,
+  paymentToken,
+  paymentTokenHash,
+} from "./advance-payment";
 
 // Far-away database: allow time to open a connection and finish (Prisma default wait is 2s).
 const ORDER_TX_OPTIONS = { maxWait: 15_000, timeout: 90_000 };
@@ -24,7 +31,7 @@ type CheckoutInput = {
   address: string;
   postcode?: string;
   orderNotes?: string;
-  paymentMethod: "COD" | "NAYAPAY";
+  paymentMethod: "COD" | "NAYAPAY" | "ADVANCE_EASYPAISA";
   terms?: boolean;
   cart: Array<{ productId: string; variantId?: string | null; quantity: number; bundleSize: 1 | 2 }>;
   source?: Record<string, unknown>;
@@ -48,7 +55,11 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
     where: { idempotencyKey: input.idempotencyKey },
     include: { items: true },
   });
-  if (existing) return existing;
+  if (existing)
+    return Object.assign(existing, {
+      // A retried checkout gets the same payment link (the token is derived from the order number).
+      payToken: existing.paymentMethod === "ADVANCE_EASYPAISA" ? paymentToken(existing.orderNumber) : undefined,
+    });
 
   const [deliveryRule, paymentMethods, bundleDiscount, tiktokOn] = await Promise.all([
     getSetting<any>("store.delivery", {}),
@@ -56,7 +67,13 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
     getSetting<number>("store.bundleDefaultDiscountPercent", 5),
     tiktokJobsEnabled(),
   ]);
-  if (!paymentMethods.includes(input.paymentMethod)) throw new Error("PAYMENT_METHOD_DISABLED");
+  // Advance payment has its own switch (payments.advance, lib/advance-payment.ts); it is storefront-only.
+  const isAdvance = input.paymentMethod === "ADVANCE_EASYPAISA";
+  const advanceSettings = isAdvance ? await loadAdvanceSettings() : null;
+  if (isAdvance) {
+    if (input.staffCreated) throw new Error("PAYMENT_METHOD_DISABLED");
+    if (!advanceAvailability(advanceSettings!).available) throw new Error("ADVANCE_PAYMENT_UNAVAILABLE");
+  } else if (!paymentMethods.includes(input.paymentMethod)) throw new Error("PAYMENT_METHOD_DISABLED");
   if (!input.fullName.trim() || !input.phone || !input.city.trim() || !input.address.trim())
     throw new Error("REQUIRED_FIELDS");
 
@@ -142,7 +159,8 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
   const existingCustomer = await prisma.customer.findUnique({ where: { phone: input.phone } });
   const blocklisted = Boolean(existingCustomer?.blocklisted);
   const cityKnown = await cityByName(input.city);
-  const initialStatus: OrderStatus = blocklisted ? "ON_HOLD" : "NEW";
+  // A prepaid order waits on hold until staff verify the payment (OrderStatus itself is unchanged).
+  const initialStatus: OrderStatus = blocklisted || isAdvance ? "ON_HOLD" : "NEW";
 
   const result = await prisma.$transaction(async (tx) => {
     await tx.sequence.upsert({
@@ -212,6 +230,9 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
     if (input.couponCode)
       await tx.$queryRaw`SELECT "id" FROM "Coupon" WHERE "code"=${couponCode(input.couponCode)} FOR UPDATE`;
     const coupon = await validateCoupon(input.couponCode, discountedSubtotal, tx);
+    // Computed here from the settings, never taken from the client (same rule the storefront shows).
+    const advanceOff = isAdvance ? advanceDiscount(advanceSettings!, discountedSubtotal, total - coupon.discount) : 0;
+    const payToken = isAdvance ? paymentToken(orderNumber) : undefined;
     const order = await tx.order.create({
       data: {
         orderNumber,
@@ -229,11 +250,14 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
             .join("\n") || null,
         status: initialStatus,
         paymentMethod: input.paymentMethod,
+        paymentStatus: isAdvance ? "AWAITING_PAYMENT" : "NOT_REQUIRED",
+        advanceDiscount: decimal(advanceOff),
+        paymentTokenHash: payToken ? paymentTokenHash(payToken) : null,
         subtotal: decimal(subtotal),
         bundleSaving: decimal(bundleSaving),
         deliveryFee: decimal(deliveryFee),
         codFee: decimal(0),
-        total: decimal(total - coupon.discount),
+        total: decimal(total - coupon.discount - advanceOff),
         couponCode: coupon.code,
         couponDiscount: decimal(coupon.discount),
         source: sourceName,
@@ -270,7 +294,11 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
         statusHistory: {
           create: {
             to: initialStatus,
-            note: blocklisted ? "Order held because this customer is blocklisted." : "Order placed.",
+            note: blocklisted
+              ? "Order held because this customer is blocklisted."
+              : isAdvance
+                ? "Waiting for advance payment."
+                : "Order placed.",
           },
         },
       },
@@ -315,11 +343,15 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
           ]),
     ]);
 
-    return { order, jobIds: jobs.map((job) => job.id), soldOutSlugs };
+    return { order, jobIds: jobs.map((job) => job.id), soldOutSlugs, payToken };
   }, ORDER_TX_OPTIONS);
 
   if (options.dispatchJobs !== false) await Promise.allSettled(result.jobIds.map((id) => dispatchJobRow(id)));
-  return Object.assign(result.order, { jobIds: result.jobIds, soldOutSlugs: result.soldOutSlugs });
+  return Object.assign(result.order, {
+    jobIds: result.jobIds,
+    soldOutSlugs: result.soldOutSlugs,
+    payToken: result.payToken,
+  });
 }
 
 export async function restoreOrderStock(orderId: string) {

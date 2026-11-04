@@ -31,7 +31,7 @@ export const checkoutSchema = z
     orderNotes: z.string().trim().max(1000).optional().or(z.literal("")),
     // Older clients may still send this. The checkout displays a terms notice, not a required checkbox.
     terms: z.boolean().optional(),
-    paymentMethod: z.enum(["COD", "NAYAPAY"]).default("COD"),
+    paymentMethod: z.enum(["COD", "NAYAPAY", "ADVANCE_EASYPAISA"]).default("COD"),
     cart: z.array(cartItemSchema).min(1).max(50),
     honeypot: z.string().max(0).optional().or(z.literal("")),
     source: z.record(z.string(), z.unknown()).optional(),
