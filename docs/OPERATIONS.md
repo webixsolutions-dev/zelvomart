@@ -7,21 +7,21 @@ values except public addresses. Keep secret values in the hosting dashboards and
 
 ```
 Visitor ─► Cloudflare DNS ─► Vercel: storefront (Next.js, frontend/) ─► Vercel: backend API (Express, backend/)
-                                     │                                        ├──► Supabase Postgres (Sydney today)
+                                     │                                        ├──► Supabase Postgres (Mumbai)      
                                      └── images, videos ◄── media.zelvomart.com├──► Cloudflare R2 (uploads, recordings)
                                          (Cloudflare R2 + CDN cache)          └──► Resend (emails)
-cron-job.org ─► backend /api/cron/jobs        Vercel cron ─► backend /api/cron/daily
+Supabase pg_cron ─► backend /api/cron/jobs    Vercel cron ─► backend /api/cron/daily
 ```
 
 | Service | What it does |
 |---|---|
 | **GitHub** (`webixsolutions-dev/zelvomart`) | The code. Merging into `main` deploys both projects. CI ("Typecheck, tests, build") must be green first. |
 | **Vercel**, team `zelvomart` (Hobby plan today) | Two projects from this repo, both in region `bom1` (Mumbai): `zelvomart-storefront` (`frontend/`, domains `zelvomart.com` → 308 → `www.zelvomart.com`) and `zelvomart-backend` (`backend/`, public URL `zelvomart-backend-eta.vercel.app`). |
-| **Supabase Postgres** (project in `ap-southeast-2`, Sydney) | The only database: products, orders, customers, settings, job queue. The app connects through the pooler (`DATABASE_URL`); schema tools use the direct connection (`DIRECT_URL`). Moving it to Mumbai: section 10. |
+| **Supabase Postgres**, project `zelvomart-mumbai` (`wegjtgsoeuljakogduwu`, `ap-south-1` Mumbai, Free plan) | The only database: products, orders, customers, settings, job queue. Moved from Sydney on 4 Nov 2026 (section 10). The app logs in as role `zelvomart_app` (owns the tables) through the pooler `aws-0-ap-south-1.pooler.supabase.com`: `DATABASE_URL` = port 6543 (transaction), `DIRECT_URL` = port 5432 (session). The "Direct connection" host is IPv6-only on the Free plan, and the backend connects over IPv4, so do not use it. It also runs the 5-minute cron (section 7). |
 | **Cloudflare** (Free plan) | DNS for `zelvomart.com` (section 2), R2 storage and the CDN in front of `media.zelvomart.com` (section 3). |
 | **Hostinger** | Domain registration and the mailbox only. Nameservers point to Cloudflare. |
 | **Resend** | Sends every email: order alerts to the team, customer confirmations and status updates, the cart offer, the contact form, the daily summary. |
-| **cron-job.org** | Calls `/api/cron/jobs` every 5 minutes: retries anything that did not go out at once and sends the cart offer (section 7). |
+| **Supabase pg_cron** (inside the Mumbai database) | Calls `/api/cron/jobs` every 5 minutes: retries anything that did not go out at once and sends the cart offer (section 7). Replaced cron-job.org on 4 Nov 2026, after cron-job.org had stopped reaching the backend. |
 
 ## 2. DNS (Cloudflare)
 
@@ -126,7 +126,7 @@ build time, so changing it needs a redeploy.
 | `REVALIDATION_SECRET` | Shared with the storefront; lets the backend refresh storefront pages after a save. |
 | `STORE_PROXY_SECRET` | Shared with the storefront; lets the storefront pass the visitor's real IP (fair rate limits). |
 | `JOB_MODE` | `cron` = jobs are sent instantly and retried by the cron routes (current setup); `worker` = the always-on worker sends them. If it is missing, the backend uses `cron` on Vercel and `worker` elsewhere, and logs one `[jobs] JOB_MODE is not set` warning at start. Always set it explicitly. |
-| `CRON_SECRET` | Password the cron service sends as `Authorization: Bearer …`. |
+| `CRON_SECRET` | Password the cron sends as `Authorization: Bearer …`. A copy lives in the Supabase Vault as `zelvomart_cron_secret`; when you change one, change the other (section 7). |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO` | Email sending. |
 | `ORDERS_EMAIL_FROM`, `OFFERS_EMAIL_FROM` | Optional sender names for order and offer emails. |
 | `ORDER_ALERT_RECIPIENTS`, `SUPPORT_EMAIL_TO`, `OFFERS_COPY_TO` | Who gets new-order alerts, contact-form mail, and hidden copies of offer emails (the admin setting wins over these). |
@@ -187,19 +187,28 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 
 | URL | Method | Auth header | Interval | What it does | Answers |
 |---|---|---|---|---|---|
-| `https://<backend>/api/cron/jobs` | POST | `Authorization: Bearer <CRON_SECRET>` | every 5 minutes (cron-job.org) | Retries order emails and Meta/TikTok events that did not go out at once (up to 25 per call), then sends the 5% cart offer about an hour after a cart was left. | 200 with `processed`, `failed`, `remaining`; **409** if `JOB_MODE` is not `cron` (checked first); **401** on a wrong or missing secret (503 if `CRON_SECRET` is not set at all). |
+| `https://<backend>/api/cron/jobs` | POST | `Authorization: Bearer <CRON_SECRET>` | every 5 minutes (Supabase pg_cron job `zelvomart-jobs-every-5-min`) | Retries order emails and Meta/TikTok events that did not go out at once (up to 25 per call), then sends the 5% cart offer about an hour after a cart was left. | 200 with `processed`, `failed`, `remaining`; **409** if `JOB_MODE` is not `cron` (checked first); **401** on a wrong or missing secret (503 if `CRON_SECRET` is not set at all). |
 | `https://<backend>/api/cron/daily` | GET or POST | same | **Vercel cron, daily at 00:00 UTC** (`backend/vercel.json`) | Removes old rate-limit rows, expired recordings, and jobs and events older than 30 days; sends the daily summary email. | 200; 401 on a wrong secret. |
 
-- `<backend>` is `zelvomart-backend-eta.vercel.app` today. After any backend URL change, update the cron-job.org job.
+- `<backend>` is `zelvomart-backend-eta.vercel.app` today. The 5-minute call is made by the database itself:
+  pg_cron runs `select zm_ops.call_backend_cron('/api/cron/jobs')`, which reads the key from the Vault
+  (`zelvomart_cron_secret`) and posts with pg_net. After a backend URL change, update the URL inside
+  `zm_ops.call_backend_cron`. After changing `CRON_SECRET` in Vercel, update the Vault secret
+  (`select vault.update_secret((select id from vault.secrets where name = 'zelvomart_cron_secret'), '<new key>');`)
+  and redeploy the backend.
+- **Check the cron** (Supabase → SQL editor): `select id, status_code, left(content::text, 200), error_msg, created
+  from net._http_response order by id desc limit 5;` Every 5 minutes there should be a 200 with `remaining` 0.
+  Run it by hand with `select zm_ops.call_backend_cron('/api/cron/jobs');`.
 - Cost of an empty `/api/cron/jobs` run: one function call and one small database query. Every 5 minutes is about
   8,600 calls a month, under 1% of the Hobby invocation allowance.
-- Do not also call `/api/cron/daily` from cron-job.org, or the daily summary arrives twice.
+- Do not also call `/api/cron/daily` from pg_cron, or the daily summary arrives twice.
 - Orders do not wait for the cron: their emails and events go out right after the order is saved.
 - **Stuck jobs:** Admin → Tracking shows a red warning when jobs are still QUEUED after 15 minutes. The cron is not
   calling `/api/cron/jobs`, or `JOB_MODE` is not `cron`.
 - **When the queue grows** (`remaining` above 0 on several runs, or failed rows in Admin → Jobs): read the error on
   the failed rows (usually Resend, a Meta/TikTok token, or the database), fix it, and the next runs clear the
-  backlog 25 per call. Use cron-job.org "Run now" a few times for a large backlog; do not shorten the schedule.
+  backlog 25 per call. For a large backlog, run `select zm_ops.call_backend_cron('/api/cron/jobs');` a few times; do
+  not shorten the schedule.
 
 ## 8. Adding products and videos
 
@@ -218,7 +227,7 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 
 ### Backup and restore
 
-- Supabase keeps daily backups on its side (see Database → Backups for what the current plan includes).
+- The Free plan has **no automatic backups** you can restore yourself, so your own weekly copy is the backup.
 - Keep your own copy too: once a week, and always before any schema change or bulk edit, run
   `pg_dump --format=custom --no-owner "<DIRECT_URL>" > zelvomart-YYYY-MM-DD.dump` from a trusted computer. Store
   the file off the server.
@@ -228,7 +237,24 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 - Never run imports, scripts or migrations against the live database without a fresh backup.
 
 
-### Moving the database to Mumbai (runbook only; the owner runs it with an explicit "yes")
+### Move to Mumbai: done on 4 Nov 2026
+
+- **What was done:**
+  - created `zelvomart-mumbai` (Free plan);
+  - built the schema from `prisma/schema.prisma`, with the same lock-down as `prisma/sql/01-lock-public-schema.sql`;
+  - copied all 29 public tables straight from Sydney over a temporary read-only link;
+  - checked that row counts and a content checksum matched on every table (2,045 rows);
+  - switched `DATABASE_URL`/`DIRECT_URL` and redeployed;
+  - confirmed nothing was written to Sydney after the final copy;
+  - placed test order ZM-10017, whose emails went out;
+  - removed the temporary link and login.
+- **Not copied:** the old `pgboss` schema, legacy worker history. pg-boss recreates it if worker mode is ever used.
+- **Rollback until 11 Nov 2026:** the Sydney project `hablwjnkprkisnfvkmca` is untouched. The fastest way back is
+  Vercel → `zelvomart-backend` → Deployments → promote `dpl_3Yaupx5VWQwJmVtYQ6JpWux8gWd5` (built with the Sydney
+  connection strings). After a rollback, copy any orders taken in Mumbai back by hand. After 11 Nov, pause or
+  delete the Sydney project.
+
+### How the move was planned (for reference)
 
 Functions run in Mumbai (`bom1`) while the database is in Sydney, so every query crosses the ocean. Moving it to
 Supabase `ap-south-1` (Mumbai) removes that delay.
@@ -290,8 +316,8 @@ in the same process, and the pool keeps connections open longer.
 2. **Supabase:** Usage → egress on track; Database → Query performance → the top queries look normal.
 3. **Cloudflare:** Analytics for `zelvomart.com` and R2 metrics for `zelvomart-media` look normal; no DNS record
    changed by accident (all 15 still grey cloud).
-4. **Jobs:** Admin → Tracking shows no stuck-jobs warning; Admin → Jobs has no failed rows piling up;
-   cron-job.org runs are green with `remaining` 0.
+4. **Jobs:** Admin → Tracking shows no stuck-jobs warning; Admin → Jobs has no failed rows piling up; the cron
+   check in section 7 shows 200s with `remaining` 0.
 5. **Mail test:** send a mail to and from the zelvomart mailbox; check Resend → Logs for bounces or failures.
 6. **Backups:** this week's database dump exists (section 10).
 7. Open the shop on a phone: home, a category, a product, add to cart, open checkout.
