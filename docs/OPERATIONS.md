@@ -132,7 +132,7 @@ build time, so changing it needs a redeploy.
 | `ORDER_ALERT_RECIPIENTS`, `SUPPORT_EMAIL_TO`, `OFFERS_COPY_TO` | Who gets new-order alerts, contact-form mail, and hidden copies of offer emails (the admin setting wins over these). |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`, `S3_FORCE_PATH_STYLE` | R2 media bucket for uploads. |
 | `LOCAL_UPLOAD_DIR` | Only when R2 is not configured: a folder on the server for uploads. |
-| `REPLAY_S3_BUCKET`, `SESSION_REPLAY_RETENTION_DAYS` | R2 bucket for recordings and how many days to keep them (admin setting wins). |
+| `REPLAY_S3_BUCKET`, `SESSION_REPLAY_RETENTION_DAYS` | R2 bucket for recordings and how many days to keep them: 14 (admin setting wins; anything above 14 is treated as 14, because the R2 lifecycle rule deletes the files after 14 days). |
 | `META_PIXEL_ID`, `META_CAPI_TOKEN`, `META_TEST_EVENT_CODE`, `META_GRAPH_VERSION`, `META_PAGE_ID`, `META_INSTAGRAM_ACCOUNT_ID`, `META_AD_ACCOUNT_ID`, `META_MARKETING_ACCESS_TOKEN` | Meta Pixel / Conversions API and Meta marketing tools. |
 | `TIKTOK_PIXEL_ID`, `TIKTOK_ACCESS_TOKEN`, `TIKTOK_EVENTS_API_TOKEN`, `TIKTOK_TEST_EVENT_CODE` | TikTok events (off unless switched on). |
 | `POSTEX_TRACKING_BASE_URL` | Courier tracking link used in emails. |
@@ -221,7 +221,7 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 
 - `NEXT_PUBLIC_SESSION_REPLAY_SAMPLE_RATE` (default 0.25) of visits are recorded; `/admin` never is.
 - A recording ends after 10 minutes, or once the tab has been hidden for more than a minute.
-- Recordings stay un-masked (owner decision) and are kept `SESSION_REPLAY_RETENTION_DAYS` (admin setting wins).
+- Recordings stay un-masked (owner decision) and are kept 14 days: the R2 lifecycle rule on `zelvomart-replays` deletes `replays/` files after 14 days, and the daily cleanup deletes the matching rows at the same age (`backend/src/lib/replay-retention.ts`; admin setting Tracking → Retention Window, capped at 14).
 
 ## 10. Database
 

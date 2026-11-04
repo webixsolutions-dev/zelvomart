@@ -16,6 +16,7 @@ import { money } from "../src/lib/format";
 import { setSetting, getSetting } from "../src/lib/settings";
 import { assertWorkerDatabase, expiredBacklog } from "../src/lib/launch-jobs";
 import { SITE_ORIGIN } from "../src/lib/site-url";
+import { replayCutoff, replayRetentionDays } from "../src/lib/replay-retention";
 
 async function withJobLog<T>(jobLogId: string | undefined, fn: () => Promise<T>) {
   if (jobLogId) {
@@ -344,13 +345,7 @@ async function main() {
     const settingDays = await getSetting<number | string | null>("tracking.sessionReplayRetentionDays", null).catch(
       () => null,
     );
-    const parsedSettingDays = settingDays !== null && settingDays !== undefined ? Number(settingDays) : NaN;
-    const days =
-      Number.isFinite(parsedSettingDays) && parsedSettingDays > 0
-        ? parsedSettingDays
-        : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
-    if (!Number.isFinite(days) || days <= 0) return 0;
-    const cutoff = new Date(Date.now() - days * 86400000);
+    const cutoff = replayCutoff(replayRetentionDays(settingDays));
     const result = await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } });
     return result.count;
   });

@@ -15,6 +15,7 @@ import { cleanStockStatus, itemStockStatus, productStockStatus, trackedQuantity 
 import { BUY_TWO_DISCOUNT_PERCENT, priceSummary, variantPriceSummary } from "../lib/pricing";
 import { consumeRateLimit, consumeRateLimits, requestIp } from "../lib/rate-limit";
 import type { LimitRule } from "../lib/store-limits";
+import { replayCutoff, replayRetentionDays } from "../lib/replay-retention";
 
 export const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
 
@@ -655,15 +656,10 @@ export async function maybeCleanupOldSessionReplays() {
   const settingDays = await getSetting<number | string | null>("tracking.sessionReplayRetentionDays", null).catch(
     () => null,
   );
-  const parsedSettingDays = settingDays !== null && settingDays !== undefined ? Number(settingDays) : NaN;
-  const days =
-    Number.isFinite(parsedSettingDays) && parsedSettingDays > 0
-      ? parsedSettingDays
-      : Number(process.env.SESSION_REPLAY_RETENTION_DAYS || 30);
-  if (!Number.isFinite(days) || days <= 0) return;
+  const days = replayRetentionDays(settingDays);
   const now = Date.now();
   if (now - replayCleanupAt < 6 * 60 * 60 * 1000) return;
   replayCleanupAt = now;
-  const cutoff = new Date(now - days * 86400000);
+  const cutoff = replayCutoff(days, now);
   await prisma.sessionReplay.deleteMany({ where: { startedAt: { lt: cutoff } } }).catch(() => undefined);
 }

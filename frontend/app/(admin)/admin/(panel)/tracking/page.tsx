@@ -214,9 +214,9 @@ export default function Tracking() {
             <StatusBadge value={!sessionReplay?.enabled ? "Disabled" : !sessionReplay?.configured ? "Not recording" : "Active"} />
           </div>
           <strong className="status-copy">
-            {!sessionReplay?.enabled ? "Disabled" : !sessionReplay?.configured ? "R2 bucket not configured" : `${sessionReplay?.retentionDays || 30}-Day Retention`}
+            {!sessionReplay?.enabled ? "Disabled" : !sessionReplay?.configured ? "R2 bucket not configured" : `${sessionReplay?.retentionDays || 14}-Day Retention`}
           </strong>
-          <p>{sessionReplay?.enabled && !sessionReplay?.configured ? "Nothing is recorded until REPLAY_S3_BUCKET is set on the backend." : `Purge cycle: ${sessionReplay?.retentionDays || 30} days retention`}</p>
+          <p>{sessionReplay?.enabled && !sessionReplay?.configured ? "Nothing is recorded until REPLAY_S3_BUCKET is set on the backend." : `Purge cycle: ${sessionReplay?.retentionDays || 14} days retention`}</p>
           <i style={{ width: sessionReplay?.enabled && sessionReplay?.configured ? "100%" : "0%" }} />
         </article>
       </div>
