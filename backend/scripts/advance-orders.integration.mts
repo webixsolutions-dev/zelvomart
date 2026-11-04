@@ -665,6 +665,100 @@ await setAdvance({});
   assert.equal(ids.includes(p1.orderId), false);
   console.log("ok - admin payments: roles, verify needs a reference, partial, reject, refund, COD to collect, filter");
 }
+
+// Auto-read (Gemini intercepted, no real call): off by default; with the switch and a key it prefills the form and
+// fills the staff comparison, flags a different receiver, and never changes a proof's status.
+{
+  const { processJobRow } = await import("../src/lib/job-processor");
+  const calls: any[] = [];
+  let answer: Record<string, unknown> = {};
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: any, init?: any) => {
+    const url = String(input?.url || input);
+    if (!url.startsWith("https://generativelanguage.googleapis.com")) return realFetch(input, init);
+    calls.push({ url, headers: init?.headers, body: JSON.parse(String(init?.body)) });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+  const read = async (orderNumber: string, token: string, file: Buffer) => {
+    const form = new FormData();
+    form.set("screenshot", new Blob([new Uint8Array(file)], { type: "image/jpeg" }), "s.jpg");
+    const res = await fetch(`${base}/api/pay/${orderNumber}/proof/read?t=${encodeURIComponent(token)}`, {
+      method: "POST",
+      body: form,
+      headers: { "x-zm-proxy-secret": "isolated-proxy-secret", "x-zm-client-ip": `10.7.${n}.1` },
+    });
+    return (await res.json()) as any;
+  };
+  try {
+    // Off (default): no call, no job, no prefill.
+    await setAdvance({});
+    process.env.GEMINI_API_KEY = "isolated-gemini-key";
+    const off = await order("ADVANCE_EASYPAISA", 1);
+    const offPage = (await (
+      await fetch(`${base}/api/pay/${off.body.orderNumber}?t=${off.body.payToken}`)
+    ).json()) as any;
+    assert.equal(offPage.autoRead, false);
+    assert.deepEqual(await read(off.body.orderNumber, off.body.payToken, await shot(50)), { prefill: null });
+    await sendProof(off.body.orderNumber, off.body.payToken, good(off.body.total, "OFFREAD" + n), await shot(51));
+    const offId = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: off.body.orderNumber } })).id;
+    assert.equal(await prisma.job.count({ where: { orderId: offId, name: "advance-proof-autoread" } }), 0);
+    assert.equal(calls.length, 0, "no Gemini call while off");
+
+    // On.
+    await setAdvance({ autoRead: true });
+    const r = await order("ADVANCE_EASYPAISA", 1);
+    const page = (await (await fetch(`${base}/api/pay/${r.body.orderNumber}?t=${r.body.payToken}`)).json()) as any;
+    assert.equal(page.autoRead, true);
+    answer = {
+      isPaymentReceipt: true,
+      tid: "READ12345",
+      amount: r.body.total,
+      sender: "Ali Raza",
+      receiver: "Other Shop",
+      confidence: 0.9,
+    };
+    const pre = await read(r.body.orderNumber, r.body.payToken, await shot(52));
+    assert.deepEqual(pre.prefill, { tid: "READ12345", amount: r.body.total, sender: "Ali Raza" });
+    assert.equal(calls[0].headers["x-goog-api-key"], "isolated-gemini-key");
+    assert.equal(calls[0].url.includes("isolated-gemini-key"), false);
+    const sent = Buffer.from(calls[0].body.contents[0].parts[1].inline_data.data, "base64");
+    assert.equal((await sharp(sent).metadata()).exif, undefined, "metadata removed before sending");
+    assert.equal(sent.includes(Buffer.from("secret-phone-owner")), false);
+    assert.equal(
+      await prisma.paymentProof.count({ where: { order: { orderNumber: r.body.orderNumber } } }),
+      0,
+      "prefill stores nothing",
+    );
+
+    await sendProof(r.body.orderNumber, r.body.payToken, good(r.body.total, "READ12345"), await shot(52));
+    const id = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: r.body.orderNumber } })).id;
+    const job = await prisma.job.findFirstOrThrow({ where: { orderId: id, name: "advance-proof-autoread" } });
+    await prisma.job.update({ where: { id: job.id }, data: { status: "QUEUED", attempts: 0 } });
+    await processJobRow(job.id);
+    const proof = await prisma.paymentProof.findFirstOrThrow({ where: { orderId: id } });
+    assert.deepEqual(
+      [proof.ocrTid, Number(proof.ocrAmount), proof.ocrReceiver, proof.receiverMismatch, proof.status],
+      ["READ12345", r.body.total, "Other Shop", true, "SUBMITTED"],
+    );
+    const o = await prisma.order.findUniqueOrThrow({ where: { id } });
+    assert.deepEqual([o.status, o.paymentStatus], ["ON_HOLD", "SUBMITTED"], "auto-read never verifies");
+
+    // A confident read of a non-receipt prefills nothing.
+    answer = { isPaymentReceipt: false, tid: "X", amount: 5, confidence: 0.99 };
+    const r2 = await order("ADVANCE_EASYPAISA", 1);
+    assert.deepEqual(await read(r2.body.orderNumber, r2.body.payToken, await shot(53)), { prefill: null });
+    console.log(
+      "ok - auto-read: off by default, prefill, staff hints, receiver flag, never verifies, metadata removed",
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+    delete process.env.GEMINI_API_KEY;
+    await setAdvance({});
+  }
+}
 rmSync(proofDir, { recursive: true, force: true });
 
 server.close();

@@ -1054,3 +1054,41 @@ and the screenshots must match.
   - Backend: `POST /api/admin/customers/bulk-delete` and `DELETE /api/admin/customers/:id?withOrders=1`. The order delete code moved to `backend/src/lib/hard-delete.ts` with no change in behaviour.
   - Tests: `backend/scripts/customer-delete-routes.test.ts`.
   - The row ⋯ menu on Customers now floats above the table, so its top items are no longer cut off. Both dialogs on the page are centred.
+
+## Advance payment by Easypaisa Till / Raast QR — 4 November 2026 (five stacked PRs)
+
+- **1/5 (#64)** adds the schema, the `payments.advance` setting and server-side totals. The advance discount is
+  computed in the shared `@zelvomart/delivery` code, so the storefront and backend always agree.
+  - Advance orders are created **On hold** with "Waiting for advance payment".
+  - The courier COD amount (`codToCollect`) is added to the CSV export and the order detail.
+  - Migration `202611050001_advance_payment` is a file only. It is **not applied anywhere**, and it must be applied
+    before #64 is merged.
+- **2/5 (#65)** adds the checkout option and the guest payment page `/pay/ZM-…?t=…`. The page covers the Till and QR
+  tabs, copy buttons, help sheet, demo banner, "Pay on delivery instead" and the production guard.
+- **3/5 (#67)** adds proof upload, image clean-up and private storage.
+  - SHA-256 and dHash are stored, and flags are raised for amount, duplicate TID, duplicate image and time.
+  - Emails: team proof email, customer received/verified/issue, pay link in the order email.
+  - The cron sends one reminder, then marks the payment expired.
+- **4/5 (#68)** adds Admin → Payments.
+  - Verify (needs the merchant reference), Mark partial, Reject and Refund recorded, each one audited.
+  - The order detail page has a payment card and a "courier collects" line; the invoice and packing slip show the
+    amount too.
+  - Orders filter "Advance payment – needs verification"; Settings → Advance payment with an untouched QR upload.
+- **5/5** adds the optional Gemini auto-read (off by default; needs the switch and `GEMINI_API_KEY`). It prefills
+  the proof form and fills the staff comparison. It never verifies.
+- Tests: `test:advance:integration` (PGlite, real routes), `payment-proof.test.ts`, `proof-autoread.test.ts`,
+  `advance-payment.test.ts`, and the storefront `advance-quote.test.ts`.
+
+### Left for the owner (not done)
+1. Apply `backend/prisma/migrations/202611050001_advance_payment/migration.sql` on Mumbai, then merge #64 → #65 →
+   #67 → #68 → 5/5 in order.
+2. Confirm that the R2 lifecycle rule on the replay bucket covers `replays/` only, or set `PAYMENT_PROOF_S3_BUCKET`
+   to a new private bucket.
+3. Optional env: `PAYMENT_LINK_SECRET`; `GEMINI_API_KEY` only if auto-read is wanted.
+4. Settings → Advance payment:
+   - enter the real Till ID and upload the real Raast QR;
+   - set the minimum and the verification hours;
+   - test the QR from a phone gallery in two bank apps;
+   - then enable.
+5. Ask Easypaisa to confirm the merchant name customers see. Place one real Rs 10 test payment, verify it in Admin →
+   Payments, then refund it.

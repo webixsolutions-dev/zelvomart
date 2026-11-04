@@ -12,6 +12,7 @@ import {
   sendAdvanceReminderEmail,
   sendAdvanceVerifiedEmail,
 } from "./advance-email";
+import { runProofAutoRead } from "./proof-autoread-job";
 
 type Row = Awaited<ReturnType<typeof prisma.job.findUnique>>;
 
@@ -104,6 +105,8 @@ async function handle(row: NonNullable<Row>, data: Record<string, any>, orderId:
       return sendAdvanceIssueEmail(orderId, String(data.proofId));
     case "advance-reminder-email":
       return sendAdvanceReminderEmail(orderId);
+    case "advance-proof-autoread":
+      return runProofAutoRead(String(data.proofId));
     default:
       throw new Error(`Unsupported cron job: ${row.name}`);
   }

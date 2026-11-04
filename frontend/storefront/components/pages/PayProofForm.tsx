@@ -68,6 +68,9 @@ export function PayProofForm({
   const [senderLast4, setSenderLast4] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [sending, setSending] = useState(false);
+  const [reading, setReading] = useState(false);
+  const [readNote, setReadNote] = useState("");
+  const amountTouched = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   /** Typing in a field clears its message (and the form-level one). */
   const clear = (key: keyof Errors) =>
@@ -100,6 +103,46 @@ export function PayProofForm({
       }));
     setFile(next);
     setPreview(URL.createObjectURL(next));
+    if (info.autoRead) void autoFill(next);
+  }
+
+  /** Auto-read (when the shop turned it on): fills empty fields only; the customer checks and can change them. */
+  async function autoFill(next: File) {
+    setReading(true);
+    setReadNote("");
+    try {
+      const image = await prepareScreenshot(next);
+      const form = new FormData();
+      form.set(
+        "screenshot",
+        image,
+        image === next ? next.name : "screenshot.jpg",
+      );
+      const response = await fetch(api.replace("?t=", "/proof/read?t="), {
+        method: "POST",
+        body: form,
+      });
+      const { prefill } = (await response.json().catch(() => ({}))) as {
+        prefill?: {
+          tid: string | null;
+          amount: number | null;
+          sender: string | null;
+        } | null;
+      };
+      if (!prefill) return;
+      if (prefill.tid) setTid((current) => current || prefill.tid!);
+      if (prefill.sender)
+        setSenderName((current) => current || prefill.sender!);
+      if (prefill.amount && !amountTouched.current)
+        setAmount(String(prefill.amount));
+      setReadNote(
+        "We filled in what we could read from your screenshot. Please check it.",
+      );
+    } catch {
+      // No hint: the customer types the details.
+    } finally {
+      setReading(false);
+    }
   }
 
   function validate(): Errors {
@@ -213,6 +256,11 @@ export function PayProofForm({
         )}
       </label>
       {err("screenshot")}
+      {(reading || readNote) && (
+        <p className={styles.formHint} role="status">
+          {reading ? "Reading your screenshot…" : readNote}
+        </p>
+      )}
       <div className="fields">
         <label>
           Transaction ID (TID) *
@@ -236,6 +284,7 @@ export function PayProofForm({
             value={amount}
             onChange={(e) => {
               setAmount(e.target.value.replace(/[^\d.]/g, ""));
+              amountTouched.current = true;
               clear("amount");
             }}
             inputMode="decimal"
