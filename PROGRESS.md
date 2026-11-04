@@ -949,3 +949,28 @@ and the screenshots must match.
 - Tests:
   - the catalog integration test now also checks a repeat read is served from the cache and a product save clears it;
   - the cache-key unit test is updated.
+
+## Final setup Group 3: session replay cost — 4 November 2026 (branch `perf/replay-cost`)
+
+- Recordings stay un-masked (owner decision); nothing changes in how events are stored (private bucket).
+- Sampling: `NEXT_PUBLIC_SESSION_REPLAY_SAMPLE_RATE` (default `0.25`), decided once per tab session and kept in
+  `sessionStorage` (`zm_replay_sampled`). `/admin` is never recorded.
+  Visitors outside the sample still send a light `/start` with `record:false` (no lock, no daily quota, nothing
+  recorded), so the dashboard's traffic sources and the order page's device/landing page keep working.
+- A recording ends after 10 minutes, or once the tab has been hidden for more than a minute, or at 90 chunks
+  (backend hard limit 120, was 400).
+- Uploads: one chunk every 15 s (was 5 s), up to 500 events (was 100), plus the page snapshot at once and a final
+  chunk on page hide that fits the browser's keepalive limit.
+- Backend chunk insert: no `pg_advisory_xact_lock` and no transaction. The existing unique `(sessionId, sequence)` key
+  with `ON CONFLICT DO NOTHING` admits a chunk once; the chunk file is written once (`If-None-Match: *`).
+  No schema change.
+- The session row (lastSeenAt, lastUrl, totals) is written for the first chunk, the first snapshot, then at most about
+  once a minute, always with exact totals from the chunk rows. `/end` and the admin replay list bring the last minute in.
+  Browser events no longer take a lock and touch `lastSeenAt` at most once a minute.
+- Tests: 8 backend ingest tests on PGlite (hard limit, duplicates never overwrite, 6 parallel copies stored once,
+  no advisory lock, row written once a minute with exact totals, record:false) and 4 frontend tests
+  (sample rate, decision remembered, chunk size, stop rules).
+- Checked in a browser on the local stack: a 2.3-minute visit sent 8 chunks (every 15 s), the session row was written
+  3 times, totals exact; after 65 s hidden the recording ended. An unsampled visit sent only `/start` with
+  `record:false`. `/admin` sent nothing. The admin viewer plays a recording made with the old code and one made with
+  the new code.

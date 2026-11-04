@@ -7,7 +7,13 @@ import {
   readReplayChunk,
   prepareReplayChunk,
 } from "../lib/replay-storage";
-import { ingestReplayChunk, startReplaySession } from "../lib/replay-ingest";
+import {
+  ingestReplayChunk,
+  reconcileReplayTotals,
+  refreshReplayTotals,
+  REPLAY_CHUNK_MAX_EVENTS,
+  startReplaySession,
+} from "../lib/replay-ingest";
 import { createMemoryRateLimiter } from "../lib/rate-limit-store";
 import { requestIp } from "../lib/rate-limit";
 import express from "express";
@@ -104,6 +110,8 @@ export function registerReplayRoutes(app: Express) {
         metadata,
       },
       updateData,
+      // Visitors outside the replay sample send record:false: analytics row only, nothing is recorded.
+      req.body.record !== false,
     );
     if (result.status !== 200) {
       if (result.retryAfterSeconds) res.setHeader("Retry-After", String(result.retryAfterSeconds));
@@ -124,7 +132,7 @@ export function registerReplayRoutes(app: Express) {
       sequence < 0 ||
       sequence > 2147483647 ||
       events.length < 1 ||
-      events.length > 100
+      events.length > REPLAY_CHUNK_MAX_EVENTS
     )
       return res.status(400).json({ error: "INVALID_REPLAY_CHUNK" });
     if (
@@ -171,15 +179,21 @@ export function registerReplayRoutes(app: Express) {
     const sessionId = String(req.body.sessionId || "").trim();
     if (!/^[0-9a-f-]{36}$/i.test(sessionId)) return res.status(400).json({ error: "INVALID_SESSION" });
     const endedAt = new Date(req.body.endedAt || Date.now());
-    await prisma.sessionReplay.updateMany({
+    const updated = await prisma.sessionReplay.updateMany({
       where: { id: sessionId },
       data: {
         status: "ENDED",
         endedAt: Number.isNaN(endedAt.getTime()) ? new Date() : endedAt,
-        lastSeenAt: new Date(),
-        lastUrl: privateSafeUrl(String(req.body.currentUrl || "")).slice(0, 4000),
       },
     });
+    // Final totals from the chunk rows (chunks only rewrite the session row once a minute).
+    if (updated.count)
+      await refreshReplayTotals(
+        prisma,
+        sessionId,
+        new Date(),
+        privateSafeUrl(String(req.body.currentUrl || "")).slice(0, 4000) || undefined,
+      );
     res.json({ ok: true });
   });
   app.get("/api/admin/session-replays", requireAuth("reports.read"), async (req, res) => {
@@ -197,6 +211,8 @@ export function registerReplayRoutes(app: Express) {
       to = req.query.to ? new Date(`${req.query.to}T23:59:59.999+05:00`) : new Date();
     if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to)
       return res.status(400).json({ error: "INVALID_DATE_RANGE" });
+    // Chunks rewrite their session row at most once a minute; bring the last minute's totals in first.
+    await reconcileReplayTotals(prisma, from).catch(() => undefined);
     const where: Prisma.SessionReplayWhereInput = {
       startedAt: { gte: from, lte: to },
       hasSnapshot: true,
@@ -237,7 +253,8 @@ export function registerReplayRoutes(app: Express) {
             : outcome === "checkout-no-order"
               ? { reachedCheckout: true, ordered: false }
               : outcome === "live"
-                ? { status: "ACTIVE", lastSeenAt: { gte: new Date(Date.now() - 60000) } }
+                ? // A recording rewrites its row about once a minute, so "live" means seen in the last 2 minutes.
+                  { status: "ACTIVE", lastSeenAt: { gte: new Date(Date.now() - 120000) } }
                 : {}),
     };
     if (["product-no-cart", "visitor-no-product"].includes(outcome)) {

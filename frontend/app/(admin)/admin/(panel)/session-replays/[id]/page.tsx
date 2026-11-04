@@ -481,10 +481,10 @@ export default function ReplayDetail() {
             <p>No tracked journey markers.</p>
           )}
           <footer>
-            Idle gaps over 10 seconds are skipped by default. Recording pauses
-            after 2 minutes without interaction, or immediately in a background
-            tab. Activity resumes recording; after 30 minutes it starts a new
-            session.
+            Idle gaps over 10 seconds are skipped by default. A share of visits is
+            recorded (sample rate). Recording pauses after 2 minutes without
+            interaction or in a background tab, and ends after 10 minutes or once
+            the tab has been hidden for more than a minute.
           </footer>
         </aside>
       </div>
