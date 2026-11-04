@@ -62,7 +62,7 @@ test("recording closes at 30 minutes idle and keeps active sessions alive", () =
   assert.equal(replayIdle(last, last + REPLAY_IDLE_MS), true);
   assert.equal(replayIdle(last, last + REPLAY_IDLE_MS + 3600000), true);
   assert.equal(replayIdle(last + REPLAY_IDLE_MS, last + REPLAY_IDLE_MS + 1), false);
-  assert.equal(REPLAY_FLUSH_MS, 5000);
+  assert.equal(REPLAY_FLUSH_MS, 15000, "one larger chunk every 15 s (Group 3)");
   assert.equal(REPLAY_SKIP_IDLE_MS, 10000);
 });
 test("recording pauses at two minutes, hides immediately, and ends at thirty minutes", () => {
