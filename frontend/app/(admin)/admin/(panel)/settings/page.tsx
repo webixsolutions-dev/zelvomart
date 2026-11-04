@@ -38,7 +38,8 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
       'marketing.meta.pageId':String(f.get('pageId')||'').trim(),
       'marketing.meta.instagramAccountId':String(f.get('instagramAccountId')||'').trim(),
       'tracking.sessionReplayEnabled': f.get('sessionReplayEnabled') === 'on',
-      'tracking.sessionReplayRetentionDays': Math.max(1, Math.min(30, Number(f.get('sessionReplayRetentionDays') || 30))),
+      // Replay files are deleted after 14 days in R2, so a longer window would only keep empty recordings.
+      'tracking.sessionReplayRetentionDays': Math.max(1, Math.min(14, Number(f.get('sessionReplayRetentionDays') || 14))),
     };
 
     const marketingToken=String(f.get('marketingAccessToken')||'').trim();if(marketingToken)body['marketing.meta.accessToken']=marketingToken;
@@ -144,7 +145,7 @@ function TrackingForm({ s, onSaved }: { s: any; onSaved: () => void }) {
         </label>
         <label className="field">
           <span>Retention Window (Days)</span>
-          <input name="sessionReplayRetentionDays" type="number" min="1" max="30" defaultValue={s['tracking.sessionReplayRetentionDays'] ?? 30} />
+          <input name="sessionReplayRetentionDays" type="number" min="1" max="14" defaultValue={Math.min(14, Number(s['tracking.sessionReplayRetentionDays'] ?? 14) || 14)} />
         </label>
       </div>
 

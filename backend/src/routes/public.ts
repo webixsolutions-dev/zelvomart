@@ -32,6 +32,7 @@ import { sendAutomaticRecoveryEmails } from "../recovery";
 import { runInBackground } from "../lib/background";
 import { runJobsNow } from "../lib/job-runner";
 import { runCronQueue } from "../lib/cron-queue";
+import { replayCutoff, replayRetentionDays } from "../lib/replay-retention";
 import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
 import { cityByName } from "../lib/cities";
@@ -81,12 +82,10 @@ export function registerPublicRoutes(app: Express) {
       return res.status(process.env.CRON_SECRET ? 401 : 503).json({ error: "CRON_UNAUTHORIZED" });
     const cutoff = new Date(Date.now() - 2 * 86400000);
     const rateLimits = await prisma.rateLimitBucket.deleteMany({ where: { updatedAt: { lt: cutoff } } });
-    const configuredDays = Number(
-      await getSetting("tracking.sessionReplayRetentionDays", process.env.SESSION_REPLAY_RETENTION_DAYS || 30),
-    );
-    const retentionDays = Number.isFinite(configuredDays) && configuredDays > 0 ? Math.min(configuredDays, 365) : 30;
+    // Same age as the R2 lifecycle rule on the replay files (lib/replay-retention.ts); chunks go by cascade.
+    const retentionDays = replayRetentionDays(await getSetting("tracking.sessionReplayRetentionDays", null));
     const replays = await prisma.sessionReplay.deleteMany({
-      where: { startedAt: { lt: new Date(Date.now() - retentionDays * 86400000) } },
+      where: { startedAt: { lt: replayCutoff(retentionDays) } },
     });
     const summary = await sendDailySummary();
     const dataCutoff = new Date(Date.now() - 30 * 86400000);

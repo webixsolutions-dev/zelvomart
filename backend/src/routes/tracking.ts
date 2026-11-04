@@ -17,6 +17,7 @@ import { runInBackground } from "../lib/background";
 import type { Express } from "express";
 import { META_EVENT_NAMES, allowRules, audit, routeParam } from "../http/shared";
 import { REPLAY_SESSION_WRITE_MS } from "../lib/replay-ingest";
+import { replayRetentionDays } from "../lib/replay-retention";
 
 const STUCK_JOB_MINUTES = 15;
 
@@ -282,9 +283,7 @@ export function registerTrackingRoutes(app: Express) {
 
     const sessionReplayEnabled =
       settings["tracking.sessionReplayEnabled"] !== false && settings["tracking.sessionReplayEnabled"] !== "false";
-    const sessionReplayRetentionDays = Number(
-      settings["tracking.sessionReplayRetentionDays"] || process.env.SESSION_REPLAY_RETENTION_DAYS || 30,
-    );
+    const sessionReplayRetentionDays = replayRetentionDays(settings["tracking.sessionReplayRetentionDays"]);
 
     const metaLastSuccess =
       events.find((e) => (e.channel === "server" || e.channel === "meta-server") && e.accepted === true)?.createdAt ||
