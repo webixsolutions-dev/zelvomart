@@ -1,4 +1,5 @@
-import { SITE_ORIGIN, isStorefrontUrl } from "../lib/site-url";
+import { adsAllowedForUrl } from "../lib/ads-policy";
+import { SITE_ORIGIN } from "../lib/site-url";
 import { privateSafeUrl } from "../lib/url-privacy";
 import { replayStorageConfigured } from "../lib/replay-storage";
 import { sendTikTokServerEvent, tiktokJobsEnabled } from "../lib/tiktok";
@@ -69,7 +70,8 @@ export function registerTrackingRoutes(app: Express) {
 
     // Purchase is dispatched from the order transaction. Meta events are attempted
     // immediately; failures remain durable for the cron retry sweeper.
-    const productionEvent = isStorefrontUrl(sourceUrl || "");
+    // Server-side conversion jobs only for the real shop (APP_ENV=production, NEXT_PUBLIC_SITE_URL host).
+    const productionEvent = adsAllowedForUrl(sourceUrl);
     if (eventName !== "Purchase" && !eventName.startsWith("Replay") && productionEvent) {
       const job = await prisma.job.create({
         data: {

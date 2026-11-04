@@ -1010,3 +1010,19 @@ and the screenshots must match.
   (a product's images, gallery, review photo and description reach the page on the media domain; home videos).
 - Owner step after merge: set `NEXT_PUBLIC_MEDIA_BASE_URL=https://media.zelvomart.com` on both Vercel projects and
   redeploy. Until then everything keeps using the old host exactly as before.
+
+## Final setup Group 5: ad pixels only on the real shop — 4 November 2026 (branch `fix/pixels-real-host`)
+
+- One rule (`frontend/lib/ads-policy.ts`, `backend/src/lib/ads-policy.ts`): Meta and TikTok fire only when the page's
+  host is exactly the host of `NEXT_PUBLIC_SITE_URL` (https, never `/admin`) **and** `APP_ENV` is `production`.
+  Previews, `*.vercel.app` and staging stay silent. Google Analytics (gtag) is unchanged.
+- Browser: the store layout loads the Meta and TikTok pixel scripts only when `APP_ENV` is production (the storefront's
+  own value if set, else the backend's, sent as `app.env` in the store bootstrap); the scripts and `trackStoreEvent`
+  also check the exact host.
+- Server-side conversion events: `/api/events` queues Meta/TikTok jobs only under the same rule, and the Meta and
+  TikTok senders skip anything else (`NOT_PRODUCTION_SITE`), purchases included. The admin "send test event" button
+  (platform test code) still works everywhere. Test-order marking (`isStorefrontUrl`) is unchanged.
+- Tests: 3 backend and 2 storefront tests (exact host, apex/look-alike/preview hosts refused, staging or missing
+  `APP_ENV` silent, today's vercel.app setup silent).
+- Owner step at cutover: `NEXT_PUBLIC_SITE_URL=https://www.zelvomart.com` on both projects and `APP_ENV=production`
+  on the backend (and on the storefront if it has its own `APP_ENV`), then redeploy. Until then no pixel fires.
