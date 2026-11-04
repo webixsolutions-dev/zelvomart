@@ -1026,3 +1026,13 @@ and the screenshots must match.
   `APP_ENV` silent, today's vercel.app setup silent).
 - Owner step at cutover: `NEXT_PUBLIC_SITE_URL=https://www.zelvomart.com` on both projects and `APP_ENV=production`
   on the backend (and on the storefront if it has its own `APP_ENV`), then redeploy. Until then no pixel fires.
+
+## Final setup Group 6: operations guide — 4 November 2026 (branch `docs/operations-final`)
+
+- `docs/OPERATIONS.md` rewritten for the current setup, names only, no secret values:
+  architecture today (GitHub, Vercel `bom1`, Supabase, Cloudflare, Hostinger, Resend, cron-job.org); the 15 DNS records
+  (all grey cloud, mail records untouchable, how to add a record, DNSSEC note); media (`media.zelvomart.com`, `r2.dev`
+  kept until the "Later" step, how to disable it); the cron table (URL, method, auth header, interval, answers, cost of
+  an empty run); environment variable names per project and what changes at cutover; the Vercel Hobby limits runbook;
+  the database move to Mumbai runbook (not run); the weekly health checklist.
+- Deploy/roll back, backup/restore and the plain-server sections are kept.
