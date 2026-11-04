@@ -1,4 +1,14 @@
-export const REPLAY_FLUSH_MS=5_000;
+/** Upload cadence: one larger chunk every 15 s (and on page hide), not every 5 s. */
+export const REPLAY_FLUSH_MS=15_000;
+/** Events per chunk (the backend accepts up to 1,000). */
+export const REPLAY_CHUNK_EVENTS=500;
+/** A keepalive request (page hide) must stay under the browser's 64 KB keepalive budget. */
+export const REPLAY_KEEPALIVE_BYTES=55_000;
+/** One recording stops after 10 minutes, or once the tab has been hidden for more than a minute. */
+export const REPLAY_MAX_SESSION_MS=10*60_000;
+export const REPLAY_HIDDEN_STOP_MS=60_000;
+/** Hard chunk limit per recording on the browser side (the backend refuses more than 120). */
+export const REPLAY_CLIENT_MAX_CHUNKS=90;
 export const REPLAY_IDLE_MS=30*60_000;
 export const REPLAY_PAUSE_MS=2*60_000;
 export const REPLAY_SKIP_IDLE_MS=10_000;
@@ -25,4 +35,18 @@ export function replayActivityOffsets(events:{type?:number;timestamp?:number;dat
 export function replaySkipTarget(offsets:number[],current:number){
  let left=0,right=offsets.length;while(left<right){const mid=(left+right)>>>1;if(offsets[mid]<=current+1)left=mid+1;else right=mid;}
  const next=offsets[left];return next!==undefined&&next-current>REPLAY_SKIP_IDLE_MS?Math.max(current,next-1):null;
+}
+/** How many queued events go into the next chunk: at most `max`, and at most `budget` bytes of JSON (at least one). */
+export function replayChunkSize(events:unknown[],max=REPLAY_CHUNK_EVENTS,budget=Infinity){
+ let bytes=2,count=0;
+ for(const event of events){if(count>=max)break;const size=(JSON.stringify(event)?.length??4)+1;if(count>0&&bytes+size>budget)break;bytes+=size;count++;}
+ return count;
+}
+/** Why a recording must stop now, if it must: the 10-minute cap, a tab hidden for over a minute, or the chunk limit. */
+export function replayStopReason(o:{startedAt:number;hiddenSince?:number;sequence?:number;now?:number}):'max-duration'|'hidden'|'max-chunks'|null{
+ const now=o.now??Date.now();
+ if(Number.isFinite(o.startedAt)&&now-o.startedAt>=REPLAY_MAX_SESSION_MS)return 'max-duration';
+ if(o.hiddenSince!==undefined&&now-o.hiddenSince>REPLAY_HIDDEN_STOP_MS)return 'hidden';
+ if(o.sequence!==undefined&&o.sequence>=REPLAY_CLIENT_MAX_CHUNKS)return 'max-chunks';
+ return null;
 }
