@@ -5,11 +5,12 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product } from "@store/lib/catalog";
 import { ProductCard } from "./ProductCard";
 
-export function ProductGrid({ items, cols = 4, priorityCount = 0 }: { items: Product[]; cols?: 3 | 4; priorityCount?: number }) {
+/** `eagerCount`: cards loaded at once (the row above the fold); the rest load lazily. Card images are never preloaded. */
+export function ProductGrid({ items, cols = 4, eagerCount = 0 }: { items: Product[]; cols?: 3 | 4; eagerCount?: number }) {
   return (
     <div className={`product-grid cols-${cols}`}>
       {items.map((p, i) => (
-        <ProductCard key={p.id} p={p} priority={i < priorityCount} />
+        <ProductCard key={p.id} p={p} eager={i < eagerCount} />
       ))}
     </div>
   );

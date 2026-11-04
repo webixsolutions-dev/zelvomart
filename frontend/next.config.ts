@@ -35,6 +35,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "zelvomart.com" },
       { protocol: "https", hostname: "www.zelvomart.com" },
+      // Media domain (R2 bucket zelvomart-media behind Cloudflare). The old R2 hosts stay while stored URLs use them.
+      { protocol: "https", hostname: "media.zelvomart.com" },
       { protocol: "https", hostname: "*.r2.dev" },
       {
         protocol: "https",

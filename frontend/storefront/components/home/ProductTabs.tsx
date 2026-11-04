@@ -38,7 +38,7 @@ export function ProductTabs({ tabs }: { tabs: Tab[] }) {
         </Link>
       </div>
       <div role="tabpanel" key={tab.key} className="tab-panel trending-board">
-        <ProductGrid items={tab.items.slice(0, 4)} cols={4} priorityCount={4} />
+        <ProductGrid items={tab.items.slice(0, 4)} cols={4} />
       </div>
     </div>
   );

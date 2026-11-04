@@ -1,3 +1,4 @@
+import { adsAllowedForUrl } from "./ads-policy";
 import { tiktokProperties } from "./tracking-payload";
 import { prisma } from "./db";
 import { sha256 } from "./security";
@@ -63,6 +64,9 @@ export function tiktokUserData(event: TikTokServerEvent) {
 }
 
 export async function sendTikTokServerEvent(event: TikTokServerEvent) {
+  // Only events from the real shop (APP_ENV=production, NEXT_PUBLIC_SITE_URL host): lib/ads-policy.ts.
+  // The admin "send test event" button (a platform test code) still works everywhere: it never counts as a conversion.
+  if (!event.testEventCode && !adsAllowedForUrl(event.sourceUrl)) return { ok: false, skipped: "NOT_PRODUCTION_SITE" };
   const isEventsApiEnabled = await getSetting<boolean | string>("tracking.tiktokEventsApiEnabled", true);
   if (isEventsApiEnabled === false || isEventsApiEnabled === "false") {
     return { ok: false, skipped: "TIKTOK_EVENTS_API_DISABLED" };

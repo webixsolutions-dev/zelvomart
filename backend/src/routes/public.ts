@@ -35,6 +35,7 @@ import { runCronQueue } from "../lib/cron-queue";
 import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
 import { cityByName } from "../lib/cities";
+import { adsEnvironment } from "../lib/ads-policy";
 import {
   allowRequest,
   allowRules,
@@ -195,6 +196,8 @@ export function registerPublicRoutes(app: Express) {
     ]);
     // Recordings go to the private R2 bucket only. Without it the storefront does not load the recorder at all.
     if (!replayStorageConfigured()) settings["tracking.sessionReplayEnabled"] = false;
+    // The storefront loads ad pixels only when this says "production" (and the page is on NEXT_PUBLIC_SITE_URL's host).
+    settings["app.env"] = adsEnvironment() ? "production" : String(process.env.APP_ENV || "development");
     res.json({
       categories: categories.map((c) => ({
         id: c.id,
