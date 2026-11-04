@@ -512,6 +512,159 @@ await setAdvance({});
     process.env.RESEND_API_KEY = "";
   }
 }
+
+// Admin → Payments: order agent can verify and reject; Verify needs the merchant reference; a marketer is refused;
+// COD to collect is 0 after verify and the balance after a partial; every action is audited.
+{
+  const { signAdminToken, passwordStamp } = await import("../src/lib/auth");
+  const staff = async (role: "ORDER_AGENT" | "MARKETER") => {
+    const user = await prisma.user.create({
+      data: { name: `${role} QA`, email: `${role.toLowerCase()}@example.invalid`, passwordHash: `hash-${role}`, role },
+    });
+    return signAdminToken({ id: user.id, name: user.name, email: user.email, role }, passwordStamp(user.passwordHash));
+  };
+  const agent = await staff("ORDER_AGENT");
+  const marketer = await staff("MARKETER");
+  const admin = (token: string) => async (path: string, body?: unknown) => {
+    const res = await fetch(base + path, {
+      method: body === undefined ? "GET" : "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: res.status, body: (await res.json().catch(() => null)) as any };
+  };
+  const asAgent = admin(agent);
+  const asMarketer = admin(marketer);
+  const withProof = async (amount?: number) => {
+    const r = await order("ADVANCE_EASYPAISA", 1);
+    const sent = await sendProof(
+      r.body.orderNumber,
+      r.body.payToken,
+      good(amount ?? r.body.total, "ADM" + n + "X"),
+      await shot(20 + n),
+    );
+    assert.equal(sent.status, 201, JSON.stringify(sent.body));
+    const proof = await prisma.paymentProof.findFirstOrThrow({ where: { order: { orderNumber: r.body.orderNumber } } });
+    return { r, proof };
+  };
+
+  const { r: o1, proof: p1 } = await withProof();
+  assert.equal((await asMarketer(`/api/admin/payments`)).status, 403, "marketer cannot see payments");
+  const list = await asAgent(`/api/admin/payments?view=needs`);
+  assert.equal(list.status, 200);
+  assert.ok(list.body.rows.some((row: any) => row.id === p1.id));
+  assert.ok(list.body.counts.needs >= 1);
+  const detail = await asAgent(`/api/admin/payments/${p1.id}`);
+  assert.equal(detail.status, 200);
+  assert.equal(detail.body.proof.tid, p1.tid);
+  assert.equal(detail.body.expected.amount, o1.body.total);
+  assert.equal(detail.body.proof.imageUrl, `/api/admin/payments/${p1.id}/image`, "local: same-origin image route");
+  assert.equal(JSON.stringify(detail.body).includes("passwordHash"), false);
+  assert.equal(JSON.stringify(detail.body).includes("screenshotKey"), false);
+  const image = await fetch(`${base}/api/admin/payments/${p1.id}/image`, {
+    headers: { authorization: `Bearer ${agent}` },
+  });
+  assert.deepEqual([image.status, image.headers.get("content-type")], [200, "image/webp"]);
+  assert.equal((await fetch(`${base}/api/admin/payments/${p1.id}/image`)).status, 401, "image needs staff login");
+
+  assert.equal((await asAgent(`/api/admin/payments/${p1.id}/verify`, {})).status, 400, "reference required");
+  assert.equal((await asAgent(`/api/admin/payments/${p1.id}/verify`, { merchantReference: "12" })).status, 400);
+  assert.equal(
+    (await asMarketer(`/api/admin/payments/${p1.id}/verify`, { merchantReference: "EP-778899" })).status,
+    403,
+  );
+  const verified = await asAgent(`/api/admin/payments/${p1.id}/verify`, { merchantReference: "EP-778899" });
+  assert.equal(verified.status, 200, JSON.stringify(verified.body));
+  const v = await prisma.order.findUniqueOrThrow({ where: { orderNumber: o1.body.orderNumber } });
+  assert.deepEqual([v.status, v.paymentStatus, Number(v.advanceReceived)], ["NEW", "VERIFIED", o1.body.total]);
+  assert.ok(v.paymentVerifiedAt && v.paymentVerifiedById);
+  const orderDetail = await asAgent(`/api/admin/orders/${v.id}`);
+  assert.equal(orderDetail.body.codToCollect, 0, "courier collects nothing after verify");
+  assert.equal(orderDetail.body.paymentProofs[0].status, "VERIFIED");
+  assert.equal(
+    (await asAgent(`/api/admin/payments/${p1.id}/verify`, { merchantReference: "EP-778899" })).status,
+    409,
+    "once",
+  );
+  assert.equal(await prisma.job.count({ where: { orderId: v.id, name: "advance-verified-email" } }), 1);
+  const audit1 = await prisma.auditLog.findFirstOrThrow({ where: { entity: "PaymentProof", entityId: p1.id } });
+  assert.equal(audit1.action, "payment_verify");
+
+  // A second open proof on a verified order is closed automatically.
+  {
+    const r = await order("ADVANCE_EASYPAISA", 1);
+    await sendProof(r.body.orderNumber, r.body.payToken, good(r.body.total - 300, "TWOA" + n), await shot(40));
+    await sendProof(r.body.orderNumber, r.body.payToken, good(r.body.total, "TWOB" + n), await shot(41));
+    const [first, second] = await prisma.paymentProof.findMany({
+      where: { order: { orderNumber: r.body.orderNumber } },
+      orderBy: { createdAt: "asc" },
+    });
+    assert.equal(
+      (await asAgent(`/api/admin/payments/${second.id}/verify`, { merchantReference: "EP-900100" })).status,
+      200,
+    );
+    const closed = await prisma.paymentProof.findUniqueOrThrow({ where: { id: first.id } });
+    assert.deepEqual([closed.status, closed.notes?.startsWith("Closed automatically")], ["REJECTED", true]);
+    assert.equal(
+      await prisma.job.count({ where: { orderId: first.orderId, name: "advance-issue-email" } }),
+      0,
+      "no email",
+    );
+  }
+
+  // Partial: Rs 1000 of the total arrived → order goes ahead, the rest on delivery; no further proof accepted.
+  const { r: o2, proof: p2 } = await withProof(1000);
+  assert.equal(
+    (
+      await asAgent(`/api/admin/payments/${p2.id}/partial`, {
+        merchantReference: "EP-1",
+        amountReceived: o2.body.total,
+      })
+    ).status,
+    400,
+    "full amount is not partial",
+  );
+  assert.equal(
+    (await asAgent(`/api/admin/payments/${p2.id}/partial`, { merchantReference: "EP-445566", amountReceived: 1000 }))
+      .status,
+    200,
+  );
+  const partialDetail = await asAgent(`/api/admin/orders/${p2.orderId}`);
+  assert.deepEqual(
+    [partialDetail.body.status, partialDetail.body.paymentStatus, partialDetail.body.codToCollect],
+    ["NEW", "MISMATCH", o2.body.total - 1000],
+  );
+  const page2 = (await (await fetch(`${base}/api/pay/${o2.body.orderNumber}?t=${o2.body.payToken}`)).json()) as any;
+  assert.equal(page2.canSubmitProof, false, "no resubmission after a partial was accepted");
+
+  // Reject: order stays on hold, customer may send one corrected proof, the TID is freed.
+  const { r: o3, proof: p3 } = await withProof();
+  assert.equal((await asAgent(`/api/admin/payments/${p3.id}/reject`, { reason: "MADE_UP" })).status, 400);
+  assert.equal((await asAgent(`/api/admin/payments/${p3.id}/reject`, { reason: "NOT_RECEIVED" })).status, 200);
+  const rejected = await prisma.order.findUniqueOrThrow({ where: { id: p3.orderId } });
+  assert.deepEqual([rejected.status, rejected.paymentStatus], ["ON_HOLD", "REJECTED"]);
+  const page3 = (await (await fetch(`${base}/api/pay/${o3.body.orderNumber}?t=${o3.body.payToken}`)).json()) as any;
+  assert.deepEqual([page3.canSubmitProof, page3.proof.status], [true, "REJECTED"]);
+  assert.match(page3.proof.rejectMessage, /could not find this payment/);
+  assert.equal(await prisma.job.count({ where: { orderId: p3.orderId, name: "advance-issue-email" } }), 1);
+
+  // Refund recorded only on a verified proof.
+  assert.equal((await asAgent(`/api/admin/payments/${p3.id}/refund`, { amount: 100, reference: "RF-1" })).status, 409);
+  assert.equal(
+    (await asAgent(`/api/admin/payments/${p1.id}/refund`, { amount: o1.body.total, reference: "RF-9001" })).status,
+    200,
+  );
+  assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: p1.orderId } })).paymentStatus, "REFUNDED");
+
+  // Orders filter "Advance payment – needs verification".
+  const { proof: p4 } = await withProof();
+  const filtered = await asAgent(`/api/admin/orders?payment=needs-verification`);
+  assert.equal(filtered.status, 200, JSON.stringify(filtered.body).slice(0, 300));
+  const ids = (filtered.body.orders || filtered.body.rows || filtered.body.data || filtered.body).map((o: any) => o.id);
+  assert.ok(ids.includes(p4.orderId));
+  assert.equal(ids.includes(p1.orderId), false);
+  console.log("ok - admin payments: roles, verify needs a reference, partial, reject, refund, COD to collect, filter");
+}
 rmSync(proofDir, { recursive: true, force: true });
 
 server.close();

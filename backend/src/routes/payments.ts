@@ -51,6 +51,7 @@ const orderForPage = {
   deliveryFee: true,
   couponDiscount: true,
   advanceDiscount: true,
+  advanceReceived: true,
   total: true,
   createdAt: true,
   _count: { select: { paymentProofs: true } },
@@ -236,7 +237,12 @@ export function registerPaymentRoutes(app: Express) {
         await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${order.id} FOR UPDATE`;
         const current = await tx.order.findUniqueOrThrow({
           where: { id: order.id },
-          select: { paymentMethod: true, paymentStatus: true, _count: { select: { paymentProofs: true } } },
+          select: {
+            paymentMethod: true,
+            paymentStatus: true,
+            advanceReceived: true,
+            _count: { select: { paymentProofs: true } },
+          },
         });
         if (!canSubmitProof(current, current._count.paymentProofs)) return null;
         const proof = await tx.paymentProof.create({

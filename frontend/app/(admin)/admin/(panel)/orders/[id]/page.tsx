@@ -17,6 +17,14 @@ const statusLabel = (s: string) => s.replaceAll('_', ' ').toLowerCase();
 const when = (s: string) => new Date(s).toLocaleString('en-PK', {day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Karachi'});
 const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() || '').join('') || '?';
 
+/** Payment line for the header, list and print: COD, NayaPay, or advance payment with its state. */
+const PAYMENT_STATE: Record<string, string> = {
+  AWAITING_PAYMENT: 'awaiting payment', SUBMITTED: 'proof to verify', MISMATCH: 'amount issue', VERIFIED: 'verified',
+  REJECTED: 'proof rejected', EXPIRED: 'payment window passed', REFUND_PENDING: 'refund pending', REFUNDED: 'refunded',
+};
+const payLabel = (o: any) => o.paymentMethod === 'ADVANCE_EASYPAISA' ? `Advance (Easypaisa/Raast) · ${PAYMENT_STATE[o.paymentStatus] || o.paymentStatus}` : o.paymentMethod === 'NAYAPAY' ? 'NayaPay' : 'Cash on Delivery';
+const PROOF_STATE: Record<string, string> = {SUBMITTED: 'To verify', MISMATCH: 'Amount differs', VERIFIED: 'Verified', PARTIAL: 'Partial', REJECTED: 'Rejected'};
+
 function Status({status}: {status: string}) {
   return <StatusBadge value={status}/>;
 }
@@ -93,7 +101,7 @@ export default function OrderDetail() {
       <div className="ode-head-main">
         <div>
           <h1>{o.orderNumber} <Status status={o.status}/>{o.test ? <span className="ode-chip">Test order</span> : null}</h1>
-          <p>{when(o.createdAt)} · <b>{money(o.total)}</b> · {o.paymentMethod === 'NAYAPAY' ? 'NayaPay' : 'Cash on Delivery'} · Source: {o.source || 'direct'}</p>
+          <p>{when(o.createdAt)} · <b>{money(o.total)}</b> · {payLabel(o)} · Source: {o.source || 'direct'}</p>
         </div>
         <div className="ode-actions">
           {o.status === 'NEW' && <button type="button" disabled={busy} className="admin-btn admin-btn-primary" onClick={() => void action('/status', {status: 'CONFIRMED'})}>✓ Confirm order</button>}
@@ -165,8 +173,13 @@ export default function OrderDetail() {
             <div><dt>Subtotal</dt><dd>{money(o.subtotal)}</dd></div>
             {Number(o.bundleSaving) > 0 && <div><dt>Bundle saving</dt><dd>−{money(o.bundleSaving)}</dd></div>}
             {o.couponCode && <div><dt>Coupon {o.couponCode}</dt><dd>−{money(o.couponDiscount)}</dd></div>}
+            {Number(o.advanceDiscount) > 0 && <div><dt>Advance payment discount</dt><dd>−{money(o.advanceDiscount)}</dd></div>}
             <div><dt>Delivery</dt><dd>{Number(o.deliveryFee) ? money(o.deliveryFee) : 'Free'}</dd></div>
-            <div className="ode-grand"><dt>Total to collect</dt><dd>{money(o.total)}</dd></div>
+            {o.paymentMethod === 'ADVANCE_EASYPAISA' ? <>
+              <div><dt>Order total</dt><dd>{money(o.total)}</dd></div>
+              {Number(o.advanceReceived) > 0 && <div><dt>Paid in advance (verified)</dt><dd>−{money(o.advanceReceived)}</dd></div>}
+              <div className="ode-grand"><dt>Courier collects (COD)</dt><dd>{money(o.codToCollect ?? o.total)}</dd></div>
+            </> : <div className="ode-grand"><dt>Total to collect</dt><dd>{money(o.total)}</dd></div>}
           </dl>
           <div className="ode-save">
             <small className="ode-muted">{editable ? 'Stock and totals recalculate when you save.' : 'Items are locked once an order is delivered, returned, cancelled or settled.'}</small>
@@ -190,6 +203,16 @@ export default function OrderDetail() {
       </div>
 
       <aside className="ode-col ode-col-side">
+        {o.paymentMethod === 'ADVANCE_EASYPAISA' && <section className="ode-card ode-payment" aria-labelledby="ode-payment-title">
+          <div className="ode-card-head"><h2 id="ode-payment-title">Advance payment</h2><span className={'ode-pay-state ode-pay-' + String(o.paymentStatus).toLowerCase()}>{PAYMENT_STATE[o.paymentStatus] || o.paymentStatus}</span></div>
+          {!['VERIFIED', 'REFUNDED'].includes(o.paymentStatus) && !(Number(o.advanceReceived) > 0) && <p className="ode-pay-warn">Do not dispatch before the payment is verified in the Easypaisa merchant app. If it never arrives, the courier collects the full {money(o.total)}.</p>}
+          {o.paymentProofs?.length ? <ul className="ode-proofs">
+            {o.paymentProofs.map((p: any) => <li key={p.id}>
+              <Link href={'/admin/payments/' + p.id}><b>{PROOF_STATE[p.status] || p.status}</b> · {money(p.amountSent)}</Link>
+              <span className="ode-muted">{when(p.createdAt)}{[p.amountMismatch && 'amount', p.tidDuplicate && 'TID used before', p.imageDuplicate && 'image seen before', p.timeOutOfWindow && 'time'].filter(Boolean).map(f => ` · ⚑ ${f}`).join('')}</span>
+            </li>)}
+          </ul> : <p className="ode-muted">No proof sent yet.</p>}
+        </section>}
         <section className="ode-card ode-shipping" aria-labelledby="ode-status-title">
           <div className="ode-card-head"><h2 id="ode-status-title">Status and shipping</h2><Status status={o.status}/></div>
           <form className="ode-inline" onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); void action('/status', {status: f.get('status')}); }}>

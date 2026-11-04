@@ -1,4 +1,5 @@
 import { validateSettingsUpdate, validateCitySettings } from "../../lib/settings-validation";
+import { adsEnvironment } from "../../lib/ads-policy";
 import { prisma } from "../../lib/db";
 import { requireAuth, type AuthedRequest } from "../../lib/auth";
 import { validAdminBody, redirectSchema } from "../../lib/admin-validators";
@@ -22,7 +23,8 @@ export function registerAdminSettingsRoutes(app: Express) {
         safeSettings[s.key] = s.value;
       }
     }
-    res.json({ settings: safeSettings, cities });
+    // Settings → Payments shows the production rule (advance payment needs real values) only where it applies.
+    res.json({ settings: safeSettings, cities, environment: { production: adsEnvironment() } });
   });
   app.put("/api/admin/settings", requireAuth("settings.write"), async (req: AuthedRequest, res) => {
     let values: Record<string, unknown>;
