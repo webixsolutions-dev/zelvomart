@@ -209,6 +209,7 @@ model Order {
   @@index([city])
   @@index([source])
   @@index([replaySessionId])
+  @@index([customerId])
 }
 
 model OrderItem {
@@ -232,6 +233,7 @@ model OrderItem {
 
   @@index([orderId])
   @@index([sku])
+  @@index([productId])
 }
 
 model OrderStatusHistory {
@@ -246,6 +248,7 @@ model OrderStatusHistory {
   createdAt DateTime    @default(now())
 
   @@index([orderId, createdAt])
+  @@index([userId])
 }
 
 model EventLog {
@@ -414,6 +417,7 @@ model AuditLog {
 
   @@index([entity, entityId])
   @@index([createdAt])
+  @@index([userId])
 }
 
 model Experiment {
@@ -457,6 +461,8 @@ model Review {
 
   @@index([productId, status, createdAt])
   @@index([batchId, deletedAt])
+  @@index([customerId])
+  @@index([orderId])
 }
 
 model ReviewMedia {

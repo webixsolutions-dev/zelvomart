@@ -237,6 +237,18 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 - Never run imports, scripts or migrations against the live database without a fresh backup.
 
 
+### Applying a schema change (migration file)
+
+The live database has no `_prisma_migrations` history table (its schema was built from `schema.prisma`, not with
+`migrate`), so `npx prisma migrate deploy` would try to run every old migration and fail. Apply one new migration
+file at a time, after a backup, from `backend/` with `DIRECT_URL` pointing at the live database:
+
+`npx prisma db execute --file prisma/migrations/<folder>/migration.sql --schema prisma/schema.prisma`
+
+Then check that nothing is left: `npx prisma migrate diff --from-url "$DIRECT_URL" --to-schema-datamodel
+prisma/schema.prisma --script` should print "This is an empty migration". The same SQL can also be pasted into
+Supabase → SQL editor. Each migration file names its rollback at the top.
+
 ### Move to Mumbai: done on 4 Nov 2026
 
 - **What was done:**
