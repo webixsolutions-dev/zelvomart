@@ -10,3 +10,6 @@
   line-height: 18px;
   border-radius: 5px;
 }
+
+.cd-dashboard .od-actions>div button.cd-delete{color:#d92d43}.cd-dashboard .od-create{margin:auto}.cd-delete-dialog{width:min(580px,94vw)}.cd-delete-dialog p{font-size:13px;line-height:1.55;color:#41516c;margin:10px 0}.cd-delete-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px}.cd-delete-actions .od-button{min-height:40px}.cd-danger{background:#d92d43!important;color:#fff!important;border-color:#d92d43!important}@media(max-width:650px){.cd-delete-actions{flex-direction:column-reverse}.cd-delete-actions .od-button{width:100%}}
+.cd-dashboard .cd-actions>div{position:fixed;bottom:auto;right:auto;z-index:40}

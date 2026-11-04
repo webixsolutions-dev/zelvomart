@@ -11,6 +11,7 @@ import { postexTrackingUrl } from "../../lib/postex";
 import { invalidateFrontendCache } from "../../lib/cache-invalidation";
 import { runInBackground } from "../../lib/background";
 import { runJobsNow } from "../../lib/job-runner";
+import { canHardDelete, hardDeleteOrder } from "../../lib/hard-delete";
 
 /** Status emails and tracking jobs go out right after the response; the cron retries a failure. */
 function startJob(jobId: string) {
@@ -99,29 +100,6 @@ async function enqueueOrderStatusTracking(orderId: string, status: string) {
 /** Meta always; TikTok only while its Events API is on and a pixel ID is set. */
 async function purchaseJobNames() {
   return ["meta-purchase", ...((await tiktokJobsEnabled()) ? ["tiktok-purchase"] : [])];
-}
-
-const ORDER_DELETE_ROLES = new Set(["OWNER", "MANAGER"]);
-const canDeleteOrders = (req: AuthedRequest) => ORDER_DELETE_ROLES.has(String(req.admin?.role));
-
-/** Removes one order for good (see the routes below). Returns the deleted id, or "NOT_FOUND". */
-async function hardDeleteOrder(req: AuthedRequest, id: string) {
-  const order = await prisma.order.findUnique({
-    where: { id },
-    select: { id: true, orderNumber: true, status: true, test: true },
-  });
-  if (!order) return "NOT_FOUND" as const;
-  await prisma.$transaction([
-    prisma.job.deleteMany({ where: { orderId: id } }),
-    prisma.order.updateMany({ where: { id, replaySessionId: { not: null } }, data: { replaySessionId: null } }),
-    prisma.order.delete({ where: { id } }),
-  ]);
-  await audit(req, "hard_delete", "Order", id, {
-    orderNumber: order.orderNumber,
-    test: order.test,
-    status: order.status,
-  });
-  return order.id;
 }
 
 export function registerAdminOrdersRoutes(app: Express) {
@@ -389,13 +367,13 @@ export function registerAdminOrdersRoutes(app: Express) {
   // in the same transaction (so no email or Meta/TikTok event is ever sent for it), its session recording is
   // unlinked, and items/history/notes cascade. Stock is not put back and the customer record stays.
   app.delete("/api/admin/orders/:id", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
-    if (!canDeleteOrders(req)) return res.status(403).json({ error: "FORBIDDEN" });
+    if (!canHardDelete(req)) return res.status(403).json({ error: "FORBIDDEN" });
     const result = await hardDeleteOrder(req, routeParam(req, "id"));
     if (result === "NOT_FOUND") return res.status(404).json({ error: "NOT_FOUND" });
     res.json({ deleted: [result] });
   });
   app.post("/api/admin/orders/bulk-delete", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
-    if (!canDeleteOrders(req)) return res.status(403).json({ error: "FORBIDDEN" });
+    if (!canHardDelete(req)) return res.status(403).json({ error: "FORBIDDEN" });
     const ids: string[] = Array.isArray(req.body?.ids)
       ? [
           ...new Set<string>(
