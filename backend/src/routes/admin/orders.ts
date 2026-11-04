@@ -102,6 +102,38 @@ async function purchaseJobNames() {
   return ["meta-purchase", ...((await tiktokJobsEnabled()) ? ["tiktok-purchase"] : [])];
 }
 
+/** The status history fields the admin order page shows; the user is reduced to id and name. */
+const STATUS_HISTORY_SELECT = {
+  id: true,
+  from: true,
+  to: true,
+  note: true,
+  createdAt: true,
+  userId: true,
+  user: { select: { id: true, name: true } },
+} as const;
+
+/** Rebuilds one history entry from a whitelist, so no other user field can reach the response. */
+function publicStatusHistoryEntry(entry: {
+  id: string;
+  from: OrderStatus | null;
+  to: OrderStatus;
+  note: string | null;
+  createdAt: Date;
+  userId: string | null;
+  user: { id: string; name: string } | null;
+}) {
+  return {
+    id: entry.id,
+    from: entry.from,
+    to: entry.to,
+    note: entry.note,
+    createdAt: entry.createdAt,
+    userId: entry.userId,
+    user: entry.user ? { id: entry.user.id, name: entry.user.name } : null,
+  };
+}
+
 export function registerAdminOrdersRoutes(app: Express) {
   app.get("/api/admin/dashboard", requireAuth("orders.read"), async (_req, res) => {
     const health = await trackingHealth();
@@ -419,7 +451,9 @@ export function registerAdminOrdersRoutes(app: Express) {
       where: { id: routeParam(req, "id") },
       include: {
         items: true,
-        statusHistory: { include: { user: true }, orderBy: { createdAt: "desc" } },
+        // Only the name of whoever changed the status: a full User row would expose passwordHash and totpSecret
+        // to every role that can read orders (ORDER_AGENT included).
+        statusHistory: { select: STATUS_HISTORY_SELECT, orderBy: { createdAt: "desc" } },
         customer: true,
       },
     });
@@ -438,6 +472,7 @@ export function registerAdminOrdersRoutes(app: Express) {
         lineTotal: Number(i.lineTotal),
         bundleDiscount: Number(i.bundleDiscount),
       })),
+      statusHistory: row.statusHistory.map(publicStatusHistoryEntry),
       trackingUrl: row.postexTracking ? postexTrackingUrl(row.postexTracking) : null,
     });
   });
