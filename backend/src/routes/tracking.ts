@@ -16,6 +16,7 @@ import { processJobRow } from "../lib/job-processor";
 import { runInBackground } from "../lib/background";
 import type { Express } from "express";
 import { META_EVENT_NAMES, allowRules, audit, routeParam } from "../http/shared";
+import { REPLAY_SESSION_WRITE_MS } from "../lib/replay-ingest";
 
 const STUCK_JOB_MINUTES = 15;
 
@@ -54,13 +55,16 @@ export function registerTrackingRoutes(app: Express) {
           ...(eventName === "AddToCart" ? { reachedCart: true } : {}),
           ...(eventName === "InitiateCheckout" ? { reachedCheckout: true } : {}),
         };
-      // Analytics can annotate an existing replay, but only /start registers a recording.
-      await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${sessionReplayId}))`;
-        await tx.sessionReplay.updateMany({
-          where: { id: sessionReplayId },
-          data: { lastSeenAt: now, lastUrl: sourceUrl || "", ...flags },
-        });
+      // Analytics can annotate an existing replay, but only /start registers a recording. One statement, no lock:
+      // cart/checkout flags always apply; lastSeenAt and lastUrl alone are written at most once a minute.
+      await prisma.sessionReplay.updateMany({
+        where: {
+          id: sessionReplayId,
+          ...(Object.keys(flags).length
+            ? {}
+            : { lastSeenAt: { lt: new Date(now.getTime() - REPLAY_SESSION_WRITE_MS) } }),
+        },
+        data: { lastSeenAt: now, lastUrl: sourceUrl || "", ...flags },
       });
     }
 

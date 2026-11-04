@@ -7,6 +7,7 @@ import { toDesignProduct } from "./product-map";
 import { applyStoreSettings, type StoreSettings } from "./settings";
 import { pageToPolicy, type PageRow } from "./policies/html";
 import { isSeoIndex } from "./sitemaps";
+import { withMediaUrls } from "@/lib/media";
 import type { PolicyDocument } from "./policies/types";
 
 /**
@@ -193,7 +194,7 @@ export async function loadStoreSettings(): Promise<StoreSettings> {
     if (Number(delivery.flatRate) > 0) out.flatFee = Number(delivery.flatRate);
     if (Number(delivery.freeAbove) > 0) out.freeOver = Number(delivery.freeAbove);
     const tabs = s["store.productTabs"];
-    out.productTabs = tabs && typeof tabs === "object" ? tabs : null;
+    out.productTabs = tabs && typeof tabs === "object" ? withMediaUrls(tabs) : null;
   } catch {
     // keep the design values
   }
@@ -246,11 +247,12 @@ export async function loadSeoIndex(): Promise<SeoIndex> {
   // backend is never reused (the backend ignores the parameter).
   const path = `/api/seo/sitemap?v=2`;
   const index = await apiFetch<SeoIndex>(path, { next: { revalidate: 3600, tags: ["seo", "products", "categories"] } });
-  if (isSeoIndex(index)) return index;
+  // Sitemap image entries use the media domain (stored URLs are rewritten when read).
+  if (isSeoIndex(index)) return withMediaUrls(index);
   // Wrong shape (e.g. an older backend still live during a deploy): ask once more, uncached, then give up
   // so the sitemap answers 503 instead of publishing wrong data.
   const fresh = await apiFetch<SeoIndex>(path, { cache: "no-store" });
-  if (isSeoIndex(fresh)) return fresh;
+  if (isSeoIndex(fresh)) return withMediaUrls(fresh);
   throw new Error("SEO_INDEX_SHAPE");
 }
 
@@ -273,7 +275,7 @@ export async function loadPolicy(fallback: PolicyDocument): Promise<PolicyDocume
     const page = await apiFetch<PageRow>(`/api/pages/${encodeURIComponent(fallback.slug)}`, {
       next: { revalidate: 600, tags: ["pages", `page:${fallback.slug}`] },
     });
-    return pageToPolicy(fallback.slug, page, fallback) || fallback;
+    return pageToPolicy(fallback.slug, withMediaUrls(page), fallback) || fallback;
   } catch {
     return fallback;
   }

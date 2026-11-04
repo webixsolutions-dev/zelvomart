@@ -1,6 +1,6 @@
 "use client";
 import {privateSafeUrl} from "@/lib/url-privacy";
-import {REPLAY_FLUSH_MS,replayIdle,replayPhase} from '@/lib/replay-timing';
+import {REPLAY_CHUNK_EVENTS,REPLAY_CLIENT_MAX_CHUNKS,REPLAY_FLUSH_MS,REPLAY_KEEPALIVE_BYTES,replayChunkSize,replayIdle,replayPhase,replayStopReason} from '@/lib/replay-timing';
 import { createReplayDelivery, replayDeliveryResult, type ReplayDeliveryResult } from "@/lib/replay-delivery";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import {
   getReplayStartedAt,
   getReplayVisitorId,
   sessionReplayEnabled,
+  sessionReplaySampled,
   isReplaySessionLimited,
   limitReplaySession,
 } from "@/lib/session-replay-client";
@@ -68,7 +69,7 @@ type RecordWithSnapshot = ((options: Record<string, unknown>) => unknown) & {
   takeFullSnapshot?: () => void;
 };
 
-async function announceSession(pageView = false) {
+async function announceSession(pageView = false, record = true) {
   const sessionId = getReplaySessionId();
   const visitorId = getReplayVisitorId();
   if (!sessionId || !visitorId) return { ok: false };
@@ -84,6 +85,7 @@ async function announceSession(pageView = false) {
     device: window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop",
     viewport: `${window.innerWidth}x${window.innerHeight}`,
     pageView,
+    record,
   });
 }
 
@@ -105,10 +107,22 @@ export default function SessionReplayProvider() {
     const sessionId = getReplaySessionId();
     const visitorId = getReplayVisitorId();
     if (!sessionId || !visitorId || isReplaySessionLimited(sessionId)) return;
+    const endSession=()=>send('/api/session-replays/end',{sessionId,endedAt:new Date().toISOString(),currentUrl:privateSafeUrl(window.location.href)});
+    if(!sessionReplaySampled()){
+      // Outside the replay sample (NEXT_PUBLIC_SESSION_REPLAY_SAMPLE_RATE): keep the analytics row
+      // (traffic source, device, landing page, page views) and record nothing.
+      void announceSession(false,false);
+      announcePageRef.current=async()=>(await announceSession(true,false)).ok;
+      return()=>{announcePageRef.current=null;};
+    }
+    const startedAtMs=Date.parse(getReplayStartedAt());
+    // A recording that already reached its 10-minute cap (for example after a reload) does not start again.
+    if(replayStopReason({startedAt:startedAtMs})){limitReplaySession(sessionId);void endSession();return;}
 
     let stopped = false;
     let lastActivity=Date.now(),idle=false;
     let paused=document.visibilityState==='hidden',starting=false,bufferPaused=false;
+    let hiddenSince=document.visibilityState==='hidden'?Date.now():undefined;
     let stopRecording: undefined | (() => void);
     let timer: number | undefined;
     let retryTimer: number | undefined;
@@ -159,9 +173,12 @@ export default function SessionReplayProvider() {
       if(!sessionReplayEnabled()){queue=[];pending=undefined;flushing=false;return false;}
       if(storageMissing){queue=[];pending=undefined;flushing=false;try{stopRecording?.()}catch{}return false;}
       if (!pending) {
-        const count = Math.min(queue.length, 100);
+        // Bigger chunks; a page-hide (keepalive) chunk stays under the browser's keepalive size limit.
+        const count = replayChunkSize(queue, REPLAY_CHUNK_EVENTS, keepalive ? REPLAY_KEEPALIVE_BYTES : 1_500_000);
+        const sequence = claimReplaySequence(sessionId);
+        if (sequence >= REPLAY_CLIENT_MAX_CHUNKS) { queue = []; flushing = false; endRecording(); return false; }
         pending = {
-          sequence: claimReplaySequence(sessionId),
+          sequence,
           events: queue.splice(0, count),
           currentUrl: privateSafeUrl(window.location.href),
         };
@@ -179,10 +196,10 @@ export default function SessionReplayProvider() {
       }
       flushing = false;
 
-      if (ok && (queue.length >= 100 || stopped&&queue.length>0)) {
+      if (ok && (queue.length >= REPLAY_CHUNK_EVENTS || stopped&&queue.length>0)) {
         window.setTimeout(() => { void flush(stopped); }, 250);
       }
-      if(ok&&bufferPaused&&queue.length<100&&!stopped){bufferPaused=false;if(document.visibilityState==='visible'&&replayPhase(lastActivity)==='active'){paused=false;void startRecorder();}}
+      if(ok&&bufferPaused&&queue.length<REPLAY_CHUNK_EVENTS&&!stopped){bufferPaused=false;if(document.visibilityState==='visible'&&replayPhase(lastActivity)==='active'){paused=false;void startRecorder();}}
       return ok;
     };
 
@@ -199,6 +216,9 @@ export default function SessionReplayProvider() {
       // A final small keepalive flush is attempted for the last interaction batch.
       void flush(true);
     };
+
+    // The recording ends for good (10-minute cap, tab hidden for over a minute, chunk limit); shopping is unaffected.
+    const endRecording=()=>{if(stopped||delivery.stopped)return;limitReplaySession(sessionId);stopPageRecorder();void endSession();};
 
     const pauseRecorder=()=>{if(paused||stopped)return;paused=true;try{stopRecording?.()}catch{}stopRecording=undefined;recorderReadyRef.current=false;takeSnapshotRef.current=null;void flush(true);};
 
@@ -225,7 +245,7 @@ export default function SessionReplayProvider() {
             const eventType = Number((event as { type?: number }).type);
             // Full snapshots are valuable and can be large: upload them immediately
             // while the document is still active rather than waiting for unload.
-            if (eventType === 2 || queue.length >= 100) {
+            if (eventType === 2 || queue.length >= REPLAY_CHUNK_EVENTS) {
               void flush(false);
             }
           },
@@ -257,14 +277,17 @@ export default function SessionReplayProvider() {
     const onManualFlush = () => { void flush(false); };
     const onPageHide = () => { pauseRecorder();void flush(true); };
     const onVisibility = () => {
-      if(document.visibilityState==='hidden')pauseRecorder();else onActivity();
+      if(document.visibilityState==='hidden'){hiddenSince=Date.now();pauseRecorder();return;}
+      if(replayStopReason({startedAt:startedAtMs,hiddenSince})){endRecording();return;}
+      hiddenSince=undefined;onActivity();
     };
 
-    const onActivity=()=>{if(!sessionReplayEnabled()){setGeneration(n=>n+1);return;}const previous=lastActivity,expired=idle||replayIdle(previous);lastActivity=Date.now();touchReplayActivity();if(expired){if(!idle){idle=true;stopPageRecorder();void send('/api/session-replays/end',{sessionId,endedAt:new Date(previous).toISOString(),currentUrl:privateSafeUrl(window.location.href)});}resetReplaySession();setGeneration(value=>value+1);return;}if(bufferPaused&&queue.length>=100)return;if(initialStartReady&&document.visibilityState==='visible'&&(paused||!stopRecording)){paused=false;void startRecorder();}};
+    const onActivity=()=>{if(!sessionReplayEnabled()){setGeneration(n=>n+1);return;}const previous=lastActivity,expired=idle||replayIdle(previous);lastActivity=Date.now();touchReplayActivity();if(expired){if(!idle){idle=true;stopPageRecorder();void send('/api/session-replays/end',{sessionId,endedAt:new Date(previous).toISOString(),currentUrl:privateSafeUrl(window.location.href)});}resetReplaySession();setGeneration(value=>value+1);return;}if(bufferPaused&&queue.length>=REPLAY_CHUNK_EVENTS)return;if(initialStartReady&&document.visibilityState==='visible'&&(paused||!stopRecording)){paused=false;void startRecorder();}};
     activityRef.current=onActivity;
     const onOnline=()=>{retryNotBefore=0;if(retryTimer)clearTimeout(retryTimer);retryTimer=undefined;void flush(false);};
     const onPageShow=()=>onActivity();
     timer=window.setInterval(()=>{
+      if(replayStopReason({startedAt:startedAtMs,hiddenSince:document.visibilityState==='hidden'?hiddenSince:undefined})){endRecording();return;}
       const phase=replayPhase(lastActivity,Date.now(),document.visibilityState==='visible');
       if(phase==='ended'){idle=true;stopPageRecorder();void send('/api/session-replays/end',{sessionId,endedAt:new Date(lastActivity).toISOString(),currentUrl:privateSafeUrl(window.location.href)});return;}
       if(phase==='paused')pauseRecorder();

@@ -4,6 +4,7 @@ import { prisma } from "./db";
 import { uploadObject } from "./storage";
 import { setSetting } from "./settings";
 import { forget, memo, MEMO_TTL_MS } from "./memo";
+import { publicMediaUrl } from "./media";
 /** Site images: WebP, at most 1600 px wide, quality 82, metadata removed. */
 export const SITE_IMAGE_MAX_WIDTH = 1600;
 export const SITE_IMAGE_QUALITY = 82;
@@ -67,8 +68,10 @@ export async function catalogImageCopies() {
 }
 export function feedImage(source: string | undefined, platform: string, copies: Record<string, string>) {
   if (!source) return undefined;
+  // Old R2 host -> media domain (lib/media.ts); the copy is looked up by the stored URL.
   // Feeds get JPG/PNG only: the site's WebP is swapped for its JPG copy (made at upload or by the backfill).
-  if (/\.(jpe?g|png)(\?|$)/i.test(source)) return source;
+  if (/\.(jpe?g|png)(\?|$)/i.test(source)) return publicMediaUrl(source);
   // Google also reads WebP, so a Google item without a copy yet keeps the original rather than dropping its image.
-  return copies[imageCopyKey(source)] || (platform === "google" ? source : undefined);
+  const chosen = copies[imageCopyKey(source)] || (platform === "google" ? source : undefined);
+  return chosen && publicMediaUrl(chosen);
 }

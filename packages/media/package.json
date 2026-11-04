@@ -1,0 +1,8 @@
+{
+  "name": "@zelvomart/media",
+  "version": "1.0.0",
+  "private": true,
+  "main": "media.js",
+  "types": "media.d.ts",
+  "files": ["media.js", "media.d.ts"]
+}

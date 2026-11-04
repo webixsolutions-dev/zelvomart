@@ -10,6 +10,7 @@ const STARTED_AT_KEY = "zm_replay_started_at";
 const LANDING_URL_KEY = "zm_replay_landing_url";
 const OPT_OUT_KEY = "zm_session_replay_opt_out";
 const ACTIVITY_KEY = "zm_replay_last_activity";
+const SAMPLE_KEY = "zm_replay_sampled";
 let activityWrittenAt=0;
 export function touchReplayActivity(){try{const now=Date.now();if(now-activityWrittenAt<1000&&sessionStorage.getItem(ACTIVITY_KEY))return;sessionStorage.setItem(ACTIVITY_KEY,String(now));activityWrittenAt=now}catch{}}
 
@@ -94,8 +95,35 @@ export function claimReplaySequence(sessionId=getReplaySessionId()) {
   }
 }
 
+/** NEXT_PUBLIC_SESSION_REPLAY_SAMPLE_RATE: share of visitor sessions that are recorded (0 to 1, default 0.25). */
+export function replaySampleRate(raw = process.env.NEXT_PUBLIC_SESSION_REPLAY_SAMPLE_RATE) {
+  if (raw === undefined || String(raw).trim() === "") return 0.25;
+  const rate = Number(raw);
+  return Number.isFinite(rate) ? Math.min(1, Math.max(0, rate)) : 0.25;
+}
+
+/** The decision is made once per tab session ("1" or "0" kept in sessionStorage) and never re-rolled. */
+export function decideReplaySample(stored: string | null, rate: number, random: () => number = Math.random) {
+  if (stored === "1" || stored === "0") return { sampled: stored === "1", store: null as string | null };
+  const sampled = rate >= 1 || (rate > 0 && random() < rate);
+  return { sampled, store: sampled ? "1" : "0" };
+}
+
+/** True when this tab session is in the replay sample. Outside it, only the analytics row is kept, nothing is recorded. */
+export function sessionReplaySampled() {
+  if (typeof window === "undefined") return false;
+  try {
+    const decision = decideReplaySample(window.sessionStorage.getItem(SAMPLE_KEY), replaySampleRate());
+    if (decision.store) window.sessionStorage.setItem(SAMPLE_KEY, decision.store);
+    return decision.sampled;
+  } catch {
+    return false;
+  }
+}
+
 export function sessionReplayEnabled() {
   if (typeof window === "undefined"||staffDevice()) return false;
+  if (window.location.pathname.startsWith("/admin")) return false;
   if (process.env.NEXT_PUBLIC_SESSION_REPLAY_ENABLED === "false") return false;
   try {
     if (window.localStorage.getItem(OPT_OUT_KEY) === "1") return false;

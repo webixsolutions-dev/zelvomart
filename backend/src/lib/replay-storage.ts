@@ -27,17 +27,24 @@ export async function storeReplayChunk(sessionId: string, sequence: number, even
   if (!replayStorageConfigured()) return null;
   const storageKey = `replays/${sessionId}/${sequence}.json.gz`,
     body = Buffer.isBuffer(events) ? events : prepareReplayChunk(events);
-  await client().send(
-    new PutObjectCommand({
-      Bucket: process.env.REPLAY_S3_BUCKET,
-      Key: storageKey,
-      Body: body,
-      ContentType: "application/json",
-      ContentEncoding: "gzip",
-      CacheControl: "private,max-age=300",
-    }),
-    { abortSignal: AbortSignal.timeout(15000) },
-  );
+  try {
+    await client().send(
+      new PutObjectCommand({
+        Bucket: process.env.REPLAY_S3_BUCKET,
+        Key: storageKey,
+        Body: body,
+        ContentType: "application/json",
+        ContentEncoding: "gzip",
+        CacheControl: "private,max-age=300",
+        // Write once: a chunk file is never replaced (replaces the old per-chunk database lock).
+        IfNoneMatch: "*",
+      }),
+      { abortSignal: AbortSignal.timeout(15000) },
+    );
+  } catch (error) {
+    // 412: the file already exists (an earlier attempt stored it before its database row was written).
+    if ((error as { $metadata?: { httpStatusCode?: number } })?.$metadata?.httpStatusCode !== 412) throw error;
+  }
   return { storageKey, byteSize: body.length };
 }
 export async function replayChunkUrl(key: string) {

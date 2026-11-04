@@ -40,7 +40,7 @@ export function Header() {
     <>
       <header className={`site-header ${scrolled ? "is-scrolled" : ""}`}>
         <div className="container header-main">
-          <Logo className="header-logo" />
+          <Logo className="header-logo" eager />
           <div className="header-left only-mobile">
             <button className="icon-btn" type="button" aria-label="Open menu" onClick={() => setDrawer(true)}>
               <Menu size={23} />
