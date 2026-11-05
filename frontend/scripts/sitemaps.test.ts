@@ -50,7 +50,8 @@ test("index lists only non-empty children; /sitemap.xml serves the same index", 
   assert.deepEqual(locs(xml), [`${WWW}/page-sitemap.xml`, `${WWW}/product_cat-sitemap.xml`, `${WWW}/product-sitemap.xml`]);
   assert.equal(sitemapXml("sitemap.xml", data), xml);
   // Index lastmod = newest lastmod inside each child.
-  assert.deepEqual(locs(xml, "lastmod"), ["2026-10-21T00:00:00.000Z", "2026-10-28T08:00:00.000Z", "2026-10-27T08:00:00.000Z"]);
+  // Pages: the refund policy changed on 5 Nov (advance payment rules).
+  assert.deepEqual(locs(xml, "lastmod"), ["2026-11-05T00:00:00.000Z", "2026-10-28T08:00:00.000Z", "2026-10-27T08:00:00.000Z"]);
 
   const empty = sitemapData(index({ products: [], categories: [] }));
   assert.deepEqual(locs(sitemapXml("sitemap_index.xml", empty)!), [`${WWW}/page-sitemap.xml`]);

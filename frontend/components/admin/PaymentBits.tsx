@@ -7,7 +7,10 @@ export const FLAG_LABELS: Record<string, string> = {
   DUPLICATE_IMAGE: "Screenshot seen before",
   TIME: "Time outside order",
   RECEIVER: "Receiver differs",
+  DETAILS_MISSING: "Details missing – check screenshot",
 };
+/** Amber flags: worth a look, not a warning sign about the payment itself. */
+const AMBER = new Set(["TIME", "DETAILS_MISSING"]);
 export const PROOF_STATUS: Record<
   string,
   { label: string; tone: "warning" | "success" | "danger" | "info" }
@@ -25,7 +28,7 @@ export function FlagChips({ flags }: { flags: string[] }) {
       {flags.map((flag) => (
         <span
           key={flag}
-          className={`pay-flag ${flag === "TIME" ? "tone-warn" : ""}`}
+          className={`pay-flag ${AMBER.has(flag) ? "tone-warn" : ""}`}
         >
           ⚑ {FLAG_LABELS[flag] || flag}
         </span>

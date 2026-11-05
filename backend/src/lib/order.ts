@@ -325,10 +325,19 @@ export async function createOrder(input: CheckoutInput, options: { dispatchJobs?
         where: { id: order.replaySessionId },
         data: { ordered: true, reachedCheckout: true },
       });
+    // Advance orders: nothing at checkout. The "Complete your payment" reminder (advance-sweep.ts), the proof, the
+    // verification and a switch to COD send the emails and the Purchase event (advance-jobs.ts).
+    const advanceOrder = order.paymentMethod === "ADVANCE_EASYPAISA";
     const jobs = await Promise.all([
-      tx.job.create({ data: { name: "order-team-email", orderId: order.id, payload: { orderId: order.id } } }),
-      tx.job.create({ data: { name: "customer-order-email", orderId: order.id, payload: { orderId: order.id } } }),
-      ...(order.test || order.staffCreated || order.blocklistedAtOrder
+      ...(advanceOrder
+        ? []
+        : [
+            tx.job.create({ data: { name: "order-team-email", orderId: order.id, payload: { orderId: order.id } } }),
+            tx.job.create({
+              data: { name: "customer-order-email", orderId: order.id, payload: { orderId: order.id } },
+            }),
+          ]),
+      ...(advanceOrder || order.test || order.staffCreated || order.blocklistedAtOrder
         ? []
         : [
             tx.job.create({ data: { name: "meta-purchase", orderId: order.id, payload: { orderId: order.id } } }),

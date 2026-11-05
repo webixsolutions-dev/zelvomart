@@ -23,7 +23,7 @@ export const staticPages: { path: string; label: string; lastmod: string }[] = [
   { path: "faqs", label: "FAQs", lastmod: "2026-10-21" },
   { path: "track-your-order", label: "Track Your Order", lastmod: "2026-10-21" },
   { path: "shipping-policy", label: "Shipping Policy", lastmod: "2026-10-21" },
-  { path: "refund_returns", label: "Returns & Refunds", lastmod: "2026-10-21" },
+  { path: "refund_returns", label: "Returns & Refunds", lastmod: "2026-11-05" },
   { path: "privacy-policy", label: "Privacy Policy", lastmod: "2026-10-21" },
   { path: "terms-conditions", label: "Terms & Conditions", lastmod: "2026-10-21" },
 ];

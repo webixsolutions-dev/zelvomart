@@ -10,11 +10,20 @@ type Advance = {
   qrImageUrl?: string;
   discount?: number;
   minSubtotal?: number;
+  firstReminderMinutes?: number;
   reminderHours?: number;
   expiryHours?: number;
   verificationHours?: string;
   autoRead?: boolean;
 };
+type AutoReadTest = {
+  model?: string;
+  httpStatus?: number | null;
+  error?: string;
+  message?: string;
+  prefill?: { tid: string | null; amount: number | null; sender: string | null } | null;
+};
+
 const DEMO_TILL = "DEMO-TILL";
 /** Same rule as the backend (lib/advance-payment.ts): a missing or demo Till ID, or no real QR, is demo. */
 const usesDemo = (till: string, qr: string) =>
@@ -42,7 +51,27 @@ export default function AdvancePaymentSettings({
   const [enabled, setEnabled] = useState(v.enabled === true);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<AutoReadTest | null>(null);
   const demo = usesDemo(till, qr);
+
+  async function testAutoRead() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const response = await adminFetch("/api/admin/payments/auto-read/test", { method: "POST" });
+      const result = (await response.json().catch(() => null)) as AutoReadTest | null;
+      setTestResult(
+        result && (result.error || result.prefill)
+          ? result
+          : { error: String(response.status), message: "The backend did not return an auto-read result." },
+      );
+    } catch {
+      setTestResult({ error: "CONNECTION_FAILED", message: "The backend could not be reached." });
+    } finally {
+      setTesting(false);
+    }
+  }
 
   async function uploadQr(file: File | undefined) {
     if (!file) return;
@@ -86,6 +115,7 @@ export default function AdvancePaymentSettings({
                 qrImageUrl: qr,
                 discount: num("discount", 200),
                 minSubtotal: num("minSubtotal", 0),
+                firstReminderMinutes: num("firstReminderMinutes", 30),
                 reminderHours: num("reminderHours", 2),
                 expiryHours: num("expiryHours", 24),
                 verificationHours:
@@ -220,7 +250,21 @@ export default function AdvancePaymentSettings({
         />
       </label>
       <label className="field">
-        <span>Reminder email after (hours)</span>
+        <span>First payment reminder (minutes)</span>
+        <input
+          name="firstReminderMinutes"
+          type="number"
+          min={5}
+          step={1}
+          defaultValue={v.firstReminderMinutes ?? 30}
+        />
+        <small>
+          The &ldquo;Complete your payment&rdquo; email. Advance orders get no
+          email when they are placed.
+        </small>
+      </label>
+      <label className="field">
+        <span>Second reminder after (hours)</span>
         <input
           name="reminderHours"
           type="number"
@@ -260,6 +304,41 @@ export default function AdvancePaymentSettings({
           GEMINI_API_KEY on the backend; never verifies)
         </span>
       </label>
+      <div className="field full">
+        <div>
+          <button
+            type="button"
+            className="admin-btn admin-btn-light"
+            disabled={testing}
+            onClick={() => void testAutoRead()}
+          >
+            {testing ? "Testing auto-read…" : "Test auto-read"}
+          </button>
+        </div>
+        <small>Sends a sample receipt to Gemini to check the backend configuration.</small>
+        <div role="status" aria-live="polite">
+          {testResult && (
+            <>
+              <strong>
+                {testResult.error
+                  ? [testResult.httpStatus && `HTTP ${testResult.httpStatus}`, testResult.error]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : "Sample receipt read successfully"}
+              </strong>
+              {testResult.model && <span> · {testResult.model}</span>}
+              {testResult.message && <div>{testResult.message}</div>}
+              {testResult.prefill && (
+                <div>
+                  TID {testResult.prefill.tid ?? "—"} · Amount{" "}
+                  {testResult.prefill.amount == null ? "—" : `Rs ${testResult.prefill.amount}`} · Sender{" "}
+                  {testResult.prefill.sender ?? "—"}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
       <p className="settings-section-note full">
         WhatsApp support uses the store WhatsApp number (Store settings).
       </p>

@@ -43,6 +43,11 @@
   font-weight: 700; cursor: pointer; color: inherit; text-align: center;
 }
 .tabs button.active { border-color: var(--blue, #0b63ce); background: var(--blue-mist, #eef5ff); color: var(--blue, #0b63ce); }
+.tabLabel { display: grid; gap: 2px; justify-items: center; line-height: 1.25; }
+.tabLabel small { font-size: 11.5px; font-weight: 500; color: var(--muted, #6b7a90); }
+.tabs button.active .tabLabel small { color: inherit; opacity: 0.85; }
+/* One line reserved so the device-specific QR hint never moves the page when it appears. */
+.deviceHint { min-height: 1.55em; margin: 0; }
 .panel { display: grid; gap: 12px; justify-items: center; }
 .till { display: grid; gap: 4px; justify-items: center; text-align: center; }
 .till > span { color: var(--muted, #6b7a90); font-size: 13px; }
@@ -56,8 +61,19 @@
 .linkBtn { min-height: 44px; border: 0; background: none; color: var(--blue, #0b63ce); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 .trust { display: grid; gap: 8px; font-size: 13.5px; line-height: 1.55; background: #fafcff; }
 .trust p { margin: 0; display: flex; gap: 6px; align-items: flex-start; flex-wrap: wrap; }
-.trust a { display: inline-flex; gap: 6px; align-items: center; }
 .never { font-weight: 700; }
+.trustLinks { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.textLink { color: var(--blue); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+.textLink:hover { color: var(--blue-deep); }
+.textLink:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.trustLinks .textLink { display: inline-flex; align-items: center; min-height: 24px; }
+.fileWrap { position: relative; }
+.fileRemove {
+  position: absolute; top: 8px; right: 8px; z-index: 1; display: inline-flex; align-items: center; gap: 4px;
+  min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line, #e5eaf1); background: #fff;
+  color: #b4233a; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.reqMark { display: inline-block; width: 0.6em; color: #b4233a; }
 .sheetBackdrop { position: fixed; inset: 0; z-index: 80; background: rgba(16, 35, 59, 0.45); display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
   width: min(640px, 100%); max-height: 85vh; overflow: auto; background: #fff;

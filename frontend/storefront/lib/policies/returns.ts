@@ -37,6 +37,11 @@ export const returnsPolicy: PolicyDocument = {
       "icon": "message"
     },
     {
+      "heading": "Advance Payments (Easypaisa / Bank Transfer)",
+      "body": "If we are unable to ship your order for any reason on our side (for example, the item is out of stock), we refund the full amount you paid.\n\nIf you cancel your order after paying and before it is dispatched, we refund the amount you paid minus the delivery charges, because the courier booking cost is already committed.\n\nOnce the order is dispatched, the normal return rules on this page apply.\n\nRefunds are sent only to the same account the payment came from, after we confirm the cancellation. We will never ask for your PIN, OTP or password.",
+      "icon": "cash"
+    },
+    {
       "heading": "Refund Timeline",
       "body": "Once your return is approved, refunds are processed within a reasonable timeframe depending on how the refund is being returned to you.",
       "icon": "clock"

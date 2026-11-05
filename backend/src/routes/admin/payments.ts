@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "../../lib/db";
 import type { Prisma } from "../../generated/prisma/client";
 import { requireAuth, type AuthedRequest } from "../../lib/auth";
-import { audit, routeParam, setNoStore } from "../../http/shared";
+import { allowRequest, audit, routeParam, setNoStore } from "../../http/shared";
 import { runInBackground } from "../../lib/background";
 import { runJobsNow } from "../../lib/job-runner";
 import {
@@ -19,10 +19,13 @@ import {
   type RefundReason,
 } from "../../lib/advance-payment";
 import { transitionOrder } from "../../lib/order";
+import { enqueueOrderEmails, enqueuePurchaseOnce } from "../../lib/advance-jobs";
 import { normalizeTid } from "../../lib/payment-proof";
 import { REJECT_REASONS, type RejectReason } from "../../lib/payment-proof";
 import { paymentProofSignedUrl, readPaymentProof } from "../../lib/payment-proof-storage";
 import { isCloudStorageConfigured, uploadObject } from "../../lib/storage";
+import { geminiReader, prefillFrom } from "../../lib/proof-autoread";
+import { SAMPLE_RECEIPT_EXPECTED, SAMPLE_RECEIPT_PNG } from "../../lib/proof-autoread-sample";
 
 /**
  * Admin → Payments: staff check each proof against the Easypaisa merchant app. Nothing here trusts the screenshot:
@@ -50,6 +53,7 @@ const proofListSelect = {
   tidDuplicate: true,
   imageDuplicate: true,
   timeOutOfWindow: true,
+  detailsMissing: true,
   order: {
     select: {
       id: true,
@@ -68,6 +72,7 @@ const flagList = (proof: {
   tidDuplicate: boolean;
   imageDuplicate: boolean;
   timeOutOfWindow: boolean;
+  detailsMissing: boolean;
 }) =>
   [
     proof.amountMismatch && "AMOUNT",
@@ -75,6 +80,8 @@ const flagList = (proof: {
     proof.imageDuplicate && "DUPLICATE_IMAGE",
     proof.timeOutOfWindow && "TIME",
     proof.receiverMismatch && "RECEIVER",
+    // Amber: only the screenshot came in and nothing was read from it.
+    proof.detailsMissing && "DETAILS_MISSING",
   ].filter(Boolean) as string[];
 
 /** Private staff note (never sent) and the optional message that goes into the customer's email. */
@@ -319,7 +326,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
       ? await prisma.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true } })
       : [];
     const name = (id: string | null) => (id ? staff.find((user) => user.id === id)?.name || "Staff" : null);
-    const signed = await paymentProofSignedUrl(proof.screenshotKey).catch(() => null);
+    const signed = proof.screenshotKey ? await paymentProofSignedUrl(proof.screenshotKey).catch(() => null) : null;
     const history = await prisma.auditLog.findMany({
       where: { entity: "PaymentProof", entityId: proof.id },
       orderBy: { createdAt: "desc" },
@@ -362,7 +369,8 @@ export function registerAdminPaymentsRoutes(app: Express) {
         refundedBy: name(proof.refundedById),
         refundedAt: proof.refundedAt,
         // A 5-minute signed link to the private file, or the same-origin image route when no bucket is set (local).
-        imageUrl: signed || `/api/admin/payments/${proof.id}/image`,
+        // Null: the customer sent only the TID and amount.
+        imageUrl: proof.screenshotKey ? signed || `/api/admin/payments/${proof.id}/image` : null,
         imageIsSigned: !!signed,
       },
       order: {
@@ -397,6 +405,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
     });
     if (!proof) return res.status(404).json({ error: "NOT_FOUND" });
     try {
+      if (!proof.screenshotKey) return res.status(404).json({ error: "NO_SCREENSHOT" });
       const bytes = await readPaymentProof(proof.screenshotKey);
       res.setHeader("Cache-Control", "private, no-store");
       res.setHeader("Content-Type", "image/webp");
@@ -507,15 +516,9 @@ export function registerAdminPaymentsRoutes(app: Express) {
           },
         },
       });
-      return [
-        await emailJob(
-          tx,
-          outcome === "VERIFIED" ? "advance-verified-email" : "advance-issue-email",
-          order.id,
-          proof.id,
-          body.customerMessage,
-        ),
-      ];
+      // One confirmation: the order email ("Paid in advance, nothing to pay on delivery", or the balance for a
+      // partial) and the team's new-order email marked Advance paid.
+      return enqueueOrderEmails(tx, order.id, "advance-paid", body.customerMessage);
     });
     return { jobIds };
   });
@@ -650,7 +653,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
         await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
         const order = await tx.order.findUnique({
           where: { id: orderId },
-          select: { ...actOrderSelect, advanceDiscount: true },
+          select: { ...actOrderSelect, advanceDiscount: true, test: true, staffCreated: true },
         });
         if (!order) throw new ActionError("NOT_FOUND", "Order not found.", 404);
         if (order.paymentMethod !== "ADVANCE_EASYPAISA")
@@ -700,12 +703,48 @@ export function registerAdminPaymentsRoutes(app: Express) {
             details: { total, discountRemoved: Number(order.advanceDiscount), proofsClosed: open.count },
           },
         });
-        return { total };
+        // Now a normal COD order: the COD emails, and the Purchase event if no proof sent it already.
+        return [
+          ...(await enqueueOrderEmails(tx, order.id, "cod-switch", body.customerMessage)),
+          ...(await enqueuePurchaseOnce(tx, order)),
+        ];
       });
-      void result;
-      return { jobIds: [] };
+      return { jobIds: result };
     }),
   );
+
+  // Test the configured Gemini key with fictional data, even while customer auto-read is switched off.
+  app.post("/api/admin/payments/auto-read/test", requireAuth("settings.write"), async (req: AuthedRequest, res) => {
+    setNoStore(res);
+    if (!(await allowRequest(req, res, "payment-auto-read-test", 5, 60_000, req.admin?.id))) return;
+    const key = process.env.GEMINI_API_KEY?.trim();
+    if (!key)
+      return res.status(503).json({
+        error: "KEY_NOT_CONFIGURED",
+        message: "GEMINI_API_KEY is missing from the backend deployment.",
+      });
+
+    const attempt = await geminiReader(key).readWithDiagnostics(SAMPLE_RECEIPT_PNG, "image/png");
+    if ("failure" in attempt)
+      return res.status(502).json({
+        error: attempt.failure.status,
+        ...attempt.failure,
+      });
+
+    const prefill = prefillFrom(attempt.result);
+    const matches =
+      prefill?.tid === SAMPLE_RECEIPT_EXPECTED.tid &&
+      prefill.amount === SAMPLE_RECEIPT_EXPECTED.amount &&
+      prefill.sender?.toLowerCase() === SAMPLE_RECEIPT_EXPECTED.sender.toLowerCase();
+    if (!matches)
+      return res.status(502).json({
+        error: "SAMPLE_READ_INCOMPLETE",
+        model: attempt.model,
+        message: "Gemini responded but could not read all three sample receipt fields correctly.",
+        prefill,
+      });
+    res.json({ model: attempt.model, prefill });
+  });
 
   // Settings → Payments: the merchant Raast QR is stored exactly as uploaded (no re-encode, crop or resize), so it
   // stays scannable. Public media bucket: it is shown to every customer on the payment page.

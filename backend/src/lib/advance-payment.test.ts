@@ -174,6 +174,15 @@ test("settings: production refuses to enable advance payment on demo values", ()
       () => validateSettingsUpdate({ "payments.advance": { ...real, reminderHours: 24, expiryHours: 24 } }),
       /expiry/,
     );
+    assert.throws(
+      () => validateSettingsUpdate({ "payments.advance": { ...real, firstReminderMinutes: 120, reminderHours: 2 } }),
+      /first payment reminder/,
+    );
+    assert.doesNotThrow(
+      () => validateSettingsUpdate({ "payments.advance": { ...real, firstReminderMinutes: 30 } }),
+      "30 minutes, then 2 hours",
+    );
+    assert.equal(normalizeAdvanceSettings({}).firstReminderMinutes, 30, "default 30 minutes");
   } finally {
     if (before === undefined) delete process.env.APP_ENV;
     else process.env.APP_ENV = before;

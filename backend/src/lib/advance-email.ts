@@ -12,6 +12,7 @@ export const ADVANCE_JOB_NAMES = [
   "advance-proof-customer-email",
   "advance-verified-email",
   "advance-issue-email",
+  "advance-first-reminder-email",
   "advance-reminder-email",
   "advance-proof-autoread",
   "advance-refund-email",
@@ -122,7 +123,7 @@ export async function sendAdvanceProofTeamEmail(orderId: string, proofId: string
   const team = internalEmail(
     "Orders",
     orderAlertRecipients(await getSetting<unknown>("notifications.orderRecipients", null)),
-    `${order.orderNumber} • Advance payment proof • ${shownAmount(proof.amountSent)}${flags.length ? " • FLAGGED" : ""}`,
+    `${order.orderNumber} • Advance payment to verify • ${shownAmount(proof.amountSent)}${flags.length ? " • FLAGGED" : ""}`,
     html,
   );
   return deliverEmail(
@@ -137,7 +138,7 @@ export async function sendAdvanceProofCustomerEmail(orderId: string, proofId: st
   if (!proof) return { skipped: "PROOF_NOT_FOUND" };
   const { verificationHours } = await loadAdvanceSettings();
   const html = `
-    <h2>Order received – advance payment pending verification.</h2>
+    <h2>Payment received – we are verifying.</h2>
     <p>Hi ${escapeHtml(firstName(order.fullName))}, we received your payment proof for <strong>${escapeHtml(order.orderNumber)}</strong>${proof.amountSent != null || proof.tid ? ` (${[proof.amountSent != null && money(proof.amountSent), proof.tid && `TID ${proof.tid}`].filter(Boolean).map(escapeHtml).join(", ")})` : ""}.</p>
     <p>We verify during ${escapeHtml(verificationHours)} and confirm on WhatsApp/email. Your order is safe.</p>
     ${
@@ -150,7 +151,7 @@ export async function sendAdvanceProofCustomerEmail(orderId: string, proofId: st
     {
       ...emailIdentity("orders"),
       to: order.email,
-      subject: `Payment proof received • ${order.orderNumber}`,
+      subject: `Payment received – we are verifying • ${order.orderNumber}`,
       html: emailLayout(html),
     },
     `advance-proof-received-${proof.id}`,
@@ -240,6 +241,31 @@ export async function sendAdvanceRefundEmail(
       html: emailLayout(html),
     },
     `advance-refund-${String(data.proofId || order.id)}-${String(data.refundedAt || "")}`,
+  );
+}
+
+/**
+ * "Complete your payment": the first email an advance order gets (nothing is sent at checkout), after
+ * `firstReminderMinutes`. Pay link, exact amount and the COD way out.
+ */
+export async function sendAdvanceFirstReminderEmail(orderId: string) {
+  const { order } = await orderAndProof(orderId);
+  if (!order.email) return { skipped: "Customer did not provide an email address" };
+  if (order.paymentMethod !== "ADVANCE_EASYPAISA" || order.paymentStatus !== "AWAITING_PAYMENT")
+    return { skipped: "NO_LONGER_AWAITING_PAYMENT" };
+  const { expiryHours } = await loadAdvanceSettings();
+  const html = `
+    <h2>Complete your payment</h2>
+    <p>Hi ${escapeHtml(firstName(order.fullName))}, thanks for order <strong>${escapeHtml(order.orderNumber)}</strong>. It is reserved for you until we receive your payment.</p>
+    ${advanceOrderEmailBlock(order, expiryHours)}`;
+  return deliverEmail(
+    {
+      ...emailIdentity("orders"),
+      to: order.email,
+      subject: `Complete your payment • ${order.orderNumber}`,
+      html: emailLayout(html),
+    },
+    `advance-first-reminder-${order.id}`,
   );
 }
 
