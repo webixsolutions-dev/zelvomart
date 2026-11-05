@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Loader2 } from "lucide-react";
+import { ImagePlus, Loader2, X } from "lucide-react";
 import { money } from "@store/lib/format";
+import { detailsRequired, proofErrors, type ProofErrors } from "@store/lib/proof-rules";
 import styles from "./PayView.module.css";
 import type { PayInfo } from "./PayView";
 
@@ -41,13 +42,13 @@ export async function prepareScreenshot(file: File): Promise<Blob> {
   throw new Error("TOO_LARGE");
 }
 
-type Errors = Partial<
-  Record<
-    "screenshot" | "tid" | "amount" | "senderName" | "senderLast4" | "form",
-    string
-  >
->;
+type Errors = ProofErrors;
 
+/**
+ * The payment proof: a screenshot alone is enough, or the TID and amount without one (lib/proof-rules.ts; the server
+ * checks the same rule). With a screenshot the details are optional: auto-read fills the empty ones when it can and
+ * whatever the customer types wins. The amount never starts as the order total, so a wrong or partial payment shows.
+ */
 export function PayProofForm({
   info,
   api,
@@ -63,15 +64,19 @@ export function PayProofForm({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [tid, setTid] = useState("");
-  const [amount, setAmount] = useState(String(Math.round(info.total)));
+  const [amount, setAmount] = useState("");
   const [senderName, setSenderName] = useState("");
   const [senderLast4, setSenderLast4] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [sending, setSending] = useState(false);
   const [reading, setReading] = useState(false);
   const [readNote, setReadNote] = useState("");
-  const amountTouched = useRef(false);
+  const edited = useRef({ tid: false, amount: false, sender: false });
+  /** The screenshot the latest auto-read belongs to (a removed or replaced one is ignored). */
+  const readFor = useRef<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const required = detailsRequired(!!file);
   /** Typing in a field clears its message (and the form-level one). */
   const clear = (key: keyof Errors) =>
     setErrors((e) =>
@@ -101,15 +106,36 @@ export function PayProofForm({
         ...e,
         screenshot: "The screenshot must be up to 5 MB.",
       }));
+    clearAutoFill();
     setFile(next);
     setPreview(URL.createObjectURL(next));
+    // A screenshot makes the details optional: clear their "required" messages.
+    setErrors({});
+    setReadNote("");
     if (info.autoRead) void autoFill(next);
+  }
+
+  function clearAutoFill() {
+    readFor.current = null;
+    setReading(false);
+    if (!edited.current.tid) setTid("");
+    if (!edited.current.amount) setAmount("");
+    if (!edited.current.sender) setSenderName("");
+  }
+
+  function removeScreenshot() {
+    clearAutoFill();
+    setFile(null);
+    setPreview("");
+    setReadNote("");
+    if (fileInput.current) fileInput.current.value = "";
   }
 
   /** Auto-read (when the shop turned it on): fills empty fields only; the customer checks and can change them. */
   async function autoFill(next: File) {
+    readFor.current = next;
     setReading(true);
-    setReadNote("");
+    let filled = false;
     try {
       const image = await prepareScreenshot(next);
       const form = new FormData();
@@ -129,65 +155,70 @@ export function PayProofForm({
           sender: string | null;
         } | null;
       };
-      if (!prefill) return;
-      if (prefill.tid) setTid((current) => current || prefill.tid!);
-      if (prefill.sender)
-        setSenderName((current) => current || prefill.sender!);
-      if (prefill.amount && !amountTouched.current)
+      if (readFor.current !== next || !prefill) return;
+      if (prefill.tid && !edited.current.tid) {
+        setTid(prefill.tid);
+        filled = true;
+      }
+      if (prefill.amount && !edited.current.amount) {
         setAmount(String(prefill.amount));
-      setReadNote(
-        "We filled in what we could read from your screenshot. Please check it.",
-      );
+        filled = true;
+      }
+      if (prefill.sender && !edited.current.sender) {
+        setSenderName(prefill.sender);
+        filled = true;
+      }
     } catch {
-      // No hint: the customer types the details.
+      // No hint: the customer types the details (or sends the screenshot alone).
     } finally {
-      setReading(false);
+      if (readFor.current === next) {
+        setReading(false);
+        setReadNote(
+          filled
+            ? "We filled in what we could read from your screenshot. Please check it."
+            : "Please type the details from your receipt.",
+        );
+      }
     }
-  }
-
-  function validate(): Errors {
-    const found: Errors = {};
-    const cleanTid = tid.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (!file) found.screenshot = "Add the payment screenshot.";
-    if (cleanTid.length < 6 || cleanTid.length > 40)
-      found.tid = "Enter the transaction ID (TID) from your receipt.";
-    if (!(Number(amount) > 0)) found.amount = "Enter the amount you sent.";
-    if (senderName.trim().length < 2)
-      found.senderName = "Enter the name on the account you paid from.";
-    if (senderLast4 && !/^\d{4}$/.test(senderLast4))
-      found.senderLast4 = "Enter exactly 4 digits, or leave it empty.";
-    return found;
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (sending) return;
-    const found = validate();
+    const found = proofErrors({
+      hasScreenshot: !!file,
+      tid,
+      amount,
+      senderName,
+      senderLast4,
+    });
     setErrors(found);
     if (Object.keys(found).length) return;
     setSending(true);
     try {
-      let image: Blob;
-      try {
-        image = await prepareScreenshot(file!);
-      } catch {
-        setErrors({
-          screenshot:
-            "This picture is too large. Send a normal screenshot instead.",
-        });
-        return;
-      }
       const form = new FormData();
       form.set("method", method);
-      form.set("tid", tid.trim());
-      form.set("amount", amount);
-      form.set("senderName", senderName.trim());
+      if (tid.trim()) form.set("tid", tid.trim());
+      if (amount.trim()) form.set("amount", amount.trim());
+      if (senderName.trim()) form.set("senderName", senderName.trim());
       if (senderLast4) form.set("senderLast4", senderLast4);
-      form.set(
-        "screenshot",
-        image,
-        image === file ? file!.name : "screenshot.jpg",
-      );
+      if (file) {
+        let image: Blob;
+        try {
+          image = await prepareScreenshot(file);
+        } catch {
+          setErrors({
+            screenshot:
+              "This picture is too large. Send a normal screenshot instead.",
+          });
+          return;
+        }
+        form.set(
+          "screenshot",
+          image,
+          image === file ? file.name : "screenshot.jpg",
+        );
+      }
       const response = await fetch(api.replace("?t=", "/proof?t="), {
         method: "POST",
         body: form,
@@ -221,6 +252,12 @@ export function PayProofForm({
     errors[key]
       ? { "aria-invalid": true, "aria-describedby": `proof-err-${key}` }
       : {};
+  /** The "*" sits in a fixed-width slot so labels never move when it comes and goes. */
+  const mark = (on: boolean) => (
+    <span className={styles.reqMark} aria-hidden="true">
+      {on ? "*" : ""}
+    </span>
+  );
 
   return (
     <form
@@ -231,42 +268,59 @@ export function PayProofForm({
     >
       <h2 className={styles.formTitle}>Add your payment proof</h2>
       <p className={styles.formLead}>
-        Send the receipt screenshot and the TID. We check every payment in our
-        Easypaisa merchant account before dispatch.
+        Send the receipt screenshot, or the TID and amount. We check every
+        payment in our Easypaisa merchant account before dispatch.
       </p>
-      <label className={styles.fileBox}>
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={(e) => pick(e.target.files?.[0])}
-          {...described("screenshot")}
-        />
-        {preview ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={preview}
-            alt="Your payment screenshot"
-            className={styles.preview}
+      <div className={styles.fileWrap}>
+        <label className={styles.fileBox}>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => pick(e.target.files?.[0])}
+            {...described("screenshot")}
           />
-        ) : (
-          <span className={styles.filePrompt}>
-            <ImagePlus size={22} aria-hidden="true" /> Choose screenshot *
-            <small>JPG, PNG or WebP, up to 5 MB</small>
-          </span>
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview}
+              alt="Your payment screenshot"
+              className={styles.preview}
+            />
+          ) : (
+            <span className={styles.filePrompt}>
+              <ImagePlus size={22} aria-hidden="true" /> Choose screenshot
+              <small>JPG, PNG or WebP, up to 5 MB</small>
+            </span>
+          )}
+        </label>
+        {file && (
+          <button
+            type="button"
+            className={styles.fileRemove}
+            onClick={removeScreenshot}
+            aria-label="Remove the screenshot"
+          >
+            <X size={16} aria-hidden="true" /> Remove
+          </button>
         )}
-      </label>
+      </div>
       {err("screenshot")}
-      {(reading || readNote) && (
-        <p className={styles.formHint} role="status">
-          {reading ? "Reading your screenshot…" : readNote}
-        </p>
-      )}
+      <p className={styles.formHint} role="status" aria-live="polite">
+        {reading
+          ? "Reading your screenshot…"
+          : readNote ||
+            (file
+              ? "Uploaded a screenshot? These details are optional, we read them from the screenshot."
+              : "No screenshot? Enter the TID and amount from your receipt.")}
+      </p>
       <div className="fields">
         <label>
-          Transaction ID (TID) *
+          <span>Transaction ID (TID) {mark(required)}</span>
           <input
             value={tid}
             onChange={(e) => {
+              edited.current.tid = true;
               setTid(e.target.value);
               clear("tid");
             }}
@@ -279,15 +333,16 @@ export function PayProofForm({
           {err("tid")}
         </label>
         <label>
-          Amount sent (Rs) *
+          <span>Amount sent (Rs) {mark(required)}</span>
           <input
             value={amount}
             onChange={(e) => {
               setAmount(e.target.value.replace(/[^\d.]/g, ""));
-              amountTouched.current = true;
+              edited.current.amount = true;
               clear("amount");
             }}
             inputMode="decimal"
+            placeholder="Type the exact amount you sent"
             {...described("amount")}
           />
           {Number(amount) > 0 && Math.abs(Number(amount) - info.total) >= 1 && (
@@ -298,10 +353,13 @@ export function PayProofForm({
           {err("amount")}
         </label>
         <label>
-          Sender account name *
+          <span>
+            Sender account name <span className="opt">(recommended)</span>
+          </span>
           <input
             value={senderName}
             onChange={(e) => {
+              edited.current.sender = true;
               setSenderName(e.target.value);
               clear("senderName");
             }}
@@ -343,7 +401,7 @@ export function PayProofForm({
         )}
       </button>
       <p className={styles.formHint}>
-        We will never ask for your PIN, OTP or password.
+        <strong>We will never ask for your PIN, OTP or password.</strong>
       </p>
     </form>
   );

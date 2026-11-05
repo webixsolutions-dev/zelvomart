@@ -19,7 +19,8 @@ export interface ProofReader {
 }
 
 export const AUTOREAD_TIMEOUT_MS = 8000;
-const DEFAULT_MODEL = "gemini-2.5-flash-lite";
+const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+const DEFAULT_FALLBACK_MODEL = "gemini-3.1-flash-lite";
 
 const PROMPT = `You read a screenshot of a Pakistani mobile payment receipt (Easypaisa, JazzCash, bank app, Raast).
 Return JSON only. Use null when a field is not clearly visible; never guess.
@@ -68,45 +69,138 @@ export function parseAutoRead(raw: unknown): AutoReadResult | null {
   };
 }
 
+type ReadFailure = {
+  model: string;
+  httpStatus: number | null;
+  status: string;
+  message: string;
+  elapsedMs: number;
+};
+type ReadAttempt = { result: AutoReadResult; model: string } | { failure: ReadFailure };
+
+function safeProviderMessage(value: unknown, apiKey: string, imageData: string) {
+  if (typeof value !== "string") return "";
+  return value
+    .replaceAll(apiKey, "[redacted]")
+    .replaceAll(imageData || "\0", "[redacted]")
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/(?:AIza|AQ\.)[\w.-]+|[A-Za-z0-9+/_=-]{40,}/g, "[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 280);
+}
+
 export function geminiReader(
   apiKey: string,
-  model = process.env.GEMINI_MODEL || DEFAULT_MODEL,
+  model = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL,
   fetcher: typeof fetch = fetch,
-): ProofReader {
-  return {
-    async read(image, mimeType) {
+  fallbackModel = process.env.GEMINI_FALLBACK_MODEL?.trim() || DEFAULT_FALLBACK_MODEL,
+) {
+  async function readWithDiagnostics(image: Buffer, mimeType: string): Promise<ReadAttempt> {
+    const imageData = image.toString("base64");
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: imageData } }] }],
+      generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA },
+    });
+    // Share one deadline across both attempts so prefill and the staff job remain bounded.
+    const signal = AbortSignal.timeout(AUTOREAD_TIMEOUT_MS);
+
+    async function attempt(modelId: string): Promise<ReadAttempt> {
+      const started = performance.now();
+      const diagnosticModel =
+        /^[a-z0-9][a-z0-9._-]{0,79}$/i.test(modelId) && !modelId.includes(apiKey) ? modelId : "[redacted]";
+      let httpStatus: number | null = null;
+      const fail = (status: string, message: string): ReadAttempt => {
+        const failure = {
+          model: diagnosticModel,
+          httpStatus,
+          status,
+          message,
+          elapsedMs: Math.round(performance.now() - started),
+        };
+        console.warn("[payment-auto-read] Gemini request failed", failure);
+        return { failure };
+      };
       try {
         const response = await fetcher(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent`,
           {
             method: "POST",
             headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
-            body: JSON.stringify({
-              contents: [
-                { parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: image.toString("base64") } }] },
-              ],
-              generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: SCHEMA },
-            }),
-            signal: AbortSignal.timeout(AUTOREAD_TIMEOUT_MS),
+            body,
+            signal,
           },
         );
-        if (!response.ok) return null;
-        const body = (await response.json()) as {
-          candidates?: { content?: { parts?: { text?: string }[] } }[];
-        };
-        const output = body.candidates?.[0]?.content?.parts?.[0]?.text;
-        return output ? parseAutoRead(JSON.parse(output)) : null;
-      } catch {
-        return null;
+        httpStatus = response.status;
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            error?: { status?: unknown; message?: unknown };
+          } | null;
+          const status = payload?.error?.status;
+          return fail(
+            typeof status === "string" && /^[A-Z][A-Z_]{2,39}$/.test(status) && !status.includes(apiKey)
+              ? status
+              : "HTTP_ERROR",
+            safeProviderMessage(payload?.error?.message, apiKey, imageData) ||
+              `Gemini returned HTTP ${response.status}.`,
+          );
+        }
+        const payload = (await response.json()) as {
+          candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+        } | null;
+        const output = payload?.candidates?.[0]?.content?.parts
+          ?.filter((part) => !part.thought)
+          .map((part) => part.text ?? "")
+          .join("");
+        if (!output) return fail("EMPTY_RESPONSE", "Gemini did not return receipt data.");
+        const raw = JSON.parse(output);
+        const result =
+          typeof raw?.isPaymentReceipt === "boolean" && typeof raw?.confidence === "number" ? parseAutoRead(raw) : null;
+        return result
+          ? { result, model: diagnosticModel }
+          : fail("INVALID_RESPONSE", "Gemini returned an unexpected receipt format.");
+      } catch (error) {
+        if (signal.aborted || (error instanceof Error && error.name === "TimeoutError"))
+          return fail("TIMEOUT", "Gemini did not respond within 8 seconds.");
+        if (httpStatus === 200) return fail("INVALID_RESPONSE", "Gemini returned invalid receipt data.");
+        return fail("REQUEST_FAILED", "Could not reach Gemini.");
       }
+    }
+
+    const primary = await attempt(model);
+    if (
+      "failure" in primary &&
+      fallbackModel !== model &&
+      !signal.aborted &&
+      (primary.failure.httpStatus === 429 ||
+        primary.failure.httpStatus === 404 ||
+        ["RESOURCE_EXHAUSTED", "NOT_FOUND"].includes(primary.failure.status))
+    ) {
+      return attempt(fallbackModel);
+    }
+    return primary;
+  }
+
+  return {
+    readWithDiagnostics,
+    async read(image: Buffer, mimeType: string) {
+      const attempt = await readWithDiagnostics(image, mimeType);
+      return "result" in attempt ? attempt.result : null;
     },
   };
 }
 
 /** The reader to use now, or null while the switch is off or no key is set. */
 export function autoReader(settings: { autoRead: boolean }, env: NodeJS.ProcessEnv = process.env) {
-  const key = String(env.GEMINI_API_KEY || "").trim();
-  return settings.autoRead && key ? geminiReader(key) : null;
+  const key = env.GEMINI_API_KEY?.trim();
+  return settings.autoRead && key
+    ? geminiReader(
+        key,
+        env.GEMINI_MODEL?.trim() || DEFAULT_MODEL,
+        fetch,
+        env.GEMINI_FALLBACK_MODEL?.trim() || DEFAULT_FALLBACK_MODEL,
+      )
+    : null;
 }
 
 /** Letters only, lower case: "Zelvomart (Pvt) Ltd" and "ZELVOMART" compare equal enough. */

@@ -16,14 +16,17 @@ import {
   PROOF_MAX_BYTES,
   PROOF_MAX_PER_ORDER,
   ProofImageError,
+  PROOF_NEEDS_SCREENSHOT_OR_DETAILS,
   proofFieldsSchema,
   proofFlags,
+  proofHasEnough,
   REJECT_REASONS,
   sha256Hex,
   type RejectReason,
 } from "../lib/payment-proof";
 import { paymentProofStorageReady, storePaymentProof } from "../lib/payment-proof-storage";
 import { autoReader, prefillFrom } from "../lib/proof-autoread";
+import { enqueueOrderEmails, enqueuePurchaseOnce } from "../lib/advance-jobs";
 import {
   advanceAvailability,
   advancePolicy,
@@ -47,6 +50,8 @@ const orderForPage = {
   paymentStatus: true,
   paymentTokenHash: true,
   blocklistedAtOrder: true,
+  test: true,
+  staffCreated: true,
   subtotal: true,
   bundleSaving: true,
   deliveryFee: true,
@@ -114,7 +119,7 @@ async function payPage(order: PageOrder, settings: AdvanceSettings) {
     proof: latest
       ? {
           status: latest.status,
-          amountSent: Number(latest.amountSent),
+          amountSent: latest.amountSent == null ? null : Number(latest.amountSent),
           submittedAt: latest.createdAt.toISOString(),
           rejectMessage:
             latest.status === "REJECTED"
@@ -194,6 +199,7 @@ export function registerPaymentRoutes(app: Express) {
       const image = await cleanProofImage(file.buffer);
       res.json({ prefill: prefillFrom(await reader.read(image.bytes, image.contentType)) });
     } catch {
+      console.warn("[payment-auto-read] Could not prepare screenshot for reading", { stage: "image-preparation" });
       res.json({ prefill: null });
     }
   });
@@ -219,50 +225,53 @@ export function registerPaymentRoutes(app: Express) {
       return res
         .status(409)
         .json({ error: "PROOF_NOT_ACCEPTED", message: "A payment proof is not needed for this order now." });
-    if (!paymentProofStorageReady())
-      return res
-        .status(503)
-        .json({ error: "PROOF_STORAGE_NOT_CONFIGURED", message: "Please send your proof on WhatsApp." });
-
     const fields = proofFieldsSchema.safeParse(req.body || {});
     if (!fields.success)
       return res
         .status(400)
         .json({ error: "PROOF_FIELDS_INVALID", message: fields.error.issues[0]?.message || "Check the form." });
     const file = (req as Request & { file?: Express.Multer.File }).file;
-    if (!file)
-      return res.status(400).json({ error: "PROOF_SCREENSHOT_REQUIRED", message: "Add the payment screenshot." });
+    // A screenshot alone is enough, or the TID + amount without one (owner decision; same rule as the form).
+    if (!proofHasEnough(!!file, fields.data))
+      return res.status(400).json({ error: "PROOF_SCREENSHOT_OR_DETAILS", message: PROOF_NEEDS_SCREENSHOT_OR_DETAILS });
+    if (file && !paymentProofStorageReady())
+      return res
+        .status(503)
+        .json({ error: "PROOF_STORAGE_NOT_CONFIGURED", message: "Please send your proof on WhatsApp." });
 
-    let image: Awaited<ReturnType<typeof cleanProofImage>>;
-    try {
-      image = await cleanProofImage(file.buffer);
-    } catch (error) {
-      if (error instanceof ProofImageError)
-        return res.status(400).json({ error: "PROOF_IMAGE_INVALID", message: error.message });
-      throw error;
-    }
-    const sha256 = sha256Hex(image.bytes);
-    const dhash = await differenceHash(image.bytes);
-    const tidNormalized = normalizeTid(fields.data.tid);
-    const sameTid = await prisma.paymentProof.findMany({
-      where: { tidNormalized },
-      select: { orderId: true, status: true },
-    });
+    let image: Awaited<ReturnType<typeof cleanProofImage>> | null = null;
+    if (file)
+      try {
+        image = await cleanProofImage(file.buffer);
+      } catch (error) {
+        if (error instanceof ProofImageError)
+          return res.status(400).json({ error: "PROOF_IMAGE_INVALID", message: error.message });
+        throw error;
+      }
+    const sha256 = image ? sha256Hex(image.bytes) : null;
+    const dhash = image ? await differenceHash(image.bytes) : null;
+    const tidNormalized = fields.data.tid ? normalizeTid(fields.data.tid) : null;
+    const sameTid = tidNormalized
+      ? await prisma.paymentProof.findMany({ where: { tidNormalized }, select: { orderId: true, status: true } })
+      : [];
     // Another order already used this TID (whatever happened to it): flag it. The partial unique index only
     // covers live proofs, so a second live use is stored without tidNormalized.
     let tidDuplicate = sameTid.some((row) => row.orderId !== order.id);
     let tidTaken = sameTid.some((row) => row.status !== "REJECTED");
-    const imageDuplicate = await screenshotSeenBefore(sha256, dhash);
+    const imageDuplicate = sha256 && dhash ? await screenshotSeenBefore(sha256, dhash) : false;
     const flags = proofFlags({
-      amountSent: fields.data.amount,
+      amountSent: fields.data.amount ?? null,
       expected: Number(order.total),
       paidAt: fields.data.paidAt,
       orderCreatedAt: order.createdAt,
       tidDuplicate,
       imageDuplicate,
     });
-    const screenshotKey = await storePaymentProof(order.orderNumber, image.bytes);
-    const autoRead = !!autoReader(await loadAdvanceSettings());
+    const screenshotKey = image ? await storePaymentProof(order.orderNumber, image.bytes) : null;
+    // Only the screenshot: auto-read fills the TID and amount (proof-autoread-job.ts); until then staff see
+    // "details missing, check the screenshot".
+    const detailsMissing = !fields.data.tid || fields.data.amount == null;
+    const autoRead = !!screenshotKey && !!autoReader(await loadAdvanceSettings());
 
     const save = () =>
       prisma.$transaction(async (tx) => {
@@ -282,10 +291,11 @@ export function registerPaymentRoutes(app: Express) {
           data: {
             orderId: order.id,
             method: fields.data.method,
-            tid: fields.data.tid.trim(),
+            tid: fields.data.tid?.trim() || null,
             tidNormalized: tidTaken ? null : tidNormalized,
-            amountSent: fields.data.amount,
-            senderName: fields.data.senderName,
+            amountSent: fields.data.amount ?? null,
+            senderName: fields.data.senderName || "",
+            detailsMissing,
             senderLast4: fields.data.senderLast4,
             paidAt: fields.data.paidAt,
             screenshotKey,
@@ -312,7 +322,8 @@ export function registerPaymentRoutes(app: Express) {
             }),
           ),
         );
-        return jobs.map((job) => job.id);
+        // The first proof is the Purchase moment for an advance order (once; same event_id as checkout used to).
+        return [...jobs.map((job) => job.id), ...(await enqueuePurchaseOnce(tx, order))];
       });
     let jobIds: string[] | null;
     try {
@@ -360,7 +371,7 @@ export function registerPaymentRoutes(app: Express) {
           status: nextStatus,
         },
       });
-      if (!changed.count) return false;
+      if (!changed.count) return null;
       await tx.orderStatusHistory.create({
         data: {
           orderId: order.id,
@@ -369,9 +380,11 @@ export function registerPaymentRoutes(app: Express) {
           note: "Customer chose Cash on Delivery instead of advance payment (discount removed).",
         },
       });
-      return true;
+      // Now a normal COD order: the COD emails and the Purchase event go out from here.
+      return [...(await enqueueOrderEmails(tx, order.id, "cod-switch")), ...(await enqueuePurchaseOnce(tx, order))];
     });
     if (!switched) return res.status(409).json({ error: "CANNOT_SWITCH_TO_COD" });
+    runInBackground("COD switch emails", () => runJobsNow(switched));
     const fresh = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: orderForPage });
     res.json(await payPage(fresh, await loadAdvanceSettings()));
   });

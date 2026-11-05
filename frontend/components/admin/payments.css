@@ -202,3 +202,87 @@
     grid-template-columns: 1fr;
   }
 }
+.pay-actions .field.pay-check,
+.pay-check {
+  display: flex;
+  /* The admin's unified .field style stacks label children; a checkbox sits beside its text. */
+  flex-direction: row !important;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.pay-actions .pay-check input {
+  min-height: 0;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  padding: 0;
+  flex: none;
+}
+.pay-check > span {
+  flex: 1;
+  min-width: 0;
+}
+.pay-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #334155;
+}
+.pay-hint.warn {
+  color: #9a6700;
+}
+.pay-hint.ok {
+  color: #0f7a43;
+}
+.pay-label-note {
+  color: #64748b;
+  font-weight: 500;
+}
+.pay-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.pay-summary div {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.pay-summary dt {
+  font-size: 12px;
+  color: #64748b;
+}
+.pay-summary dd {
+  margin: 2px 0 0;
+  font-weight: 700;
+  font-size: 15px;
+}
+.pay-summary .grand {
+  background: #eef6ff;
+}
+.pay-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #eef2ff;
+  color: #3730a3;
+  vertical-align: middle;
+}
+.pay-tag.amber {
+  background: #fff3d6;
+  color: #8a5a00;
+}
+.pay-embedded .pay-detail {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pay-embedded .pay-shot img {
+  max-height: 360px;
+}

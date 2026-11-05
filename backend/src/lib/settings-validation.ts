@@ -31,6 +31,8 @@ const schemas: Record<string, z.ZodType> = {
         .refine((url) => !url || /^https:\/\//i.test(url), "The QR image must be an https URL."),
       discount: z.number().int().min(0).max(5000),
       minSubtotal: z.number().int().min(0).max(1000000),
+      // Optional: settings saved before the first reminder existed keep the 30-minute default.
+      firstReminderMinutes: z.number().int().min(5).max(1440).optional(),
       reminderHours: z.number().int().min(1).max(72),
       expiryHours: z.number().int().min(1).max(168),
       verificationHours: z.string().trim().min(1).max(60),
@@ -38,6 +40,9 @@ const schemas: Record<string, z.ZodType> = {
     })
     .refine((v) => v.expiryHours > v.reminderHours, {
       message: "The expiry window must be longer than the reminder window.",
+    })
+    .refine((v) => (v.firstReminderMinutes ?? 30) < v.reminderHours * 60, {
+      message: "The first payment reminder must come before the second reminder.",
     })
     .refine((v) => !(v.enabled && adsEnvironment() && advanceUsesDemoValues(v)), {
       message: "Save the real Easypaisa Till ID and merchant QR image before enabling advance payment.",

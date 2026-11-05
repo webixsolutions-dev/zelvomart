@@ -24,6 +24,9 @@ export type AdvanceSettings = {
   qrImageUrl: string;
   discount: number;
   minSubtotal: number;
+  /** The "Complete your payment" email (advance orders get no email when they are placed). */
+  firstReminderMinutes: number;
+  /** The second reminder. */
   reminderHours: number;
   expiryHours: number;
   verificationHours: string;
@@ -37,6 +40,7 @@ export const ADVANCE_DEFAULTS: AdvanceSettings = {
   qrImageUrl: "",
   discount: 200,
   minSubtotal: 0,
+  firstReminderMinutes: 30,
   reminderHours: 2,
   expiryHours: 24,
   verificationHours: "9am – 9pm",
@@ -59,6 +63,7 @@ export function normalizeAdvanceSettings(value: unknown): AdvanceSettings {
     qrImageUrl: text("qrImageUrl"),
     discount: whole("discount", 0),
     minSubtotal: whole("minSubtotal", 0),
+    firstReminderMinutes: whole("firstReminderMinutes", 5),
     reminderHours: whole("reminderHours", 1),
     expiryHours: whole("expiryHours", 1),
     verificationHours: text("verificationHours") || ADVANCE_DEFAULTS.verificationHours,
@@ -71,7 +76,7 @@ export async function loadAdvanceSettings() {
 }
 
 /** Demo while the Till ID is missing or the demo one, or no real QR image has been uploaded. */
-export function advanceUsesDemoValues(settings: AdvanceSettings) {
+export function advanceUsesDemoValues(settings: Pick<AdvanceSettings, "tillId" | "qrImageUrl">) {
   const till = settings.tillId.trim().toUpperCase();
   return !till || till === DEMO_TILL_ID || !settings.qrImageUrl || /demo/i.test(settings.qrImageUrl);
 }
@@ -132,25 +137,92 @@ export function paymentPath(orderNumber: string, token = paymentToken(orderNumbe
 
 // ---- Courier ----
 
+type Money = number | string | { toString(): string } | null | undefined;
 type CodOrder = {
   paymentMethod: string;
   paymentStatus?: string | null;
-  total: number | string | { toString(): string };
-  advanceReceived?: number | string | { toString(): string } | null;
+  /** Order status: a cancelled or returned order is never booked, so nothing is collected. */
+  status?: string | null;
+  total: Money;
+  advanceReceived?: Money;
+  advanceRefunded?: Money;
 };
 
+const rupees = (value: Money) => Math.max(0, Math.round(Number(value ?? 0) || 0));
+
+/** Whether an order is closed for the courier (nothing to book or collect). */
+export function courierClosed(order: { status?: string | null }) {
+  return order.status === "CANCELLED" || order.status === "RETURNED";
+}
+
 /**
- * Cash the courier collects on delivery (the COD amount to enter when booking with PostEx).
- * - COD: the order total.
- * - Advance, verified: 0 (fully paid).
- * - Advance, partial payment accepted (MISMATCH with an amount received): only the remaining balance.
- * - Advance, not verified: the full total, so an unverified order is never shipped as paid.
+ * The one rule for cash the courier collects on delivery (admin panel, CSV export for PostEx booking, invoice,
+ * packing slip and every customer email use it):
+ *   total − advance received (verified or accepted partial) + advance refunded, never below 0 or above the total.
+ * - COD: the order total. A cancelled or returned order: 0 (it is not booked).
+ * - Advance, fully verified: 0. Partial Rs 9 of Rs 589: 580. Refunded in full and kept: the total again.
+ * - Advance, not verified (nothing received yet): the full total, so an unverified order is never shipped as paid.
  */
 export function codToCollect(order: CodOrder) {
-  const total = Math.max(0, Math.round(Number(order.total) || 0));
+  const total = rupees(order.total);
+  if (courierClosed(order)) return 0;
   if (order.paymentMethod !== "ADVANCE_EASYPAISA") return total;
-  if (order.paymentStatus === "VERIFIED") return 0;
-  const received = Math.max(0, Math.round(Number(order.advanceReceived ?? 0) || 0));
-  if (order.paymentStatus === "MISMATCH" && received > 0) return Math.max(0, total - received);
-  return total;
+  const due = total - rupees(order.advanceReceived) + rupees(order.advanceRefunded);
+  return Math.min(total, Math.max(0, due));
+}
+
+// ---- Staff actions ----
+
+/**
+ * An advance order whose money staff have not accepted yet (nothing verified, no partial, no refund on record).
+ * Such an order must not be confirmed or shipped: staff verify the payment first or convert it to COD.
+ */
+export function advanceAwaitingVerification(order: {
+  paymentMethod: string;
+  paymentStatus?: string | null;
+  advanceReceived?: Money;
+}) {
+  if (order.paymentMethod !== "ADVANCE_EASYPAISA") return false;
+  if (order.paymentStatus === "VERIFIED" || order.paymentStatus === "REFUNDED") return false;
+  return rupees(order.advanceReceived) === 0;
+}
+
+/** Order statuses that move an order towards dispatch (blocked while an advance payment is unverified). */
+export const ADVANCE_GUARDED_STATUSES = ["CONFIRMED", "BOOKED", "IN_TRANSIT", "DELIVERED", "SETTLED"] as const;
+
+export function advanceStatusBlocked(order: Parameters<typeof advanceAwaitingVerification>[0], next: string) {
+  return (ADVANCE_GUARDED_STATUSES as readonly string[]).includes(next) && advanceAwaitingVerification(order);
+}
+
+/** Verify with the amount staff found in the merchant app: the full amount or more is VERIFIED, less is PARTIAL. */
+export function verifyOutcome(amountReceived: number, total: Money): "VERIFIED" | "PARTIAL" {
+  return Math.round(amountReceived) >= rupees(total) ? "VERIFIED" : "PARTIAL";
+}
+
+export const REFUND_REASONS = {
+  CUSTOMER_CANCELLED: "Customer cancelled before dispatch",
+  COULD_NOT_SHIP: "We could not ship the order",
+  OVERPAID: "Customer paid more than the order total",
+  OTHER: "Other",
+} as const;
+export type RefundReason = keyof typeof REFUND_REASONS;
+
+type RefundOrder = { total: Money; deliveryFee?: Money; advanceReceived?: Money; advanceRefunded?: Money };
+
+/** What can still be refunded: received − refunds already recorded. */
+export function refundableAmount(order: RefundOrder) {
+  return Math.max(0, rupees(order.advanceReceived) - rupees(order.advanceRefunded));
+}
+
+/**
+ * The amount the refund form starts with (staff can change it, never above the refundable amount):
+ * - customer cancelled before dispatch: paid − delivery charges (the refund policy);
+ * - we could not ship: everything back;
+ * - overpaid: only what is above the order total.
+ */
+export function suggestedRefund(reason: RefundReason, order: RefundOrder) {
+  const refundable = refundableAmount(order);
+  if (reason === "CUSTOMER_CANCELLED") return Math.max(0, refundable - rupees(order.deliveryFee));
+  if (reason === "OVERPAID") return Math.min(refundable, Math.max(0, refundable - rupees(order.total)));
+  return refundable;
 }

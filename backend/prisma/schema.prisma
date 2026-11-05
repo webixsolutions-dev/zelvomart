@@ -203,6 +203,8 @@ model Order {
   advanceDiscount   Decimal       @default(0) @db.Decimal(12, 2)
   /// What staff confirmed in the Easypaisa merchant app (a partial payment leaves the rest to collect on delivery).
   advanceReceived   Decimal       @default(0) @db.Decimal(12, 2)
+  /// Advance money sent back to the customer (refunds recorded in Admin → Payments).
+  advanceRefunded   Decimal       @default(0) @db.Decimal(12, 2)
   /// SHA-256 of the guest payment-link token; the token itself is never stored.
   paymentTokenHash  String?
   paymentVerifiedAt DateTime?
@@ -619,17 +621,19 @@ model PaymentProof {
   order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
   method            PaymentProofMethod @default(OTHER)
   /// As typed by the customer.
-  tid               String
+  /// Optional when a screenshot was sent: auto-read (detailsFromAutoRead) or staff (merchant reference) fill it.
+  tid               String?
   /// Uppercase, no spaces. Unique among live proofs (partial unique index in the migration); NULL when the TID was
   /// already used on another proof, which is then flagged with tidDuplicate.
   tidNormalized     String?
-  amountSent        Decimal            @db.Decimal(12, 2)
+  amountSent        Decimal?           @db.Decimal(12, 2)
   senderName        String
   senderLast4       String?
   paidAt            DateTime?
   /// Private storage key (payment-proofs/...), never a public URL.
-  screenshotKey     String
-  sha256            String
+  /// Null when the customer sent only the TID and amount (no screenshot).
+  screenshotKey     String?
+  sha256            String?
   dhash             String?
   ocrJson           Json?
   ocrTid            String?
@@ -643,6 +647,12 @@ model PaymentProof {
   tidDuplicate      Boolean            @default(false)
   imageDuplicate    Boolean            @default(false)
   timeOutOfWindow   Boolean            @default(false)
+  /// TID/amount/sender were not typed by the customer but taken from the auto-read.
+  detailsFromAutoRead Boolean          @default(false)
+  /// Neither typed nor read: staff must take the details from the screenshot and the merchant app.
+  detailsMissing    Boolean            @default(false)
+  /// What staff found in the Easypaisa merchant app when deciding (verify or partial).
+  amountReceived    Decimal?           @db.Decimal(12, 2)
   status            PaymentProofStatus @default(SUBMITTED)
   reviewedById      String?
   reviewedAt        DateTime?
@@ -651,6 +661,8 @@ model PaymentProof {
   notes             String?            @db.Text
   refundAmount      Decimal?           @db.Decimal(12, 2)
   refundReference   String?
+  /// COULD_NOT_SHIP or CUSTOMER_CANCELLED.
+  refundReason      String?
   refundedById      String?
   refundedAt        DateTime?
   createdAt         DateTime           @default(now())

@@ -232,20 +232,46 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 - **How it works:** at checkout the customer keeps Cash on Delivery (default) or pays in advance for a flat
   discount. There is no payment API. The customer pays in their own app, then sends a screenshot and the TID on the
   payment page. The order waits **On hold** until staff verify it.
-- **Daily work:** Admin → Payments (the sidebar count turns red when a proof is flagged). Open the proof, find the
-  TID and the amount in the **Easypaisa merchant app**, then choose one:
-  - **Verify**, with the merchant app reference;
-  - **Mark partial** (the rest is collected on delivery);
+- **What the customer sends:** a screenshot alone, or the TID and amount alone (either is enough). A screenshot-only
+  proof shows the auto-read TID/amount (marked "auto-read"), or the amber flag "Details missing – check screenshot"
+  when nothing was read: read the screenshot and type the merchant reference when you verify.
+- **Daily work:** Admin → Payments, or the payment panel at the top of the order page (the sidebar count turns red
+  when a proof is flagged). Find the payment in the **Easypaisa merchant app**, then choose one:
+  - **Verify payment:** type the amount that actually arrived and tick "I checked this payment in the Easypaisa
+    merchant app". The merchant reference is optional (prefilled with the customer's TID); one reference can pay
+    for one order only. Less than the amount due is saved as a partial automatically; the courier collects the rest.
   - **Reject**, with a reason.
-  A screenshot alone is never proof. Do not dispatch an unverified advance order: the courier amount on the invoice
-  and packing slip already shows what to collect.
+  - Staff note is private. "Message to customer" is optional and goes into the customer's email.
+  A screenshot alone is never proof.
+- **Unverified orders cannot be confirmed or shipped.** Confirm, a status change to Booked/In transit/Delivered or a
+  tracking number on an unverified advance order opens a dialog: **Verify payment now** or **Convert to COD**
+  (the advance discount is removed and the customer pays the full amount on delivery). Bulk status changes skip such
+  orders and list them.
+- **Courier amount (one rule everywhere):** total − received + refunded, never below 0 or above the total. A
+  cancelled or returned order is not booked, so nothing is collected.
+- **Refunds:** send the money from the merchant app first, then **Record a refund** on the proof. Choose the reason
+  (customer cancelled before dispatch = paid minus delivery charges; we could not ship = everything back; the form
+  fills the amount, you can change it). Never more than received minus earlier refunds. The order is cancelled by
+  default (untick to keep it; then the courier collects the refunded amount again). The customer gets a refund email.
 - **Settings → Advance payment** (owner): Till ID, QR (uploaded exactly as it is), discount, minimum, reminder,
   payment window and verification hours.
   - On production the option stays hidden, and enabling is refused, while the Till ID or the QR is still a demo
     value.
   - After uploading the QR, save it to a phone gallery and scan it in two bank apps.
-- **Reminder and expiry:** the 5-minute cron sends one reminder after the reminder hours. After the payment window the
-  payment shows **expired**. The order is never cancelled automatically; the customer can still pay or switch to COD.
+- **Emails follow the payment** (COD is unchanged):
+  - checkout: nothing (the customer is on the payment page);
+  - after "First payment reminder (minutes)" (default 30): "Complete your payment" with the pay link and the COD way
+    out; after the reminder hours (default 2): a second reminder. Each once, only while unpaid;
+  - proof sent: customer "Payment received – we are verifying", team "Advance payment to verify";
+  - verified (or partial): one confirmation, "Paid in advance – nothing to pay on delivery" (or the balance), and the
+    team's new-order email marked **Advance paid**. The "Order confirmed" status email is never sent for advance
+    orders;
+  - rejected: the payment issue email; switched to COD (customer or staff): the normal COD emails.
+- **Meta/TikTok Purchase** for an advance order fires at the first payment proof or the switch to COD, never at
+  checkout (server job and browser pixel, same event_id = the order number). The thank-you page fires it for COD
+  orders only. gtag is not involved.
+- **Expiry:** after the payment window the payment shows **expired**. The order is never cancelled automatically; the
+  customer can still pay or switch to COD.
 - **Screenshots** are private: `PAYMENT_PROOF_S3_BUCKET`, else `REPLAY_S3_BUCKET` under `payment-proofs/`.
   - Staff open them through a 5-minute link.
   - The R2 lifecycle rule on the replay bucket must cover `replays/` only, or proofs would be deleted after 14 days.

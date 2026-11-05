@@ -148,6 +148,9 @@ export function useConfirmedOrder(orderNumber: string | null, key: string | null
 
 function firePurchase(o: Confirmation) {
   if (o.test || o.staffCreated || o.blocklistedAtOrder) return;
+  // Advance orders count as a purchase at the first payment proof or the switch to COD (the /pay page fires it
+  // there, the server job too), never at checkout.
+  if (o.paymentMethod === "ADVANCE_EASYPAISA") return;
   sendPurchase({
     id: o.id,
     orderNumber: o.orderNumber,
@@ -158,6 +161,7 @@ function firePurchase(o: Confirmation) {
 }
 
 function fireSavedPurchase(o: PlacedOrder) {
+  if (o.payment === "advance") return;
   sendPurchase({
     id: o.key || o.id,
     orderNumber: o.id,
