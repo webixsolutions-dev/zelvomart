@@ -27,6 +27,7 @@
     "test:reviews:integration": "node --import tsx scripts/review-system.integration.mts",
     "test:jobs:integration": "node --import tsx scripts/jobs.integration.mts",
     "test:catalog:integration": "node --import tsx scripts/catalog.integration.mts",
+    "test:advance:integration": "node --import tsx scripts/advance-orders.integration.mts",
     "test:customers:integration": "node --import tsx scripts/customers.integration.mts",
     "test:delivery:integration": "node --import tsx scripts/delivery.integration.mts",
     "db:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",

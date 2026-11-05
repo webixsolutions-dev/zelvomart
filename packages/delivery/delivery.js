@@ -46,6 +46,33 @@ function amountUntilFreeShipping(subtotal, threshold) {
   return Math.max(0, Math.ceil(threshold - subtotal));
 }
 
+/**
+ * Advance payment (Easypaisa Till / Raast QR) discount, shared by the backend (the discount saved on the order) and the
+ * storefront (the discount shown at checkout). Flat whole rupees, only when the cart subtotal (after bundle savings,
+ * before any coupon, the same subtotal the delivery rule uses) reaches the minimum. Never more than what is payable.
+ */
+const ADVANCE_DISCOUNT_DEFAULT = 200;
+
+function resolveAdvancePolicy(settings) {
+  const discount = Number(settings && settings.discount);
+  const minSubtotal = Number(settings && settings.minSubtotal);
+  return {
+    discount: Number.isFinite(discount) && discount >= 0 ? Math.floor(discount) : ADVANCE_DISCOUNT_DEFAULT,
+    minSubtotal: Number.isFinite(minSubtotal) && minSubtotal > 0 ? Math.ceil(minSubtotal) : 0,
+  };
+}
+
+/** `payableBefore` is subtotal + delivery − coupon: the discount never makes the total negative. */
+function advanceDiscountFor(subtotal, payableBefore, policy) {
+  if (!(subtotal > 0) || subtotal < policy.minSubtotal) return 0;
+  return Math.max(0, Math.min(policy.discount, Math.floor(Number(payableBefore) || 0)));
+}
+
+/** Rupees still needed to reach the advance-payment minimum (0 when reached). */
+function amountUntilAdvanceDiscount(subtotal, policy) {
+  return subtotal >= policy.minSubtotal ? 0 : Math.max(0, Math.ceil(policy.minSubtotal - subtotal));
+}
+
 exports.FREE_SHIPPING_ABOVE = FREE_SHIPPING_ABOVE;
 exports.DEFAULT_DELIVERY_CHARGE = DEFAULT_DELIVERY_CHARGE;
 exports.resolveDeliveryPolicy = resolveDeliveryPolicy;
@@ -53,3 +80,7 @@ exports.quoteFromPolicy = quoteFromPolicy;
 exports.deliveryForCart = deliveryForCart;
 exports.quoteDelivery = quoteDelivery;
 exports.amountUntilFreeShipping = amountUntilFreeShipping;
+exports.ADVANCE_DISCOUNT_DEFAULT = ADVANCE_DISCOUNT_DEFAULT;
+exports.resolveAdvancePolicy = resolveAdvancePolicy;
+exports.advanceDiscountFor = advanceDiscountFor;
+exports.amountUntilAdvanceDiscount = amountUntilAdvanceDiscount;

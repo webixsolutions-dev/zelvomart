@@ -12,6 +12,7 @@ import { invalidateFrontendCache } from "../../lib/cache-invalidation";
 import { runInBackground } from "../../lib/background";
 import { runJobsNow } from "../../lib/job-runner";
 import { canHardDelete, hardDeleteOrder } from "../../lib/hard-delete";
+import { codToCollect } from "../../lib/advance-payment";
 
 /** Status emails and tracking jobs go out right after the response; the cron retries a failure. */
 function startJob(jobId: string) {
@@ -197,7 +198,7 @@ export function registerAdminOrdersRoutes(app: Express) {
         .replace(/^[=+@\-\t\r]/, "'$&")
         .replace(/"/g, '""')}"`;
     const csv = [
-      "orderNumber,date,customer,phone,email,city,status,paymentMethod,total,source,tracking",
+      "orderNumber,date,customer,phone,email,city,status,paymentMethod,paymentStatus,total,codToCollect,source,tracking",
       ...rows.map((o) =>
         [
           o.orderNumber,
@@ -208,7 +209,10 @@ export function registerAdminOrdersRoutes(app: Express) {
           o.city,
           o.status,
           o.paymentMethod,
+          o.paymentStatus,
           o.total,
+          // The COD amount to enter when booking with PostEx: 0 once an advance payment is verified.
+          codToCollect(o),
           o.source,
           o.postexTracking,
         ]
@@ -369,7 +373,7 @@ export function registerAdminOrdersRoutes(app: Express) {
       }),
       prisma.order.count({ where }),
     ]);
-    const items = rows.map((r) => ({ ...r, total: Number(r.total) }));
+    const items = rows.map((r) => ({ ...r, paymentTokenHash: undefined, total: Number(r.total) }));
     res.json(paginated ? { items, total, page, totalPages: Math.max(1, Math.ceil(total / limit)) } : items);
   });
   app.patch("/api/admin/orders/bulk-status", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
@@ -473,6 +477,10 @@ export function registerAdminOrdersRoutes(app: Express) {
         bundleDiscount: Number(i.bundleDiscount),
       })),
       statusHistory: row.statusHistory.map(publicStatusHistoryEntry),
+      paymentTokenHash: undefined,
+      advanceDiscount: Number(row.advanceDiscount),
+      advanceReceived: Number(row.advanceReceived),
+      codToCollect: codToCollect(row),
       trackingUrl: row.postexTracking ? postexTrackingUrl(row.postexTracking) : null,
     });
   });

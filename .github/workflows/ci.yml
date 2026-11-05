@@ -61,6 +61,10 @@ jobs:
       - name: Customers list integration test
         run: npm run test:customers:integration --workspace backend
 
+      # Advance payment orders: server-side discount, ON_HOLD, payment link, production demo guard, COD unchanged.
+      - name: Advance payment orders integration test
+        run: npm run test:advance:integration --workspace backend
+
       # The order endpoint saves the delivery fee the storefront shows (packages/delivery/cases.json).
       - name: Delivery fee integration test
         run: npm run test:delivery:integration --workspace backend

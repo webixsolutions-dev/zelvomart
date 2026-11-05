@@ -32,6 +32,7 @@ import { sendAutomaticRecoveryEmails } from "../recovery";
 import { runInBackground } from "../lib/background";
 import { runJobsNow } from "../lib/job-runner";
 import { runCronQueue } from "../lib/cron-queue";
+import { paymentPath } from "../lib/advance-payment";
 import { replayCutoff, replayRetentionDays } from "../lib/replay-retention";
 import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
@@ -446,7 +447,13 @@ export function registerPublicRoutes(app: Express) {
         subtotal: Number(order.subtotal),
         deliveryFee: Number(order.deliveryFee),
         discount: Number(order.couponDiscount || 0),
+        advanceDiscount: Number(order.advanceDiscount || 0),
         total: Number(order.total),
+        paymentMethod: order.paymentMethod,
+        // Advance payment only: the guest link to the payment page (the token is shown here and in the emails).
+        ...(order.payToken
+          ? { payToken: order.payToken, payPath: paymentPath(order.orderNumber, order.payToken) }
+          : {}),
       });
       const jobIds: string[] = (order as { jobIds?: string[] }).jobIds || [];
       const soldOut: string[] = (order as { soldOutSlugs?: string[] }).soldOutSlugs || [];
@@ -496,6 +503,10 @@ export function registerPublicRoutes(app: Express) {
     const city = await cityByName(order.city);
     res.json({
       ...order,
+      paymentTokenHash: undefined,
+      advanceDiscount: Number(order.advanceDiscount),
+      // The browser that placed an advance order can always get back to its payment page from here.
+      payPath: order.paymentMethod === "ADVANCE_EASYPAISA" ? paymentPath(order.orderNumber) : undefined,
       subtotal: Number(order.subtotal),
       bundleSaving: Number(order.bundleSaving),
       deliveryFee: Number(order.deliveryFee),
