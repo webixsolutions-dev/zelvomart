@@ -24,6 +24,9 @@ export type AdvanceSettings = {
   qrImageUrl: string;
   discount: number;
   minSubtotal: number;
+  /** The "Complete your payment" email (advance orders get no email when they are placed). */
+  firstReminderMinutes: number;
+  /** The second reminder. */
   reminderHours: number;
   expiryHours: number;
   verificationHours: string;
@@ -37,6 +40,7 @@ export const ADVANCE_DEFAULTS: AdvanceSettings = {
   qrImageUrl: "",
   discount: 200,
   minSubtotal: 0,
+  firstReminderMinutes: 30,
   reminderHours: 2,
   expiryHours: 24,
   verificationHours: "9am – 9pm",
@@ -59,6 +63,7 @@ export function normalizeAdvanceSettings(value: unknown): AdvanceSettings {
     qrImageUrl: text("qrImageUrl"),
     discount: whole("discount", 0),
     minSubtotal: whole("minSubtotal", 0),
+    firstReminderMinutes: whole("firstReminderMinutes", 5),
     reminderHours: whole("reminderHours", 1),
     expiryHours: whole("expiryHours", 1),
     verificationHours: text("verificationHours") || ADVANCE_DEFAULTS.verificationHours,
@@ -71,7 +76,7 @@ export async function loadAdvanceSettings() {
 }
 
 /** Demo while the Till ID is missing or the demo one, or no real QR image has been uploaded. */
-export function advanceUsesDemoValues(settings: AdvanceSettings) {
+export function advanceUsesDemoValues(settings: Pick<AdvanceSettings, "tillId" | "qrImageUrl">) {
   const till = settings.tillId.trim().toUpperCase();
   return !till || till === DEMO_TILL_ID || !settings.qrImageUrl || /demo/i.test(settings.qrImageUrl);
 }

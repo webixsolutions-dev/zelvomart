@@ -1117,6 +1117,24 @@ and the screenshots must match.
   and `test:advance:integration` (guard, convert to COD, checkbox, duplicate reference, auto-partial, refund
   cancel/keep, messages).
 
+### Fix 2/4: emails and Purchase timing
+- Advance orders send nothing at checkout. New setting "First payment reminder (minutes)" (default 30) sends
+  "Complete your payment"; the second reminder stays at the reminder hours. Each once (the job row is the mark); an
+  order first seen after the second reminder is due gets only that one.
+- Proof: "Payment received – we are verifying" (customer) and "Advance payment to verify" (team).
+- Verify/partial: one confirmation ("Paid in advance – nothing to pay on delivery", or the balance) plus the team's
+  new-order email marked Advance paid, with the staff message. Before the payment is accepted the order emails refuse
+  to send.
+- COD switch (customer page or staff): the normal COD emails.
+- Meta/TikTok Purchase: moved from checkout to the first proof or the COD switch (`lib/advance-jobs.ts`); event_id
+  unchanged (order number), event time = that moment, once per order; a purchase job never fires for an unpaid
+  advance order. Browser Purchase for advance orders moved from the thank-you page to the payment page (proof sent /
+  COD switch). gtag untouched; COD unchanged.
+- Each kind of order email has its own delivery key, so a verify or COD switch is not swallowed by an earlier email.
+- Tests: integration covers the whole sequence (nothing at checkout → 30-min email → proof emails + Purchase → one
+  confirmation → COD switch emails + Purchase), reminder timing, and the settings rule (first reminder before the
+  second).
+
 ### Left for the owner
 1. Apply `backend/prisma/migrations/202611060001_advance_payment_fixes/migration.sql` on Mumbai **before** merging
    fix 1.

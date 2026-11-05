@@ -9,6 +9,7 @@ import { site } from "@store/lib/site";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import styles from "./PayView.module.css";
 import { PayProofForm } from "./PayProofForm";
+import { trackStoreEvent } from "@/lib/client-tracking";
 
 export type PayInfo = {
   orderNumber: string;
@@ -45,6 +46,29 @@ const BADGES: Record<string, string> = {
 };
 /** Statuses where the customer still has to pay (the amount, tabs and QR are shown). */
 const TO_PAY = ["AWAITING_PAYMENT", "EXPIRED"];
+
+/**
+ * Browser Purchase for an advance order: at the first payment proof or the switch to COD (the thank-you page skips
+ * advance orders). Same event_id as the server job (the order number), so Meta/TikTok count it once; once per browser.
+ */
+function firePayPurchase(info: PayInfo) {
+  const flag = `zm_purchase_fired_${info.orderNumber}`;
+  try {
+    if (localStorage.getItem(flag)) return;
+  } catch {}
+  void trackStoreEvent(
+    "Purchase",
+    { content_type: "product", value: Number(info.total), currency: "PKR", order_id: info.orderNumber },
+    {
+      eventId: info.orderNumber,
+      onMetaDelivered: () => {
+        try {
+          localStorage.setItem(flag, "1");
+        } catch {}
+      },
+    },
+  ).catch(() => undefined);
+}
 
 async function copyText(text: string) {
   try {
@@ -129,7 +153,9 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
     try {
       const response = await fetch(api.replace("?t=", "/cod?t="), { method: "POST" });
       if (!response.ok) throw new Error();
-      setInfo((await response.json()) as PayInfo);
+      const next = (await response.json()) as PayInfo;
+      setInfo(next);
+      firePayPurchase(next);
       setMessage("Done – your order is now Cash on Delivery.");
     } catch {
       setMessage("We could not switch this order. Please message us on WhatsApp.");
@@ -173,6 +199,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
       method={tab === "qr" ? "RAAST_QR" : "TILL"}
       onDone={(next) => {
         setInfo(next);
+        firePayPurchase(next);
         setProofOpen(false);
         setProofSent(true);
         setMessage("");

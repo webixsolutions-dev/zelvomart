@@ -255,8 +255,20 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
   - On production the option stays hidden, and enabling is refused, while the Till ID or the QR is still a demo
     value.
   - After uploading the QR, save it to a phone gallery and scan it in two bank apps.
-- **Reminder and expiry:** the 5-minute cron sends one reminder after the reminder hours. After the payment window the
-  payment shows **expired**. The order is never cancelled automatically; the customer can still pay or switch to COD.
+- **Emails follow the payment** (COD is unchanged):
+  - checkout: nothing (the customer is on the payment page);
+  - after "First payment reminder (minutes)" (default 30): "Complete your payment" with the pay link and the COD way
+    out; after the reminder hours (default 2): a second reminder. Each once, only while unpaid;
+  - proof sent: customer "Payment received – we are verifying", team "Advance payment to verify";
+  - verified (or partial): one confirmation, "Paid in advance – nothing to pay on delivery" (or the balance), and the
+    team's new-order email marked **Advance paid**. The "Order confirmed" status email is never sent for advance
+    orders;
+  - rejected: the payment issue email; switched to COD (customer or staff): the normal COD emails.
+- **Meta/TikTok Purchase** for an advance order fires at the first payment proof or the switch to COD, never at
+  checkout (server job and browser pixel, same event_id = the order number). The thank-you page fires it for COD
+  orders only. gtag is not involved.
+- **Expiry:** after the payment window the payment shows **expired**. The order is never cancelled automatically; the
+  customer can still pay or switch to COD.
 - **Screenshots** are private: `PAYMENT_PROOF_S3_BUCKET`, else `REPLAY_S3_BUCKET` under `payment-proofs/`.
   - Staff open them through a 5-minute link.
   - The R2 lifecycle rule on the replay bucket must cover `replays/` only, or proofs would be deleted after 14 days.

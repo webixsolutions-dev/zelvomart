@@ -137,8 +137,9 @@ function storefrontTotal(subtotal: number, coupon: number, advance: Record<strin
   const names = async (id: string) =>
     (await prisma.job.findMany({ where: { orderId: id }, select: { name: true } })).map((j) => j.name).sort();
   const cod = await prisma.order.findFirstOrThrow({ where: { paymentMethod: "COD" } });
-  assert.deepEqual(await names(row.id), await names(cod.id), "same emails and events as a COD order");
-  console.log("ok - advance order on hold, Rs 200 off, payment link");
+  assert.deepEqual(await names(row.id), [], "nothing at checkout: no email, no Purchase until a proof or COD");
+  assert.ok((await names(cod.id)).includes("customer-order-email"), "COD unchanged: emails at checkout");
+  console.log("ok - advance order on hold, Rs 200 off, payment link, nothing sent at checkout");
 }
 
 // Minimum subtotal, a coupon and the client cannot set the discount.
@@ -414,20 +415,42 @@ await setAdvance({});
   console.log("ok - mismatch and one resubmission");
 }
 
-// Reminder once after reminderHours, EXPIRED after expiryHours (never cancelled); a late proof is still accepted.
+// "Complete your payment" after firstReminderMinutes, the second reminder after reminderHours (each once), EXPIRED
+// after expiryHours (never cancelled); a late proof is still accepted.
 {
-  await setAdvance({ reminderHours: 2, expiryHours: 24 });
+  await setAdvance({ firstReminderMinutes: 30, reminderHours: 2, expiryHours: 24 });
   const r = await order("ADVANCE_EASYPAISA", 1, { email: "buyer@example.com" });
   const id = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: r.body.orderNumber } })).id;
   const at = (hours: number) =>
     prisma.order.update({ where: { id }, data: { createdAt: new Date(Date.now() - hours * 3_600_000) } });
-  await at(1);
+  const count = (name: string) => prisma.job.count({ where: { orderId: id, name } });
+  await at(0.25);
   await runAdvanceSweep();
-  assert.equal(await prisma.job.count({ where: { orderId: id, name: "advance-reminder-email" } }), 0, "too early");
+  assert.equal(await count("advance-first-reminder-email"), 0, "15 minutes: too early");
+  await at(0.6);
+  await runAdvanceSweep();
+  await runAdvanceSweep();
+  assert.equal(await count("advance-first-reminder-email"), 1, "30 minutes: exactly one first reminder");
+  assert.equal(await count("advance-reminder-email"), 0, "second reminder not yet");
   await at(3);
   await runAdvanceSweep();
   await runAdvanceSweep();
-  assert.equal(await prisma.job.count({ where: { orderId: id, name: "advance-reminder-email" } }), 1, "exactly one");
+  assert.deepEqual(
+    [await count("advance-first-reminder-email"), await count("advance-reminder-email")],
+    [1, 1],
+    "2 hours: exactly one second reminder",
+  );
+  // An order the sweep first sees after 2 hours gets only the second reminder, not both at once.
+  {
+    const late = await order("ADVANCE_EASYPAISA", 1, { email: "late@example.com" });
+    const lateId = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: late.body.orderNumber } })).id;
+    await prisma.order.update({ where: { id: lateId }, data: { createdAt: new Date(Date.now() - 3 * 3_600_000) } });
+    await runAdvanceSweep();
+    assert.deepEqual(
+      (await prisma.job.findMany({ where: { orderId: lateId }, select: { name: true } })).map((j) => j.name),
+      ["advance-reminder-email"],
+    );
+  }
   await at(25);
   const swept = await runAdvanceSweep();
   assert.ok(swept.expired >= 1);
@@ -456,7 +479,10 @@ await setAdvance({});
   globalThis.fetch = (async (input: any, init?: any) => {
     const url = String(input?.url || input);
     if (!url.startsWith("https://api.resend.com")) return realFetch(input, init);
-    sent.push(JSON.parse(String(init?.body || "{}")));
+    sent.push({
+      ...JSON.parse(String(init?.body || "{}")),
+      idempotencyKey: new Headers(init?.headers).get("idempotency-key"),
+    });
     return new Response(JSON.stringify({ id: `email-${sent.length}` }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -474,16 +500,25 @@ await setAdvance({});
         await processJobRow(job.id);
       }
     };
+    // Checkout: nothing. An order email queued by hand is still refused while the payment is unverified.
+    assert.equal(await prisma.job.count({ where: { orderId: id } }), 0, "no email or event at checkout");
+    const { enqueueOrderEmails } = await import("../src/lib/advance-jobs");
+    await prisma.$transaction((tx) => enqueueOrderEmails(tx, id, "advance-paid"));
     await runAll("customer-order-email");
     await runAll("order-team-email");
-    const orderMail = sent.find((m) => m.to === "buyer@example.com" || m.to?.[0] === "buyer@example.com");
-    assert.ok(orderMail, "customer order email");
-    assert.ok(orderMail.html.includes(`/pay/${r.body.orderNumber}/?t=${r.body.payToken}`), "pay link in the email");
-    assert.match(orderMail.html, /Cash on Delivery instead/);
-    assert.equal(orderMail.html.includes("pay cash when your parcel arrives"), false);
-    const teamOrder = sent.find((m) => String(m.subject).includes("New order • advance payment pending"));
-    assert.ok(teamOrder, "team order subject says not paid yet");
+    assert.equal(sent.length, 0, "no order confirmation before the payment is accepted");
 
+    // 30 minutes: "Complete your payment" with the pay link and the COD way out.
+    await prisma.job.create({ data: { name: "advance-first-reminder-email", orderId: id, payload: { orderId: id } } });
+    await runAll("advance-first-reminder-email");
+    const first = sent.find((m) => m.to === "buyer@example.com" || m.to?.[0] === "buyer@example.com");
+    assert.match(first.subject, new RegExp(`Complete your payment • ${r.body.orderNumber}`));
+    assert.ok(first.html.includes(`/pay/${r.body.orderNumber}/?t=${r.body.payToken}`), "pay link in the email");
+    assert.match(first.html, /Cash on Delivery instead/);
+
+    // Proof: team "Advance payment to verify", customer "Payment received – we are verifying", and the Purchase.
+    // Orders placed outside the storefront are test orders (no Purchase); treat this one as a real order.
+    await prisma.order.update({ where: { id }, data: { test: false } });
     const tid = "EMAILTID" + n;
     const proof = await sendProof(r.body.orderNumber, r.body.payToken, good(r.body.total, tid), await shot(14));
     assert.equal(proof.status, 201);
@@ -491,22 +526,74 @@ await setAdvance({});
     await runAll("advance-proof-team-email");
     await runAll("advance-proof-customer-email");
     const team = sent.find((m) => String(m.subject).startsWith("[Orders]"));
-    assert.match(team.subject, new RegExp(`${r.body.orderNumber} • Advance payment proof`));
+    assert.match(team.subject, new RegExp(`${r.body.orderNumber} • Advance payment to verify`));
     assert.match(team.html, /A screenshot is never proof on its own/);
     assert.ok(team.html.includes(tid));
     assert.equal(/payment-proofs\/|\.webp/.test(team.html), false, "no screenshot link or key in email");
     const customer = sent.find((m) => !String(m.subject).startsWith("[Orders]"));
-    assert.match(customer.subject, /Payment proof received/);
+    assert.match(customer.subject, /Payment received – we are verifying/);
     assert.match(
       customer.html,
-      /Order received – advance payment pending verification\.[\s\S]*We verify during 10am – 8pm and confirm on WhatsApp\/email\. Your order is safe\./,
+      /Payment received – we are verifying\.[\s\S]*We verify during 10am – 8pm and confirm on WhatsApp\/email\. Your order is safe\./,
     );
+    const purchase = await prisma.job.findFirstOrThrow({ where: { orderId: id, name: "meta-purchase" } });
+    assert.ok(Number((purchase.payload as any).eventTime) > 0, "Purchase timed at the proof");
     // A reminder that was due before the proof arrived is skipped, not sent.
     await prisma.job.create({ data: { name: "advance-reminder-email", orderId: id, payload: { orderId: id } } });
     sent.length = 0;
     await runAll("advance-reminder-email");
     assert.equal(sent.length, 0);
-    console.log("ok - emails: pay link, team warning without screenshot, customer message, reminder skipped");
+
+    // Verified: one confirmation ("paid in advance, nothing to pay on delivery") + team new order marked Advance paid.
+    const total = r.body.total;
+    await prisma.order.update({ where: { id }, data: { paymentStatus: "VERIFIED", advanceReceived: total } });
+    await prisma.job.deleteMany({ where: { orderId: id, name: { in: ["customer-order-email", "order-team-email"] } } });
+    await prisma.$transaction((tx) => enqueueOrderEmails(tx, id, "advance-paid", "Thanks for paying early!"));
+    sent.length = 0;
+    await runAll("customer-order-email");
+    await runAll("order-team-email");
+    const confirmed = sent.find((m) => !String(m.subject).startsWith("[Orders]"));
+    assert.match(confirmed.subject, new RegExp(`Order confirmed – paid in advance • ${r.body.orderNumber}`));
+    assert.match(confirmed.html, /Paid in advance – nothing to pay on delivery/);
+    assert.match(confirmed.html, /Thanks for paying early!/);
+    assert.equal(confirmed.html.includes("pay cash when your parcel arrives"), false);
+    const teamPaid = sent.find((m) => String(m.subject).startsWith("[Orders]"));
+    assert.match(teamPaid.subject, new RegExp(`${r.body.orderNumber} • New order • Advance paid`));
+    // Sent once: a retried job carries the same idempotency key, so the provider delivers it only once.
+    assert.equal(confirmed.idempotencyKey, `order-received-advance-${id}`);
+    sent.length = 0;
+    await runAll("customer-order-email");
+    assert.ok(
+      sent.every((m) => m.idempotencyKey === `order-received-advance-${id}`),
+      "same key on retry",
+    );
+
+    // Switched to COD (no proof): the normal COD emails and the Purchase go out then.
+    const c = await order("ADVANCE_EASYPAISA", 1, { email: "switch@example.com" });
+    const cid = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: c.body.orderNumber } })).id;
+    await prisma.order.update({ where: { id: cid }, data: { test: false } });
+    const switched = await fetch(`${base}/api/pay/${c.body.orderNumber}/cod?t=${encodeURIComponent(c.body.payToken)}`, {
+      method: "POST",
+      headers: { "x-zm-proxy-secret": "isolated-proxy-secret", "x-zm-client-ip": `10.9.${n}.1` },
+    });
+    assert.equal(switched.status, 200);
+    const cJobs = (await prisma.job.findMany({ where: { orderId: cid }, select: { name: true } }))
+      .map((j) => j.name)
+      .sort();
+    assert.deepEqual(cJobs, ["customer-order-email", "meta-purchase", "order-team-email"]);
+    sent.length = 0;
+    for (const job of await prisma.job.findMany({ where: { orderId: cid, name: { not: "meta-purchase" } } })) {
+      await prisma.job.update({ where: { id: job.id }, data: { status: "QUEUED", attempts: 0 } });
+      await processJobRow(job.id);
+    }
+    const codMail = sent.find((m) => !String(m.subject).startsWith("[Orders]"));
+    assert.match(codMail.subject, new RegExp(`Order received • ${c.body.orderNumber}`));
+    assert.match(codMail.html, /pay cash when your parcel arrives/);
+    assert.ok(sent.some((m) => /New COD order \(switched from advance payment\)/.test(m.subject)));
+    console.log(
+      "ok - emails: nothing at checkout, complete-your-payment, proof emails + Purchase, one confirmation on verify, " +
+        "COD switch emails + Purchase, reminder skipped",
+    );
   } finally {
     globalThis.fetch = realFetch;
     process.env.RESEND_API_KEY = "";
@@ -628,7 +715,17 @@ await setAdvance({});
     assert.deepEqual([again.status, again.body.error], [409, "DUPLICATE_REFERENCE"]);
     assert.match(again.body.message, new RegExp(o1.body.orderNumber));
   }
-  assert.equal(await prisma.job.count({ where: { orderId: v.id, name: "advance-verified-email" } }), 1);
+  const verifyJobs = await prisma.job.findMany({
+    where: { orderId: v.id, name: { in: ["customer-order-email", "order-team-email", "advance-verified-email"] } },
+  });
+  assert.deepEqual(
+    verifyJobs.map((j) => [j.name, (j.payload as any).kind]).sort(),
+    [
+      ["customer-order-email", "advance-paid"],
+      ["order-team-email", "advance-paid"],
+    ],
+    "verify sends the one confirmation and the team's new-order email",
+  );
   const audit1 = await prisma.auditLog.findFirstOrThrow({ where: { entity: "PaymentProof", entityId: p1.id } });
   assert.equal(audit1.action, "payment_verify");
 
@@ -751,7 +848,12 @@ await setAdvance({});
       "auto-partial below the amount due",
     );
     assert.equal((await asAgent(`/api/admin/orders/${proof.orderId}`)).body.codToCollect, total - 9);
-    assert.equal(await prisma.job.count({ where: { orderId: proof.orderId, name: "advance-issue-email" } }), 1);
+    assert.equal(
+      await prisma.job.count({ where: { orderId: proof.orderId, name: "customer-order-email" } }),
+      1,
+      "partial: the confirmation with the balance to pay on delivery",
+    );
+    assert.equal(await prisma.job.count({ where: { orderId: proof.orderId, name: "advance-issue-email" } }), 0);
     assert.equal(
       (await patch(`/api/admin/orders/${proof.orderId}/status`, { status: "CONFIRMED" })).status,
       200,
@@ -784,13 +886,18 @@ await setAdvance({});
   // Staff convert an unpaid advance order to COD: the discount is removed and the normal flow follows.
   {
     const r = await order("ADVANCE_EASYPAISA", 1);
-    const before = await prisma.order.findUniqueOrThrow({ where: { orderNumber: r.body.orderNumber } });
+    const before = await prisma.order.update({ where: { orderNumber: r.body.orderNumber }, data: { test: false } });
     const guard = await patch(`/api/admin/orders/${before.id}/status`, { status: "CONFIRMED" });
     assert.deepEqual(
       [guard.status, guard.body.proofId, guard.body.codTotal],
       [409, null, Math.round(Number(before.total) + Number(before.advanceDiscount))],
     );
     assert.equal((await asAgent(`/api/admin/orders/${before.id}/convert-to-cod`, {})).status, 200);
+    assert.deepEqual(
+      (await prisma.job.findMany({ where: { orderId: before.id }, select: { name: true } })).map((j) => j.name).sort(),
+      ["customer-order-email", "meta-purchase", "order-team-email"],
+      "staff COD switch: the COD emails and the Purchase",
+    );
     const cod = await prisma.order.findUniqueOrThrow({ where: { id: before.id } });
     assert.deepEqual(
       [cod.paymentMethod, cod.paymentStatus, Number(cod.advanceDiscount), Number(cod.total), cod.status],

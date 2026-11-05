@@ -10,6 +10,7 @@ type Advance = {
   qrImageUrl?: string;
   discount?: number;
   minSubtotal?: number;
+  firstReminderMinutes?: number;
   reminderHours?: number;
   expiryHours?: number;
   verificationHours?: string;
@@ -86,6 +87,7 @@ export default function AdvancePaymentSettings({
                 qrImageUrl: qr,
                 discount: num("discount", 200),
                 minSubtotal: num("minSubtotal", 0),
+                firstReminderMinutes: num("firstReminderMinutes", 30),
                 reminderHours: num("reminderHours", 2),
                 expiryHours: num("expiryHours", 24),
                 verificationHours:
@@ -220,7 +222,21 @@ export default function AdvancePaymentSettings({
         />
       </label>
       <label className="field">
-        <span>Reminder email after (hours)</span>
+        <span>First payment reminder (minutes)</span>
+        <input
+          name="firstReminderMinutes"
+          type="number"
+          min={5}
+          step={1}
+          defaultValue={v.firstReminderMinutes ?? 30}
+        />
+        <small>
+          The &ldquo;Complete your payment&rdquo; email. Advance orders get no
+          email when they are placed.
+        </small>
+      </label>
+      <label className="field">
+        <span>Second reminder after (hours)</span>
         <input
           name="reminderHours"
           type="number"

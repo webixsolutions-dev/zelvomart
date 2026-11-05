@@ -10,8 +10,7 @@ import { prisma } from "./db";
 import { money } from "./format";
 import { getSetting } from "./settings";
 import { SITE_ORIGIN } from "./site-url";
-import { advanceOrderEmailBlock } from "./advance-email";
-import { loadAdvanceSettings } from "./advance-payment";
+import { codToCollect } from "./advance-payment";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -31,12 +30,28 @@ export async function orderRecipients() {
   return orderAlertRecipients(await getSetting<unknown>("notifications.orderRecipients", null));
 }
 
-export async function sendOrderTeamEmail(orderId: string) {
+/** Advance orders: staff accepted the money (verified, partial or refunded after). */
+const advanceAccepted = (order: { paymentMethod: string; paymentStatus: string; advanceReceived: unknown }) =>
+  order.paymentMethod === "ADVANCE_EASYPAISA" &&
+  (order.paymentStatus === "VERIFIED" || order.paymentStatus === "REFUNDED" || Number(order.advanceReceived) > 0);
+
+/** Delivery keys: one email per kind (advance-jobs.ts), so a COD switch or a verify always gets its own email. */
+const orderEmailKey = (prefix: string, orderId: string, kind: unknown) =>
+  kind === "advance-paid"
+    ? `${prefix}-advance-${orderId}`
+    : kind === "cod-switch"
+      ? `${prefix}-cod-${orderId}`
+      : `${prefix}-${orderId}`;
+
+export async function sendOrderTeamEmail(orderId: string, kind?: unknown) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { items: true },
   });
   if (!order) throw new Error("Order not found");
+  const advance = order.paymentMethod === "ADVANCE_EASYPAISA";
+  if (advance && !advanceAccepted(order)) return { skipped: "ADVANCE_NOT_VERIFIED" };
+  const collect = codToCollect(order);
 
   const items =
     order.items
@@ -49,7 +64,10 @@ export async function sendOrderTeamEmail(orderId: string) {
       ? `<br/>Coupon ${escapeHtml(order.couponCode)}: -${escapeHtml(money(order.couponDiscount))}`
       : "") +
     (Number(order.advanceDiscount) > 0
-      ? `<br/>Advance payment discount: -${escapeHtml(money(order.advanceDiscount))} (do not dispatch until the payment is verified)`
+      ? `<br/>Advance payment discount: -${escapeHtml(money(order.advanceDiscount))}`
+      : "") +
+    (advance
+      ? `<br/><strong>Advance paid: ${escapeHtml(money(order.advanceReceived))} (verified in the Easypaisa merchant app). Courier collects ${escapeHtml(money(collect))}.</strong>`
       : "");
 
   const adminUrl = `${SITE_ORIGIN}/admin/orders/${order.id}`;
@@ -81,23 +99,26 @@ export async function sendOrderTeamEmail(orderId: string) {
   const team = internalEmail(
     "Orders",
     await orderRecipients(),
-    order.paymentMethod === "ADVANCE_EASYPAISA"
-      ? `${order.orderNumber} • New order • advance payment pending (not paid yet) • ${money(order.total)}`
-      : `${order.orderNumber} • New COD order • ${money(order.total)}`,
+    advance
+      ? `${order.orderNumber} • New order • Advance paid${collect > 0 ? ` • collect ${money(collect)}` : ""} • ${money(order.total)}`
+      : `${order.orderNumber} • New COD order${kind === "cod-switch" ? " (switched from advance payment)" : ""} • ${money(order.total)}`,
     html,
   );
   return deliverEmail(
     { ...emailIdentity("orders"), to: team.to, subject: team.subject, html: emailLayout(team.html) },
-    `order-team-${order.id}`,
+    orderEmailKey("order-team", order.id, kind),
   );
 }
 
-export async function sendCustomerOrderEmail(orderId: string) {
+export async function sendCustomerOrderEmail(orderId: string, kind?: unknown, message?: unknown) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: { items: true },
   });
   if (!order) throw new Error("Order not found");
+  // Advance orders: the order email is the confirmation once staff accepted the payment, never before.
+  if (order.paymentMethod === "ADVANCE_EASYPAISA" && !advanceAccepted(order))
+    return { skipped: "ADVANCE_NOT_VERIFIED" };
   if (!order.email) return { skipped: "Customer did not provide an email address" };
 
   const items =
@@ -113,10 +134,18 @@ export async function sendCustomerOrderEmail(orderId: string) {
     (Number(order.advanceDiscount) > 0
       ? `<li>Advance payment discount: -${escapeHtml(money(order.advanceDiscount))}</li>`
       : "");
-  const advance = order.paymentMethod === "ADVANCE_EASYPAISA" && order.paymentStatus === "AWAITING_PAYMENT";
-  const paymentNote = advance
-    ? advanceOrderEmailBlock(order, (await loadAdvanceSettings()).expiryHours)
-    : "<p>Cash on Delivery: pay cash when your parcel arrives.</p>";
+  const advance = order.paymentMethod === "ADVANCE_EASYPAISA";
+  const collect = codToCollect(order);
+  const note =
+    typeof message === "string" && message.trim()
+      ? `<p style="background:#f1f5f9;border-radius:8px;padding:10px 12px"><strong>Message from Zelvomart:</strong><br/>${escapeHtml(message.trim().slice(0, 1000)).replace(/\n/g, "<br/>")}</p>`
+      : "";
+  const paymentNote =
+    (advance
+      ? collect > 0
+        ? `<p><strong>Paid in advance: ${escapeHtml(money(order.advanceReceived))}.</strong> We found it in our Easypaisa merchant account. Please pay the remaining <strong>${escapeHtml(money(collect))}</strong> in cash on delivery.</p>`
+        : `<p><strong>Paid in advance – nothing to pay on delivery.</strong> We found your payment of ${escapeHtml(money(order.advanceReceived))} in our Easypaisa merchant account.</p>`
+      : "<p>Cash on Delivery: pay cash when your parcel arrives.</p>") + note;
   const defaultTemplate = `
     <h2>Thanks for your order, {{customerName}}.</h2>
     <p>Your order number is <strong>{{orderNumber}}</strong>.</p>
@@ -127,8 +156,8 @@ export async function sendCustomerOrderEmail(orderId: string) {
   `;
   const configuredTemplate = await getSetting<string>("notifications.customerOrderTemplate", defaultTemplate);
   let template = configuredTemplate.trim() ? configuredTemplate : defaultTemplate;
-  // An admin template written before advance payment has no {{paymentNote}}: the pay link is added after it.
-  if (advance && !template.includes("{{paymentNote}}")) template += "{{paymentNote}}";
+  // An admin template written before advance payment has no {{paymentNote}}: the payment line is added after it.
+  if ((advance || note) && !template.includes("{{paymentNote}}")) template += "{{paymentNote}}";
   const html = renderTemplate(template, {
     paymentNote,
     customerName: escapeHtml(order.fullName),
@@ -143,10 +172,12 @@ export async function sendCustomerOrderEmail(orderId: string) {
     {
       ...emailIdentity("orders"),
       to: order.email,
-      subject: `Order received • ${order.orderNumber}`,
+      subject: advance
+        ? `Order confirmed – paid in advance • ${order.orderNumber}`
+        : `Order received • ${order.orderNumber}`,
       html: emailLayout(html),
     },
-    `order-received-${order.id}`,
+    orderEmailKey("order-received", order.id, kind),
   );
 }
 

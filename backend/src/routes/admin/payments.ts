@@ -19,6 +19,7 @@ import {
   type RefundReason,
 } from "../../lib/advance-payment";
 import { transitionOrder } from "../../lib/order";
+import { enqueueOrderEmails, enqueuePurchaseOnce } from "../../lib/advance-jobs";
 import { normalizeTid } from "../../lib/payment-proof";
 import { REJECT_REASONS, type RejectReason } from "../../lib/payment-proof";
 import { paymentProofSignedUrl, readPaymentProof } from "../../lib/payment-proof-storage";
@@ -507,15 +508,9 @@ export function registerAdminPaymentsRoutes(app: Express) {
           },
         },
       });
-      return [
-        await emailJob(
-          tx,
-          outcome === "VERIFIED" ? "advance-verified-email" : "advance-issue-email",
-          order.id,
-          proof.id,
-          body.customerMessage,
-        ),
-      ];
+      // One confirmation: the order email ("Paid in advance, nothing to pay on delivery", or the balance for a
+      // partial) and the team's new-order email marked Advance paid.
+      return enqueueOrderEmails(tx, order.id, "advance-paid", body.customerMessage);
     });
     return { jobIds };
   });
@@ -650,7 +645,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
         await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
         const order = await tx.order.findUnique({
           where: { id: orderId },
-          select: { ...actOrderSelect, advanceDiscount: true },
+          select: { ...actOrderSelect, advanceDiscount: true, test: true, staffCreated: true },
         });
         if (!order) throw new ActionError("NOT_FOUND", "Order not found.", 404);
         if (order.paymentMethod !== "ADVANCE_EASYPAISA")
@@ -700,10 +695,13 @@ export function registerAdminPaymentsRoutes(app: Express) {
             details: { total, discountRemoved: Number(order.advanceDiscount), proofsClosed: open.count },
           },
         });
-        return { total };
+        // Now a normal COD order: the COD emails, and the Purchase event if no proof sent it already.
+        return [
+          ...(await enqueueOrderEmails(tx, order.id, "cod-switch", body.customerMessage)),
+          ...(await enqueuePurchaseOnce(tx, order)),
+        ];
       });
-      void result;
-      return { jobIds: [] };
+      return { jobIds: result };
     }),
   );
 

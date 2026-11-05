@@ -6,6 +6,7 @@ import { sendMetaServerEvent } from "./meta";
 import { sendTikTokServerEvent } from "./tiktok";
 import { jobResultStatus } from "./jobs";
 import {
+  sendAdvanceFirstReminderEmail,
   sendAdvanceIssueEmail,
   sendAdvanceProofCustomerEmail,
   sendAdvanceProofTeamEmail,
@@ -61,9 +62,9 @@ export async function processJobRow(jobLogId: string) {
 async function handle(row: NonNullable<Row>, data: Record<string, any>, orderId: string) {
   switch (row.name) {
     case "order-team-email":
-      return sendOrderTeamEmail(orderId);
+      return sendOrderTeamEmail(orderId, data.kind);
     case "customer-order-email":
-      return sendCustomerOrderEmail(orderId);
+      return sendCustomerOrderEmail(orderId, data.kind, data.message);
     case "customer-status-email":
       if (!["CONFIRMED", "BOOKED", "DELIVERED"].includes(String(data.status))) return { skipped: "INVALID_STATUS" };
       return sendCustomerStatusEmail(orderId, data.status as "CONFIRMED" | "BOOKED" | "DELIVERED");
@@ -95,7 +96,7 @@ async function handle(row: NonNullable<Row>, data: Record<string, any>, orderId:
       });
     case "meta-purchase":
     case "tiktok-purchase":
-      return purchase(row.name, orderId, data.eventName);
+      return purchase(row.name, orderId, data.eventName, data.eventTime);
     case "advance-proof-team-email":
       return sendAdvanceProofTeamEmail(orderId, String(data.proofId));
     case "advance-proof-customer-email":
@@ -106,6 +107,8 @@ async function handle(row: NonNullable<Row>, data: Record<string, any>, orderId:
       return sendAdvanceIssueEmail(orderId, String(data.proofId), data.message);
     case "advance-refund-email":
       return sendAdvanceRefundEmail(orderId, data);
+    case "advance-first-reminder-email":
+      return sendAdvanceFirstReminderEmail(orderId);
     case "advance-reminder-email":
       return sendAdvanceReminderEmail(orderId);
     case "advance-proof-autoread":
@@ -115,21 +118,29 @@ async function handle(row: NonNullable<Row>, data: Record<string, any>, orderId:
   }
 }
 
-async function purchase(name: string, orderId: string, eventName?: string) {
+async function purchase(name: string, orderId: string, eventName?: string, queuedEventTime?: unknown) {
   const order = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
   if (!order || order.test || order.staffCreated || order.blocklistedAtOrder || order.status === "CANCELLED")
     return { skipped: "ORDER_EXCLUDED" };
+  // An advance order counts as a purchase from its first proof (or its switch to COD), never while unpaid.
+  if (order.paymentMethod === "ADVANCE_EASYPAISA" && ["AWAITING_PAYMENT", "EXPIRED"].includes(order.paymentStatus))
+    return { skipped: "ADVANCE_NOT_PAID_YET" };
   const names = order.fullName.trim().split(/\s+/);
   const sourceUrl = `${SITE_ORIGIN}/order-confirmed/?order=${encodeURIComponent(order.orderNumber)}`;
   // Use the public order number for browser/server deduplication; the local one-time
   // browser flag remains keyed by the database ID to avoid collisions if numbers roll over.
   const eventId = order.orderNumber;
+  // Advance orders: the moment of the proof or the COD switch (advance-jobs.ts); otherwise the order time.
+  const eventTime =
+    Number.isFinite(Number(queuedEventTime)) && Number(queuedEventTime) > 0
+      ? Math.floor(Number(queuedEventTime))
+      : Math.floor(order.createdAt.getTime() / 1000);
   if (name === "meta-purchase")
     return sendMetaServerEvent({
       eventName: eventName || "Purchase",
       eventId,
       orderId: order.id,
-      eventTime: Math.floor(order.createdAt.getTime() / 1000),
+      eventTime,
       sourceUrl,
       fbp: order.fbp || undefined,
       fbc: order.fbc || undefined,
@@ -161,7 +172,7 @@ async function purchase(name: string, orderId: string, eventName?: string) {
     eventName: eventName || "Purchase",
     eventId,
     orderId: order.id,
-    eventTime: Math.floor(order.createdAt.getTime() / 1000),
+    eventTime,
     sourceUrl,
     ip: order.clientIp || undefined,
     userAgent: order.clientUserAgent || undefined,

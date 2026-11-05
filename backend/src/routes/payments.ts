@@ -24,6 +24,7 @@ import {
 } from "../lib/payment-proof";
 import { paymentProofStorageReady, storePaymentProof } from "../lib/payment-proof-storage";
 import { autoReader, prefillFrom } from "../lib/proof-autoread";
+import { enqueueOrderEmails, enqueuePurchaseOnce } from "../lib/advance-jobs";
 import {
   advanceAvailability,
   advancePolicy,
@@ -47,6 +48,8 @@ const orderForPage = {
   paymentStatus: true,
   paymentTokenHash: true,
   blocklistedAtOrder: true,
+  test: true,
+  staffCreated: true,
   subtotal: true,
   bundleSaving: true,
   deliveryFee: true,
@@ -312,7 +315,8 @@ export function registerPaymentRoutes(app: Express) {
             }),
           ),
         );
-        return jobs.map((job) => job.id);
+        // The first proof is the Purchase moment for an advance order (once; same event_id as checkout used to).
+        return [...jobs.map((job) => job.id), ...(await enqueuePurchaseOnce(tx, order))];
       });
     let jobIds: string[] | null;
     try {
@@ -360,7 +364,7 @@ export function registerPaymentRoutes(app: Express) {
           status: nextStatus,
         },
       });
-      if (!changed.count) return false;
+      if (!changed.count) return null;
       await tx.orderStatusHistory.create({
         data: {
           orderId: order.id,
@@ -369,9 +373,11 @@ export function registerPaymentRoutes(app: Express) {
           note: "Customer chose Cash on Delivery instead of advance payment (discount removed).",
         },
       });
-      return true;
+      // Now a normal COD order: the COD emails and the Purchase event go out from here.
+      return [...(await enqueueOrderEmails(tx, order.id, "cod-switch")), ...(await enqueuePurchaseOnce(tx, order))];
     });
     if (!switched) return res.status(409).json({ error: "CANNOT_SWITCH_TO_COD" });
+    runInBackground("COD switch emails", () => runJobsNow(switched));
     const fresh = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: orderForPage });
     res.json(await payPage(fresh, await loadAdvanceSettings()));
   });
