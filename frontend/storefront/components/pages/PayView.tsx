@@ -8,6 +8,7 @@ import { money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import styles from "./PayView.module.css";
+import { PayProofForm } from "./PayProofForm";
 
 export type PayInfo = {
   orderNumber: string;
@@ -24,6 +25,10 @@ export type PayInfo = {
   whatsapp: string;
   refundPolicyPath: string;
   canSwitchToCod: boolean;
+  canSubmitProof: boolean;
+  proofsLeft: number;
+  /** The customer's latest proof (status only: no TID or screenshot on this page). */
+  proof: { status: string; amountSent: number; submittedAt: string; rejectMessage: string | null } | null;
 };
 
 const BADGES: Record<string, string> = {
@@ -67,6 +72,8 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
   const [help, setHelp] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [message, setMessage] = useState("");
+  const [proofOpen, setProofOpen] = useState(false);
+  const [proofSent, setProofSent] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const api = `/api/store-proxy/api/pay/${encodeURIComponent(orderNumber)}?t=${encodeURIComponent(token)}`;
 
@@ -155,6 +162,22 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
   const proofLink = waLink(whatsapp, `Hi Zelvomart! I have paid ${amount} for order ${info.orderNumber}. Here is my payment screenshot and TID:`);
   const isCod = info.paymentMethod === "COD";
   const toPay = !isCod && TO_PAY.includes(info.paymentStatus);
+  /** A mismatch or rejection the customer can still answer with one corrected proof. */
+  const toFix = !isCod && !toPay && info.canSubmitProof;
+  const proofForm = (
+    <PayProofForm
+      info={info}
+      api={api}
+      method={tab === "qr" ? "RAAST_QR" : "TILL"}
+      onDone={(next) => {
+        setInfo(next);
+        setProofOpen(false);
+        setProofSent(true);
+        setMessage("");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
+    />
+  );
 
   return (
     <section className="section pt-sm">
@@ -253,10 +276,20 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
               </div>
             )}
 
+            {proofOpen && info.canSubmitProof ? (
+              proofForm
+            ) : null}
             <div className={styles.actions}>
-              <a className="btn block lg" href={proofLink} target="_blank" rel="noopener noreferrer">
-                I&apos;ve paid – add proof
-              </a>
+              {!proofOpen && (
+                <button className="btn block lg" type="button" onClick={() => setProofOpen(true)} disabled={!info.canSubmitProof}>
+                  I&apos;ve paid – add proof
+                </button>
+              )}
+              {proofOpen && (
+                <a className={styles.linkBtn} href={proofLink} target="_blank" rel="noopener noreferrer">
+                  Trouble uploading? Send it on WhatsApp
+                </a>
+              )}
               {info.canSwitchToCod && (
                 <button type="button" className={styles.linkBtn} disabled={switching} onClick={() => void switchToCod()}>
                   {switching ? "Switching…" : "Pay on delivery instead"}
@@ -264,9 +297,34 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
               )}
             </div>
           </>
+        ) : toFix ? (
+          <>
+            <div className={`${styles.card} ${styles.issue}`} role="status">
+              <p>
+                <TriangleAlert size={18} aria-hidden="true" />
+                <span>
+                  <strong>We need a quick check on your payment.</strong>{" "}
+                  {info.proof?.rejectMessage ||
+                    `You entered ${money(info.proof?.amountSent || 0)}, but your order total is ${amount}. If you sent a different amount, add a corrected proof or message us on WhatsApp.`}
+                </span>
+              </p>
+              <p className={styles.formHint}>You can send one corrected proof.</p>
+              {!proofOpen && (
+                <button className="btn block" type="button" onClick={() => setProofOpen(true)}>
+                  Send a corrected proof
+                </button>
+              )}
+            </div>
+            {proofOpen && proofForm}
+            <p className={styles.center}>
+              <a href={helpLink} target="_blank" rel="noopener noreferrer">
+                <WhatsAppIcon /> WhatsApp help
+              </a>
+            </p>
+          </>
         ) : (
-          <div className={styles.card}>
-            <p>
+          <div className={`${styles.card} ${proofSent ? styles.success : ""}`} role={proofSent ? "status" : undefined}>
+            <p className={styles.textBlock}>
               <strong>Order received – advance payment {info.paymentStatus === "VERIFIED" ? "verified" : "pending verification"}.</strong>{" "}
               {info.paymentStatus === "VERIFIED"
                 ? "Thank you! Your order is being packed."

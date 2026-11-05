@@ -1,7 +1,28 @@
-import type { Express, Request } from "express";
+import type { Express, NextFunction, Request, Response } from "express";
+import multer from "multer";
 import { prisma } from "../lib/db";
 import { getSetting } from "../lib/settings";
-import { allowRequest, routeParam, setNoStore } from "../http/shared";
+import { requestIp } from "../lib/rate-limit";
+import { runJobsNow } from "../lib/job-runner";
+import { runInBackground } from "../lib/background";
+import { allowRequest, allowRules, routeParam, setNoStore } from "../http/shared";
+import {
+  canSubmitProof,
+  cleanProofImage,
+  differenceHash,
+  hammingDistance,
+  NEAR_DUPLICATE_DISTANCE,
+  normalizeTid,
+  PROOF_MAX_BYTES,
+  PROOF_MAX_PER_ORDER,
+  ProofImageError,
+  proofFieldsSchema,
+  proofFlags,
+  REJECT_REASONS,
+  sha256Hex,
+  type RejectReason,
+} from "../lib/payment-proof";
+import { paymentProofStorageReady, storePaymentProof } from "../lib/payment-proof-storage";
 import {
   advanceAvailability,
   advancePolicy,
@@ -33,7 +54,18 @@ const orderForPage = {
   total: true,
   createdAt: true,
   _count: { select: { paymentProofs: true } },
+  // Only what the customer may see about their own latest proof (no TID, no screenshot, no staff notes).
+  paymentProofs: {
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    select: { status: true, amountSent: true, createdAt: true, rejectReason: true },
+  },
 } as const;
+
+const proofUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: PROOF_MAX_BYTES, files: 1, fields: 10, fieldSize: 2000 },
+}).single("screenshot");
 
 /** The order behind a payment link, or null for a wrong/missing token (always answered as 404, never a hint). */
 async function orderByToken(req: Request) {
@@ -50,6 +82,7 @@ type PageOrder = NonNullable<Awaited<ReturnType<typeof orderByToken>>>;
 async function payPage(order: PageOrder, settings: AdvanceSettings) {
   const info = await getSetting<{ whatsapp?: string }>("store.info", {});
   const { demo } = advanceAvailability(settings);
+  const latest = order.paymentProofs[0];
   return {
     orderNumber: order.orderNumber,
     // Only the first name: the link may be forwarded, so no other personal data is on this page.
@@ -72,7 +105,44 @@ async function payPage(order: PageOrder, settings: AdvanceSettings) {
       order.paymentMethod === "ADVANCE_EASYPAISA" &&
       order._count.paymentProofs === 0 &&
       (SWITCHABLE as readonly string[]).includes(order.paymentStatus),
+    canSubmitProof: canSubmitProof(order, order._count.paymentProofs),
+    proofsLeft: Math.max(0, PROOF_MAX_PER_ORDER - order._count.paymentProofs),
+    proof: latest
+      ? {
+          status: latest.status,
+          amountSent: Number(latest.amountSent),
+          submittedAt: latest.createdAt.toISOString(),
+          rejectMessage:
+            latest.status === "REJECTED"
+              ? REJECT_REASONS[(latest.rejectReason as RejectReason) || "OTHER"] || REJECT_REASONS.OTHER
+              : null,
+        }
+      : null,
   };
+}
+
+/** multer with a JSON answer for a too-large or extra file (instead of Express's HTML error page). */
+function parseProofUpload(req: Request, res: Response, next: NextFunction) {
+  proofUpload(req, res, (error: unknown) => {
+    if (!error) return next();
+    const code = (error as { code?: string }).code;
+    res.status(code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
+      error: code === "LIMIT_FILE_SIZE" ? "PROOF_TOO_LARGE" : "PROOF_UPLOAD_INVALID",
+      message: code === "LIMIT_FILE_SIZE" ? "The screenshot must be up to 5 MB." : "Send one screenshot with the form.",
+    });
+  });
+}
+
+/** Exact (SHA-256) or near (dHash) copy of a screenshot already sent for any order in the last 180 days. */
+async function screenshotSeenBefore(sha256: string, dhash: string) {
+  if (await prisma.paymentProof.findFirst({ where: { sha256 }, select: { id: true } })) return true;
+  const recent = await prisma.paymentProof.findMany({
+    where: { dhash: { not: null }, createdAt: { gte: new Date(Date.now() - 180 * 86_400_000) } },
+    orderBy: { createdAt: "desc" },
+    take: 5000,
+    select: { dhash: true },
+  });
+  return recent.some((row) => hammingDistance(row.dhash!, dhash) <= NEAR_DUPLICATE_DISTANCE);
 }
 
 export function registerPaymentRoutes(app: Express) {
@@ -93,6 +163,131 @@ export function registerPaymentRoutes(app: Express) {
     const order = await orderByToken(req);
     if (!order || order.paymentMethod === "NAYAPAY") return res.status(404).json({ error: "NOT_FOUND" });
     res.json(await payPage(order, await loadAdvanceSettings()));
+  });
+
+  // Payment proof: screenshot (re-encoded, metadata removed, private storage), TID, amount, sender. It never marks
+  // a payment as paid: the order waits On hold until staff find the credit in the Easypaisa merchant app.
+  app.post("/api/pay/:orderNumber/proof", async (req, res, next) => {
+    setNoStore(res);
+    const orderNumber = routeParam(req, "orderNumber").toUpperCase().slice(0, 40);
+    if (
+      !(await allowRules(res, [
+        { key: `pay-proof:ip:${requestIp(req)}`, limit: 10, windowMs: 15 * 60 * 1000 },
+        { key: `pay-proof:order:${orderNumber}`, limit: 12, windowMs: 60 * 60 * 1000 },
+      ]))
+    )
+      return;
+    next();
+  });
+  app.post("/api/pay/:orderNumber/proof", parseProofUpload, async (req, res) => {
+    const order = await orderByToken(req);
+    if (!order || order.paymentMethod === "NAYAPAY") return res.status(404).json({ error: "NOT_FOUND" });
+    if (!canSubmitProof(order, order._count.paymentProofs))
+      return res
+        .status(409)
+        .json({ error: "PROOF_NOT_ACCEPTED", message: "A payment proof is not needed for this order now." });
+    if (!paymentProofStorageReady())
+      return res
+        .status(503)
+        .json({ error: "PROOF_STORAGE_NOT_CONFIGURED", message: "Please send your proof on WhatsApp." });
+
+    const fields = proofFieldsSchema.safeParse(req.body || {});
+    if (!fields.success)
+      return res
+        .status(400)
+        .json({ error: "PROOF_FIELDS_INVALID", message: fields.error.issues[0]?.message || "Check the form." });
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file)
+      return res.status(400).json({ error: "PROOF_SCREENSHOT_REQUIRED", message: "Add the payment screenshot." });
+
+    let image: Awaited<ReturnType<typeof cleanProofImage>>;
+    try {
+      image = await cleanProofImage(file.buffer);
+    } catch (error) {
+      if (error instanceof ProofImageError)
+        return res.status(400).json({ error: "PROOF_IMAGE_INVALID", message: error.message });
+      throw error;
+    }
+    const sha256 = sha256Hex(image.bytes);
+    const dhash = await differenceHash(image.bytes);
+    const tidNormalized = normalizeTid(fields.data.tid);
+    const sameTid = await prisma.paymentProof.findMany({
+      where: { tidNormalized },
+      select: { orderId: true, status: true },
+    });
+    // Another order already used this TID (whatever happened to it): flag it. The partial unique index only
+    // covers live proofs, so a second live use is stored without tidNormalized.
+    let tidDuplicate = sameTid.some((row) => row.orderId !== order.id);
+    let tidTaken = sameTid.some((row) => row.status !== "REJECTED");
+    const imageDuplicate = await screenshotSeenBefore(sha256, dhash);
+    const flags = proofFlags({
+      amountSent: fields.data.amount,
+      expected: Number(order.total),
+      paidAt: fields.data.paidAt,
+      orderCreatedAt: order.createdAt,
+      tidDuplicate,
+      imageDuplicate,
+    });
+    const screenshotKey = await storePaymentProof(order.orderNumber, image.bytes);
+
+    const save = () =>
+      prisma.$transaction(async (tx) => {
+        // Row lock: a second upload or a COD switch at the same moment waits, then sees the new state.
+        await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${order.id} FOR UPDATE`;
+        const current = await tx.order.findUniqueOrThrow({
+          where: { id: order.id },
+          select: { paymentMethod: true, paymentStatus: true, _count: { select: { paymentProofs: true } } },
+        });
+        if (!canSubmitProof(current, current._count.paymentProofs)) return null;
+        const proof = await tx.paymentProof.create({
+          data: {
+            orderId: order.id,
+            method: fields.data.method,
+            tid: fields.data.tid.trim(),
+            tidNormalized: tidTaken ? null : tidNormalized,
+            amountSent: fields.data.amount,
+            senderName: fields.data.senderName,
+            senderLast4: fields.data.senderLast4,
+            paidAt: fields.data.paidAt,
+            screenshotKey,
+            sha256,
+            dhash,
+            amountMismatch: flags.amountMismatch,
+            tidDuplicate,
+            imageDuplicate,
+            timeOutOfWindow: flags.timeOutOfWindow,
+            status: flags.status,
+          },
+          select: { id: true },
+        });
+        await tx.order.update({ where: { id: order.id }, data: { paymentStatus: flags.status } });
+        const jobs = await Promise.all(
+          ["advance-proof-team-email", "advance-proof-customer-email"].map((name) =>
+            tx.job.create({
+              data: { name, orderId: order.id, payload: { orderId: order.id, proofId: proof.id } },
+              select: { id: true },
+            }),
+          ),
+        );
+        return jobs.map((job) => job.id);
+      });
+    let jobIds: string[] | null;
+    try {
+      jobIds = await save();
+    } catch (error) {
+      // Same TID sent for another order at the same moment: store it as a flagged duplicate instead.
+      if ((error as { code?: string }).code !== "P2002" || tidTaken) throw error;
+      tidTaken = true;
+      tidDuplicate = true;
+      jobIds = await save();
+    }
+    if (!jobIds)
+      return res
+        .status(409)
+        .json({ error: "PROOF_NOT_ACCEPTED", message: "A payment proof is not needed for this order now." });
+    runInBackground("advance proof emails", () => runJobsNow(jobIds!));
+    const fresh = await prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: orderForPage });
+    res.status(201).json(await payPage(fresh, await loadAdvanceSettings()));
   });
 
   // "Pay on delivery instead": only before any proof is sent. The discount is removed and the order becomes a normal

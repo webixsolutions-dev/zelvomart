@@ -73,6 +73,27 @@
   transition: opacity 0.15s, transform 0.15s; z-index: 90;
 }
 .toastOn { opacity: 1; transform: translate(-50%, 0); }
+.proofForm { display: grid; gap: 12px; scroll-margin-top: 90px; }
+.proofForm :global(.fields) { margin: 0; }
+.formTitle { margin: 0; font-size: 19px; }
+.formLead { display: block !important; margin: 0 !important; font-size: 14px; color: var(--muted, #6b7a90); }
+.fileBox {
+  position: relative; display: grid; place-items: center; min-height: 132px; padding: 10px;
+  border: 1.5px dashed #bcd6ff; border-radius: 12px; background: #f7faff; cursor: pointer; text-align: center;
+}
+.fileBox input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.fileBox:focus-within { outline: 2px solid var(--blue, #0b63ce); outline-offset: 2px; }
+.filePrompt { display: grid; gap: 4px; justify-items: center; color: var(--blue, #0b63ce); font-weight: 700; }
+.filePrompt small { color: var(--muted, #6b7a90); font-weight: 500; font-size: 12.5px; }
+.preview { max-height: 220px; max-width: 100%; width: auto; height: auto; border-radius: 8px; }
+.formError { display: block !important; margin: 0 !important; padding: 10px 12px; border-radius: 10px; background: #fff1f2; color: #b4233a; font-size: 14px; }
+.formHint { display: block !important; margin: 0 !important; color: var(--muted, #6b7a90); font-size: 12.5px; text-align: center; }
+.issue { border-color: #f5c26b; background: #fffaf0; }
+.success { border-color: #9fe0bd; background: #f2fbf6; }
+.center { text-align: center; margin: 8px 0; }
+.card p.textBlock { display: block; }
+.spin { animation: payspin 0.9s linear infinite; }
+@keyframes payspin { to { transform: rotate(360deg); } }
 @media (min-width: 900px) {
   .desktopOnly { display: block; }
   .qr { width: 360px; }
