@@ -57,6 +57,7 @@ const { prisma } = await import("../src/lib/db");
 const { app } = await import("../src/server");
 const { forgetSettings } = await import("../src/lib/settings");
 const { paymentToken, paymentTokenMatches } = await import("../src/lib/advance-payment");
+const { normalizeTid } = await import("../src/lib/payment-proof");
 
 const deliveryRule = { mode: "FREE_ABOVE", flatRate: 190, freeAbove: 7500 };
 await prisma.setting.create({ data: { key: "store.delivery", value: deliveryRule } });
@@ -319,8 +320,12 @@ await setAdvance({});
   const { orderNumber, payToken, total } = r.body;
   const tid1 = good(total).tid;
   assert.equal((await sendProof(orderNumber, "wrong", good(total), await shot(1))).status, 404, "token");
-  const missing = await sendProof(orderNumber, payToken, good(total));
-  assert.deepEqual([missing.status, missing.body.error], [400, "PROOF_SCREENSHOT_REQUIRED"]);
+  // Neither a screenshot nor the TID + amount: refused on the server too.
+  const neither = await sendProof(orderNumber, payToken, { method: "TILL", senderName: "Ali Raza" });
+  assert.deepEqual([neither.status, neither.body.error], [400, "PROOF_SCREENSHOT_OR_DETAILS"]);
+  assert.match(neither.body.message, /Upload your payment screenshot, or enter the TID and amount from your receipt\./);
+  const tidOnly = await sendProof(orderNumber, payToken, { method: "TILL", tid: "41234567890" });
+  assert.equal(tidOnly.body.error, "PROOF_SCREENSHOT_OR_DETAILS", "TID without amount and no screenshot");
   const badTid = await sendProof(orderNumber, payToken, { ...good(total), tid: "12" }, await shot(1));
   assert.deepEqual([badTid.status, badTid.body.error], [400, "PROOF_FIELDS_INVALID"]);
   const notImage = await sendProof(orderNumber, payToken, good(total), Buffer.from("hello"), "image/png");
@@ -346,12 +351,12 @@ await setAdvance({});
   const row = await prisma.order.findUniqueOrThrow({ where: { orderNumber }, include: { paymentProofs: true } });
   assert.deepEqual([row.status, row.paymentStatus], ["ON_HOLD", "SUBMITTED"], "never paid automatically");
   const proof = row.paymentProofs[0];
-  assert.match(proof.screenshotKey, /^payment-proofs\/ZM-\d+\/[0-9a-f]{24}\.webp$/);
-  const stored = readFileSync(path.join(proofDir, proof.screenshotKey));
+  assert.match(proof.screenshotKey!, /^payment-proofs\/ZM-\d+\/[0-9a-f]{24}\.webp$/);
+  const stored = readFileSync(path.join(proofDir, proof.screenshotKey!));
   const meta = await sharp(stored).metadata();
   assert.deepEqual([meta.format, meta.exif], ["webp", undefined]);
   assert.equal(stored.includes(Buffer.from("secret-phone-owner")), false, "EXIF removed");
-  assert.match(proof.sha256, /^[0-9a-f]{64}$/);
+  assert.match(proof.sha256!, /^[0-9a-f]{64}$/);
   assert.match(proof.dhash || "", /^[0-9a-f]{16}$/);
   assert.deepEqual(
     [proof.tidNormalized, proof.amountMismatch, proof.tidDuplicate, proof.imageDuplicate],
@@ -381,6 +386,33 @@ await setAdvance({});
     [true, null, true, "SUBMITTED"],
   );
   console.log("ok - proof upload: validation, private storage, metadata removed, flags, no public data");
+}
+
+// Screenshot OR details: either alone is enough (owner decision), on the server as in the form.
+{
+  // Screenshot only: saved with no TID/amount, flagged "details missing" until auto-read or staff fill them.
+  const a = await order("ADVANCE_EASYPAISA", 1);
+  const shotOnly = await sendProof(a.body.orderNumber, a.body.payToken, { method: "RAAST_QR" }, await shot(60));
+  assert.equal(shotOnly.status, 201, JSON.stringify(shotOnly.body));
+  const pa = await prisma.paymentProof.findFirstOrThrow({ where: { order: { orderNumber: a.body.orderNumber } } });
+  assert.deepEqual(
+    [pa.tid, pa.amountSent, pa.senderName, pa.detailsMissing, pa.amountMismatch, pa.status, !!pa.screenshotKey],
+    [null, null, "", true, false, "SUBMITTED", true],
+  );
+  // Details only: no screenshot stored, nothing missing.
+  const b = await order("ADVANCE_EASYPAISA", 1);
+  const detailsOnly = await sendProof(b.body.orderNumber, b.body.payToken, {
+    method: "TILL",
+    tid: "DETAILSONLY" + n,
+    amount: String(b.body.total),
+  });
+  assert.equal(detailsOnly.status, 201, JSON.stringify(detailsOnly.body));
+  const pb = await prisma.paymentProof.findFirstOrThrow({ where: { order: { orderNumber: b.body.orderNumber } } });
+  assert.deepEqual(
+    [pb.screenshotKey, pb.sha256, pb.detailsMissing, pb.senderName, Number(pb.amountSent)],
+    [null, null, false, "", b.body.total],
+  );
+  console.log("ok - screenshot only passes (details missing flag), details only pass, neither is refused");
 }
 
 // Amount mismatch, one resubmission, then closed.
@@ -1008,6 +1040,37 @@ await setAdvance({});
     );
     const o = await prisma.order.findUniqueOrThrow({ where: { id } });
     assert.deepEqual([o.status, o.paymentStatus], ["ON_HOLD", "SUBMITTED"], "auto-read never verifies");
+
+    // Screenshot only: the read TID and amount become the proof's values (marked auto-read), and the amount check
+    // runs on them (ZM-10018: Rs 9 read on a bigger order → amount issue). Typed values always win.
+    {
+      const s = await order("ADVANCE_EASYPAISA", 1);
+      await sendProof(s.body.orderNumber, s.body.payToken, { method: "RAAST_QR" }, await shot(54));
+      const sid = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: s.body.orderNumber } })).id;
+      answer = { isPaymentReceipt: true, tid: "AUTO" + n + "TID9", amount: 9, sender: "Ali Raza", confidence: 0.92 };
+      const sjob = await prisma.job.findFirstOrThrow({ where: { orderId: sid, name: "advance-proof-autoread" } });
+      await prisma.job.update({ where: { id: sjob.id }, data: { status: "QUEUED", attempts: 0 } });
+      await processJobRow(sjob.id);
+      const sp = await prisma.paymentProof.findFirstOrThrow({ where: { orderId: sid } });
+      assert.deepEqual(
+        [sp.tid, Number(sp.amountSent), sp.senderName, sp.detailsFromAutoRead, sp.detailsMissing],
+        ["AUTO" + n + "TID9", 9, "Ali Raza", true, false],
+      );
+      assert.deepEqual([sp.amountMismatch, sp.status], [true, "MISMATCH"], "amount check runs on the read amount");
+      assert.equal(sp.tidNormalized, normalizeTid("AUTO" + n + "TID9"), "duplicate-TID check covers it");
+      assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: sid } })).paymentStatus, "MISMATCH");
+
+      // Nothing usable read: the proof stays "details missing".
+      const m = await order("ADVANCE_EASYPAISA", 1);
+      await sendProof(m.body.orderNumber, m.body.payToken, { method: "RAAST_QR" }, await shot(55));
+      const mid = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: m.body.orderNumber } })).id;
+      answer = { isPaymentReceipt: false, confidence: 0.2 };
+      const mjob = await prisma.job.findFirstOrThrow({ where: { orderId: mid, name: "advance-proof-autoread" } });
+      await prisma.job.update({ where: { id: mjob.id }, data: { status: "QUEUED", attempts: 0 } });
+      await processJobRow(mjob.id);
+      const mp = await prisma.paymentProof.findFirstOrThrow({ where: { orderId: mid } });
+      assert.deepEqual([mp.tid, mp.detailsFromAutoRead, mp.detailsMissing], [null, false, true]);
+    }
 
     // A confident read of a non-receipt prefills nothing.
     answer = { isPaymentReceipt: false, tid: "X", amount: 5, confidence: 0.99 };

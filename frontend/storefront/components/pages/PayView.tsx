@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banknote, CircleHelp, Copy, Download, ShieldCheck, Smartphone, TriangleAlert, X } from "lucide-react";
+import { Banknote, CircleHelp, Copy, Download, FileText, QrCode, ShieldCheck, Smartphone, TriangleAlert, X } from "lucide-react";
+import { isIosDevice, isMobileDevice } from "@store/lib/device";
 import { money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
@@ -31,7 +32,7 @@ export type PayInfo = {
   autoRead?: boolean;
   proofsLeft: number;
   /** The customer's latest proof (status only: no TID or screenshot on this page). */
-  proof: { status: string; amountSent: number; submittedAt: string; rejectMessage: string | null } | null;
+  proof: { status: string; amountSent: number | null; submittedAt: string; rejectMessage: string | null } | null;
 };
 
 const BADGES: Record<string, string> = {
@@ -46,6 +47,32 @@ const BADGES: Record<string, string> = {
 };
 /** Statuses where the customer still has to pay (the amount, tabs and QR are shown). */
 const TO_PAY = ["AWAITING_PAYMENT", "EXPIRED"];
+
+/**
+ * "Why pay in advance?" with the refund rules (lib/policies/returns.ts, Advance Payments) and two clearly clickable
+ * links. The same block is in the "How to pay" sheet.
+ */
+function TrustBlock({ info, supportLink }: { info: PayInfo; supportLink: string }) {
+  return (
+    <>
+      <p>
+        <ShieldCheck size={16} aria-hidden="true" /> <strong>Why pay in advance?</strong>{" "}
+        {info.advanceDiscount > 0 ? `You save ${money(info.advanceDiscount)} and your order is packed first.` : "Your order is packed first."}
+      </p>
+      <p>If we can&apos;t ship your order for any reason, you get the full amount back to the same account.</p>
+      <p>If you cancel after paying and before dispatch, we refund your payment minus delivery charges.</p>
+      <div className={styles.trustLinks}>
+        <a className={styles.pill} href={info.refundPolicyPath} target="_blank" rel="noopener">
+          <FileText aria-hidden="true" /> Refund policy
+        </a>
+        <a className={styles.pill} href={supportLink} target="_blank" rel="noopener noreferrer">
+          <WhatsAppIcon /> WhatsApp support
+        </a>
+      </div>
+      <p className={styles.never}>We will never ask for your PIN, OTP or password.</p>
+    </>
+  );
+}
 
 /**
  * Browser Purchase for an advance order: at the first payment proof or the switch to COD (the thank-you page skips
@@ -100,6 +127,13 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
   const [message, setMessage] = useState("");
   const [proofOpen, setProofOpen] = useState(false);
   const [proofSent, setProofSent] = useState(false);
+  /** Read after load (not during render), so server and first client render match. */
+  const [device, setDevice] = useState<"ios" | "mobile" | "desktop" | null>(null);
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    const touch = navigator.maxTouchPoints || 0;
+    setDevice(isIosDevice(ua, touch) ? "ios" : isMobileDevice(ua, touch) ? "mobile" : "desktop");
+  }, []);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const api = `/api/store-proxy/api/pay/${encodeURIComponent(orderNumber)}?t=${encodeURIComponent(token)}`;
 
@@ -188,6 +222,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
   const whatsapp = info.whatsapp || site.whatsappNumber;
   const helpLink = waLink(whatsapp, `Hi Zelvomart! Question about paying for order ${info.orderNumber}.`);
   const proofLink = waLink(whatsapp, `Hi Zelvomart! I have paid ${amount} for order ${info.orderNumber}. Here is my payment screenshot and TID:`);
+  const supportLink = waLink(whatsapp, `Hi, I need help with advance payment for order ${info.orderNumber}`);
   const isCod = info.paymentMethod === "COD";
   const toPay = !isCod && TO_PAY.includes(info.paymentStatus);
   /** A mismatch or rejection the customer can still answer with one corrected proof. */
@@ -263,10 +298,18 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
 
             <div className={styles.tabs} role="tablist" aria-label="How to pay">
               <button role="tab" type="button" aria-selected={tab === "till"} className={tab === "till" ? styles.active : ""} onClick={() => setTab("till")}>
-                <Smartphone size={16} /> Easypaisa Till
+                <Smartphone size={16} aria-hidden="true" />
+                <span className={styles.tabLabel}>
+                  Pay with Till ID
+                  <small>Easypaisa, JazzCash or any bank app</small>
+                </span>
               </button>
               <button role="tab" type="button" aria-selected={tab === "qr"} className={tab === "qr" ? styles.active : ""} onClick={() => setTab("qr")}>
-                Any bank app / JazzCash (Raast QR)
+                <QrCode size={16} aria-hidden="true" />
+                <span className={styles.tabLabel}>
+                  Pay with QR
+                  <small>Any bank app, JazzCash or Easypaisa (Raast QR)</small>
+                </span>
               </button>
             </div>
 
@@ -285,23 +328,32 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
                   <li>Enter {amount}</li>
                   <li>Pay now, then keep the receipt screenshot</li>
                 </ol>
+                <small className={styles.hint}>
+                  Using JazzCash or a bank app? Choose Till / Merchant payment and paste the same Till ID, or use the QR tab.
+                </small>
               </div>
             ) : (
               <div className={styles.panel} role="tabpanel">
-                <p className={styles.desktopOnly}>Scan with your phone&apos;s banking app</p>
                 {/* Shown exactly as uploaded: no resizing service, crop or overlay, so the QR stays scannable. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className={styles.qr} src={info.qrUrl} alt={`Raast QR for ${info.accountName}`} width={320} height={361} />
                 <button type="button" className={styles.copy} onClick={() => void saveQr()}>
                   <Download size={15} /> Save QR to gallery
                 </button>
-                <small className={styles.hint}>On iPhone: press and hold the QR → Save to Photos.</small>
+                {/* Device-specific (read after load; the line is reserved so nothing moves). */}
+                <small className={`${styles.hint} ${styles.deviceHint}`}>
+                  {device === "ios"
+                    ? "On iPhone: press and hold the QR → Save to Photos."
+                    : device === "desktop"
+                      ? "Scan this QR with your phone's banking app."
+                      : " "}
+                </small>
                 <ol className={styles.steps}>
                   <li>Open your bank app → Scan QR</li>
                   <li>Choose Gallery / Upload photo and pick the saved QR</li>
                   <li>Enter {amount} and pay</li>
                 </ol>
-                <small className={styles.hint}>If your app has no Gallery option, use the Easypaisa Till tab.</small>
+                <small className={styles.hint}>If your app has no Gallery option, use the Till ID tab.</small>
               </div>
             )}
 
@@ -334,7 +386,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
                 <span>
                   <strong>We need a quick check on your payment.</strong>{" "}
                   {info.proof?.rejectMessage ||
-                    `You entered ${money(info.proof?.amountSent || 0)}, but your order total is ${amount}. If you sent a different amount, add a corrected proof or message us on WhatsApp.`}
+                    `${info.proof?.amountSent != null ? `Your payment shows ${money(info.proof.amountSent)}` : "Your payment amount differs"}, but your order total is ${amount}. If you sent a different amount, add a corrected proof or message us on WhatsApp.`}
                 </span>
               </p>
               <p className={styles.formHint}>You can send one corrected proof.</p>
@@ -366,19 +418,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
         )}
 
         <aside className={styles.trust} aria-label="Why pay in advance">
-          <p>
-            <ShieldCheck size={16} aria-hidden="true" /> <strong>Why pay in advance?</strong> {info.advanceDiscount > 0 ? `You save ${money(info.advanceDiscount)} and your order is packed first.` : "Your order is packed first."}
-          </p>
-          <p>
-            If we can&apos;t ship your order, or you cancel before dispatch, the full amount is returned to the same account.{" "}
-            <Link href={info.refundPolicyPath}>Refund policy</Link>
-          </p>
-          <p>
-            <a href={helpLink} target="_blank" rel="noopener noreferrer">
-              <WhatsAppIcon /> WhatsApp support
-            </a>
-          </p>
-          <p className={styles.never}>We will never ask for your PIN, OTP or password.</p>
+          <TrustBlock info={info} supportLink={supportLink} />
         </aside>
       </div>
 
@@ -409,12 +449,9 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
                 <small lang="ur-Latn">&ldquo;I&apos;ve paid&rdquo; dabayein. Dispatch se pehle hum payment check karte hain.</small>
               </li>
             </ol>
-            <p>
-              <strong>Why advance payment?</strong> {info.advanceDiscount > 0 ? `You save ${money(info.advanceDiscount)} and your order is packed first.` : "Your order is packed first."}
-            </p>
-            <p>
-              If we can&apos;t ship your order, or you cancel before dispatch, the full amount is returned to the same account. <Link href={info.refundPolicyPath}>Refund policy</Link>
-            </p>
+            <div className={styles.trust}>
+              <TrustBlock info={info} supportLink={supportLink} />
+            </div>
           </div>
         </div>
       )}

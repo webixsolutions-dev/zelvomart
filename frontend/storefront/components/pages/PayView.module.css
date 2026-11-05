@@ -43,6 +43,11 @@
   font-weight: 700; cursor: pointer; color: inherit; text-align: center;
 }
 .tabs button.active { border-color: var(--blue, #0b63ce); background: var(--blue-mist, #eef5ff); color: var(--blue, #0b63ce); }
+.tabLabel { display: grid; gap: 2px; justify-items: center; line-height: 1.25; }
+.tabLabel small { font-size: 11.5px; font-weight: 500; color: var(--muted, #6b7a90); }
+.tabs button.active .tabLabel small { color: inherit; opacity: 0.85; }
+/* One line reserved so the device-specific QR hint never moves the page when it appears. */
+.deviceHint { min-height: 1.55em; margin: 0; }
 .panel { display: grid; gap: 12px; justify-items: center; }
 .till { display: grid; gap: 4px; justify-items: center; text-align: center; }
 .till > span { color: var(--muted, #6b7a90); font-size: 13px; }
@@ -58,6 +63,24 @@
 .trust p { margin: 0; display: flex; gap: 6px; align-items: flex-start; flex-wrap: wrap; }
 .trust a { display: inline-flex; gap: 6px; align-items: center; }
 .never { font-weight: 700; }
+/* Refund policy + WhatsApp support: clearly clickable outlined pills, one row (wraps at 390 px). */
+.trustLinks { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0; }
+.trust a.pill,
+.pill {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px;
+  border: 1.5px solid var(--blue, #0b63ce); background: #fff; color: var(--blue, #0b63ce); font-weight: 700;
+  font-size: 14px; text-decoration: none; transition: background 0.15s, box-shadow 0.15s;
+}
+.pill:hover { background: var(--blue-mist, #eef5ff); }
+.pill:focus-visible { outline: 2px solid var(--blue, #0b63ce); outline-offset: 2px; }
+.pill svg { width: 18px; height: 18px; flex: none; }
+.fileWrap { position: relative; }
+.fileRemove {
+  position: absolute; top: 8px; right: 8px; z-index: 1; display: inline-flex; align-items: center; gap: 4px;
+  min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line, #e5eaf1); background: #fff;
+  color: #b4233a; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.reqMark { display: inline-block; width: 0.6em; color: #b4233a; }
 .sheetBackdrop { position: fixed; inset: 0; z-index: 80; background: rgba(16, 35, 59, 0.45); display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
   width: min(640px, 100%); max-height: 85vh; overflow: auto; background: #fff;

@@ -51,6 +51,7 @@ const proofListSelect = {
   tidDuplicate: true,
   imageDuplicate: true,
   timeOutOfWindow: true,
+  detailsMissing: true,
   order: {
     select: {
       id: true,
@@ -69,6 +70,7 @@ const flagList = (proof: {
   tidDuplicate: boolean;
   imageDuplicate: boolean;
   timeOutOfWindow: boolean;
+  detailsMissing: boolean;
 }) =>
   [
     proof.amountMismatch && "AMOUNT",
@@ -76,6 +78,8 @@ const flagList = (proof: {
     proof.imageDuplicate && "DUPLICATE_IMAGE",
     proof.timeOutOfWindow && "TIME",
     proof.receiverMismatch && "RECEIVER",
+    // Amber: only the screenshot came in and nothing was read from it.
+    proof.detailsMissing && "DETAILS_MISSING",
   ].filter(Boolean) as string[];
 
 /** Private staff note (never sent) and the optional message that goes into the customer's email. */
@@ -320,7 +324,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
       ? await prisma.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true } })
       : [];
     const name = (id: string | null) => (id ? staff.find((user) => user.id === id)?.name || "Staff" : null);
-    const signed = await paymentProofSignedUrl(proof.screenshotKey).catch(() => null);
+    const signed = proof.screenshotKey ? await paymentProofSignedUrl(proof.screenshotKey).catch(() => null) : null;
     const history = await prisma.auditLog.findMany({
       where: { entity: "PaymentProof", entityId: proof.id },
       orderBy: { createdAt: "desc" },
@@ -363,7 +367,8 @@ export function registerAdminPaymentsRoutes(app: Express) {
         refundedBy: name(proof.refundedById),
         refundedAt: proof.refundedAt,
         // A 5-minute signed link to the private file, or the same-origin image route when no bucket is set (local).
-        imageUrl: signed || `/api/admin/payments/${proof.id}/image`,
+        // Null: the customer sent only the TID and amount.
+        imageUrl: proof.screenshotKey ? signed || `/api/admin/payments/${proof.id}/image` : null,
         imageIsSigned: !!signed,
       },
       order: {
@@ -398,6 +403,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
     });
     if (!proof) return res.status(404).json({ error: "NOT_FOUND" });
     try {
+      if (!proof.screenshotKey) return res.status(404).json({ error: "NO_SCREENSHOT" });
       const bytes = await readPaymentProof(proof.screenshotKey);
       res.setHeader("Cache-Control", "private, no-store");
       res.setHeader("Content-Type", "image/webp");
