@@ -40,14 +40,98 @@ test("Gemini call: key in a header, image inline, JSON schema; the answer is par
   assert.equal(body.generationConfig.responseMimeType, "application/json");
   assert.ok(call.init.signal, "time-boxed");
   assert.deepEqual(
-    [result?.tid, result?.amount, result?.dateTime?.toISOString(), result?.receiver, result?.confidence],
-    ["41234567890", 1490, "2026-11-04T05:15:00.000Z", "ZELVOMART", 0.92],
+    [
+      result?.tid,
+      result?.amount,
+      result?.dateTime?.toISOString(),
+      result?.sender,
+      result?.receiver,
+      result?.confidence,
+    ],
+    ["41234567890", 1490, "2026-11-04T05:15:00.000Z", "Ayesha Khan", "ZELVOMART", 0.92],
   );
 });
 
-test("any failure means no hint, never an error: HTTP error, bad JSON, timeout", async () => {
+test("quota and missing models use the fallback within the same deadline", async (t) => {
+  const warn = t.mock.method(console, "warn", () => {});
+  for (const status of [429, 404]) {
+    const calls: { url: string; signal: AbortSignal | null | undefined }[] = [];
+    const reader = geminiReader(
+      "test-key",
+      "gemini-3.5-flash-lite",
+      async (url, init) => {
+        calls.push({ url: String(url), signal: init?.signal });
+        if (calls.length === 1) {
+          return new Response(
+            JSON.stringify({ error: { status: status === 429 ? "RESOURCE_EXHAUSTED" : "NOT_FOUND" } }),
+            { status },
+          );
+        }
+        const payload = {
+          isPaymentReceipt: true,
+          tid: "41234567890",
+          amount: 9,
+          sender: "Sample Customer",
+          confidence: 0.9,
+        };
+        return new Response(
+          JSON.stringify({
+            candidates: [
+              { content: { parts: [{ thought: true, text: "thought summary" }, { text: JSON.stringify(payload) }] } },
+            ],
+          }),
+        );
+      },
+      "gemini-3.1-flash-lite",
+    );
+    const attempt = await reader.readWithDiagnostics(Buffer.from("img"), "image/png");
+    assert.ok("result" in attempt);
+    assert.deepEqual(prefillFrom(attempt.result), { tid: "41234567890", amount: 9, sender: "Sample Customer" });
+    assert.equal(attempt.model, "gemini-3.1-flash-lite");
+    assert.match(calls[0].url, /gemini-3\.5-flash-lite:generateContent$/);
+    assert.match(calls[1].url, /gemini-3\.1-flash-lite:generateContent$/);
+    assert.equal(calls[0].signal, calls[1].signal);
+  }
+  assert.equal(warn.mock.callCount(), 2);
+});
+
+test("failure diagnostics expose provider status and redact credentials and image data", async (t) => {
+  const warn = t.mock.method(console, "warn", () => {});
+  const image = Buffer.from("not a real payment image");
+  const reader = geminiReader(
+    "secret-test-key",
+    "gemini-test-model",
+    async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            status: "PERMISSION_DENIED",
+            message: `Key secret-test-key cannot send ${image.toString("base64")} to https://example.test/private.`,
+          },
+        }),
+        { status: 403 },
+      ),
+  );
+  const attempt = await reader.readWithDiagnostics(image, "image/png");
+  assert.ok("failure" in attempt);
+  assert.deepEqual(
+    { ...attempt.failure, elapsedMs: 0 },
+    {
+      model: "gemini-test-model",
+      status: "PERMISSION_DENIED",
+      httpStatus: 403,
+      message: "Key [redacted] cannot send [redacted] to [url]",
+      elapsedMs: 0,
+    },
+  );
+  assert.equal(warn.mock.callCount(), 1);
+  assert.deepEqual(warn.mock.calls[0].arguments[1], attempt.failure);
+  assert.equal(await reader.read(image, "image/png"), null);
+});
+
+test("malformed response or timeout means no hint, never an error", async (t) => {
+  t.mock.method(console, "warn", () => {});
   const fail = (impl: () => Promise<Response>) => geminiReader("k", "m", impl as unknown as typeof fetch);
-  assert.equal(await fail(async () => reply({}, 429)).read(Buffer.from("x"), "image/webp"), null);
   assert.equal(
     await fail(async () => new Response("{not json", { status: 200 })).read(Buffer.from("x"), "image/webp"),
     null,

@@ -20,20 +20,39 @@ export function normalizeTid(value: unknown) {
     .replace(/[^A-Z0-9]/g, "");
 }
 
+/** Empty form fields count as "not given". */
+const blankToUndefined = (value: unknown) =>
+  value == null || (typeof value === "string" && !value.trim()) ? undefined : value;
+
+/**
+ * Every detail is optional on its own; `proofHasEnough` decides whether the proof as a whole is enough: a screenshot,
+ * or the TID and the amount (owner decision). A value that is given must still be valid.
+ */
 export const proofFieldsSchema = z.object({
   method: z.enum(["TILL", "RAAST_QR", "OTHER"]).catch("OTHER"),
-  tid: z
-    .string()
-    .trim()
-    .max(60)
-    .refine((value) => /^[A-Z0-9]{6,40}$/.test(normalizeTid(value)), "Enter the transaction ID (TID) from your app."),
-  amount: z.coerce
-    .number()
-    .finite()
-    .positive("Enter the amount you sent.")
-    .max(10_000_000)
-    .transform((value) => Math.round(value * 100) / 100),
-  senderName: z.string().trim().min(2, "Enter the name on the account you paid from.").max(80),
+  tid: z.preprocess(
+    blankToUndefined,
+    z
+      .string()
+      .trim()
+      .max(60)
+      .refine((value) => /^[A-Z0-9]{6,40}$/.test(normalizeTid(value)), "Enter the transaction ID (TID) from your app.")
+      .optional(),
+  ),
+  amount: z.preprocess(
+    blankToUndefined,
+    z.coerce
+      .number()
+      .finite()
+      .positive("Enter the amount you sent.")
+      .max(10_000_000)
+      .transform((value) => Math.round(value * 100) / 100)
+      .optional(),
+  ),
+  senderName: z.preprocess(
+    blankToUndefined,
+    z.string().trim().min(2, "Enter the name on the account you paid from.").max(80).optional(),
+  ),
   senderLast4: z
     .string()
     .trim()
@@ -52,6 +71,14 @@ export const proofFieldsSchema = z.object({
     }),
 });
 export type ProofFields = z.infer<typeof proofFieldsSchema>;
+
+export const PROOF_NEEDS_SCREENSHOT_OR_DETAILS =
+  "Upload your payment screenshot, or enter the TID and amount from your receipt.";
+
+/** A screenshot alone is enough; without one, the TID and the amount are both needed (sender name recommended). */
+export function proofHasEnough(hasScreenshot: boolean, fields: { tid?: string; amount?: number }) {
+  return hasScreenshot || (!!fields.tid && fields.amount != null);
+}
 
 export class ProofImageError extends Error {
   code = "PROOF_IMAGE_INVALID";
@@ -113,7 +140,8 @@ export function hammingDistance(a: string, b: string) {
  * An amount mismatch makes the proof (and the order's payment) MISMATCH; other flags leave it SUBMITTED.
  */
 export function proofFlags(input: {
-  amountSent: number;
+  /** Null while the customer typed no amount (screenshot only): no amount flag until auto-read or staff fill it. */
+  amountSent: number | null;
   expected: number;
   paidAt: Date | null;
   orderCreatedAt: Date;
@@ -122,7 +150,7 @@ export function proofFlags(input: {
   imageDuplicate: boolean;
 }) {
   const now = input.now || new Date();
-  const amountMismatch = Math.abs(input.amountSent - input.expected) >= 1;
+  const amountMismatch = input.amountSent != null && Math.abs(input.amountSent - input.expected) >= 1;
   const timeOutOfWindow =
     !!input.paidAt &&
     (input.paidAt.getTime() < input.orderCreatedAt.getTime() - 30 * 60_000 ||

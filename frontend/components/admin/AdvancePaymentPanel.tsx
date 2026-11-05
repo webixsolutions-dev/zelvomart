@@ -194,9 +194,11 @@ export function AdvancePaymentPanel({
   const { proof, order, expected } = d;
   const open = ["SUBMITTED", "MISMATCH"].includes(proof.status);
   const closed = closedOrder(order.status);
-  const src = proof.imageIsSigned
-    ? proof.imageUrl
-    : adminProxyUrl(proof.imageUrl);
+  const src = !proof.imageUrl
+    ? ""
+    : proof.imageIsSigned
+      ? proof.imageUrl
+      : adminProxyUrl(proof.imageUrl);
   const amountBad =
     proof.amountSent != null &&
     Math.abs(proof.amountSent - expected.amount) >= 1;
@@ -218,30 +220,34 @@ export function AdvancePaymentPanel({
         that.
       </p>
       <FlagChips flags={proof.flags} />
-      {proof.detailsMissing && (
-        <span className="pay-tag amber">
-          Details missing: check the screenshot
-        </span>
-      )}
 
       <div className="pay-detail" style={{ marginTop: 14 }}>
         <section className="pay-card">
           <h2>Screenshot</h2>
-          <button
-            type="button"
-            className="pay-shot"
-            onClick={() => setZoom(true)}
-            aria-label="Zoom the screenshot"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt={`Payment screenshot for ${order.orderNumber}`}
-            />
-          </button>
-          <small className="pay-none">
-            Tap to zoom. Shown only to staff; the file is private.
-          </small>
+          {src ? (
+            <>
+              <button
+                type="button"
+                className="pay-shot"
+                onClick={() => setZoom(true)}
+                aria-label="Zoom the screenshot"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={`Payment screenshot for ${order.orderNumber}`}
+                />
+              </button>
+              <small className="pay-none">
+                Tap to zoom. Shown only to staff; the file is private.
+              </small>
+            </>
+          ) : (
+            <p className="pay-hint">
+              No screenshot: the customer typed the TID and amount. Find them
+              in the Easypaisa merchant app before verifying.
+            </p>
+          )}
         </section>
 
         <div className="pay-actions">

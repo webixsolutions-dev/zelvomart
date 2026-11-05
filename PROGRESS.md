@@ -1135,8 +1135,27 @@ and the screenshots must match.
   confirmation → COD switch emails + Purchase), reminder timing, and the settings rule (first reminder before the
   second).
 
+### Fix 3/4: payment page and proof form
+- Trust block: "Refund policy" (document icon) and "WhatsApp support" (prefilled "Hi, I need help with advance payment
+  for order ZM-…") are outlined 44 px pill buttons; the two refund sentences follow the new policy; the PIN/OTP line
+  stays bold. The same block is in the "How to pay" sheet.
+- Refund policy: new section "Advance Payments (Easypaisa / Bank Transfer)" (no amounts or day counts); sitemap lastmod
+  5 Nov. Production has no saved copy of the page, so the file version shows.
+- Screenshot OR details: a screenshot alone, or the TID + amount alone, is enough (form and server). With a
+  screenshot the details are optional (the * marks go, and come back when it is removed). Screenshot-only proofs get
+  the clearly auto-read TID/amount as their values (marked auto-read; duplicate-TID and amount checks run); nothing
+  read: amber "Details missing – check screenshot". Staff's verify reference becomes the TID (fix 1).
+- Amount field starts empty ("Type the exact amount you sent"); "Reading your screenshot…" / "Please type the details
+  from your receipt"; submit is never blocked by auto-read.
+- Wording: tabs "Pay with Till ID" (Easypaisa, JazzCash or any bank app) and "Pay with QR" (Any bank app, JazzCash or
+  Easypaisa (Raast QR)); the JazzCash/bank line under the Till steps; the iPhone hint only on iPhone/iPad (incl.
+  iPadOS); desktop shows "Scan this QR with your phone's banking app".
+- Migration `202611060002_proof_without_screenshot` (screenshot fields nullable). Checked on local Postgres.
+- Tests: frontend `proof-rules.test.ts` (rule, required marks, iOS detection); backend unit + integration (screenshot
+  only, details only, neither refused, auto-read fills a screenshot-only proof incl. the Rs 9 amount issue).
+
 ### Left for the owner
 1. Apply `backend/prisma/migrations/202611060001_advance_payment_fixes/migration.sql` on Mumbai **before** merging
-   fix 1.
+   fix 1, and `202611060002_proof_without_screenshot/migration.sql` before merging fix 3.
 2. ZM-10018 (test order) was verified as Rs 589 received with Rs 519 refunded and is still Confirmed. After the
    migration it shows "courier collects Rs 519". Cancel or delete that test order so it is never booked.

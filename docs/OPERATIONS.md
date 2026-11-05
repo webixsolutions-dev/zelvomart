@@ -232,6 +232,9 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 - **How it works:** at checkout the customer keeps Cash on Delivery (default) or pays in advance for a flat
   discount. There is no payment API. The customer pays in their own app, then sends a screenshot and the TID on the
   payment page. The order waits **On hold** until staff verify it.
+- **What the customer sends:** a screenshot alone, or the TID and amount alone (either is enough). A screenshot-only
+  proof shows the auto-read TID/amount (marked "auto-read"), or the amber flag "Details missing – check screenshot"
+  when nothing was read: read the screenshot and type the merchant reference when you verify.
 - **Daily work:** Admin → Payments, or the payment panel at the top of the order page (the sidebar count turns red
   when a proof is flagged). Find the payment in the **Easypaisa merchant app**, then choose one:
   - **Verify payment:** type the amount that actually arrived and tick "I checked this payment in the Easypaisa

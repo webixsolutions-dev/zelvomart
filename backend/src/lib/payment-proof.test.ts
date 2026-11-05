@@ -10,7 +10,17 @@ import {
   normalizeTid,
   proofFieldsSchema,
   proofFlags,
+  proofHasEnough,
 } from "./payment-proof";
+
+const flagBase = {
+  expected: 1490,
+  orderCreatedAt: new Date("2026-11-04T10:00:00Z"),
+  now: new Date("2026-11-04T11:00:00Z"),
+  paidAt: null,
+  tidDuplicate: false,
+  imageDuplicate: false,
+};
 import { isPaymentProofKey, paymentProofBucket } from "./payment-proof-storage";
 
 const screenshot = (seed: number, width = 600, height = 1200) =>
@@ -49,6 +59,17 @@ test("TID: uppercase letters and digits only; 6 to 40 characters", () => {
     [full.method, full.amount, full.senderLast4, full.paidAt?.toISOString()],
     ["RAAST_QR", 1490.46, "0321", "2026-11-04T10:00:00.000Z"],
   );
+});
+
+test("screenshot OR details: blanks are 'not given'; either alone is enough", () => {
+  const blank = proofFieldsSchema.parse({ tid: "", amount: "", senderName: "  " });
+  assert.deepEqual([blank.tid, blank.amount, blank.senderName], [undefined, undefined, undefined]);
+  assert.equal(proofHasEnough(true, blank), true, "screenshot only");
+  assert.equal(proofHasEnough(false, { tid: "41234567", amount: 589 }), true, "details only");
+  assert.equal(proofHasEnough(false, blank), false, "neither");
+  assert.equal(proofHasEnough(false, { tid: "41234567" }), false, "TID without amount");
+  assert.equal(proofHasEnough(false, { amount: 589 }), false, "amount without TID");
+  assert.equal(proofFlags({ ...flagBase, amountSent: null }).amountMismatch, false, "no amount yet: no flag");
 });
 
 test("screenshot: re-encoded as WebP, metadata removed, rotation applied, never enlarged", async () => {

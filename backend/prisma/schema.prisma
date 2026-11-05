@@ -631,8 +631,9 @@ model PaymentProof {
   senderLast4       String?
   paidAt            DateTime?
   /// Private storage key (payment-proofs/...), never a public URL.
-  screenshotKey     String
-  sha256            String
+  /// Null when the customer sent only the TID and amount (no screenshot).
+  screenshotKey     String?
+  sha256            String?
   dhash             String?
   ocrJson           Json?
   ocrTid            String?
