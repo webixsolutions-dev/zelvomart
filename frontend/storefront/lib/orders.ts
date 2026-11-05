@@ -37,6 +37,10 @@ type Confirmation = {
   subtotal: number;
   deliveryFee: number;
   total: number;
+  paymentMethod?: string;
+  advanceDiscount?: number | string | null;
+  /** Advance payment orders only: the private payment page link. */
+  payPath?: string;
   items: ConfirmationItem[];
   test?: boolean;
   staffCreated?: boolean;
@@ -65,7 +69,8 @@ function toDesignOrder(o: Confirmation): Order {
     total: Number(o.total),
     terms: true,
     customer: { name: o.fullName, phone: o.phone, email: o.email || undefined, city: o.city, address: o.address, notes: o.orderNotes || undefined },
-    payment: "cod",
+    payment: o.paymentMethod === "ADVANCE_EASYPAISA" ? "advance" : "cod",
+    ...(o.payPath ? { payPath: o.payPath, advanceDiscount: Number(o.advanceDiscount || 0) } : {}),
   };
 }
 

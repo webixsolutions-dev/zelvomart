@@ -3991,6 +3991,47 @@ select.field {
   border-color: var(--blue);
   background: var(--blue-mist);
 }
+.pay-option .pay-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e7f8ef;
+  color: #0a7a46;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+.pay-option .pay-note {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink, #14243e);
+}
+.pay-demo-banner,
+.pay-shortfall,
+.pay-safety {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.pay-demo-banner {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #b4233a;
+  font-weight: 700;
+}
+.pay-shortfall {
+  color: var(--muted);
+}
+.pay-safety {
+  justify-content: center;
+  color: var(--muted);
+}
 .pay-option.disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -8782,4 +8823,14 @@ body:has(.product-page) {
   .zf-contacts h4 {
     margin-bottom: 6px;
   }
+}
+.confirm-pay {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin: 14px 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff6dc;
+  border: 1px solid #f0dba9;
 }

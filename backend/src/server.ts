@@ -13,6 +13,7 @@ import express from "express";
 import cors from "cors";
 import { getLocalUploadDir } from "./lib/storage";
 import { registerPublicRoutes } from "./routes/public";
+import { registerPaymentRoutes } from "./routes/payments";
 import { registerTrackingRoutes } from "./routes/tracking";
 import { registerReplayRoutes } from "./routes/replay";
 import { registerCustomerAuthRoutes } from "./routes/customer-auth";
@@ -79,6 +80,7 @@ app.use((req, res, next) => {
 //   admin/customers · admin/settings (settings, cities, redirects, Meta marketing) · admin/reports (CRO, reports)
 // Shared helpers live in src/http/shared.ts.
 registerPublicRoutes(app);
+registerPaymentRoutes(app);
 registerRecovery(app, findStoreSession);
 app.use("/api/admin/coupons", couponRouter);
 app.use("/api/admin/orders", orderEditRouter);
