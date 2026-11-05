@@ -53,6 +53,7 @@ test("order details never return staff secrets, even nested in statusHistory[].u
           postexTracking: null,
           items: [],
           customer: { id: "c1", name: "Customer", phone: "03001234567" },
+          paymentProofs: [],
           statusHistory: [
             {
               id: "h2",

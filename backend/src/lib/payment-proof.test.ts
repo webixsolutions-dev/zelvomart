@@ -117,6 +117,7 @@ test("submit rule: one proof, plus one more only after a mismatch or rejection",
   assert.equal(canSubmitProof(adv("REJECTED"), 2), false, "only one resubmission");
   assert.equal(canSubmitProof(adv("VERIFIED"), 1), false);
   assert.equal(canSubmitProof({ paymentMethod: "COD", paymentStatus: "NOT_REQUIRED" }, 0), false);
+  assert.equal(canSubmitProof({ ...adv("MISMATCH"), advanceReceived: "1000.00" }, 1), false, "partial accepted");
 });
 
 test("storage: private bucket only, never the public media bucket; strict keys", () => {

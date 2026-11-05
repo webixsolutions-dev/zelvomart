@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { prefetchAdminData } from "./useAdminData";
+import { clientApi } from "@/lib/client-api";
 
 function Icon({ children }: { children: ReactNode }) {
   return (
@@ -25,6 +26,13 @@ const icons = {
       <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
       <line x1="3" y1="6" x2="21" y2="6" />
       <path d="M16 10a4 4 0 0 1-8 0" />
+    </Icon>
+  ),
+  payments: (
+    <Icon>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <line x1="2" y1="10" x2="22" y2="10" />
+      <line x1="6" y1="15" x2="10" y2="15" />
     </Icon>
   ),
   products: (
@@ -160,6 +168,7 @@ const adminApiByHref: Record<string, string> = {
   "/admin/discounts": "/api/admin/products",
   "/admin/product-tabs": "/api/admin/product-tabs",
   "/admin/orders": "/api/admin/orders",
+  "/admin/payments": "/api/admin/payments?view=needs&q=",
   "/admin/categories": "/api/admin/categories",
   "/admin/customers": "/api/admin/customers",
   "/admin/settings": "/api/admin/settings",
@@ -178,7 +187,7 @@ const adminApiByHref: Record<string, string> = {
 
 type NavLink = readonly [string, string, ReactNode];
 
-const groups=[{label:'Store',links:[['/admin','Dashboard',icons.dashboard],['/admin/orders','Orders',icons.orders],['/admin/customers','Customers',icons.customers]] as NavLink[]},{label:'Catalog',links:[['/admin/products','Products',icons.products],['/admin/categories','Categories',icons.categories],['/admin/tags','Tags',icons.tags],['/admin/discounts','Discounts',icons.discounts],['/admin/coupons','Coupons',icons.discounts],['/admin/reviews','Reviews',icons.reviews],['/admin/product-tabs','Product tabs',icons.pages]] as NavLink[]},{label:'Insights',links:[['/admin/session-replays','Session Replays',icons.replays]] as NavLink[]},{label:'Admin',links:[['/admin/settings','Settings',icons.settings],['/admin/users','Users & Roles',icons.users],['/admin/redirects','SEO Redirects',icons.redirects],['/admin/jobs','Jobs',icons.jobs]] as NavLink[]}];
+const groups=[{label:'Store',links:[['/admin','Dashboard',icons.dashboard],['/admin/orders','Orders',icons.orders],['/admin/payments','Payments',icons.payments],['/admin/customers','Customers',icons.customers]] as NavLink[]},{label:'Catalog',links:[['/admin/products','Products',icons.products],['/admin/categories','Categories',icons.categories],['/admin/tags','Tags',icons.tags],['/admin/discounts','Discounts',icons.discounts],['/admin/coupons','Coupons',icons.discounts],['/admin/reviews','Reviews',icons.reviews],['/admin/product-tabs','Product tabs',icons.pages]] as NavLink[]},{label:'Insights',links:[['/admin/session-replays','Session Replays',icons.replays]] as NavLink[]},{label:'Admin',links:[['/admin/settings','Settings',icons.settings],['/admin/users','Users & Roles',icons.users],['/admin/redirects','SEO Redirects',icons.redirects],['/admin/jobs','Jobs',icons.jobs]] as NavLink[]}];
 
 function linkIsActive(pathname: string, href: string) {
   if (href === "/admin") return pathname === href;
@@ -189,18 +198,40 @@ function linkIsActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** Proofs waiting for staff: red when one carries a flag, amber otherwise; hidden at zero. Checked every minute. */
+function usePaymentCount(enabled: boolean) {
+  const [count, setCount] = useState<{ needs: number; flagged: number } | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    const load = () =>
+      clientApi<{ needs: number; flagged: number }>("/api/admin/payments/summary", {}, true)
+        .then((next) => alive && setCount(next))
+        .catch(() => undefined);
+    void load();
+    const timer = setInterval(load, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [enabled]);
+  return count;
+}
+
 function NavItem({
   href,
   label,
   icon,
   pathname,
   onNavigate,
+  badge,
 }: {
   href: string;
   label: string;
   icon: ReactNode;
   pathname: string;
   onNavigate?: () => void;
+  badge?: { count: number; urgent: boolean } | null;
 }) {
   const active = linkIsActive(pathname, href);
   return (
@@ -215,6 +246,14 @@ function NavItem({
     >
       <span className="admin-nav-icon">{icon}</span>
       <span>{label}</span>
+      {badge && badge.count > 0 ? (
+        <span
+          className={`admin-nav-count${badge.urgent ? " urgent" : ""}`}
+          aria-label={`${badge.count} to verify${badge.urgent ? ", some flagged" : ""}`}
+        >
+          {badge.count}
+        </span>
+      ) : null}
     </Link>
   );
 }
@@ -228,6 +267,7 @@ export default function AdminNav({
 }) {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
+  const payments = usePaymentCount(["OWNER", "MANAGER", "ORDER_AGENT"].includes(role));
   useEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
@@ -260,7 +300,7 @@ export default function AdminNav({
   }, []);
   const allowed = (href: string) => {
     if (role === "OWNER") return true;
-    if (role === "ORDER_AGENT") return ["/admin", "/admin/orders", "/admin/customers"].includes(href);
+    if (role === "ORDER_AGENT") return ["/admin", "/admin/orders", "/admin/payments", "/admin/customers"].includes(href);
     if (role === "MANAGER") return !["/admin/settings", "/admin/users", "/admin/redirects"].includes(href);
     if (role === "MARKETER") {
       return [
@@ -303,6 +343,7 @@ export default function AdminNav({
                 icon={icon}
                 pathname={pathname}
                 onNavigate={onNavigate}
+                badge={href === "/admin/payments" && payments ? { count: payments.needs, urgent: payments.flagged > 0 } : null}
               />
             ))}
             </div>

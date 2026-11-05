@@ -136,9 +136,16 @@ export function proofFlags(input: {
   };
 }
 
-/** Whether the customer may send a proof now: the first one, or one more after a mismatch or rejection. */
-export function canSubmitProof(order: { paymentMethod: string; paymentStatus: string }, proofCount: number) {
+/**
+ * Whether the customer may send a proof now: the first one, or one more after a mismatch or rejection. Not once staff
+ * accepted a partial payment (the rest is collected on delivery).
+ */
+export function canSubmitProof(
+  order: { paymentMethod: string; paymentStatus: string; advanceReceived?: unknown },
+  proofCount: number,
+) {
   if (order.paymentMethod !== "ADVANCE_EASYPAISA") return false;
+  if (Number(order.advanceReceived || 0) > 0) return false;
   if (proofCount === 0) return ["AWAITING_PAYMENT", "EXPIRED"].includes(order.paymentStatus);
   return proofCount < PROOF_MAX_PER_ORDER && ["MISMATCH", "REJECTED"].includes(order.paymentStatus);
 }

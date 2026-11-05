@@ -52,6 +52,12 @@ async function orderFilters(query: Record<string, unknown>): Promise<Prisma.Orde
         ? { status: { in: groups[text("group")] } }
         : {}),
     ...(text("hasReplay") === "true" ? { replaySessionId: { not: null } } : {}),
+    // "Advance payment – needs verification": a proof is in and no staff decision yet.
+    ...(text("payment") === "needs-verification"
+      ? { paymentMethod: "ADVANCE_EASYPAISA", paymentStatus: { in: ["SUBMITTED", "MISMATCH"] }, advanceReceived: 0 }
+      : text("payment") === "advance"
+        ? { paymentMethod: "ADVANCE_EASYPAISA" }
+        : {}),
     ...(text("repeat") === "true"
       ? {
           customerId: {
@@ -459,6 +465,20 @@ export function registerAdminOrdersRoutes(app: Express) {
         // to every role that can read orders (ORDER_AGENT included).
         statusHistory: { select: STATUS_HISTORY_SELECT, orderBy: { createdAt: "desc" } },
         customer: true,
+        // Advance payment proofs: status, amount and flags only (the screenshot is on the Payments screen).
+        paymentProofs: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            status: true,
+            amountSent: true,
+            createdAt: true,
+            amountMismatch: true,
+            tidDuplicate: true,
+            imageDuplicate: true,
+            timeOutOfWindow: true,
+          },
+        },
       },
     });
     if (!row) return res.status(404).json({ error: "NOT_FOUND" });
@@ -481,6 +501,7 @@ export function registerAdminOrdersRoutes(app: Express) {
       advanceDiscount: Number(row.advanceDiscount),
       advanceReceived: Number(row.advanceReceived),
       codToCollect: codToCollect(row),
+      paymentProofs: row.paymentProofs.map((proof) => ({ ...proof, amountSent: Number(proof.amountSent) })),
       trackingUrl: row.postexTracking ? postexTrackingUrl(row.postexTracking) : null,
     });
   });

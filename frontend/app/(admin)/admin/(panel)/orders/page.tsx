@@ -40,6 +40,7 @@ type Order = {
   source: string | null;
   status: string;
   paymentMethod: string;
+  paymentStatus?: string;
   total: number;
   createdAt: string;
   test?: boolean;
@@ -206,9 +207,11 @@ export default function Orders() {
     if (p.get("status")) setStatus(p.get("status")!);
     if (p.get("from")) setFrom(p.get("from")!);
     if (p.get("to")) setTo(p.get("to")!);
+    if (p.get("payment") === "needs-verification") setNeedsPayment(true);
   }, []);
   const [quick, setQuick] = useState<Order | null>(null),
     [hasReplay, setHasReplay] = useState(false),
+    [needsPayment, setNeedsPayment] = useState(false),
     [repeat, setRepeat] = useState(false);
   const [q, setQ] = useState(""),
     [search, setSearch] = useState(""),
@@ -263,6 +266,7 @@ export default function Orders() {
     pageSize,
     hasReplay,
     repeat,
+    needsPayment,
   ]);
   useEffect(() => {
     let active = true;
@@ -295,6 +299,7 @@ export default function Orders() {
   }, [productQ]);
   const params = new URLSearchParams();
   if (hasReplay) params.set("hasReplay", "true");
+  if (needsPayment) params.set("payment", "needs-verification");
   if (repeat) params.set("repeat", "true");
   if (search) params.set("q", search);
   if (city) params.set("city", city);
@@ -696,10 +701,19 @@ export default function Orders() {
             />{" "}
             Repeat customer
           </label>
-          {(hasActiveFilters || hasReplay || repeat) && (
+          <label>
+            <input
+              type="checkbox"
+              checked={needsPayment}
+              onChange={(e) => setNeedsPayment(e.target.checked)}
+            />{" "}
+            Advance payment – needs verification
+          </label>
+          {(hasActiveFilters || hasReplay || repeat || needsPayment) && (
             <button
               type="button"
               onClick={() => {
+                setNeedsPayment(false);
                 setHasReplay(false);
                 setRepeat(false);
                 setQ("");
@@ -939,7 +953,13 @@ export default function Orders() {
                           ? "● Settled"
                           : o.paymentMethod === "COD"
                             ? "◷ Cash on delivery"
-                            : "◷ NayaPay · verify"}
+                            : o.paymentMethod === "ADVANCE_EASYPAISA"
+                              ? o.paymentStatus === "VERIFIED"
+                                ? "● Advance · verified"
+                                : ["SUBMITTED", "MISMATCH"].includes(o.paymentStatus || "")
+                                  ? "◷ Advance · verify proof"
+                                  : "◷ Advance · awaiting payment"
+                              : "◷ NayaPay · verify"}
                       </span>
                     </td>
                     <td>
@@ -1304,7 +1324,12 @@ export default function Orders() {
                 minute: "2-digit",
                 timeZone: "Asia/Karachi",
               })}{" "}
-              · {quick.paymentMethod === "NAYAPAY" ? "NayaPay" : "Cash on Delivery"}
+              ·{" "}
+              {quick.paymentMethod === "NAYAPAY"
+                ? "NayaPay"
+                : quick.paymentMethod === "ADVANCE_EASYPAISA"
+                  ? "Advance payment (Easypaisa/Raast)"
+                  : "Cash on Delivery"}
               {quick.test ? " · Test order" : ""}
             </p>
             {(quick.possibleDuplicate || quick.blocklistedAtOrder) && (
