@@ -17,6 +17,7 @@ import { isCloudStorageConfigured, StorageError, uploadObject } from "../../lib/
 import { invalidateFrontendCache } from "../../lib/cache-invalidation";
 import { sanitizeGlobalProductTabs } from "../../lib/catalog-meta";
 import { cleanStockStatus } from "../../lib/stock";
+import { redirectFromSlug, repointRedirects } from "../../lib/bulk-rename";
 import {
   buildProductWrite,
   demoteH1,
@@ -234,6 +235,18 @@ export function registerAdminProductsRoutes(app: Express) {
       const custom = b.catalogMeta
         ? customRedirect({ ...previousMeta, ...b.catalogMeta }, nextSlug)
         : previousCustomRedirect(previousMeta, current.slug);
+      const oldPath = `/product/${current.slug}/`;
+      const newPath = `/product/${nextSlug}/`;
+      if (
+        b.redirectOldPermalink === true &&
+        nextSlug !== current.slug &&
+        custom?.source === oldPath &&
+        custom.destination !== newPath
+      ) {
+        return res.status(409).json({
+          error: "Clear the custom redirect for the old permalink in SEO settings before adding a 301 here.",
+        });
+      }
       if (b.catalogMeta) b.catalogMeta.redirectFrom = custom?.source || b.catalogMeta.redirectFrom || "";
       if ("videoUrl" in b) {
         const video = await resolveProductVideo(b.videoUrl, previousMeta, current.videoUrl);
@@ -269,25 +282,56 @@ export function registerAdminProductsRoutes(app: Express) {
       if ("stock" in data) data.stock = Math.max(0, Math.floor(Number(data.stock) || 0));
       if ("status" in b) data.status = nextStatus;
       const row = await prisma.$transaction(async (tx) => {
-        const updated = await tx.product.update({ where: { id }, data });
+        const updated = await tx.product.update({ where: { id, slug: current.slug }, data });
         if (Array.isArray(b.variants)) await writeVariants(tx, id, b.variants);
+
+        if (updated.slug !== current.slug && typeof b.redirectOldPermalink === "boolean") {
+          const pointing = await tx.redirect.findMany({ where: { destination: oldPath } });
+          const repointed = repointRedirects(pointing, oldPath, newPath);
+          if (repointed.remove.length) {
+            await tx.redirect.deleteMany({ where: { id: { in: repointed.remove } } });
+          }
+          if (repointed.update.length) {
+            await tx.redirect.updateMany({
+              where: { id: { in: repointed.update } },
+              data: { destination: newPath },
+            });
+          }
+          if (!b.redirectOldPermalink) {
+            await tx.redirect.deleteMany({
+              where: { sourcePath: oldPath, destination: "/shop", permanent: false },
+            });
+          }
+        }
+
+        const meta = b.catalogMeta || readCatalogMeta(updated.sourceUrl) || {};
+        await syncProductRedirect(
+          {
+            slug: updated.slug,
+            previousSlug: redirectFromSlug(current.slug, updated.slug, b.redirectOldPermalink !== false),
+            redirectPreviousToNewSlug: b.redirectOldPermalink === true,
+            status: updated.status,
+            redirectFallback: meta.redirectFallback !== false,
+            custom,
+            previousCustom: previousCustomRedirect(previousMeta, current.slug),
+          },
+          tx,
+        );
         return updated;
       }, PRODUCT_TX_OPTIONS);
       await audit(req, "update", "Product", row.id);
-      const meta = b.catalogMeta || readCatalogMeta(row.sourceUrl) || {};
-      await syncProductRedirect({
-        slug: row.slug,
-        previousSlug: String(b.previousSlug || current.slug || ""),
-        status: row.status,
-        redirectFallback: meta.redirectFallback !== false,
-        custom,
-        previousCustom: previousCustomRedirect(previousMeta, current.slug),
-      });
       const tags = await catalogCacheTags(row.slug, row.categoryId);
+      tags.push("redirects");
       if (current.slug && current.slug !== row.slug) tags.push(`product:${current.slug}`);
       await invalidateFrontendCache(tags);
       res.json(await loadAdminProduct(row.id));
     } catch (error: any) {
+      if (error?.code === "P2002") {
+        return res.status(409).json({ error: "That permalink or SKU is already in use." });
+      }
+      if (error?.code === "P2025") {
+        return res.status(409).json({ error: "This product changed while you were editing. Reload it and try again." });
+      }
       res.status(400).json({ error: error?.message || "PRODUCT_UPDATE_FAILED" });
     }
   });

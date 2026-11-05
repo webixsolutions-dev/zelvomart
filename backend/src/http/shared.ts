@@ -158,26 +158,31 @@ export function previousCustomRedirect(meta: any, slug: string): CustomRedirect 
   }
 }
 
-export async function syncProductRedirect(options: {
-  slug: string;
-  previousSlug?: string;
-  status: string;
-  redirectFallback: boolean;
-  custom: CustomRedirect | null;
-  previousCustom?: CustomRedirect | null;
-}) {
+export async function syncProductRedirect(
+  options: {
+    slug: string;
+    previousSlug?: string;
+    redirectPreviousToNewSlug?: boolean;
+    status: string;
+    redirectFallback: boolean;
+    custom: CustomRedirect | null;
+    previousCustom?: CustomRedirect | null;
+  },
+  tx?: Pick<Prisma.TransactionClient, "redirect">,
+) {
+  const redirects = (tx || prisma).redirect;
   const shop = "/shop";
   const current = `/product/${options.slug}/`;
   const { custom, previousCustom } = options;
   // Drop the row this product wrote last time when its old URL changed or the redirect was cleared.
   if (previousCustom && previousCustom.source !== custom?.source) {
-    await prisma.redirect.deleteMany({
+    await redirects.deleteMany({
       where: { sourcePath: previousCustom.source, destination: previousCustom.destination },
     });
   }
   // Saved into the same Redirect table Admin -> SEO Redirects uses.
   if (custom) {
-    await prisma.redirect.upsert({
+    await redirects.upsert({
       where: { sourcePath: custom.source },
       update: { destination: custom.destination, permanent: true },
       create: { sourcePath: custom.source, destination: custom.destination, permanent: true },
@@ -186,8 +191,10 @@ export async function syncProductRedirect(options: {
   const ownUrlRedirect = custom && custom.source === current ? custom.destination : "";
   if (options.previousSlug && options.previousSlug !== options.slug) {
     const from = `/product/${options.previousSlug}/`;
-    const destination = ownUrlRedirect || (options.status === "PUBLISHED" ? current : shop);
-    await prisma.redirect.upsert({
+    const destination = options.redirectPreviousToNewSlug
+      ? current
+      : ownUrlRedirect || (options.status === "PUBLISHED" ? current : shop);
+    await redirects.upsert({
       where: { sourcePath: from },
       update: { destination, permanent: true },
       create: { sourcePath: from, destination, permanent: true },
@@ -196,15 +203,15 @@ export async function syncProductRedirect(options: {
   if (ownUrlRedirect) {
     // The product's own URL already points at the destination (written above).
   } else if (options.status === "PUBLISHED" || !options.redirectFallback) {
-    await prisma.redirect.deleteMany({ where: { sourcePath: current } });
+    await redirects.deleteMany({ where: { sourcePath: current } });
   } else {
-    await prisma.redirect.upsert({
+    await redirects.upsert({
       where: { sourcePath: current },
       update: { destination: shop, permanent: false },
       create: { sourcePath: current, destination: shop, permanent: false },
     });
   }
-  await invalidateFrontendCache(["redirects"]);
+  if (!tx) await invalidateFrontendCache(["redirects"]);
 }
 
 export function jsonProduct(row: any, bundleDiscount = BUY_TWO_DISCOUNT_PERCENT) {

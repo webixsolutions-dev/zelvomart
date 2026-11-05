@@ -293,7 +293,8 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
   const [title, setTitle] = useState(initial?.title || initial?.name || "");
   const [slug, setSlug] = useState(initial?.slug || "");
   const [slugTouched, setSlugTouched] = useState(Boolean(initial?.slug));
-  const [editingSlug, setEditingSlug] = useState(false);
+  const [slugDraft, setSlugDraft] = useState<string | null>(null);
+  const [redirectOldPermalink, setRedirectOldPermalink] = useState(false);
   const [status, setStatus] = useState(initial?.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT");
   const [sku, setSku] = useState(initial?.sku || "");
   const [skuTouched, setSkuTouched] = useState(Boolean(initial?.sku));
@@ -784,6 +785,28 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
     };
   }, [focusKeyword, seoTitle, seoDescription, title, slug, mainImage, imageMeta.alt, gallery.length, shortHtml, descriptionHtml]);
 
+  function applyPermalinkEdit(): string | null {
+    if (slugDraft === null) return slug;
+
+    const trimmed = slugDraft.trim();
+    const nextSlug = trimmed === slug ? slug : slugify(trimmed);
+    if (!nextSlug || nextSlug.length > 200) {
+      notifyError("Enter a permalink slug between 1 and 200 characters.");
+      document.getElementById("product-permalink-slug")?.focus();
+      return null;
+    }
+    setSlug(nextSlug);
+    setSlugTouched(true);
+    setSlugDraft(null);
+    if (nextSlug === initial?.slug) setRedirectOldPermalink(false);
+    return nextSlug;
+  }
+
+  function cancelPermalinkEdit() {
+    setSlugDraft(null);
+    if (slug === initial?.slug) setRedirectOldPermalink(false);
+  }
+
   async function saveForm(targetStatus?: "DRAFT" | "PUBLISHED") {
     if (busy) return;
     if (uploadBusy) {
@@ -807,8 +830,10 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       return;
     }
 
-    const finalSlug = slug.trim() || slugify(title.trim() || "product");
-    if (!slug.trim()) setSlug(finalSlug);
+    const selectedSlug = applyPermalinkEdit();
+    if (selectedSlug === null) return;
+    const finalSlug = selectedSlug.trim() || slugify(title.trim() || "product");
+    if (!selectedSlug.trim()) setSlug(finalSlug);
 
     const finalSku = sku.trim() || `ZVM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     if (!sku.trim()) setSku(finalSku);
@@ -901,7 +926,7 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
       ...(sendProductStock ? { stock: quantity } : {}),
       status: nextStatus,
       featured: tags.includes("best-selling"),
-      previousSlug: initial?.slug && initial.slug !== finalSlug ? initial.slug : undefined,
+      ...(initial ? { redirectOldPermalink } : {}),
       redirectFallback,
       bundleEnabled,
       bundleDiscountPercent: 5,
@@ -1135,16 +1160,32 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
             />
             <div className="wp-permalink-row">
               <strong>Permalink:</strong>
-              {editingSlug && !publishedSlugLocked ? (
-                <input
-                  value={slug}
-                  onChange={(event) => {
-                    setSlugTouched(true);
-                    setSlug(slugify(event.target.value));
-                  }}
-                  onBlur={() => setEditingSlug(false)}
-                  aria-label="Permalink slug"
-                />
+              {slugDraft !== null ? (
+                <>
+                  <input
+                    id="product-permalink-slug"
+                    aria-label="Permalink slug"
+                    value={slugDraft}
+                    placeholder="product-slug"
+                    autoFocus
+                    onChange={(event) => setSlugDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        applyPermalinkEdit();
+                      } else if (event.key === "Escape") {
+                        event.preventDefault();
+                        cancelPermalinkEdit();
+                      }
+                    }}
+                  />
+                  <button type="button" className="wp-btn-secondary" onClick={applyPermalinkEdit}>
+                    OK
+                  </button>
+                  <button type="button" className="wp-btn-secondary" onClick={cancelPermalinkEdit}>
+                    Cancel
+                  </button>
+                </>
               ) : (
                 <a
                   href="/product-preview"
@@ -1158,11 +1199,21 @@ export default function ProductForm({ categories, initial, onSaved }: ProductFor
                   {previewUrl}
                 </a>
               )}
-              {!publishedSlugLocked ? (
-                <button type="button" className="wp-btn-secondary" onClick={() => setEditingSlug((open) => !open)}>
-                  {editingSlug ? "OK" : "Edit"}
+              {slugDraft === null && (
+                <button type="button" className="wp-btn-secondary" onClick={() => setSlugDraft(slug)}>
+                  Edit
                 </button>
-              ) : null}
+              )}
+              {initial?.slug && (slugDraft !== null || slug !== initial.slug) && (
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={redirectOldPermalink}
+                    onChange={(event) => setRedirectOldPermalink(event.target.checked)}
+                  />
+                  301 redirect from the old URL
+                </label>
+              )}
             </div>
           </div>
 
