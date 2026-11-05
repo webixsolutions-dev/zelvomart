@@ -156,6 +156,50 @@ assert.ok(
 );
 console.log("PASS: cached listing rank/count, cleared by a product save");
 
+const { passwordStamp, signAdminToken } = await import("../src/lib/auth");
+const owner = await prisma.user.create({
+  data: { email: "catalog-test@example.invalid", name: "Catalog test", passwordHash: "catalog-test", role: "OWNER" },
+});
+const token = signAdminToken(owner, passwordStamp(owner.passwordHash));
+const editPermalink = (slug: string, redirectOldPermalink: boolean) =>
+  fetch(`${base}/api/admin/products/${bottle.id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ slug, redirectOldPermalink }),
+  });
+const redirectAt = (sourcePath: string) => prisma.redirect.findUnique({ where: { sourcePath } });
+
+const withoutRedirect = await editPermalink("steel-bottle-new", false);
+assert.equal(withoutRedirect.status, 200, await withoutRedirect.text());
+assert.equal((await prisma.product.findUniqueOrThrow({ where: { id: bottle.id } })).slug, "steel-bottle-new");
+assert.equal(await redirectAt("/product/steel-bottle/"), null, "an unchecked box leaves no 301");
+
+const withRedirect = await editPermalink("steel-bottle-final", true);
+assert.equal(withRedirect.status, 200, await withRedirect.text());
+const redirect = await redirectAt("/product/steel-bottle-new/");
+assert.deepEqual(
+  [redirect?.destination, redirect?.permanent],
+  ["/product/steel-bottle-final/", true],
+  "a checked box creates a permanent redirect to the saved permalink",
+);
+assert.ok(
+  (await get("/api/redirects/map")).some(
+    ([source, destination, permanent]: unknown[]) =>
+      source === "/product/steel-bottle-new/" && destination === "/product/steel-bottle-final/" && permanent === 1,
+  ),
+  "the storefront redirect map serves the new 301",
+);
+
+const duplicate = await editPermalink("old-lamp", true);
+assert.equal(duplicate.status, 409);
+assert.equal(await redirectAt("/product/steel-bottle-final/"), null, "failed slug updates create no redirect");
+
+const renamedAgain = await editPermalink("steel-bottle-latest", false);
+assert.equal(renamedAgain.status, 200, await renamedAgain.text());
+assert.equal(await redirectAt("/product/steel-bottle-final/"), null);
+assert.equal((await redirectAt("/product/steel-bottle-new/"))?.destination, "/product/steel-bottle-latest/");
+console.log("PASS: published product permalink, optional 301, duplicate rejection, and existing redirects");
+
 server.close();
 await prisma.$disconnect();
 await socket.stop();

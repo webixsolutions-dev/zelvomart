@@ -2,8 +2,8 @@ import { z } from "zod";
 
 /**
  * Input checks for the admin's product, category and redirect writes (checkout already had its own).
- * Objects are "loose": fields the handlers read but these schemas do not list (previousSlug, catalogMeta
- * details, …) pass through unchanged. What is listed is checked for type, length and format.
+ * Objects are "loose": unlisted fields, such as catalogMeta details, pass through unchanged.
+ * Listed fields are checked for type, length and format.
  */
 
 const blank = (value: unknown) => value === "" || value === undefined || value === null;
@@ -82,6 +82,7 @@ const productFields = {
   seoTitle: text(200),
   seoDescription: text(1000),
   canonicalUrl: optionalWebLink(),
+  redirectOldPermalink: z.boolean(),
   variants: z.array(variant).max(300),
   catalogMeta: z.looseObject({}).nullable(),
 };
