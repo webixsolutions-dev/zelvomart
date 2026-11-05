@@ -13,6 +13,7 @@ export const ADVANCE_JOB_NAMES = [
   "advance-verified-email",
   "advance-issue-email",
   "advance-reminder-email",
+  "advance-proof-autoread",
 ] as const;
 
 const escapeHtml = (value: unknown) =>

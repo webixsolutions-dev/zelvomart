@@ -23,6 +23,7 @@ import {
   type RejectReason,
 } from "../lib/payment-proof";
 import { paymentProofStorageReady, storePaymentProof } from "../lib/payment-proof-storage";
+import { autoReader, prefillFrom } from "../lib/proof-autoread";
 import {
   advanceAvailability,
   advancePolicy,
@@ -107,6 +108,8 @@ async function payPage(order: PageOrder, settings: AdvanceSettings) {
       order._count.paymentProofs === 0 &&
       (SWITCHABLE as readonly string[]).includes(order.paymentStatus),
     canSubmitProof: canSubmitProof(order, order._count.paymentProofs),
+    // Auto-read prefill on the proof form (Settings switch + GEMINI_API_KEY); a hint only.
+    autoRead: !!autoReader(settings),
     proofsLeft: Math.max(0, PROOF_MAX_PER_ORDER - order._count.paymentProofs),
     proof: latest
       ? {
@@ -164,6 +167,35 @@ export function registerPaymentRoutes(app: Express) {
     const order = await orderByToken(req);
     if (!order || order.paymentMethod === "NAYAPAY") return res.status(404).json({ error: "NOT_FOUND" });
     res.json(await payPage(order, await loadAdvanceSettings()));
+  });
+
+  // Auto-read prefill: the customer picks a screenshot and the form fills in what was read. Nothing is stored here;
+  // the image is cleaned (metadata removed) before it is sent. Off unless the switch is on and a key is set.
+  app.post("/api/pay/:orderNumber/proof/read", async (req, res, next) => {
+    setNoStore(res);
+    const orderNumber = routeParam(req, "orderNumber").toUpperCase().slice(0, 40);
+    if (
+      !(await allowRules(res, [
+        { key: `pay-read:ip:${requestIp(req)}`, limit: 10, windowMs: 15 * 60 * 1000 },
+        { key: `pay-read:order:${orderNumber}`, limit: 8, windowMs: 60 * 60 * 1000 },
+      ]))
+    )
+      return;
+    next();
+  });
+  app.post("/api/pay/:orderNumber/proof/read", parseProofUpload, async (req, res) => {
+    const order = await orderByToken(req);
+    if (!order || order.paymentMethod === "NAYAPAY") return res.status(404).json({ error: "NOT_FOUND" });
+    const reader = autoReader(await loadAdvanceSettings());
+    if (!reader || !canSubmitProof(order, order._count.paymentProofs)) return res.json({ prefill: null });
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+    if (!file) return res.json({ prefill: null });
+    try {
+      const image = await cleanProofImage(file.buffer);
+      res.json({ prefill: prefillFrom(await reader.read(image.bytes, image.contentType)) });
+    } catch {
+      res.json({ prefill: null });
+    }
   });
 
   // Payment proof: screenshot (re-encoded, metadata removed, private storage), TID, amount, sender. It never marks
@@ -230,6 +262,7 @@ export function registerPaymentRoutes(app: Express) {
       imageDuplicate,
     });
     const screenshotKey = await storePaymentProof(order.orderNumber, image.bytes);
+    const autoRead = !!autoReader(await loadAdvanceSettings());
 
     const save = () =>
       prisma.$transaction(async (tx) => {
@@ -268,7 +301,11 @@ export function registerPaymentRoutes(app: Express) {
         });
         await tx.order.update({ where: { id: order.id }, data: { paymentStatus: flags.status } });
         const jobs = await Promise.all(
-          ["advance-proof-team-email", "advance-proof-customer-email"].map((name) =>
+          [
+            "advance-proof-team-email",
+            "advance-proof-customer-email",
+            ...(autoRead ? ["advance-proof-autoread"] : []),
+          ].map((name) =>
             tx.job.create({
               data: { name, orderId: order.id, payload: { orderId: order.id, proofId: proof.id } },
               select: { id: true },

@@ -135,6 +135,8 @@ build time, so changing it needs a redeploy.
 | `REPLAY_S3_BUCKET`, `SESSION_REPLAY_RETENTION_DAYS` | R2 bucket for recordings and how many days to keep them: 14 (admin setting wins; anything above 14 is treated as 14, because the R2 lifecycle rule deletes the files after 14 days). |
 | `PAYMENT_PROOF_S3_BUCKET` | Optional. Private R2 bucket for advance-payment screenshots. Unset: they go to `REPLAY_S3_BUCKET` under `payment-proofs/` (the 14-day lifecycle rule must cover `replays/` only). The public media bucket is always refused; production without either refuses uploads. |
 | `PAYMENT_PROOF_LOCAL_DIR` | Local testing only: folder for proof screenshots when no bucket is set. Ignored on production. |
+| `PAYMENT_LINK_SECRET` | Optional. Signs the guest payment links (`/pay/ZM-…?t=…`). Unset: `JWT_SECRET` is used. Changing either one breaks payment links already sent. |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Optional auto-read of payment screenshots (Settings → Advance payment → Auto-read must also be on). Model default `gemini-2.5-flash-lite`. Unset: no auto-read, nothing is sent to Google. |
 | `META_PIXEL_ID`, `META_CAPI_TOKEN`, `META_TEST_EVENT_CODE`, `META_GRAPH_VERSION`, `META_PAGE_ID`, `META_INSTAGRAM_ACCOUNT_ID`, `META_AD_ACCOUNT_ID`, `META_MARKETING_ACCESS_TOKEN` | Meta Pixel / Conversions API and Meta marketing tools. |
 | `TIKTOK_PIXEL_ID`, `TIKTOK_ACCESS_TOKEN`, `TIKTOK_EVENTS_API_TOKEN`, `TIKTOK_TEST_EVENT_CODE` | TikTok events (off unless switched on). |
 | `POSTEX_TRACKING_BASE_URL` | Courier tracking link used in emails. |
@@ -224,6 +226,32 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 - `NEXT_PUBLIC_SESSION_REPLAY_SAMPLE_RATE` (default 0.25) of visits are recorded; `/admin` never is.
 - A recording ends after 10 minutes, or once the tab has been hidden for more than a minute.
 - Recordings stay un-masked (owner decision) and are kept 14 days: the R2 lifecycle rule on `zelvomart-replays` deletes `replays/` files after 14 days, and the daily cleanup deletes the matching rows at the same age (`backend/src/lib/replay-retention.ts`; admin setting Tracking → Retention Window, capped at 14).
+
+## 9a. Advance payment (Easypaisa Till / Raast QR)
+
+- **How it works:** at checkout the customer keeps Cash on Delivery (default) or pays in advance for a flat
+  discount. There is no payment API. The customer pays in their own app, then sends a screenshot and the TID on the
+  payment page. The order waits **On hold** until staff verify it.
+- **Daily work:** Admin → Payments (the sidebar count turns red when a proof is flagged). Open the proof, find the
+  TID and the amount in the **Easypaisa merchant app**, then choose one:
+  - **Verify**, with the merchant app reference;
+  - **Mark partial** (the rest is collected on delivery);
+  - **Reject**, with a reason.
+  A screenshot alone is never proof. Do not dispatch an unverified advance order: the courier amount on the invoice
+  and packing slip already shows what to collect.
+- **Settings → Advance payment** (owner): Till ID, QR (uploaded exactly as it is), discount, minimum, reminder,
+  payment window and verification hours.
+  - On production the option stays hidden, and enabling is refused, while the Till ID or the QR is still a demo
+    value.
+  - After uploading the QR, save it to a phone gallery and scan it in two bank apps.
+- **Reminder and expiry:** the 5-minute cron sends one reminder after the reminder hours. After the payment window the
+  payment shows **expired**. The order is never cancelled automatically; the customer can still pay or switch to COD.
+- **Screenshots** are private: `PAYMENT_PROOF_S3_BUCKET`, else `REPLAY_S3_BUCKET` under `payment-proofs/`.
+  - Staff open them through a 5-minute link.
+  - The R2 lifecycle rule on the replay bucket must cover `replays/` only, or proofs would be deleted after 14 days.
+- **Auto-read** (optional, off) only fills hints. It never verifies.
+  - On the Gemini free tier Google may use the images to improve its products; use a billing-enabled key or keep it
+    off.
 
 ## 10. Database
 

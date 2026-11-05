@@ -26,6 +26,8 @@ export type PayInfo = {
   refundPolicyPath: string;
   canSwitchToCod: boolean;
   canSubmitProof: boolean;
+  /** Auto-read is on: the proof form fills in what it can read from the screenshot (a hint the customer checks). */
+  autoRead?: boolean;
   proofsLeft: number;
   /** The customer's latest proof (status only: no TID or screenshot on this page). */
   proof: { status: string; amountSent: number; submittedAt: string; rejectMessage: string | null } | null;
