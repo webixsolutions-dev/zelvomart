@@ -71,7 +71,7 @@ export function PayProofForm({
   const [sending, setSending] = useState(false);
   const [reading, setReading] = useState(false);
   const [readNote, setReadNote] = useState("");
-  const amountTouched = useRef(false);
+  const edited = useRef({ tid: false, amount: false, sender: false });
   /** The screenshot the latest auto-read belongs to (a removed or replaced one is ignored). */
   const readFor = useRef<File | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -106,6 +106,7 @@ export function PayProofForm({
         ...e,
         screenshot: "The screenshot must be up to 5 MB.",
       }));
+    clearAutoFill();
     setFile(next);
     setPreview(URL.createObjectURL(next));
     // A screenshot makes the details optional: clear their "required" messages.
@@ -114,12 +115,19 @@ export function PayProofForm({
     if (info.autoRead) void autoFill(next);
   }
 
+  function clearAutoFill() {
+    readFor.current = null;
+    setReading(false);
+    if (!edited.current.tid) setTid("");
+    if (!edited.current.amount) setAmount("");
+    if (!edited.current.sender) setSenderName("");
+  }
+
   function removeScreenshot() {
+    clearAutoFill();
     setFile(null);
     setPreview("");
     setReadNote("");
-    setReading(false);
-    readFor.current = null;
     if (fileInput.current) fileInput.current.value = "";
   }
 
@@ -148,12 +156,18 @@ export function PayProofForm({
         } | null;
       };
       if (readFor.current !== next || !prefill) return;
-      if (prefill.tid) setTid((current) => current || prefill.tid!);
-      if (prefill.sender)
-        setSenderName((current) => current || prefill.sender!);
-      if (prefill.amount && !amountTouched.current)
+      if (prefill.tid && !edited.current.tid) {
+        setTid(prefill.tid);
+        filled = true;
+      }
+      if (prefill.amount && !edited.current.amount) {
         setAmount(String(prefill.amount));
-      filled = !!(prefill.tid || prefill.amount || prefill.sender);
+        filled = true;
+      }
+      if (prefill.sender && !edited.current.sender) {
+        setSenderName(prefill.sender);
+        filled = true;
+      }
     } catch {
       // No hint: the customer types the details (or sends the screenshot alone).
     } finally {
@@ -306,6 +320,7 @@ export function PayProofForm({
           <input
             value={tid}
             onChange={(e) => {
+              edited.current.tid = true;
               setTid(e.target.value);
               clear("tid");
             }}
@@ -323,7 +338,7 @@ export function PayProofForm({
             value={amount}
             onChange={(e) => {
               setAmount(e.target.value.replace(/[^\d.]/g, ""));
-              amountTouched.current = true;
+              edited.current.amount = true;
               clear("amount");
             }}
             inputMode="decimal"
@@ -344,6 +359,7 @@ export function PayProofForm({
           <input
             value={senderName}
             onChange={(e) => {
+              edited.current.sender = true;
               setSenderName(e.target.value);
               clear("senderName");
             }}

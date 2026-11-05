@@ -965,6 +965,7 @@ await setAdvance({});
 // fills the staff comparison, flags a different receiver, and never changes a proof's status.
 {
   const { processJobRow } = await import("../src/lib/job-processor");
+  const { signAdminToken, passwordStamp } = await import("../src/lib/auth");
   const calls: any[] = [];
   let answer: Record<string, unknown> = {};
   const realFetch = globalThis.fetch;
@@ -1001,6 +1002,40 @@ await setAdvance({});
     const offId = (await prisma.order.findUniqueOrThrow({ where: { orderNumber: off.body.orderNumber } })).id;
     assert.equal(await prisma.job.count({ where: { orderId: offId, name: "advance-proof-autoread" } }), 0);
     assert.equal(calls.length, 0, "no Gemini call while off");
+
+    // Admin diagnostic works with the customer switch off and only sends the built-in sample.
+    const owner = await prisma.user.create({
+      data: {
+        name: "Auto-read QA",
+        email: "auto-read-qa@example.invalid",
+        passwordHash: "hash-autoread",
+        role: "OWNER",
+      },
+    });
+    const adminToken = signAdminToken(
+      { id: owner.id, name: owner.name, email: owner.email, role: owner.role },
+      passwordStamp(owner.passwordHash),
+    );
+    const diagnostic = (token?: string) =>
+      fetch(base + "/api/admin/payments/auto-read/test", {
+        method: "POST",
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+    assert.equal((await diagnostic()).status, 401);
+    delete process.env.GEMINI_API_KEY;
+    const noKey = await diagnostic(adminToken);
+    assert.equal(noKey.status, 503);
+    assert.equal(((await noKey.json()) as any).error, "KEY_NOT_CONFIGURED");
+    process.env.GEMINI_API_KEY = "isolated-gemini-key";
+    const sample = { tid: "900000014912", amount: 149, sender: "Sample Customer" };
+    answer = { ...sample, isPaymentReceipt: true, confidence: 0.9 };
+    const tested = await diagnostic(adminToken);
+    assert.equal(tested.status, 200);
+    assert.deepEqual(await tested.json(), { model: "gemini-3.5-flash-lite", prefill: sample });
+    const [{ body: request }] = calls.splice(0);
+    const image = request.contents[0].parts[1].inline_data;
+    assert.equal(image.mime_type, "image/png");
+    assert.equal((await sharp(Buffer.from(image.data, "base64")).metadata()).format, "png");
 
     // On.
     await setAdvance({ autoRead: true });
@@ -1076,8 +1111,46 @@ await setAdvance({});
     answer = { isPaymentReceipt: false, tid: "X", amount: 5, confidence: 0.99 };
     const r2 = await order("ADVANCE_EASYPAISA", 1);
     assert.deepEqual(await read(r2.body.orderNumber, r2.body.payToken, await shot(53)), { prefill: null });
+    // A read started on a screenshot-only proof cannot overwrite staff verification that finishes first.
+    await setAdvance({});
+    const { runProofAutoRead } = await import("../src/lib/proof-autoread-job");
+    const pending = await order("ADVANCE_EASYPAISA", 1);
+    const submitted = await sendProof(
+      pending.body.orderNumber,
+      pending.body.payToken,
+      { method: "RAAST_QR" },
+      await shot(56),
+    );
+    assert.equal(submitted.status, 201);
+    const deciding = await prisma.paymentProof.findFirstOrThrow({
+      where: { order: { orderNumber: pending.body.orderNumber } },
+    });
+    await runProofAutoRead(deciding.id, {
+      async read() {
+        const response = await fetch(base + `/api/admin/payments/${deciding.id}/verify`, {
+          method: "POST",
+          headers: { authorization: `Bearer ${adminToken}`, "content-type": "application/json" },
+          body: JSON.stringify({ checked: true, amountReceived: pending.body.total, merchantReference: "STAFF12345" }),
+        });
+        assert.equal(response.status, 200);
+        return {
+          isPaymentReceipt: true,
+          confidence: 0.95,
+          tid: "OCR12345",
+          amount: 9,
+          sender: "Sample Customer",
+          receiver: "Zelvomart",
+          dateTime: null,
+        };
+      },
+    });
+    const decided = await prisma.paymentProof.findUniqueOrThrow({ where: { id: deciding.id } });
+    assert.deepEqual(
+      [decided.status, decided.tid, decided.ocrTid, Number(decided.amountReceived)],
+      ["VERIFIED", "STAFF12345", "OCR12345", pending.body.total],
+    );
     console.log(
-      "ok - auto-read: off by default, prefill, staff hints, receiver flag, never verifies, metadata removed",
+      "ok - auto-read: admin test, prefill, staff hints, metadata removed, staff verification takes precedence",
     );
   } finally {
     globalThis.fetch = realFetch;

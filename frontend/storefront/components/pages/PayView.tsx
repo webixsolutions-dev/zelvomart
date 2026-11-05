@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banknote, CircleHelp, Copy, Download, FileText, QrCode, ShieldCheck, Smartphone, TriangleAlert, X } from "lucide-react";
+import { Banknote, CircleHelp, Copy, Download, QrCode, ShieldCheck, Smartphone, TriangleAlert, X } from "lucide-react";
 import { isIosDevice, isMobileDevice } from "@store/lib/device";
 import { money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
@@ -62,11 +62,11 @@ function TrustBlock({ info, supportLink }: { info: PayInfo; supportLink: string 
       <p>If we can&apos;t ship your order for any reason, you get the full amount back to the same account.</p>
       <p>If you cancel after paying and before dispatch, we refund your payment minus delivery charges.</p>
       <div className={styles.trustLinks}>
-        <a className={styles.pill} href={info.refundPolicyPath} target="_blank" rel="noopener">
-          <FileText aria-hidden="true" /> Refund policy
+        <a className={styles.textLink} href={info.refundPolicyPath} target="_blank" rel="noopener noreferrer">
+          Refund policy
         </a>
-        <a className={styles.pill} href={supportLink} target="_blank" rel="noopener noreferrer">
-          <WhatsAppIcon /> WhatsApp support
+        <a className={styles.textLink} href={supportLink} target="_blank" rel="noopener noreferrer">
+          WhatsApp support
         </a>
       </div>
       <p className={styles.never}>We will never ask for your PIN, OTP or password.</p>
@@ -290,7 +290,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
             </div>
             <p className={styles.merchant}>
               Merchant name in your app: <strong>{info.accountName}</strong>. If you see any other name, don&apos;t pay and{" "}
-              <a href={helpLink} target="_blank" rel="noopener noreferrer">
+              <a className={styles.textLink} href={helpLink} target="_blank" rel="noopener noreferrer">
                 message us on WhatsApp
               </a>
               .
@@ -398,7 +398,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
             </div>
             {proofOpen && proofForm}
             <p className={styles.center}>
-              <a href={helpLink} target="_blank" rel="noopener noreferrer">
+              <a className={styles.textLink} href={helpLink} target="_blank" rel="noopener noreferrer">
                 <WhatsAppIcon /> WhatsApp help
               </a>
             </p>

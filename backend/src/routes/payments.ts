@@ -199,6 +199,7 @@ export function registerPaymentRoutes(app: Express) {
       const image = await cleanProofImage(file.buffer);
       res.json({ prefill: prefillFrom(await reader.read(image.bytes, image.contentType)) });
     } catch {
+      console.warn("[payment-auto-read] Could not prepare screenshot for reading", { stage: "image-preparation" });
       res.json({ prefill: null });
     }
   });

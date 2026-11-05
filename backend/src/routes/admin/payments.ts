@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "../../lib/db";
 import type { Prisma } from "../../generated/prisma/client";
 import { requireAuth, type AuthedRequest } from "../../lib/auth";
-import { audit, routeParam, setNoStore } from "../../http/shared";
+import { allowRequest, audit, routeParam, setNoStore } from "../../http/shared";
 import { runInBackground } from "../../lib/background";
 import { runJobsNow } from "../../lib/job-runner";
 import {
@@ -24,6 +24,8 @@ import { normalizeTid } from "../../lib/payment-proof";
 import { REJECT_REASONS, type RejectReason } from "../../lib/payment-proof";
 import { paymentProofSignedUrl, readPaymentProof } from "../../lib/payment-proof-storage";
 import { isCloudStorageConfigured, uploadObject } from "../../lib/storage";
+import { geminiReader, prefillFrom } from "../../lib/proof-autoread";
+import { SAMPLE_RECEIPT_EXPECTED, SAMPLE_RECEIPT_PNG } from "../../lib/proof-autoread-sample";
 
 /**
  * Admin → Payments: staff check each proof against the Easypaisa merchant app. Nothing here trusts the screenshot:
@@ -710,6 +712,39 @@ export function registerAdminPaymentsRoutes(app: Express) {
       return { jobIds: result };
     }),
   );
+
+  // Test the configured Gemini key with fictional data, even while customer auto-read is switched off.
+  app.post("/api/admin/payments/auto-read/test", requireAuth("settings.write"), async (req: AuthedRequest, res) => {
+    setNoStore(res);
+    if (!(await allowRequest(req, res, "payment-auto-read-test", 5, 60_000, req.admin?.id))) return;
+    const key = process.env.GEMINI_API_KEY?.trim();
+    if (!key)
+      return res.status(503).json({
+        error: "KEY_NOT_CONFIGURED",
+        message: "GEMINI_API_KEY is missing from the backend deployment.",
+      });
+
+    const attempt = await geminiReader(key).readWithDiagnostics(SAMPLE_RECEIPT_PNG, "image/png");
+    if ("failure" in attempt)
+      return res.status(502).json({
+        error: attempt.failure.status,
+        ...attempt.failure,
+      });
+
+    const prefill = prefillFrom(attempt.result);
+    const matches =
+      prefill?.tid === SAMPLE_RECEIPT_EXPECTED.tid &&
+      prefill.amount === SAMPLE_RECEIPT_EXPECTED.amount &&
+      prefill.sender?.toLowerCase() === SAMPLE_RECEIPT_EXPECTED.sender.toLowerCase();
+    if (!matches)
+      return res.status(502).json({
+        error: "SAMPLE_READ_INCOMPLETE",
+        model: attempt.model,
+        message: "Gemini responded but could not read all three sample receipt fields correctly.",
+        prefill,
+      });
+    res.json({ model: attempt.model, prefill });
+  });
 
   // Settings → Payments: the merchant Raast QR is stored exactly as uploaded (no re-encode, crop or resize), so it
   // stays scannable. Public media bucket: it is shown to every customer on the payment page.
