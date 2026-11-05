@@ -1092,3 +1092,33 @@ and the screenshots must match.
    - then enable.
 5. Ask Easypaisa to confirm the merchant name customers see. Place one real Rs 10 test payment, verify it in Admin →
    Payments, then refund it.
+
+## Advance payment fixes after the first live test (ZM-10018) — 5 November 2026
+
+### Fix 1/4: money correctness
+- **Status guard:** an advance order whose payment nobody accepted cannot be confirmed, booked or shipped (single
+  change, tracking number and bulk). The admin offers "Verify payment now" or "Convert to COD (customer pays Rs X on
+  delivery)"; the new `POST /api/admin/orders/:id/convert-to-cod` removes the advance discount and closes open proofs.
+- **Verify** needs the amount received and the "I checked this payment in the Easypaisa merchant app" box. Less than
+  the amount due becomes a partial automatically (ZM-10018: Rs 9 of the total → the courier collects the rest). The
+  merchant reference is optional (the TID stays the reference) and is checked for use on another order.
+- **Refunds:** reason required (form prefills paid − delivery charges / everything / overpaid part), never more than
+  received − earlier refunds, several refunds allowed, refund email, order cancelled by default.
+- **One courier rule** (`codToCollect`): total − received + refunded, clamped; cancelled/returned orders collect 0.
+  Used by the admin, CSV, invoice, packing slip and emails. New `Order.advanceRefunded`.
+- **One confirmation:** the "Order confirmed" status email is never sent for advance orders (verify sends it).
+- Staff note labelled private; optional "Message to customer" on Verify / Reject / Refund.
+- The full payment panel (screenshot, comparison, decision, refunds, history) is now also on the order page.
+- Fixed a pre-existing bug: bulk status changes from the orders list always failed (the order-edit route caught
+  `/bulk-status`).
+- Migration `202611060001_advance_payment_fixes` (additive; nullable proof TID/amount for fix 3; backfills refunds).
+  Tested on local Postgres: `prisma migrate diff` against the schema is empty.
+- Tests: `advance-payment.test.ts` (courier rule incl. the four ZM-10018 cases, guard, verify outcome, refund limits)
+  and `test:advance:integration` (guard, convert to COD, checkbox, duplicate reference, auto-partial, refund
+  cancel/keep, messages).
+
+### Left for the owner
+1. Apply `backend/prisma/migrations/202611060001_advance_payment_fixes/migration.sql` on Mumbai **before** merging
+   fix 1.
+2. ZM-10018 (test order) was verified as Rs 589 received with Rs 519 refunded and is still Confirmed. After the
+   migration it shows "courier collects Rs 519". Cancel or delete that test order so it is never booked.

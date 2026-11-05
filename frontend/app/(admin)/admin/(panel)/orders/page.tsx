@@ -348,7 +348,7 @@ export default function Orders() {
     setBusy(true);
     setMessage("");
     try {
-      await clientApi(
+      const result = await clientApi<{ updated: number; blocked?: string[] }>(
         "/api/admin/orders/bulk-status",
         {
           method: "PATCH",
@@ -358,7 +358,12 @@ export default function Orders() {
       );
       setSelected([]);
       await refresh();
-      setMessage("Order statuses updated.");
+      const blocked = result?.blocked || [];
+      setMessage(
+        blocked.length
+          ? `${result.updated} updated. Skipped ${blocked.join(", ")}: advance payment not verified yet (verify it or convert to COD on the order page).`
+          : "Order statuses updated.",
+      );
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Update failed");
     } finally {

@@ -194,6 +194,10 @@ export async function sendCustomerStatusEmail(orderId: string, status: "CONFIRME
     include: { items: { include: { product: { select: { slug: true } } } } },
   });
   if (!order) throw new Error("Order not found");
+  // Advance orders get their one confirmation when staff verify the payment (advance-email.ts), never a second one
+  // here, and never while the payment is unverified.
+  if (status === "CONFIRMED" && order.paymentMethod === "ADVANCE_EASYPAISA")
+    return { skipped: "ADVANCE_CONFIRMED_ON_VERIFY" };
   if (!order.email) return { skipped: "Customer did not provide an email address" };
 
   const base = SITE_ORIGIN;

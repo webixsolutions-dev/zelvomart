@@ -9,6 +9,7 @@ import {
   sendAdvanceIssueEmail,
   sendAdvanceProofCustomerEmail,
   sendAdvanceProofTeamEmail,
+  sendAdvanceRefundEmail,
   sendAdvanceReminderEmail,
   sendAdvanceVerifiedEmail,
 } from "./advance-email";
@@ -100,9 +101,11 @@ async function handle(row: NonNullable<Row>, data: Record<string, any>, orderId:
     case "advance-proof-customer-email":
       return sendAdvanceProofCustomerEmail(orderId, String(data.proofId));
     case "advance-verified-email":
-      return sendAdvanceVerifiedEmail(orderId);
+      return sendAdvanceVerifiedEmail(orderId, data.message);
     case "advance-issue-email":
-      return sendAdvanceIssueEmail(orderId, String(data.proofId));
+      return sendAdvanceIssueEmail(orderId, String(data.proofId), data.message);
+    case "advance-refund-email":
+      return sendAdvanceRefundEmail(orderId, data);
     case "advance-reminder-email":
       return sendAdvanceReminderEmail(orderId);
     case "advance-proof-autoread":

@@ -5,12 +5,16 @@ import {
   advanceAvailability,
   advanceDiscount,
   advanceShortfall,
+  advanceStatusBlocked,
   advanceUsesDemoValues,
   codToCollect,
   normalizeAdvanceSettings,
   paymentToken,
   paymentTokenHash,
   paymentTokenMatches,
+  refundableAmount,
+  suggestedRefund,
+  verifyOutcome,
 } from "./advance-payment";
 import { validateSettingsUpdate } from "./settings-validation";
 
@@ -74,14 +78,82 @@ test("payment link token: derived from the order number, only its hash is stored
   assert.equal(paymentTokenMatches(token, null), false);
 });
 
-test("COD amount for the courier: 0 once verified, the balance after a partial payment, else the total", () => {
+test("COD amount for the courier = total − received + refunded, between 0 and the total", () => {
   assert.equal(codToCollect({ paymentMethod: "COD", paymentStatus: "NOT_REQUIRED", total: "3250.00" }), 3250);
-  const adv = { paymentMethod: "ADVANCE_EASYPAISA", total: "3250.00" };
-  assert.equal(codToCollect({ ...adv, paymentStatus: "VERIFIED" }), 0);
-  assert.equal(codToCollect({ ...adv, paymentStatus: "MISMATCH", advanceReceived: "3000.00" }), 250);
-  assert.equal(codToCollect({ ...adv, paymentStatus: "MISMATCH", advanceReceived: 0 }), 3250);
+  assert.equal(
+    codToCollect({ paymentMethod: "COD", status: "CANCELLED", total: "3250.00" }),
+    0,
+    "cancelled: not booked",
+  );
+  const adv = { paymentMethod: "ADVANCE_EASYPAISA", total: "589.00" };
+  // The four cases from the ZM-10018 review.
+  assert.equal(codToCollect({ ...adv, paymentStatus: "VERIFIED", advanceReceived: "589.00" }), 0, "full verify");
+  assert.equal(
+    codToCollect({ ...adv, paymentStatus: "MISMATCH", advanceReceived: "9.00" }),
+    580,
+    "partial Rs 9 of 589",
+  );
+  assert.equal(
+    codToCollect({
+      ...adv,
+      status: "CANCELLED",
+      paymentStatus: "REFUNDED",
+      advanceReceived: 589,
+      advanceRefunded: 589,
+    }),
+    0,
+    "refunded and cancelled: no booking",
+  );
+  assert.equal(
+    codToCollect({ ...adv, status: "NEW", paymentStatus: "REFUNDED", advanceReceived: 589, advanceRefunded: 589 }),
+    589,
+    "refunded but kept: the full amount again",
+  );
+  assert.equal(codToCollect({ ...adv, advanceReceived: 700 }), 0, "overpaid: never below 0");
+  assert.equal(codToCollect({ ...adv, advanceReceived: 0, advanceRefunded: 100 }), 589, "never above the total");
   for (const status of ["AWAITING_PAYMENT", "SUBMITTED", "REJECTED", "EXPIRED"])
-    assert.equal(codToCollect({ ...adv, paymentStatus: status }), 3250, `${status}: never shipped as paid`);
+    assert.equal(codToCollect({ ...adv, paymentStatus: status }), 589, `${status}: never shipped as paid`);
+});
+
+test("status guard: an unverified advance order cannot be confirmed or shipped", () => {
+  const adv = { paymentMethod: "ADVANCE_EASYPAISA", advanceReceived: 0 };
+  for (const paymentStatus of ["AWAITING_PAYMENT", "SUBMITTED", "MISMATCH", "REJECTED", "EXPIRED"]) {
+    assert.equal(advanceStatusBlocked({ ...adv, paymentStatus }, "CONFIRMED"), true, paymentStatus);
+    assert.equal(advanceStatusBlocked({ ...adv, paymentStatus }, "BOOKED"), true, paymentStatus);
+    assert.equal(advanceStatusBlocked({ ...adv, paymentStatus }, "CANCELLED"), false, "cancel is always allowed");
+    assert.equal(advanceStatusBlocked({ ...adv, paymentStatus }, "ON_HOLD"), false);
+  }
+  assert.equal(advanceStatusBlocked({ ...adv, paymentStatus: "VERIFIED", advanceReceived: 589 }, "CONFIRMED"), false);
+  assert.equal(
+    advanceStatusBlocked({ ...adv, paymentStatus: "MISMATCH", advanceReceived: 9 }, "CONFIRMED"),
+    false,
+    "accepted partial",
+  );
+  assert.equal(advanceStatusBlocked({ ...adv, paymentStatus: "REFUNDED" }, "CONFIRMED"), false, "refunded and kept");
+  assert.equal(advanceStatusBlocked({ paymentMethod: "COD", paymentStatus: "NOT_REQUIRED" }, "CONFIRMED"), false);
+});
+
+test("verify: the full amount (or more) verifies, less is a partial", () => {
+  assert.equal(verifyOutcome(589, "589.00"), "VERIFIED");
+  assert.equal(verifyOutcome(700, 589), "VERIFIED");
+  assert.equal(verifyOutcome(9, 589), "PARTIAL");
+  assert.equal(verifyOutcome(588.6, 589), "VERIFIED", "whole rupees");
+});
+
+test("refund: never above received − refunded; prefill follows the reason", () => {
+  const order = { total: 589, deliveryFee: 150, advanceReceived: 589, advanceRefunded: 0 };
+  assert.equal(refundableAmount(order), 589);
+  assert.equal(suggestedRefund("CUSTOMER_CANCELLED", order), 439, "paid − delivery charges");
+  assert.equal(suggestedRefund("COULD_NOT_SHIP", order), 589, "everything back");
+  assert.equal(suggestedRefund("OVERPAID", { ...order, advanceReceived: 700 }), 111);
+  assert.equal(suggestedRefund("OVERPAID", order), 0);
+  assert.equal(refundableAmount({ ...order, advanceRefunded: 519 }), 70, "ZM-10018: Rs 519 already refunded");
+  assert.equal(
+    codToCollect({ paymentMethod: "ADVANCE_EASYPAISA", total: 589, advanceReceived: 589, advanceRefunded: 519 }),
+    519,
+    "ZM-10018 as stored: refunded but kept → the courier collects the refunded part",
+  );
+  assert.equal(suggestedRefund("CUSTOMER_CANCELLED", { ...order, advanceReceived: 100 }), 0, "never below 0");
 });
 
 test("settings: production refuses to enable advance payment on demo values", () => {

@@ -9,7 +9,17 @@ import { requireAuth, type AuthedRequest } from "../../lib/auth";
 import { audit, routeParam, setNoStore } from "../../http/shared";
 import { runInBackground } from "../../lib/background";
 import { runJobsNow } from "../../lib/job-runner";
-import { codToCollect, loadAdvanceSettings } from "../../lib/advance-payment";
+import {
+  codToCollect,
+  loadAdvanceSettings,
+  REFUND_REASONS,
+  refundableAmount,
+  suggestedRefund,
+  verifyOutcome,
+  type RefundReason,
+} from "../../lib/advance-payment";
+import { transitionOrder } from "../../lib/order";
+import { normalizeTid } from "../../lib/payment-proof";
 import { REJECT_REASONS, type RejectReason } from "../../lib/payment-proof";
 import { paymentProofSignedUrl, readPaymentProof } from "../../lib/payment-proof-storage";
 import { isCloudStorageConfigured, uploadObject } from "../../lib/storage";
@@ -67,23 +77,42 @@ const flagList = (proof: {
     proof.receiverMismatch && "RECEIVER",
   ].filter(Boolean) as string[];
 
-const reference = z.string().trim().min(4, "Enter the reference from the Easypaisa merchant app.").max(80);
+/** Private staff note (never sent) and the optional message that goes into the customer's email. */
 const notes = z.string().trim().max(1000).optional();
-const verifySchema = z.object({ merchantReference: reference, notes });
-const partialSchema = z.object({
-  merchantReference: reference,
-  amountReceived: z.coerce.number().finite().positive().max(10_000_000),
+const customerMessage = z.string().trim().max(1000).optional();
+const amountReceived = z.coerce
+  .number({ message: "Enter the amount you found in the Easypaisa merchant app." })
+  .finite()
+  .positive("Enter the amount you found in the Easypaisa merchant app.")
+  .max(10_000_000);
+const verifySchema = z.object({
+  amountReceived,
+  /** Optional: prefilled with the customer's TID. Empty: the TID stays the reference. */
+  merchantReference: z.string().trim().max(80).optional(),
+  checked: z.literal(true, { message: "Tick the box once you have found this payment in the Easypaisa merchant app." }),
   notes,
+  customerMessage,
 });
 const rejectSchema = z.object({
   reason: z.enum(Object.keys(REJECT_REASONS) as [RejectReason, ...RejectReason[]]),
   notes,
+  customerMessage,
 });
 const refundSchema = z.object({
-  amount: z.coerce.number().finite().positive().max(10_000_000),
-  reference: z.string().trim().min(3).max(80),
+  amount: z.coerce.number().finite().positive("Enter the refund amount.").max(10_000_000),
+  reason: z.enum(Object.keys(REFUND_REASONS) as [RefundReason, ...RefundReason[]], {
+    message: "Choose why you are refunding.",
+  }),
+  reference: z.string().trim().max(80).optional(),
   notes,
+  customerMessage,
+  /** Default on: a refunded order is cancelled (stock goes back) unless staff untick it. */
+  cancelOrder: z.boolean().default(true),
 });
+const convertSchema = z.object({ notes, customerMessage });
+
+const num = (value: { toString(): string } | null | undefined) => (value == null ? null : Number(value));
+const referenceKey = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
 class ActionError extends Error {
   constructor(
@@ -95,47 +124,68 @@ class ActionError extends Error {
   }
 }
 
+const actProofSelect = {
+  id: true,
+  status: true,
+  orderId: true,
+  tid: true,
+  tidNormalized: true,
+  refundAmount: true,
+} as const;
+const actOrderSelect = {
+  id: true,
+  orderNumber: true,
+  status: true,
+  total: true,
+  deliveryFee: true,
+  paymentMethod: true,
+  paymentStatus: true,
+  advanceReceived: true,
+  advanceRefunded: true,
+  blocklistedAtOrder: true,
+} as const;
+type ActProof = Prisma.PaymentProofGetPayload<{ select: typeof actProofSelect }>;
+type ActOrder = Prisma.OrderGetPayload<{ select: typeof actOrderSelect }>;
+
+/**
+ * The merchant reference (or the customer's TID) used to accept another live proof, if any. One credit in the
+ * merchant app can pay for one order only.
+ */
+async function referenceUsedElsewhere(tx: any, orderId: string, reference: string) {
+  const key = referenceKey(reference);
+  if (!key) return null;
+  const other = await tx.paymentProof.findFirst({
+    where: {
+      orderId: { not: orderId },
+      status: { not: "REJECTED" },
+      OR: [{ tidNormalized: key }, { merchantReference: { equals: reference, mode: "insensitive" } }],
+    },
+    select: { order: { select: { orderNumber: true } } },
+  });
+  return other ? (other.order.orderNumber as string) : null;
+}
+
 /** Locks the order row, re-reads the proof and runs the change; returns the job ids to send after the answer. */
 async function act(
   proofId: string,
   allowed: readonly string[],
   change: (
     tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
-    proof: { id: string; status: string; orderId: string },
-    order: {
-      id: string;
-      status: string;
-      total: unknown;
-      paymentMethod: string;
-      paymentStatus: string;
-      blocklistedAtOrder: boolean;
-    },
+    proof: ActProof,
+    order: ActOrder,
   ) => Promise<string[]>,
 ) {
   return prisma.$transaction(async (tx) => {
     const found = await tx.paymentProof.findUnique({ where: { id: proofId }, select: { orderId: true } });
     if (!found) throw new ActionError("NOT_FOUND", "Proof not found.", 404);
     await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${found.orderId} FOR UPDATE`;
-    const proof = await tx.paymentProof.findUniqueOrThrow({
-      where: { id: proofId },
-      select: { id: true, status: true, orderId: true },
-    });
+    const proof = await tx.paymentProof.findUniqueOrThrow({ where: { id: proofId }, select: actProofSelect });
     if (!allowed.includes(proof.status))
       throw new ActionError(
         "PROOF_STATE_CHANGED",
         `This proof is already ${proof.status.toLowerCase()}. Reload the page.`,
       );
-    const order = await tx.order.findUniqueOrThrow({
-      where: { id: proof.orderId },
-      select: {
-        id: true,
-        status: true,
-        total: true,
-        paymentMethod: true,
-        paymentStatus: true,
-        blocklistedAtOrder: true,
-      },
-    });
+    const order = await tx.order.findUniqueOrThrow({ where: { id: proof.orderId }, select: actOrderSelect });
     if (order.paymentMethod !== "ADVANCE_EASYPAISA")
       throw new ActionError("NOT_ADVANCE", "This order is no longer an advance-payment order.");
     return change(tx, proof, order);
@@ -224,7 +274,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
       },
       rows: rows.map((row) => ({
         ...row,
-        amountSent: Number(row.amountSent),
+        amountSent: num(row.amountSent),
         flags: flagList(row),
         order: { ...row.order, total: Number(row.order.total) },
       })),
@@ -248,8 +298,10 @@ export function registerAdminPaymentsRoutes(app: Express) {
           paymentMethod: true,
           paymentStatus: true,
           total: true,
+          deliveryFee: true,
           advanceDiscount: true,
           advanceReceived: true,
+          advanceRefunded: true,
           createdAt: true,
           paymentVerifiedAt: true,
         },
@@ -257,7 +309,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
       prisma.paymentProof.findMany({
         where: { orderId: proof.orderId, id: { not: proof.id } },
         orderBy: { createdAt: "desc" },
-        select: { id: true, status: true, amountSent: true, createdAt: true },
+        select: { id: true, status: true, amountSent: true, amountReceived: true, createdAt: true },
       }),
       loadAdvanceSettings(),
     ]);
@@ -280,7 +332,10 @@ export function registerAdminPaymentsRoutes(app: Express) {
         status: proof.status,
         method: proof.method,
         tid: proof.tid,
-        amountSent: Number(proof.amountSent),
+        amountSent: num(proof.amountSent),
+        amountReceived: num(proof.amountReceived),
+        detailsFromAutoRead: proof.detailsFromAutoRead,
+        detailsMissing: proof.detailsMissing,
         senderName: proof.senderName,
         senderLast4: proof.senderLast4,
         paidAt: proof.paidAt,
@@ -301,8 +356,9 @@ export function registerAdminPaymentsRoutes(app: Express) {
         notes: proof.notes,
         reviewedBy: name(proof.reviewedById),
         reviewedAt: proof.reviewedAt,
-        refundAmount: proof.refundAmount === null ? null : Number(proof.refundAmount),
+        refundAmount: num(proof.refundAmount),
         refundReference: proof.refundReference,
+        refundReason: proof.refundReason,
         refundedBy: name(proof.refundedById),
         refundedAt: proof.refundedAt,
         // A 5-minute signed link to the private file, or the same-origin image route when no bucket is set (local).
@@ -312,13 +368,24 @@ export function registerAdminPaymentsRoutes(app: Express) {
       order: {
         ...order,
         total: Number(order.total),
+        deliveryFee: Number(order.deliveryFee),
         advanceDiscount: Number(order.advanceDiscount),
         advanceReceived: Number(order.advanceReceived),
+        advanceRefunded: Number(order.advanceRefunded),
         codToCollect: codToCollect(order),
+        refundable: refundableAmount(order),
       },
       expected: { amount: Number(order.total), accountName: settings.accountName, tillId: settings.tillId },
-      otherProofs: others.map((other) => ({ ...other, amountSent: Number(other.amountSent) })),
+      otherProofs: others.map((other) => ({
+        ...other,
+        amountSent: num(other.amountSent),
+        amountReceived: num(other.amountReceived),
+      })),
       rejectReasons: REJECT_REASONS,
+      refundReasons: REFUND_REASONS,
+      refundSuggestions: Object.fromEntries(
+        (Object.keys(REFUND_REASONS) as RefundReason[]).map((reason) => [reason, suggestedRefund(reason, order)]),
+      ),
       history: history.map((entry) => ({ ...entry, user: entry.user?.name || null })),
     });
   });
@@ -354,118 +421,106 @@ export function registerAdminPaymentsRoutes(app: Express) {
       throw error;
     }
   };
-  const emailJob = (tx: any, name: string, orderId: string, proofId: string) =>
+  const emailJob = (
+    tx: any,
+    name: string,
+    orderId: string,
+    proofId: string,
+    message?: string,
+    extra: Record<string, unknown> = {},
+  ) =>
     tx.job
-      .create({ data: { name, orderId, payload: { orderId, proofId } }, select: { id: true } })
+      .create({
+        data: { name, orderId, payload: { orderId, proofId, ...(message ? { message } : {}), ...extra } },
+        select: { id: true },
+      })
       .then((job: { id: string }) => job.id);
 
-  // Verify: staff found the full amount in the Easypaisa merchant app. Order → New, nothing to collect on delivery.
-  app.post(
-    "/api/admin/payments/:id/verify",
-    requireAuth("orders.write"),
-    run(async (req) => {
-      const body = verifySchema.parse(req.body || {});
-      const proofId = routeParam(req, "id");
-      const jobIds = await act(proofId, OPEN, async (tx, proof, order) => {
-        const now = new Date();
-        await tx.paymentProof.update({
-          where: { id: proof.id },
-          data: {
-            status: "VERIFIED",
-            merchantReference: body.merchantReference,
-            notes: body.notes || null,
-            reviewedById: req.admin?.id,
-            reviewedAt: now,
-          },
-        });
-        const next = releasedStatus(order);
-        await tx.order.update({
-          where: { id: order.id },
-          data: {
-            paymentStatus: "VERIFIED",
-            advanceReceived: order.total as never,
-            paymentVerifiedAt: now,
-            paymentVerifiedById: req.admin?.id,
-            status: next as never,
-          },
-        });
-        await tx.orderStatusHistory.create({
-          data: {
-            orderId: order.id,
-            from: order.status as never,
-            to: next as never,
-            userId: req.admin?.id,
-            note: "Advance payment verified in the Easypaisa merchant app.",
-          },
-        });
-        await closeOtherOpenProofs(tx, order.id, proof.id, req.admin?.id);
-        await tx.auditLog.create({
-          data: {
-            userId: req.admin?.id,
-            action: "payment_verify",
-            entity: "PaymentProof",
-            entityId: proof.id,
-            details: { orderId: order.id, merchantReference: body.merchantReference },
-          },
-        });
-        return [await emailJob(tx, "advance-verified-email", order.id, proof.id)];
+  // Verify: staff found the payment in the Easypaisa merchant app and type the amount that arrived. The full amount
+  // (or more) verifies; less is saved as a partial and the rest is collected in cash on delivery. Either way the
+  // order goes ahead (On hold → New). `/partial` is the same action, kept for older admin pages.
+  const verify = run(async (req) => {
+    const body = verifySchema.parse(req.body || {});
+    const jobIds = await act(routeParam(req, "id"), OPEN, async (tx, proof, order) => {
+      const received = Math.round(body.amountReceived * 100) / 100;
+      const outcome = verifyOutcome(received, order.total);
+      if (req.path.endsWith("/partial") && outcome !== "PARTIAL")
+        throw new ActionError("NOT_PARTIAL", "That is the full amount: use Verify instead.", 400);
+      // The staff reference becomes the TID when the customer sent only a screenshot.
+      const reference = body.merchantReference || proof.tid || "";
+      const usedOn = reference ? await referenceUsedElsewhere(tx, order.id, reference) : null;
+      if (usedOn)
+        throw new ActionError(
+          "DUPLICATE_REFERENCE",
+          `This reference is already used on order ${usedOn}. One payment can pay for one order only.`,
+        );
+      const now = new Date();
+      // First: the order's other open proofs are closed, so a TID written below never clashes with one of them.
+      await closeOtherOpenProofs(tx, order.id, proof.id, req.admin?.id);
+      await tx.paymentProof.update({
+        where: { id: proof.id },
+        data: {
+          status: outcome,
+          amountReceived: received,
+          merchantReference: body.merchantReference || null,
+          ...(!proof.tid && reference ? { tid: reference, tidNormalized: referenceKey(reference) || null } : {}),
+          notes: body.notes || null,
+          reviewedById: req.admin?.id,
+          reviewedAt: now,
+        },
       });
-      return { jobIds };
-    }),
-  );
-
-  // Partial: less arrived than the total. The rest is collected in cash on delivery; the order goes ahead.
-  app.post(
-    "/api/admin/payments/:id/partial",
-    requireAuth("orders.write"),
-    run(async (req) => {
-      const body = partialSchema.parse(req.body || {});
-      const jobIds = await act(routeParam(req, "id"), OPEN, async (tx, proof, order) => {
-        if (body.amountReceived >= Number(order.total))
-          throw new ActionError("NOT_PARTIAL", "That is the full amount: use Verify instead.", 400);
-        await tx.paymentProof.update({
-          where: { id: proof.id },
-          data: {
-            status: "PARTIAL",
-            merchantReference: body.merchantReference,
-            notes: body.notes || null,
-            reviewedById: req.admin?.id,
-            reviewedAt: new Date(),
-          },
-        });
-        const next = releasedStatus(order);
-        await tx.order.update({
-          where: { id: order.id },
-          data: { paymentStatus: "MISMATCH", advanceReceived: body.amountReceived, status: next as never },
-        });
-        await tx.orderStatusHistory.create({
-          data: {
-            orderId: order.id,
-            from: order.status as never,
-            to: next as never,
-            userId: req.admin?.id,
-            note: `Partial advance payment of Rs ${body.amountReceived} verified; the rest is collected on delivery.`,
-          },
-        });
-        await closeOtherOpenProofs(tx, order.id, proof.id, req.admin?.id);
-        await tx.auditLog.create({
-          data: {
-            userId: req.admin?.id,
-            action: "payment_partial",
-            entity: "PaymentProof",
-            entityId: proof.id,
-            details: {
-              orderId: order.id,
-              amountReceived: body.amountReceived,
-              merchantReference: body.merchantReference,
-            },
-          },
-        });
-        return [await emailJob(tx, "advance-issue-email", order.id, proof.id)];
+      const next = releasedStatus(order);
+      await tx.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: outcome === "VERIFIED" ? "VERIFIED" : "MISMATCH",
+          advanceReceived: received,
+          paymentVerifiedAt: now,
+          paymentVerifiedById: req.admin?.id,
+          status: next as never,
+        },
       });
-      return { jobIds };
-    }),
-  );
+      const collect = codToCollect({ ...order, advanceReceived: received });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          from: order.status as never,
+          to: next as never,
+          userId: req.admin?.id,
+          note:
+            outcome === "VERIFIED"
+              ? `Advance payment of Rs ${received} verified in the Easypaisa merchant app.`
+              : `Partial advance payment of Rs ${received} verified; Rs ${collect} is collected on delivery.`,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          userId: req.admin?.id,
+          action: outcome === "VERIFIED" ? "payment_verify" : "payment_partial",
+          entity: "PaymentProof",
+          entityId: proof.id,
+          details: {
+            orderId: order.id,
+            amountReceived: received,
+            merchantReference: body.merchantReference || null,
+            checkedInMerchantApp: true,
+          },
+        },
+      });
+      return [
+        await emailJob(
+          tx,
+          outcome === "VERIFIED" ? "advance-verified-email" : "advance-issue-email",
+          order.id,
+          proof.id,
+          body.customerMessage,
+        ),
+      ];
+    });
+    return { jobIds };
+  });
+  app.post("/api/admin/payments/:id/verify", requireAuth("orders.write"), verify);
+  app.post("/api/admin/payments/:id/partial", requireAuth("orders.write"), verify);
 
   // Reject: the payment is not in the merchant app (or another reason). The order stays on hold; the customer may
   // send one corrected proof.
@@ -496,41 +551,158 @@ export function registerAdminPaymentsRoutes(app: Express) {
             details: { orderId: order.id, reason: body.reason },
           },
         });
-        return [await emailJob(tx, "advance-issue-email", order.id, proof.id)];
+        return [await emailJob(tx, "advance-issue-email", order.id, proof.id, body.customerMessage)];
       });
       return { jobIds };
     }),
   );
 
-  // Refund recorded: staff already sent the money back from the merchant app; this only records it.
+  // Refund recorded: staff already sent the money back from the merchant app; this records it. Never more than
+  // received − earlier refunds. The order is cancelled by default (stock goes back; nothing is booked or collected);
+  // if staff keep it, the courier collects the refunded amount again on delivery.
   app.post(
     "/api/admin/payments/:id/refund",
     requireAuth("orders.write"),
     run(async (req) => {
       const body = refundSchema.parse(req.body || {});
-      await act(routeParam(req, "id"), ["VERIFIED", "PARTIAL"], async (tx, proof, order) => {
+      let cancel: { orderId: string; from: string } | null = null;
+      const jobIds = await act(routeParam(req, "id"), ["VERIFIED", "PARTIAL"], async (tx, proof, order) => {
+        const amount = Math.round(body.amount * 100) / 100;
+        const refundable = refundableAmount(order);
+        if (amount > refundable)
+          throw new ActionError(
+            "REFUND_TOO_HIGH",
+            refundable > 0
+              ? `You can refund at most Rs ${refundable} (received minus earlier refunds).`
+              : "Nothing is left to refund on this order.",
+            400,
+          );
+        const now = new Date();
+        const refundedTotal = Number(order.advanceRefunded) + amount;
         await tx.paymentProof.update({
           where: { id: proof.id },
           data: {
-            refundAmount: body.amount,
-            refundReference: body.reference,
+            refundAmount: Number(proof.refundAmount || 0) + amount,
+            refundReference: body.reference || null,
+            refundReason: body.reason,
             refundedById: req.admin?.id,
-            refundedAt: new Date(),
+            refundedAt: now,
             ...(body.notes ? { notes: body.notes } : {}),
           },
         });
-        await tx.order.update({ where: { id: order.id }, data: { paymentStatus: "REFUNDED" } });
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            advanceRefunded: refundedTotal,
+            // Everything received is back: REFUNDED. A part (e.g. an overpayment) keeps the payment status.
+            ...(refundedTotal >= Number(order.advanceReceived) ? { paymentStatus: "REFUNDED" } : {}),
+          },
+        });
         await tx.auditLog.create({
           data: {
             userId: req.admin?.id,
             action: "payment_refund",
             entity: "PaymentProof",
             entityId: proof.id,
-            details: { orderId: order.id, amount: body.amount, reference: body.reference },
+            details: {
+              orderId: order.id,
+              amount,
+              reason: body.reason,
+              reference: body.reference || null,
+              cancelOrder: body.cancelOrder,
+            },
           },
         });
-        return [];
+        if (body.cancelOrder && !["CANCELLED", "RETURNED"].includes(order.status))
+          cancel = { orderId: order.id, from: order.status };
+        return [
+          await emailJob(tx, "advance-refund-email", order.id, proof.id, body.customerMessage, {
+            amount,
+            reason: body.reason,
+            refundedAt: now.getTime(),
+          }),
+        ];
       });
+      // Cancelling uses the normal order transition (stock back, history); it runs before the email is sent.
+      if (cancel) {
+        const { orderId, from } = cancel as { orderId: string; from: string };
+        await transitionOrder(
+          orderId,
+          "CANCELLED",
+          req.admin?.id,
+          `Advance payment refunded: ${REFUND_REASONS[body.reason]}.`,
+        );
+        await audit(req, "status_change", "Order", orderId, { from, to: "CANCELLED", reason: "advance_refund" });
+      }
+      return { jobIds };
+    }),
+  );
+
+  // Staff convert an unpaid advance order to Cash on Delivery (the customer called, or never paid). Only while
+  // nothing has been accepted; the advance discount is removed, open proofs are closed, the normal COD flow follows.
+  app.post(
+    "/api/admin/orders/:id/convert-to-cod",
+    requireAuth("orders.write"),
+    run(async (req) => {
+      const body = convertSchema.parse(req.body || {});
+      const orderId = routeParam(req, "id");
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
+        const order = await tx.order.findUnique({
+          where: { id: orderId },
+          select: { ...actOrderSelect, advanceDiscount: true },
+        });
+        if (!order) throw new ActionError("NOT_FOUND", "Order not found.", 404);
+        if (order.paymentMethod !== "ADVANCE_EASYPAISA")
+          throw new ActionError("NOT_ADVANCE", "This order is not an advance-payment order.");
+        if (Number(order.advanceReceived) > 0 || ["VERIFIED", "REFUNDED"].includes(order.paymentStatus))
+          throw new ActionError(
+            "ADVANCE_ALREADY_ACCEPTED",
+            "A payment was already accepted on this order. Record a refund instead of converting it.",
+          );
+        const next = releasedStatus(order);
+        const total = Number(order.total) + Number(order.advanceDiscount);
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            paymentMethod: "COD",
+            paymentStatus: "NOT_REQUIRED",
+            advanceDiscount: 0,
+            total,
+            status: next as never,
+          },
+        });
+        const open = await tx.paymentProof.updateMany({
+          where: { orderId: order.id, status: { in: [...OPEN] } },
+          data: {
+            status: "REJECTED",
+            rejectReason: "OTHER",
+            notes: "Closed: staff converted the order to Cash on Delivery.",
+            reviewedById: req.admin?.id,
+            reviewedAt: new Date(),
+          },
+        });
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: order.id,
+            from: order.status as never,
+            to: next as never,
+            userId: req.admin?.id,
+            note: `Converted to Cash on Delivery by staff (advance discount removed; Rs ${total} collected on delivery).${body.notes ? ` ${body.notes}` : ""}`,
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            userId: req.admin?.id,
+            action: "payment_convert_cod",
+            entity: "Order",
+            entityId: order.id,
+            details: { total, discountRemoved: Number(order.advanceDiscount), proofsClosed: open.count },
+          },
+        });
+        return { total };
+      });
+      void result;
       return { jobIds: [] };
     }),
   );

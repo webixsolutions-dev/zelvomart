@@ -8,6 +8,7 @@ import {StatusBadge} from '@/components/admin/AdminListView';
 import {clientApi} from '@/lib/client-api';
 import {money} from '@/lib/format';
 import {toast} from 'react-toastify';
+import {AdvancePaymentPanel, PaymentSummary} from '@/components/admin/AdvancePaymentPanel';
 import './order-detail.css';
 
 const STATUSES = ['NEW', 'CONFIRMED', 'ON_HOLD', 'BOOKED', 'IN_TRANSIT', 'DELIVERED', 'RETURNED', 'CANCELLED', 'SETTLED'];
@@ -24,6 +25,10 @@ const PAYMENT_STATE: Record<string, string> = {
 };
 const payLabel = (o: any) => o.paymentMethod === 'ADVANCE_EASYPAISA' ? `Advance (Easypaisa/Raast) · ${PAYMENT_STATE[o.paymentStatus] || o.paymentStatus}` : o.paymentMethod === 'NAYAPAY' ? 'NayaPay' : 'Cash on Delivery';
 const PROOF_STATE: Record<string, string> = {SUBMITTED: 'To verify', MISMATCH: 'Amount differs', VERIFIED: 'Verified', PARTIAL: 'Partial', REJECTED: 'Rejected'};
+/** Same rule as the backend (lib/advance-payment.ts): no money accepted yet on an advance order. */
+const advanceUnverified = (o: any) => o.paymentMethod === 'ADVANCE_EASYPAISA' && !['VERIFIED', 'REFUNDED'].includes(o.paymentStatus) && !(Number(o.advanceReceived) > 0);
+const GUARDED = ['CONFIRMED', 'BOOKED', 'IN_TRANSIT', 'DELIVERED', 'SETTLED'];
+const closedOrder = (status: string) => status === 'CANCELLED' || status === 'RETURNED';
 
 function Status({status}: {status: string}) {
   return <StatusBadge value={status}/>;
@@ -40,6 +45,8 @@ export default function OrderDetail() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
+  /** The status change waiting behind the "payment not verified" dialog. */
+  const [guard, setGuard] = useState<{path: string; body: any} | null>(null);
   useEffect(() => { if (o) setItems(o.items); }, [o]);
   useEffect(() => {
     if (!query.trim()) { setResults([]); return; }
@@ -55,6 +62,24 @@ export default function OrderDetail() {
       await reload();
       toast.success('Order updated.');
     } catch {} finally { setBusy(false); }
+  }
+  /** Status and tracking changes: an unverified advance order is never confirmed or shipped by accident. */
+  function changeStatus(path: '/status' | '/tracking', body: any) {
+    const next = path === '/tracking' ? (String(body.tracking || '').trim() ? 'BOOKED' : o.status) : String(body.status);
+    if (next !== o.status && GUARDED.includes(next) && advanceUnverified(o)) return setGuard({path, body});
+    void action(path, body);
+  }
+  async function convertToCod() {
+    if (!guard) return;
+    const pending = guard;
+    setBusy(true);
+    try {
+      await clientApi(`/api/admin/orders/${id}/convert-to-cod`, {method: 'POST', body: JSON.stringify({})}, true);
+      setGuard(null);
+      toast.success('Converted to Cash on Delivery.');
+    } catch { setBusy(false); return; }
+    setBusy(false);
+    await action(pending.path, pending.body);
   }
   // One confirm, then the order is gone for good (jobs removed, no restock) and the list opens again.
   async function deleteOrder() {
@@ -82,6 +107,10 @@ export default function OrderDetail() {
     ...(o.statusHistory || []).map((h: any) => ({...h, kind: 'status', text: 'Status → ' + statusLabel(h.to) + (h.note ? ' · ' + h.note : ''), author: h.user?.name || 'System'})),
     ...(o.privateNotes || []).map((n: any) => ({...n, kind: 'note', text: n.body, author: n.authorName || 'Staff'})),
   ].sort((a: any, b: any) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  const isAdvance = o.paymentMethod === 'ADVANCE_EASYPAISA';
+  const latestProof = o.paymentProofs?.[0];
+  const openProof = o.paymentProofs?.find((p: any) => ['SUBMITTED', 'MISMATCH'].includes(p.status));
+  const codTotal = Math.round(Number(o.total) + Number(o.advanceDiscount || 0));
   const campaign = o.lastTouch?.utm_campaign || o.firstTouch?.utm_campaign;
   const landing = o.replay?.landingUrl || o.firstTouch?.landing_page;
 
@@ -89,6 +118,19 @@ export default function OrderDetail() {
     {/* Inputs in several cards submit together through form="order-edit". */}
     <form id="order-edit" onSubmit={save} hidden/>
     <CityList/>
+    {guard && <div className="ode-guard-backdrop" onClick={() => !busy && setGuard(null)}>
+      <div className="ode-guard" role="alertdialog" aria-modal="true" aria-labelledby="ode-guard-title" aria-describedby="ode-guard-text" onClick={e => e.stopPropagation()}>
+        <h2 id="ode-guard-title">Advance payment not verified</h2>
+        <p id="ode-guard-text">{o.orderNumber} was placed with advance payment, and nobody has verified the money in the Easypaisa merchant app yet. Confirming or shipping it now could send it out as paid when it is not.</p>
+        <div className="ode-guard-actions">
+          <button type="button" className="admin-btn admin-btn-primary" disabled={busy || !openProof} onClick={() => { setGuard(null); document.getElementById('ode-advance-payment')?.scrollIntoView({behavior: 'smooth', block: 'start'}); }}>Verify payment now</button>
+          <button type="button" className="admin-btn admin-btn-light" disabled={busy} onClick={() => void convertToCod()}>Convert to COD (customer pays {money(codTotal)} on delivery)</button>
+          <button type="button" className="admin-btn admin-btn-light" disabled={busy} onClick={() => setGuard(null)}>Cancel</button>
+        </div>
+        {!openProof && <p className="ode-muted">No payment proof to verify yet. Wait for the customer, or convert the order to COD.</p>}
+        {Number(o.advanceDiscount) > 0 && <p className="ode-muted">Converting removes the {money(o.advanceDiscount)} advance discount; then the status change you chose is applied.</p>}
+      </div>
+    </div>}
 
     <header className="ode-head">
       <div className="ode-head-top">
@@ -104,7 +146,7 @@ export default function OrderDetail() {
           <p>{when(o.createdAt)} · <b>{money(o.total)}</b> · {payLabel(o)} · Source: {o.source || 'direct'}</p>
         </div>
         <div className="ode-actions">
-          {o.status === 'NEW' && <button type="button" disabled={busy} className="admin-btn admin-btn-primary" onClick={() => void action('/status', {status: 'CONFIRMED'})}>✓ Confirm order</button>}
+          {o.status === 'NEW' && <button type="button" disabled={busy} className="admin-btn admin-btn-primary" onClick={() => changeStatus('/status', {status: 'CONFIRMED'})}>✓ Confirm order</button>}
           <a className="admin-btn admin-btn-light" href={'https://wa.me/' + phoneDigits} target="_blank" rel="noreferrer">WhatsApp</a>
           <a className="admin-btn admin-btn-light" href={'tel:' + o.phone}>Call</a>
           <Link className="admin-btn admin-btn-light" href={`/admin/orders/${id}/print?type=invoice`} target="_blank">Print invoice</Link>
@@ -121,6 +163,22 @@ export default function OrderDetail() {
 
     <div className="ode-layout">
       <div className="ode-col ode-col-main">
+        {isAdvance && <section className="ode-card ode-payment" id="ode-advance-payment" aria-labelledby="ode-payment-title">
+          <div className="ode-card-head"><h2 id="ode-payment-title">Advance payment</h2><span className={'ode-pay-state ode-pay-' + String(o.paymentStatus).toLowerCase()}>{PAYMENT_STATE[o.paymentStatus] || o.paymentStatus}</span></div>
+          {advanceUnverified(o) && !closedOrder(o.status) && <p className="ode-pay-warn">Do not confirm or dispatch before the payment is verified in the Easypaisa merchant app. If it never arrives, convert the order to COD (the customer pays {money(codTotal)} on delivery).</p>}
+          {latestProof
+            ? <AdvancePaymentPanel key={latestProof.id + o.updatedAt} proofId={latestProof.id} embedded onChanged={() => void reload()}/>
+            : <>
+              <PaymentSummary order={o}/>
+              <p className="ode-muted">No proof sent yet.</p>
+            </>}
+          {o.paymentProofs?.length > 1 && <ul className="ode-proofs">
+            {o.paymentProofs.slice(1).map((p: any) => <li key={p.id}>
+              <Link href={'/admin/payments/' + p.id}><b>Earlier proof: {PROOF_STATE[p.status] || p.status}</b> · {p.amountSent == null ? 'no amount' : money(p.amountSent)}</Link>
+              <span className="ode-muted">{when(p.createdAt)}</span>
+            </li>)}
+          </ul>}
+        </section>}
         <section className="ode-card ode-customer" aria-labelledby="ode-customer-title">
           <div className="ode-card-head"><h2 id="ode-customer-title">Customer and delivery</h2><span className="ode-muted">{pastOrders > 1 ? `Returning customer · ${pastOrders} orders` : 'First order'}</span></div>
           <div className="ode-person">
@@ -175,11 +233,16 @@ export default function OrderDetail() {
             {o.couponCode && <div><dt>Coupon {o.couponCode}</dt><dd>−{money(o.couponDiscount)}</dd></div>}
             {Number(o.advanceDiscount) > 0 && <div><dt>Advance payment discount</dt><dd>−{money(o.advanceDiscount)}</dd></div>}
             <div><dt>Delivery</dt><dd>{Number(o.deliveryFee) ? money(o.deliveryFee) : 'Free'}</dd></div>
-            {o.paymentMethod === 'ADVANCE_EASYPAISA' ? <>
+            {isAdvance ? <>
               <div><dt>Order total</dt><dd>{money(o.total)}</dd></div>
               {Number(o.advanceReceived) > 0 && <div><dt>Paid in advance (verified)</dt><dd>−{money(o.advanceReceived)}</dd></div>}
-              <div className="ode-grand"><dt>Courier collects (COD)</dt><dd>{money(o.codToCollect ?? o.total)}</dd></div>
-            </> : <div className="ode-grand"><dt>Total to collect</dt><dd>{money(o.total)}</dd></div>}
+              {Number(o.advanceRefunded) > 0 && <div><dt>Refunded</dt><dd>+{money(o.advanceRefunded)}</dd></div>}
+              {closedOrder(o.status)
+                ? <div className="ode-grand"><dt>Courier</dt><dd>Not booked ({statusLabel(o.status)})</dd></div>
+                : <div className="ode-grand"><dt>Courier collects (COD)</dt><dd>{money(o.codToCollect ?? o.total)}</dd></div>}
+            </> : closedOrder(o.status)
+              ? <div className="ode-grand"><dt>Order total</dt><dd>{money(o.total)}</dd></div>
+              : <div className="ode-grand"><dt>Total to collect</dt><dd>{money(o.total)}</dd></div>}
           </dl>
           <div className="ode-save">
             <small className="ode-muted">{editable ? 'Stock and totals recalculate when you save.' : 'Items are locked once an order is delivered, returned, cancelled or settled.'}</small>
@@ -203,24 +266,14 @@ export default function OrderDetail() {
       </div>
 
       <aside className="ode-col ode-col-side">
-        {o.paymentMethod === 'ADVANCE_EASYPAISA' && <section className="ode-card ode-payment" aria-labelledby="ode-payment-title">
-          <div className="ode-card-head"><h2 id="ode-payment-title">Advance payment</h2><span className={'ode-pay-state ode-pay-' + String(o.paymentStatus).toLowerCase()}>{PAYMENT_STATE[o.paymentStatus] || o.paymentStatus}</span></div>
-          {!['VERIFIED', 'REFUNDED'].includes(o.paymentStatus) && !(Number(o.advanceReceived) > 0) && <p className="ode-pay-warn">Do not dispatch before the payment is verified in the Easypaisa merchant app. If it never arrives, the courier collects the full {money(o.total)}.</p>}
-          {o.paymentProofs?.length ? <ul className="ode-proofs">
-            {o.paymentProofs.map((p: any) => <li key={p.id}>
-              <Link href={'/admin/payments/' + p.id}><b>{PROOF_STATE[p.status] || p.status}</b> · {money(p.amountSent)}</Link>
-              <span className="ode-muted">{when(p.createdAt)}{[p.amountMismatch && 'amount', p.tidDuplicate && 'TID used before', p.imageDuplicate && 'image seen before', p.timeOutOfWindow && 'time'].filter(Boolean).map(f => ` · ⚑ ${f}`).join('')}</span>
-            </li>)}
-          </ul> : <p className="ode-muted">No proof sent yet.</p>}
-        </section>}
         <section className="ode-card ode-shipping" aria-labelledby="ode-status-title">
           <div className="ode-card-head"><h2 id="ode-status-title">Status and shipping</h2><Status status={o.status}/></div>
-          <form className="ode-inline" onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); void action('/status', {status: f.get('status')}); }}>
+          <form className="ode-inline" onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); changeStatus('/status', {status: f.get('status')}); }}>
             <label><span>Change status</span><select name="status" defaultValue={o.status}>{STATUSES.map(s => <option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
             <button className="admin-btn admin-btn-primary" disabled={busy}>Update</button>
           </form>
           <p className="ode-hint">{o.email ? `The customer gets an email at ${o.email} when the status changes.` : 'No email on this order, so the customer is not emailed. Use WhatsApp to update them.'}</p>
-          <form className="ode-inline" onSubmit={e => { e.preventDefault(); void action('/tracking', {tracking: new FormData(e.currentTarget).get('tracking')}); }}>
+          <form className="ode-inline" onSubmit={e => { e.preventDefault(); changeStatus('/tracking', {tracking: new FormData(e.currentTarget).get('tracking')}); }}>
             <label><span>PostEx tracking number</span><input name="tracking" defaultValue={o.postexTracking || ''} placeholder="e.g. 2201234567"/></label>
             <button className="admin-btn admin-btn-light" disabled={busy}>Save</button>
           </form>

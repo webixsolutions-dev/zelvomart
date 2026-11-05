@@ -12,11 +12,36 @@ import { invalidateFrontendCache } from "../../lib/cache-invalidation";
 import { runInBackground } from "../../lib/background";
 import { runJobsNow } from "../../lib/job-runner";
 import { canHardDelete, hardDeleteOrder } from "../../lib/hard-delete";
-import { codToCollect } from "../../lib/advance-payment";
+import { advanceStatusBlocked, codToCollect } from "../../lib/advance-payment";
 
 /** Status emails and tracking jobs go out right after the response; the cron retries a failure. */
 function startJob(jobId: string) {
   runInBackground("admin order job", () => runJobsNow([jobId]));
+}
+
+/**
+ * The answer when staff try to confirm or ship an advance order whose payment nobody has verified yet. The admin
+ * then offers "Verify payment now" (opens the proof) or "Convert to COD (customer pays Rs X on delivery)".
+ */
+async function advanceGuard(order: {
+  id: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  advanceReceived: unknown;
+  total: unknown;
+  advanceDiscount: unknown;
+}) {
+  const proof = await prisma.paymentProof.findFirst({
+    where: { orderId: order.id, status: { in: ["SUBMITTED", "MISMATCH"] } },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+  return {
+    error: "ADVANCE_PAYMENT_UNVERIFIED",
+    message: "This advance payment is not verified yet. Verify the payment first, or convert the order to COD.",
+    proofId: proof?.id || null,
+    codTotal: Math.round(Number(order.total) + Number(order.advanceDiscount)),
+  };
 }
 import type { Express } from "express";
 import { audit, jsonProductSummary, orderProductTags, productListSelect, routeParam } from "../../http/shared";
@@ -388,9 +413,15 @@ export function registerAdminOrdersRoutes(app: Express) {
     if (!ids.length || !Object.values(OrderStatus).includes(next))
       return res.status(400).json({ error: "INVALID_BULK_UPDATE" });
     let updated = 0;
+    const blocked: string[] = [];
     for (const id of ids) {
       const existing = await prisma.order.findUnique({ where: { id } });
       if (!existing || existing.status === next) continue;
+      // Unverified advance payments are skipped (and listed), never confirmed or shipped in bulk.
+      if (advanceStatusBlocked(existing, next)) {
+        blocked.push(existing.orderNumber);
+        continue;
+      }
       await transitionOrder(id, next, req.admin?.id, "Bulk status update");
       if (["CONFIRMED", "BOOKED", "DELIVERED"].includes(next)) {
         const job = await prisma.job.create({
@@ -401,9 +432,9 @@ export function registerAdminOrdersRoutes(app: Express) {
       if (["CONFIRMED", "DELIVERED"].includes(next)) await enqueueOrderStatusTracking(id, next);
       updated += 1;
     }
-    await audit(req, "bulk_status_change", "Order", undefined, { ids, status: next, updated });
+    await audit(req, "bulk_status_change", "Order", undefined, { ids, status: next, updated, blocked });
     if (["CANCELLED", "RETURNED"].includes(next)) await invalidateFrontendCache(await orderProductTags(ids));
-    res.json({ ok: true, updated });
+    res.json({ ok: true, updated, blocked });
   });
   // Deleting orders: OWNER and MANAGER only, any order, one confirm in the admin. The order's queued jobs are removed
   // in the same transaction (so no email or Meta/TikTok event is ever sent for it), its session recording is
@@ -500,8 +531,12 @@ export function registerAdminOrdersRoutes(app: Express) {
       paymentTokenHash: undefined,
       advanceDiscount: Number(row.advanceDiscount),
       advanceReceived: Number(row.advanceReceived),
+      advanceRefunded: Number(row.advanceRefunded),
       codToCollect: codToCollect(row),
-      paymentProofs: row.paymentProofs.map((proof) => ({ ...proof, amountSent: Number(proof.amountSent) })),
+      paymentProofs: row.paymentProofs.map((proof) => ({
+        ...proof,
+        amountSent: proof.amountSent == null ? null : Number(proof.amountSent),
+      })),
       trackingUrl: row.postexTracking ? postexTrackingUrl(row.postexTracking) : null,
     });
   });
@@ -511,6 +546,8 @@ export function registerAdminOrdersRoutes(app: Express) {
     if (!Object.values(OrderStatus).includes(next)) return res.status(400).json({ error: "INVALID_STATUS" });
     const existing = await prisma.order.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ error: "NOT_FOUND" });
+    if (existing.status !== next && advanceStatusBlocked(existing, next))
+      return res.status(409).json(await advanceGuard(existing));
     await transitionOrder(id, next, req.admin?.id, String(req.body.note || "").slice(0, 5000));
     if (existing.status !== next && ["CONFIRMED", "DELIVERED"].includes(next))
       await enqueueOrderStatusTracking(id, next);
@@ -529,6 +566,8 @@ export function registerAdminOrdersRoutes(app: Express) {
     const tracking = String(req.body.tracking || "").trim();
     const existing = await prisma.order.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ error: "NOT_FOUND" });
+    if (tracking && existing.status !== "BOOKED" && advanceStatusBlocked(existing, "BOOKED"))
+      return res.status(409).json(await advanceGuard(existing));
     await transitionOrder(
       id,
       tracking ? "BOOKED" : existing.status,

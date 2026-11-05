@@ -232,13 +232,24 @@ Set by the host (never set them yourself): `VERCEL`, `VERCEL_ENV`, `VERCEL_GIT_C
 - **How it works:** at checkout the customer keeps Cash on Delivery (default) or pays in advance for a flat
   discount. There is no payment API. The customer pays in their own app, then sends a screenshot and the TID on the
   payment page. The order waits **On hold** until staff verify it.
-- **Daily work:** Admin → Payments (the sidebar count turns red when a proof is flagged). Open the proof, find the
-  TID and the amount in the **Easypaisa merchant app**, then choose one:
-  - **Verify**, with the merchant app reference;
-  - **Mark partial** (the rest is collected on delivery);
+- **Daily work:** Admin → Payments, or the payment panel at the top of the order page (the sidebar count turns red
+  when a proof is flagged). Find the payment in the **Easypaisa merchant app**, then choose one:
+  - **Verify payment:** type the amount that actually arrived and tick "I checked this payment in the Easypaisa
+    merchant app". The merchant reference is optional (prefilled with the customer's TID); one reference can pay
+    for one order only. Less than the amount due is saved as a partial automatically; the courier collects the rest.
   - **Reject**, with a reason.
-  A screenshot alone is never proof. Do not dispatch an unverified advance order: the courier amount on the invoice
-  and packing slip already shows what to collect.
+  - Staff note is private. "Message to customer" is optional and goes into the customer's email.
+  A screenshot alone is never proof.
+- **Unverified orders cannot be confirmed or shipped.** Confirm, a status change to Booked/In transit/Delivered or a
+  tracking number on an unverified advance order opens a dialog: **Verify payment now** or **Convert to COD**
+  (the advance discount is removed and the customer pays the full amount on delivery). Bulk status changes skip such
+  orders and list them.
+- **Courier amount (one rule everywhere):** total − received + refunded, never below 0 or above the total. A
+  cancelled or returned order is not booked, so nothing is collected.
+- **Refunds:** send the money from the merchant app first, then **Record a refund** on the proof. Choose the reason
+  (customer cancelled before dispatch = paid minus delivery charges; we could not ship = everything back; the form
+  fills the amount, you can change it). Never more than received minus earlier refunds. The order is cancelled by
+  default (untick to keep it; then the courier collects the refunded amount again). The customer gets a refund email.
 - **Settings → Advance payment** (owner): Till ID, QR (uploaded exactly as it is), discount, minimum, reminder,
   payment window and verification hours.
   - On production the option stays hidden, and enabling is refused, while the Till ID or the QR is still a demo

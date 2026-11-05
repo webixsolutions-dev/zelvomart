@@ -25,6 +25,8 @@ orderEditRouter.post("/:id/notes", requireAuth("orders.write"), async (req: Auth
   });
   res.status(201).json(note);
 });
+// `/bulk-status` belongs to routes/admin/orders.ts (registered after this router), not to the order editor.
+orderEditRouter.patch("/:id", (req, _res, next) => next(req.params.id === "bulk-status" ? "router" : undefined));
 orderEditRouter.patch("/:id", requireAuth("orders.write"), async (req: AuthedRequest, res) => {
   const id = String(req.params.id),
     phone = normalizePakistanPhone(String(req.body.phone || "")),

@@ -14,6 +14,7 @@ export const ADVANCE_JOB_NAMES = [
   "advance-issue-email",
   "advance-reminder-email",
   "advance-proof-autoread",
+  "advance-refund-email",
 ] as const;
 
 const escapeHtml = (value: unknown) =>
@@ -33,6 +34,18 @@ const button = (href: string, label: string) =>
   `<p><a href="${escapeHtml(href)}" style="display:inline-block;background:#0877ee;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:700">${escapeHtml(label)}</a></p>`;
 
 const SAFETY = `<p style="font-size:13px;color:#64748b">Zelvomart never asks for your PIN, OTP or password.</p>`;
+
+/** The optional "Message to customer" staff typed on Verify / Partial / Reject / Refund (staff notes never go out). */
+const staffMessage = (message: unknown) => {
+  const text = typeof message === "string" ? message.trim().slice(0, 1000) : "";
+  return text
+    ? `<p style="background:#f1f5f9;border-radius:8px;padding:10px 12px"><strong>Message from Zelvomart:</strong><br/>${escapeHtml(text).replace(/\n/g, "<br/>")}</p>`
+    : "";
+};
+
+/** Proof values may be missing when the customer sent only a screenshot. */
+const shownAmount = (value: { toString(): string } | null | undefined) => (value == null ? "–" : money(value));
+const shownText = (value: string | null | undefined) => value || "–";
 
 /** The block the order-received email shows for an advance order (pay link, exact amount, the COD way out). */
 export function advanceOrderEmailBlock(
@@ -59,7 +72,9 @@ async function orderAndProof(orderId: string, proofId?: string) {
       total: true,
       paymentMethod: true,
       paymentStatus: true,
+      status: true,
       advanceReceived: true,
+      advanceRefunded: true,
       createdAt: true,
     },
   });
@@ -77,7 +92,8 @@ export async function sendAdvanceProofTeamEmail(orderId: string, proofId: string
   if (!proof) return { skipped: "PROOF_NOT_FOUND" };
   const flags = [
     proof.amountMismatch &&
-      `Amount differs: customer says ${money(proof.amountSent)}, order total ${money(order.total)}`,
+      `Amount differs: customer says ${shownAmount(proof.amountSent)}, order total ${money(order.total)}`,
+    proof.detailsMissing && "Details missing: no TID or amount was typed or read; check the screenshot",
     proof.tidDuplicate && "This TID was already used on another proof",
     proof.imageDuplicate && "The same (or a nearly identical) screenshot was already sent",
     proof.timeOutOfWindow && "The payment time is outside the order window",
@@ -85,9 +101,9 @@ export async function sendAdvanceProofTeamEmail(orderId: string, proofId: string
   const rows: [string, string][] = [
     ["Order", order.orderNumber],
     ["Order total (send exactly)", money(order.total)],
-    ["Customer says sent", money(proof.amountSent)],
-    ["TID", proof.tid],
-    ["Sender name", proof.senderName],
+    ["Customer says sent", shownAmount(proof.amountSent)],
+    ["TID", shownText(proof.tid)],
+    ["Sender name", shownText(proof.senderName)],
     ["Sender last 4", proof.senderLast4 || "–"],
     ["Paid via", proof.method === "RAAST_QR" ? "Raast QR" : proof.method === "TILL" ? "Till ID" : "Other"],
     ["Paid at (customer)", proof.paidAt ? proof.paidAt.toISOString().replace("T", " ").slice(0, 16) + " UTC" : "–"],
@@ -106,7 +122,7 @@ export async function sendAdvanceProofTeamEmail(orderId: string, proofId: string
   const team = internalEmail(
     "Orders",
     orderAlertRecipients(await getSetting<unknown>("notifications.orderRecipients", null)),
-    `${order.orderNumber} • Advance payment proof • ${money(proof.amountSent)}${flags.length ? " • FLAGGED" : ""}`,
+    `${order.orderNumber} • Advance payment proof • ${shownAmount(proof.amountSent)}${flags.length ? " • FLAGGED" : ""}`,
     html,
   );
   return deliverEmail(
@@ -122,7 +138,7 @@ export async function sendAdvanceProofCustomerEmail(orderId: string, proofId: st
   const { verificationHours } = await loadAdvanceSettings();
   const html = `
     <h2>Order received – advance payment pending verification.</h2>
-    <p>Hi ${escapeHtml(firstName(order.fullName))}, we received your payment proof for <strong>${escapeHtml(order.orderNumber)}</strong> (${escapeHtml(money(proof.amountSent))}, TID ${escapeHtml(proof.tid)}).</p>
+    <p>Hi ${escapeHtml(firstName(order.fullName))}, we received your payment proof for <strong>${escapeHtml(order.orderNumber)}</strong>${proof.amountSent != null || proof.tid ? ` (${[proof.amountSent != null && money(proof.amountSent), proof.tid && `TID ${proof.tid}`].filter(Boolean).map(escapeHtml).join(", ")})` : ""}.</p>
     <p>We verify during ${escapeHtml(verificationHours)} and confirm on WhatsApp/email. Your order is safe.</p>
     ${
       proof.amountMismatch
@@ -141,14 +157,15 @@ export async function sendAdvanceProofCustomerEmail(orderId: string, proofId: st
   );
 }
 
-export async function sendAdvanceVerifiedEmail(orderId: string) {
+export async function sendAdvanceVerifiedEmail(orderId: string, message?: unknown) {
   const { order } = await orderAndProof(orderId);
   if (!order.email) return { skipped: "Customer did not provide an email address" };
   if (order.paymentStatus !== "VERIFIED") return { skipped: "NOT_VERIFIED" };
   const html = `
     <h2>Payment confirmed – thank you.</h2>
     <p>Hi ${escapeHtml(firstName(order.fullName))}, we found your payment for <strong>${escapeHtml(order.orderNumber)}</strong> in our Easypaisa merchant account. Your order is now being prepared for dispatch.</p>
-    <p>Nothing to pay on delivery (${escapeHtml(money(codToCollect(order)))}).</p>`;
+    <p>Nothing to pay on delivery (${escapeHtml(money(codToCollect(order)))}).</p>
+    ${staffMessage(message)}`;
   return deliverEmail(
     {
       ...emailIdentity("orders"),
@@ -160,7 +177,7 @@ export async function sendAdvanceVerifiedEmail(orderId: string) {
   );
 }
 
-export async function sendAdvanceIssueEmail(orderId: string, proofId: string) {
+export async function sendAdvanceIssueEmail(orderId: string, proofId: string, message?: unknown) {
   const { order, proof } = await orderAndProof(orderId, proofId);
   if (!order.email) return { skipped: "Customer did not provide an email address" };
   if (!proof) return { skipped: "PROOF_NOT_FOUND" };
@@ -179,6 +196,7 @@ export async function sendAdvanceIssueEmail(orderId: string, proofId: string) {
         ? "<p>Your order goes ahead; no further action is needed.</p>"
         : `<p>You can send a corrected proof once from the payment page, or message us on WhatsApp.</p>${button(paymentLink(order.orderNumber), "Open payment page")}`
     }
+    ${staffMessage(message)}
     ${SAFETY}`;
   return deliverEmail(
     {
@@ -188,6 +206,40 @@ export async function sendAdvanceIssueEmail(orderId: string, proofId: string) {
       html: emailLayout(html),
     },
     `advance-issue-${proof.id}-${proof.status}`,
+  );
+}
+
+/** A refund staff recorded (the money was already sent back from the merchant app). One email per refund entry. */
+export async function sendAdvanceRefundEmail(
+  orderId: string,
+  data: { proofId?: unknown; amount?: unknown; refundedAt?: unknown; message?: unknown },
+) {
+  const { order } = await orderAndProof(orderId);
+  if (!order.email) return { skipped: "Customer did not provide an email address" };
+  const amount = Number(data.amount);
+  if (!(amount > 0)) return { skipped: "NO_AMOUNT" };
+  const collect = codToCollect(order);
+  const closed = order.status === "CANCELLED" || order.status === "RETURNED";
+  const html = `
+    <h2>Your refund for ${escapeHtml(order.orderNumber)}</h2>
+    <p>Hi ${escapeHtml(firstName(order.fullName))}, we have sent <strong>${escapeHtml(money(amount))}</strong> back to the account you paid from. It usually shows within a few hours, depending on your bank or wallet.</p>
+    <p>${
+      closed
+        ? "This order is cancelled; nothing will be delivered or collected."
+        : collect > 0
+          ? `Your order goes ahead. The courier collects ${escapeHtml(money(collect))} in cash on delivery.`
+          : "Your order goes ahead; nothing to pay on delivery."
+    }</p>
+    ${staffMessage(data.message)}
+    ${SAFETY}`;
+  return deliverEmail(
+    {
+      ...emailIdentity("orders"),
+      to: order.email,
+      subject: `Refund sent • ${order.orderNumber}`,
+      html: emailLayout(html),
+    },
+    `advance-refund-${String(data.proofId || order.id)}-${String(data.refundedAt || "")}`,
   );
 }
 

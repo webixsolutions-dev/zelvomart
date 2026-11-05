@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import "@/components/admin/catalog-pages.css";
-import "./payments.css";
+import "@/components/admin/payments.css";
 import AdminTable from "@/components/admin/AdminTable";
 import {
   EmptyState,
@@ -19,7 +19,7 @@ type Row = {
   status: string;
   method: string;
   tid: string;
-  amountSent: number;
+  amountSent: number | null;
   senderName: string;
   createdAt: string;
   flags: string[];
@@ -158,7 +158,7 @@ export default function Payments() {
                     row.flags.includes("AMOUNT") ? "pay-flag-text" : ""
                   }
                 >
-                  {money(row.amountSent)}
+                  {row.amountSent == null ? "–" : money(row.amountSent)}
                 </td>
                 <td>{money(row.order.total)}</td>
                 <td>
