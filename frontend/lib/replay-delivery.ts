@@ -4,7 +4,7 @@ export type ReplayDeliveryResult = { ok: boolean; terminal?: boolean; registrati
 export function replayDeliveryResult(status: number, error?: string): ReplayDeliveryResult {
   return {
     ok: status >= 200 && status < 300,
-    terminal: error === "REPLAY_SESSION_LIMIT" || error === "REPLAY_DAILY_START_LIMIT" || error === "REPLAY_STORAGE_NOT_CONFIGURED",
+    terminal: error === "REPLAY_DISABLED" || error === "REPLAY_SESSION_LIMIT" || error === "REPLAY_DAILY_START_LIMIT" || error === "REPLAY_STORAGE_NOT_CONFIGURED",
     registrationRequired: error === "REPLAY_SESSION_NOT_STARTED",
   };
 }

@@ -104,7 +104,7 @@ export function OrderConfirmed() {
   const waText = `Hi Zelvomart! Confirming my order ${order.id}.\n${order.lines.map((l) => `• ${l.name}${l.variant ? ` (${l.variant})` : ""} × ${l.qty}`).join("\n")}\nTotal: ${money(order.total)} (${order.payment === "advance" ? "advance payment" : "COD"})\nName: ${order.customer.name}\nCity: ${order.customer.city}`;
 
   return (
-    <section className="section pt-sm confirm-page">
+    <section className="section pt-sm confirm-page" data-replay-mask>
       <div className="container-narrow">
         <div className="confirm-card">
           <span className="confirm-ico">

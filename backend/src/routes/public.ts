@@ -480,7 +480,25 @@ export function registerPublicRoutes(app: Express) {
         ]),
       );
     } catch (e: any) {
-      res.status(400).json({ error: e?.message || "ORDER_FAILED" });
+      const publicErrors = new Set([
+        "PAYMENT_METHOD_DISABLED",
+        "ADVANCE_PAYMENT_UNAVAILABLE",
+        "REQUIRED_FIELDS",
+        "PRODUCT_NOT_AVAILABLE",
+        "VARIANT_NOT_AVAILABLE",
+        "VARIANT_REQUIRED",
+        "OUT_OF_STOCK",
+        "CHECKOUT_KEY_REUSED",
+        "INVALID_QUANTITY",
+        "This coupon is inactive or expired.",
+        "Invalid coupon amount.",
+        "Coupon code not found.",
+        "This recovery offer has already been used.",
+      ]);
+      const message = String(e?.message || "");
+      const safe = publicErrors.has(message) || /^COUPON_[A-Z_]+$/.test(message);
+      if (!safe) console.error("[checkout] Order could not be completed", { code: e?.code || "UNKNOWN" });
+      res.status(safe ? 400 : 503).json({ error: safe ? message : "ORDER_TEMPORARILY_UNAVAILABLE" });
     }
   });
   app.post("/api/orders/track", async (req, res) => {
@@ -523,6 +541,7 @@ export function registerPublicRoutes(app: Express) {
     });
   });
   app.get("/api/orders/confirmation/:orderNumber", async (req, res) => {
+    setNoStore(res);
     const order = await prisma.order.findUnique({
       where: { orderNumber: routeParam(req, "orderNumber").toUpperCase() },
       include: { items: true },
@@ -533,8 +552,20 @@ export function registerPublicRoutes(app: Express) {
     if (String(req.query.key || "") !== order.id) return res.status(404).json({ error: "NOT_FOUND" });
     const city = await cityByName(order.city);
     res.json({
-      ...order,
-      paymentTokenHash: undefined,
+      id: order.id,
+      orderNumber: order.orderNumber,
+      createdAt: order.createdAt,
+      status: order.status,
+      fullName: order.fullName,
+      phone: order.phone,
+      email: order.email,
+      city: order.city,
+      address: order.address,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      purchaseEligible: !order.test && !order.staffCreated && !order.blocklistedAtOrder,
+      couponCode: order.couponCode,
+      couponDiscount: Number(order.couponDiscount),
       advanceDiscount: Number(order.advanceDiscount),
       // The browser that placed an advance order can always get back to its payment page from here.
       payPath: order.paymentMethod === "ADVANCE_EASYPAISA" ? paymentPath(order.orderNumber) : undefined,
@@ -544,7 +575,13 @@ export function registerPublicRoutes(app: Express) {
       codFee: Number(order.codFee),
       total: Number(order.total),
       items: order.items.map((i) => ({
-        ...i,
+        id: i.id,
+        productId: i.productId,
+        sku: i.sku,
+        title: i.title,
+        variantLabel: i.variantLabel,
+        quantity: i.quantity,
+        imageUrl: i.imageUrl,
         unitPrice: Number(i.unitPrice),
         lineTotal: Number(i.lineTotal),
         bundleDiscount: Number(i.bundleDiscount),

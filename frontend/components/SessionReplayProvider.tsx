@@ -1,5 +1,5 @@
 "use client";
-import {privateSafeUrl} from "@/lib/url-privacy";
+import {privateSafeUrl, sanitizeReplayEvent} from "@/lib/url-privacy";
 import {REPLAY_CHUNK_EVENTS,REPLAY_CLIENT_MAX_CHUNKS,REPLAY_FLUSH_MS,REPLAY_KEEPALIVE_BYTES,replayChunkSize,replayIdle,replayPhase,replayStopReason} from '@/lib/replay-timing';
 import { createReplayDelivery, replayDeliveryResult, type ReplayDeliveryResult } from "@/lib/replay-delivery";
 
@@ -45,7 +45,7 @@ let storageMissing = false;
 
 function send(path: string, body: unknown, keepalive = false): Promise<ReplayDeliveryResult> {
   if (storageMissing) return Promise.resolve({ ok: false, terminal: true });
-  const payload = JSON.stringify(body);
+  const payload = JSON.stringify(sanitizeReplayEvent(body));
   const safeKeepalive = keepalive && new Blob([payload]).size <= 60_000;
   return fetch(`/api/store-proxy${path}`, {
     method: "POST",
@@ -80,7 +80,7 @@ async function announceSession(pageView = false, record = true) {
     startedAt: getReplayStartedAt(),
     landingUrl: getReplayLandingUrl(),
     currentUrl: privateSafeUrl(window.location.href),
-    referrer: document.referrer || null,
+    referrer: privateSafeUrl(document.referrer) || null,
     source,
     device: window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop",
     viewport: `${window.innerWidth}x${window.innerHeight}`,
@@ -241,7 +241,7 @@ export default function SessionReplayProvider() {
             if(queue.length>=2000){bufferPaused=true;pauseRecorder();return;}
             const entry=event as {type:number;data?:{href?:string}};
             if(entry.type===4&&entry.data?.href)entry.data.href=privateSafeUrl(entry.data.href);
-            queue.push(event);
+            queue.push(sanitizeReplayEvent(event));
             const eventType = Number((event as { type?: number }).type);
             // Full snapshots are valuable and can be large: upload them immediately
             // while the document is still active rather than waiting for unload.

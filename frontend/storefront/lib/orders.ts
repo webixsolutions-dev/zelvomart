@@ -42,6 +42,7 @@ type Confirmation = {
   /** Advance payment orders only: the private payment page link. */
   payPath?: string;
   items: ConfirmationItem[];
+  purchaseEligible?: boolean;
   test?: boolean;
   staffCreated?: boolean;
   blocklistedAtOrder?: boolean;
@@ -147,7 +148,7 @@ export function useConfirmedOrder(orderNumber: string | null, key: string | null
 }
 
 function firePurchase(o: Confirmation) {
-  if (o.test || o.staffCreated || o.blocklistedAtOrder) return;
+  if (o.purchaseEligible === false || o.test || o.staffCreated || o.blocklistedAtOrder) return;
   // Advance orders count as a purchase at the first payment proof or the switch to COD (the /pay page fires it
   // there, the server job too), never at checkout.
   if (o.paymentMethod === "ADVANCE_EASYPAISA") return;

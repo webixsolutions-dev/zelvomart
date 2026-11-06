@@ -260,7 +260,7 @@ export function PayProofForm({
   );
 
   return (
-    <form
+    <form data-replay-block
       ref={formRef}
       className={`${styles.card} ${styles.proofForm}`}
       onSubmit={submit}

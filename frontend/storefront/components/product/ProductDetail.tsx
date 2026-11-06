@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Heart, PackageCheck, ShoppingBag, Truck } from "lucide-react";
+import { Check, ChevronDown, Heart, PackageCheck, Play, ShoppingBag, Truck } from "lucide-react";
+import { parseVideoUrl } from "@/lib/product-video";
 import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/catalog";
 import { discountPct, money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
@@ -77,6 +78,9 @@ export function ProductDetail({ slug }: { slug: string }) {
   const imageSwatches = !sizeLayout && options.some((o) => o.imageUrl);
 
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  const video = parseVideoUrl(p.videoUrl);
+  useEffect(() => setVideoPlaying(false), [p.slug, p.videoUrl]);
   // Delivery tracker: plays once, the first time it is mostly on screen (CSS keeps the finished state otherwise).
   const stepsRef = useRef<HTMLOListElement>(null);
   const [stepsPlaying, setStepsPlaying] = useState(false);
@@ -181,7 +185,7 @@ export function ProductDetail({ slug }: { slug: string }) {
     observer.observe(strip);
     strip.querySelectorAll("img").forEach((image) => observer.observe(image));
     return () => observer.disconnect();
-  }, [galleryImageSources]);
+  }, [galleryImageSources, p.videoUrl]);
 
   useEffect(() => {
     if (!galleryDragging) return;
@@ -220,12 +224,20 @@ export function ProductDetail({ slug }: { slug: string }) {
               <div
                 className={`gallery-main ${zoom ? "zooming" : ""}`}
                 onMouseMove={(e) => {
+                  if (videoPlaying) return;
                   const r = e.currentTarget.getBoundingClientRect();
                   setZoom({ x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 });
                 }}
                 onMouseLeave={() => setZoom(null)}
               >
-                <Image
+                {videoPlaying && video ? <iframe
+                  className="product-gallery-video"
+                  src={video.embedUrl}
+                  title={`${p.name} — product video`}
+                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                /> : <Image
                   key={mainImage}
                   src={mainImage}
                   alt={activeImage.alt || p.name + (variant ? " in " + variant : "")}
@@ -234,13 +246,13 @@ export function ProductDetail({ slug }: { slug: string }) {
                   priority
                   sizes="(max-width:760px) 100vw, 620px"
                   style={zoom ? { transform: "scale(1.8)", transformOrigin: zoom.x + "% " + zoom.y + "%" } : undefined}
-                />
-                {p.badge && (
+                />}
+                {!videoPlaying && p.badge && (
                   <div className="pd-tags">
                     <span className={`badge badge-${p.badge.replace(/\s/g, "").toLowerCase()}`}>{p.badge}</span>
                   </div>
                 )}
-                {pct > 0 && <span className="badge badge-sale pd-discount">-{pct}%</span>}
+                {!videoPlaying && pct > 0 && <span className="badge badge-sale pd-discount">-{pct}%</span>}
                 <button
                   className={`pd-wishlist-top ${wished ? "wished" : ""}`}
                   type="button"
@@ -255,7 +267,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                 ref={galleryThumbsRef}
                 className={`gallery-thumbs${galleryScrollable ? " is-scrollable" : ""}${galleryDragging ? " is-dragging" : ""}`}
                 role="tablist"
-                aria-label="Product images"
+                aria-label="Product images and video"
                 onPointerDown={(event) => {
                   if (!galleryScrollable || event.pointerType !== "mouse" || event.button !== 0) return;
                   const strip = galleryThumbsRef.current;
@@ -271,12 +283,15 @@ export function ProductDetail({ slug }: { slug: string }) {
                 }}
               >
                 {gallery.map((image, i) => (
-                  <button key={image.src + "-" + i} type="button" role="tab" aria-selected={galleryIndex === i} aria-label={"Show image " + (i + 1) + " of " + gallery.length} className={galleryIndex === i ? "active" : ""} onClick={() => setGalleryIndex(i)}>
+                  <button key={image.src + "-" + i} type="button" role="tab" aria-selected={!videoPlaying && galleryIndex === i} aria-label={"Show image " + (i + 1) + " of " + gallery.length} className={!videoPlaying && galleryIndex === i ? "active" : ""} onClick={() => { setVideoPlaying(false); setGalleryIndex(i); }}>
                     <span>
                       <Image src={image.src} alt="" width={120} height={120} sizes="120px" />
                     </span>
                   </button>
                 ))}
+                {video && <button type="button" role="tab" aria-selected={videoPlaying} aria-label="Play product video" className={`product-video-thumb${videoPlaying ? " active" : ""}`} onClick={() => { setZoom(null); setVideoPlaying(true); }}>
+                  <span><Image src={video.thumbnailUrl || p.videoThumbnail || p.image} alt="" width={120} height={120} sizes="120px" /><Play aria-hidden="true" /></span>
+                </button>}
               </div>
             </div>
           </div>
@@ -319,7 +334,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                         aria-pressed={variantKey === optionKey(o)}
                         disabled={o.soldOut}
                         aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
-                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); }}
+                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); setVideoPlaying(false); }}
                       >
                         <span className="pd-swatch-img">
                           <Image src={o.imageUrl || o.images?.[0] || p.image} alt="" width={64} height={64} sizes="64px" />
@@ -338,7 +353,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                         aria-pressed={variantKey === optionKey(o)}
                         disabled={o.soldOut}
                         aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
-                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); }}
+                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); setVideoPlaying(false); }}
                       >
                         {o.name}
                       </button>
@@ -354,7 +369,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                         aria-pressed={variantKey === optionKey(o)}
                         disabled={o.soldOut}
                         aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
-                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); }}
+                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); setVideoPlaying(false); }}
                       >
                         <span style={{ background: o.swatch }} />
                         {o.name}

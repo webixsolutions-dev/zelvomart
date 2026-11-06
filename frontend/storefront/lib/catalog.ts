@@ -59,6 +59,8 @@ export type Product = {
   price: number;
   compare?: number;
   image: string;
+  videoUrl?: string;
+  videoThumbnail?: string;
   /** Full-size product gallery, including the main image. */
   gallery?: { src: string; alt?: string; title?: string }[];
   badge?: "Bestseller" | "New in" | "Popular" | "Gift pick" | "Limited";

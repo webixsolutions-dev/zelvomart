@@ -271,6 +271,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   /** Bumped when products for the cart or wishlist arrive, so everything that reads them renders again. */
   const [catalogVersion, setCatalogVersion] = useState(0);
   const toastId = useRef(0);
+  const checkoutAttempt = useRef<{ key: string; cart: string } | null>(null);
   const addNotes = useCallback((notes: string[]) => {
     if (notes.length) setCartNotes((all) => [...new Set([...all, ...notes])].slice(-6));
   }, []);
@@ -514,8 +515,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // A retry of the same cart reuses its key (no double order); a changed cart gets a new key, so the
       // server never answers with an earlier order for different items.
       const apiCart = cart.map(backendLine);
-      const signature = JSON.stringify([apiCart, coupon?.code || ""]);
-      let idempotencyKey = "";
+      const signature = JSON.stringify([apiCart, coupon?.code || "", customer, opts.payment]);
+      let idempotencyKey = checkoutAttempt.current?.cart === signature ? checkoutAttempt.current.key : crypto.randomUUID();
       try {
         let saved: { key?: string; cart?: string } | null = null;
         try {
@@ -523,11 +524,13 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         } catch {
           /* older format (a bare key): start a new one */
         }
-        idempotencyKey = saved?.cart === signature && saved.key ? saved.key : crypto.randomUUID();
+        const previousSignature = JSON.stringify([apiCart, coupon?.code || ""]);
+        if ((saved?.cart === signature || saved?.cart === previousSignature) && saved.key) idempotencyKey = saved.key;
         sessionStorage.setItem("zm_checkout_idempotency", JSON.stringify({ key: idempotencyKey, cart: signature }));
       } catch {
-        idempotencyKey = crypto.randomUUID();
+        // Keep the in-memory attempt key when sessionStorage is unavailable.
       }
+      checkoutAttempt.current = { key: idempotencyKey, cart: signature };
       // Same body the previous checkout sent, so the backend, pixels and replays see no change.
       const response = await fetch("/api/store-proxy/api/orders", {
         method: "POST",
@@ -556,7 +559,9 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       });
       const data = await response.json().catch(() => ({}));
       if (response.status === 429) throw new CheckoutRateLimited();
-      if (!response.ok) throw new Error(String(data.message || data.error || "Could not place order").replace(/_/g, " "));
+      if (!response.ok) throw new Error(response.status >= 500
+        ? "We couldn't confirm your order yet. Please retry; the same checkout won't create a second order."
+        : String(data.message || data.error || "Could not place order").replace(/_/g, " "));
       requestReplayFlush();
       const sub = lines.reduce((sum, l) => sum + l.lineTotal, 0);
       const order: Order = {
@@ -586,6 +591,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   /** Called by the thank-you page once it shows the order: empties the cart and forgets the checkout's coupon and key. */
   const completeOrder = useCallback(() => {
+    checkoutAttempt.current = null;
     setCart([]);
     write("zlv-cart-v2", []);
     setCoupon(null);

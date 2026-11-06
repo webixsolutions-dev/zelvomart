@@ -1,6 +1,6 @@
 import { adsAllowedForUrl } from "../lib/ads-policy";
 import { SITE_ORIGIN } from "../lib/site-url";
-import { privateSafeUrl } from "../lib/url-privacy";
+import { privateSafeUrl, sanitizeReplayEvent } from "../lib/url-privacy";
 import { replayStorageConfigured } from "../lib/replay-storage";
 import { sendTikTokServerEvent, tiktokJobsEnabled } from "../lib/tiktok";
 import { trackingHealth } from "../lib/tracking-health";
@@ -47,7 +47,14 @@ export function registerTrackingRoutes(app: Express) {
         ? (req.body.params as Record<string, unknown>)
         : {};
     const row = await prisma.eventLog.create({
-      data: { eventName, eventId, sessionReplayId, channel: "browser", sourceUrl, payload: req.body || {} },
+      data: {
+        eventName,
+        eventId,
+        sessionReplayId,
+        channel: "browser",
+        sourceUrl,
+        payload: sanitizeReplayEvent(req.body || {}) as Prisma.InputJsonValue,
+      },
     });
 
     if (sessionReplayId) {

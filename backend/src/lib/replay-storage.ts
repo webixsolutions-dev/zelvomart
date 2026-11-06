@@ -1,6 +1,7 @@
 import { DeleteObjectsCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { gzipSync, gunzipSync } from "node:zlib";
+import { sanitizeReplayEvent } from "./url-privacy";
 // Recordings use a private bucket; the public product-image bucket is rejected.
 export function replayStorageConfigured() {
   return !!(
@@ -21,7 +22,7 @@ function client() {
   });
 }
 export function prepareReplayChunk(events: unknown[]) {
-  return gzipSync(Buffer.from(JSON.stringify(events)));
+  return gzipSync(Buffer.from(JSON.stringify(sanitizeReplayEvent(events))));
 }
 export async function storeReplayChunk(sessionId: string, sequence: number, events: unknown[] | Buffer) {
   if (!replayStorageConfigured()) return null;
