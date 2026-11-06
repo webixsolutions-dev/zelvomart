@@ -16,7 +16,7 @@ import { FaqAccordion, FaqJsonLd } from "@store/components/ui/FaqAccordion";
 import { loadHomeLists, loadStore } from "@store/lib/backend";
 
 export const metadata: Metadata = {
-  title: { absolute: "Zelvomart | Online Shopping in Pakistan, Cash on Delivery" },
+  title: { absolute: "Zelvomart | Online Shopping in Pakistan, Your Payment Choice" },
   description:
     "Zelvomart is an online store in Pakistan for home, decor, beauty, tech, fashion, fitness and kids’ products. Order online or on WhatsApp, pay on delivery.",
   // canonical and og:url are written in the page body (React moves them into <head>): Next.js always renders the

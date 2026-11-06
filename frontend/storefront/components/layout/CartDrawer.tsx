@@ -121,7 +121,7 @@ export function CartDrawer() {
                 View full cart
               </Link>
               <p className="secure-note">
-                <ShieldCheck size={14} /> Pay in cash when your parcel arrives
+                <ShieldCheck size={14} /> Choose your payment method at checkout
               </p>
             </div>
           </>

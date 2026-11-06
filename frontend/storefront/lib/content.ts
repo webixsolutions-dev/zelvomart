@@ -40,12 +40,12 @@ export const homeFaqs = (): Faq[] => [
   {
     group: "About Zelvomart",
     q: "How do I know this is a real store and not a scam?",
-    a: "Zelvomart is a real, working store. Every product shown here is in our own stock, ready to pack and ship; we don’t list anything we don’t actually have. Behind the site is real inventory and a real team. You pay only once your order is in your hands, so there’s no risk in giving us a try.",
+    a: "Zelvomart is a real, working store. Every product shown here is in our own stock, ready to pack and ship; we don’t list anything we don’t actually have. Behind the site is real inventory and a real team. Cash on Delivery is available if you prefer to pay when your parcel arrives.",
   },
   {
     group: "Payments",
     q: "Do I have to pay anything before I receive my order?",
-    a: "No. You pay only when your order arrives at your door. Online payment options will be added soon for customers who prefer to pay in advance.",
+    a: "Advance payment is optional. Choose Cash on Delivery to pay when your parcel arrives, or pay in advance from a bank app, Easypaisa or JazzCash when offered at checkout. Any saving is shown before you confirm.",
   },
   {
     group: "Delivery",

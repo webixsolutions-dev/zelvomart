@@ -114,3 +114,16 @@
   .desktopOnly { display: block; }
   .qr { width: 360px; }
 }
+.paymentHelpRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+  color: #637186;
+  margin: 16px 0 10px;
+}
+.paymentHelpRow button { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; border: 0; background: none; font: inherit; cursor: pointer; }
+.otherOptions { padding-top: 14px; margin-top: 14px; border-top: 1px solid #dce7ef; }
+.otherOptions summary { color: #2378b3; cursor: pointer; font-weight: 600; }

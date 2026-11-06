@@ -1,0 +1,4367 @@
+[
+  {
+    "name": "Lahore",
+    "postexCode": "LHE",
+    "postexCityId": 1
+  },
+  {
+    "name": "Karachi",
+    "postexCode": "KHI",
+    "postexCityId": 2
+  },
+  {
+    "name": "Islamabad",
+    "postexCode": "ISB",
+    "postexCityId": 3
+  },
+  {
+    "name": "Rawalpindi",
+    "postexCode": "RWP",
+    "postexCityId": 4
+  },
+  {
+    "name": "Sukkur",
+    "postexCode": "SKZ",
+    "postexCityId": 5
+  },
+  {
+    "name": "Kasur",
+    "postexCode": "KSA",
+    "postexCityId": 6
+  },
+  {
+    "name": "Sheikhupura",
+    "postexCode": "SRA",
+    "postexCityId": 7
+  },
+  {
+    "name": "Peshawar",
+    "postexCode": "PWR",
+    "postexCityId": 8
+  },
+  {
+    "name": "Quetta",
+    "postexCode": "UET",
+    "postexCityId": 9
+  },
+  {
+    "name": "Hyderabad",
+    "postexCode": "HDD",
+    "postexCityId": 10
+  },
+  {
+    "name": "Sahiwal",
+    "postexCode": "SWL",
+    "postexCityId": 11
+  },
+  {
+    "name": "Multan",
+    "postexCode": "MUL",
+    "postexCityId": 12
+  },
+  {
+    "name": "Sargodha",
+    "postexCode": "SGD",
+    "postexCityId": 13
+  },
+  {
+    "name": "Sialkot",
+    "postexCode": "SKT",
+    "postexCityId": 14
+  },
+  {
+    "name": "Gujranwala",
+    "postexCode": "GUJ",
+    "postexCityId": 15
+  },
+  {
+    "name": "Jhelum",
+    "postexCode": "JLM",
+    "postexCityId": 16
+  },
+  {
+    "name": "Mirpur (AJK)",
+    "postexCode": "MIR",
+    "postexCityId": 17
+  },
+  {
+    "name": "Abbottabad",
+    "postexCode": "ABT",
+    "postexCityId": 18
+  },
+  {
+    "name": "Bahawalpur",
+    "postexCode": "BHV",
+    "postexCityId": 19
+  },
+  {
+    "name": "Faisalabad",
+    "postexCode": "FSD",
+    "postexCityId": 20
+  },
+  {
+    "name": "Dera Ismail Khan",
+    "postexCode": "DIK",
+    "postexCityId": 21
+  },
+  {
+    "name": "Gwadar",
+    "postexCode": "GWR",
+    "postexCityId": 22
+  },
+  {
+    "name": "Turbat",
+    "postexCode": "TUR",
+    "postexCityId": 23
+  },
+  {
+    "name": "Dera Ghazi Khan",
+    "postexCode": "DGK",
+    "postexCityId": 24
+  },
+  {
+    "name": "Hafizabad",
+    "postexCode": "HFZ",
+    "postexCityId": 25
+  },
+  {
+    "name": "Mandi Bahauddin",
+    "postexCode": "MBD",
+    "postexCityId": 26
+  },
+  {
+    "name": "Phool Nagar",
+    "postexCode": "POL",
+    "postexCityId": 27
+  },
+  {
+    "name": "Rahim Yar Khan",
+    "postexCode": "RYK",
+    "postexCityId": 28
+  },
+  {
+    "name": "Okara",
+    "postexCode": "OKA",
+    "postexCityId": 29
+  },
+  {
+    "name": "Sadiqabad",
+    "postexCode": "SDQ",
+    "postexCityId": 30
+  },
+  {
+    "name": "Mianwali",
+    "postexCode": "MWI",
+    "postexCityId": 31
+  },
+  {
+    "name": "Layyah",
+    "postexCode": "LYA",
+    "postexCityId": 32
+  },
+  {
+    "name": "Depalpur",
+    "postexCode": "DEP",
+    "postexCityId": 33
+  },
+  {
+    "name": "Toba Tek Singh",
+    "postexCode": "TTS",
+    "postexCityId": 34
+  },
+  {
+    "name": "Vehari",
+    "postexCode": "VRI",
+    "postexCityId": 35
+  },
+  {
+    "name": "Lala Musa",
+    "postexCode": "LLM",
+    "postexCityId": 36
+  },
+  {
+    "name": "Kohat",
+    "postexCode": "OHT",
+    "postexCityId": 37
+  },
+  {
+    "name": "Bagh (AJK)",
+    "postexCode": "BGH",
+    "postexCityId": 38
+  },
+  {
+    "name": "Gujrat",
+    "postexCode": "GRT",
+    "postexCityId": 39
+  },
+  {
+    "name": "Kot Addu",
+    "postexCode": "KOU",
+    "postexCityId": 40
+  },
+  {
+    "name": "Hassan Abdal",
+    "postexCode": "HSN",
+    "postexCityId": 41
+  },
+  {
+    "name": "Attock",
+    "postexCode": "ATT",
+    "postexCityId": 42
+  },
+  {
+    "name": "Wah Cantt",
+    "postexCode": "WAH",
+    "postexCityId": 43
+  },
+  {
+    "name": "Gilgit",
+    "postexCode": "GIL",
+    "postexCityId": 44
+  },
+  {
+    "name": "Jaranwala",
+    "postexCode": "JRW",
+    "postexCityId": 45
+  },
+  {
+    "name": "Bahawalnagar",
+    "postexCode": "BNG",
+    "postexCityId": 46
+  },
+  {
+    "name": "Fort Abbas",
+    "postexCode": "FRT",
+    "postexCityId": 47
+  },
+  {
+    "name": "Mian Channu",
+    "postexCode": "MCN",
+    "postexCityId": 48
+  },
+  {
+    "name": "Gojra",
+    "postexCode": "GRA",
+    "postexCityId": 49
+  },
+  {
+    "name": "Gujar Khan",
+    "postexCode": "GKN",
+    "postexCityId": 50
+  },
+  {
+    "name": "Bhai Pheru",
+    "postexCode": "BPR",
+    "postexCityId": 51
+  },
+  {
+    "name": "Jhang",
+    "postexCode": "JHG",
+    "postexCityId": 52
+  },
+  {
+    "name": "Mirpur Khas",
+    "postexCode": "MPK",
+    "postexCityId": 53
+  },
+  {
+    "name": "Muridke",
+    "postexCode": "MDK",
+    "postexCityId": 54
+  },
+  {
+    "name": "Muzaffargarh",
+    "postexCode": "MZG",
+    "postexCityId": 55
+  },
+  {
+    "name": "Tank",
+    "postexCode": "TNK",
+    "postexCityId": 56
+  },
+  {
+    "name": "Khanewal",
+    "postexCode": "KWL",
+    "postexCityId": 57
+  },
+  {
+    "name": "Shakargarh",
+    "postexCode": "SGR",
+    "postexCityId": 58
+  },
+  {
+    "name": "Pind Dadan Khan",
+    "postexCode": "PDK",
+    "postexCityId": 59
+  },
+  {
+    "name": "Narowal",
+    "postexCode": "NRL",
+    "postexCityId": 60
+  },
+  {
+    "name": "Murree",
+    "postexCode": "REE",
+    "postexCityId": 61
+  },
+  {
+    "name": "Pakpattan",
+    "postexCode": "PPS",
+    "postexCityId": 62
+  },
+  {
+    "name": "Bhakkar",
+    "postexCode": "BKR",
+    "postexCityId": 63
+  },
+  {
+    "name": "Rawalakot (AJK)",
+    "postexCode": "RKT",
+    "postexCityId": 64
+  },
+  {
+    "name": "Burewala",
+    "postexCode": "BRW",
+    "postexCityId": 65
+  },
+  {
+    "name": "Kamoke",
+    "postexCode": "KMK",
+    "postexCityId": 66
+  },
+  {
+    "name": "Hattar",
+    "postexCode": "HTR",
+    "postexCityId": 67
+  },
+  {
+    "name": "Khanpur",
+    "postexCode": "KNP",
+    "postexCityId": 68
+  },
+  {
+    "name": "Chichawatni",
+    "postexCode": "CCW",
+    "postexCityId": 69
+  },
+  {
+    "name": "Haripur",
+    "postexCode": "HRI",
+    "postexCityId": 70
+  },
+  {
+    "name": "Nawabshah",
+    "postexCode": "NWB",
+    "postexCityId": 71
+  },
+  {
+    "name": "Swabi",
+    "postexCode": "SWB",
+    "postexCityId": 72
+  },
+  {
+    "name": "Chakwal",
+    "postexCode": "CKL",
+    "postexCityId": 73
+  },
+  {
+    "name": "Muzaffarabad (AJK)",
+    "postexCode": "MAK",
+    "postexCityId": 74
+  },
+  {
+    "name": "Deharki",
+    "postexCode": "DKI",
+    "postexCityId": 75
+  },
+  {
+    "name": "Mardan",
+    "postexCode": "MDN",
+    "postexCityId": 76
+  },
+  {
+    "name": "Tandliawala",
+    "postexCode": "TDN",
+    "postexCityId": 77
+  },
+  {
+    "name": "Nowshera",
+    "postexCode": "NOW",
+    "postexCityId": 78
+  },
+  {
+    "name": "Haroonabad",
+    "postexCode": "HRN",
+    "postexCityId": 79
+  },
+  {
+    "name": "Jacobabad",
+    "postexCode": "JCB",
+    "postexCityId": 80
+  },
+  {
+    "name": "Shikarpur",
+    "postexCode": "SIP",
+    "postexCityId": 81
+  },
+  {
+    "name": "Larkana",
+    "postexCode": "LAR",
+    "postexCityId": 82
+  },
+  {
+    "name": "Kamalia",
+    "postexCode": "KML",
+    "postexCityId": 83
+  },
+  {
+    "name": "Kharian",
+    "postexCode": "KRN",
+    "postexCityId": 84
+  },
+  {
+    "name": "Ghotki",
+    "postexCode": "GTI",
+    "postexCityId": 85
+  },
+  {
+    "name": "Thatta",
+    "postexCode": "THT",
+    "postexCityId": 86
+  },
+  {
+    "name": "Bannu",
+    "postexCode": "BNU",
+    "postexCityId": 87
+  },
+  {
+    "name": "Nankana Sahib",
+    "postexCode": "NKS",
+    "postexCityId": 88
+  },
+  {
+    "name": "Khushab",
+    "postexCode": "KHB",
+    "postexCityId": 89
+  },
+  {
+    "name": "Kotli (AJK)",
+    "postexCode": "KLY",
+    "postexCityId": 90
+  },
+  {
+    "name": "60 Mil",
+    "postexCode": "60M",
+    "postexCityId": 91
+  },
+  {
+    "name": "Abdul Hakeem",
+    "postexCode": "AKM",
+    "postexCityId": 92
+  },
+  {
+    "name": "Adda Zakheera",
+    "postexCode": "ADZ",
+    "postexCityId": 93
+  },
+  {
+    "name": "Adda Badiana",
+    "postexCode": "ADB",
+    "postexCityId": 94
+  },
+  {
+    "name": "Adda Johal",
+    "postexCode": "ADJ",
+    "postexCityId": 95
+  },
+  {
+    "name": "Adda Shaikh Wahan",
+    "postexCode": "ASW",
+    "postexCityId": 96
+  },
+  {
+    "name": "Adda Siraj",
+    "postexCode": "ADS",
+    "postexCityId": 97
+  },
+  {
+    "name": "Adilpur",
+    "postexCode": "APR",
+    "postexCityId": 98
+  },
+  {
+    "name": "Afzalpur (AJK)",
+    "postexCode": "APK",
+    "postexCityId": 99
+  },
+  {
+    "name": "Agra",
+    "postexCode": "AGR",
+    "postexCityId": 100
+  },
+  {
+    "name": "Agro Raho",
+    "postexCode": "ARO",
+    "postexCityId": 101
+  },
+  {
+    "name": "Ahmedpur East",
+    "postexCode": "APE",
+    "postexCityId": 102
+  },
+  {
+    "name": "Ahmedpur Sial",
+    "postexCode": "APL",
+    "postexCityId": 103
+  },
+  {
+    "name": "Ahsan Pur",
+    "postexCode": "ASP",
+    "postexCityId": 104
+  },
+  {
+    "name": "Ajnia Wala",
+    "postexCode": "AJN",
+    "postexCityId": 105
+  },
+  {
+    "name": "Akal Ghar",
+    "postexCode": "AKL",
+    "postexCityId": 106
+  },
+  {
+    "name": "Akhtar Abad",
+    "postexCode": "AKD",
+    "postexCityId": 107
+  },
+  {
+    "name": "Akora Khatak",
+    "postexCode": "AKH",
+    "postexCityId": 108
+  },
+  {
+    "name": "Ali Murad Jamali",
+    "postexCode": "AMJ",
+    "postexCityId": 109
+  },
+  {
+    "name": "Alipur Chatha",
+    "postexCode": "APC",
+    "postexCityId": 110
+  },
+  {
+    "name": "Alipur",
+    "postexCode": "ALP",
+    "postexCityId": 111
+  },
+  {
+    "name": "Allah Abad",
+    "postexCode": "AAB",
+    "postexCityId": 112
+  },
+  {
+    "name": "Amangarh",
+    "postexCode": "AMN",
+    "postexCityId": 113
+  },
+  {
+    "name": "Arifwala",
+    "postexCode": "ARF",
+    "postexCityId": 114
+  },
+  {
+    "name": "Awaran",
+    "postexCode": "AWN",
+    "postexCityId": 115
+  },
+  {
+    "name": "Ayubia",
+    "postexCode": "AUB",
+    "postexCityId": 116
+  },
+  {
+    "name": "Babarloi",
+    "postexCode": "BBR",
+    "postexCityId": 117
+  },
+  {
+    "name": "Badah",
+    "postexCode": "BDH",
+    "postexCityId": 118
+  },
+  {
+    "name": "Badin",
+    "postexCode": "BDN",
+    "postexCityId": 119
+  },
+  {
+    "name": "Baddomalhi",
+    "postexCode": "BDM",
+    "postexCityId": 120
+  },
+  {
+    "name": "Baffa",
+    "postexCode": "BFA",
+    "postexCityId": 121
+  },
+  {
+    "name": "Bhagtanwala",
+    "postexCode": "BGT",
+    "postexCityId": 122
+  },
+  {
+    "name": "Bahtar More",
+    "postexCode": "BHT",
+    "postexCityId": 123
+  },
+  {
+    "name": "Baig Pur",
+    "postexCode": "BGP",
+    "postexCityId": 124
+  },
+  {
+    "name": "Bajaur Agency",
+    "postexCode": "BJR",
+    "postexCityId": 125
+  },
+  {
+    "name": "Balakot",
+    "postexCode": "BKT",
+    "postexCityId": 126
+  },
+  {
+    "name": "Balambat",
+    "postexCode": "BLM",
+    "postexCityId": 127
+  },
+  {
+    "name": "Bara Market",
+    "postexCode": "BMK",
+    "postexCityId": 128
+  },
+  {
+    "name": "Bhara Kahu",
+    "postexCode": "BKU",
+    "postexCityId": 129
+  },
+  {
+    "name": "Barnala (AJK)",
+    "postexCode": "BRN",
+    "postexCityId": 130
+  },
+  {
+    "name": "Barikot",
+    "postexCode": "BAR",
+    "postexCityId": 131
+  },
+  {
+    "name": "Barkhan",
+    "postexCode": "BKH",
+    "postexCityId": 132
+  },
+  {
+    "name": "Bashaam",
+    "postexCode": "BSH",
+    "postexCityId": 133
+  },
+  {
+    "name": "Basharat",
+    "postexCode": "BAT",
+    "postexCityId": 134
+  },
+  {
+    "name": "Basia",
+    "postexCode": "BAS",
+    "postexCityId": 135
+  },
+  {
+    "name": "Basirpur",
+    "postexCode": "BSR",
+    "postexCityId": 136
+  },
+  {
+    "name": "Basti Malook",
+    "postexCode": "BML",
+    "postexCityId": 137
+  },
+  {
+    "name": "Battagram",
+    "postexCode": "BGM",
+    "postexCityId": 138
+  },
+  {
+    "name": "Batkhela",
+    "postexCode": "BLA",
+    "postexCityId": 139
+  },
+  {
+    "name": "Battal",
+    "postexCode": "BTT",
+    "postexCityId": 140
+  },
+  {
+    "name": "Berja / Jhandala",
+    "postexCode": "BER",
+    "postexCityId": 141
+  },
+  {
+    "name": "Berote",
+    "postexCode": "ROT",
+    "postexCityId": 142
+  },
+  {
+    "name": "Bewal",
+    "postexCode": "BEW",
+    "postexCityId": 143
+  },
+  {
+    "name": "Bhaddana",
+    "postexCode": "BHA",
+    "postexCityId": 144
+  },
+  {
+    "name": "Bhagwal",
+    "postexCode": "BGW",
+    "postexCityId": 145
+  },
+  {
+    "name": "Bhali Dino Kaka",
+    "postexCode": "BDK",
+    "postexCityId": 146
+  },
+  {
+    "name": "Bhalwaal",
+    "postexCode": "BHL",
+    "postexCityId": 147
+  },
+  {
+    "name": "Bhan Sayedabad",
+    "postexCode": "BSN",
+    "postexCityId": 148
+  },
+  {
+    "name": "Bhathroi",
+    "postexCode": "BTR",
+    "postexCityId": 149
+  },
+  {
+    "name": "Bhaun",
+    "postexCode": "BUN",
+    "postexCityId": 150
+  },
+  {
+    "name": "Bhera",
+    "postexCode": "BWL",
+    "postexCityId": 151
+  },
+  {
+    "name": "Bhikki",
+    "postexCode": "BKI",
+    "postexCityId": 152
+  },
+  {
+    "name": "Bhimber (AJK)",
+    "postexCode": "BMR",
+    "postexCityId": 153
+  },
+  {
+    "name": "Bhitt Shah",
+    "postexCode": "BTS",
+    "postexCityId": 154
+  },
+  {
+    "name": "Bhowana",
+    "postexCode": "BHW",
+    "postexCityId": 155
+  },
+  {
+    "name": "Bhucheri",
+    "postexCode": "BHC",
+    "postexCityId": 156
+  },
+  {
+    "name": "Bhudio Kamrani",
+    "postexCode": "BKN",
+    "postexCityId": 157
+  },
+  {
+    "name": "Bhudo Khan Jamali",
+    "postexCode": "BKJ",
+    "postexCityId": 158
+  },
+  {
+    "name": "Bhung",
+    "postexCode": "BHG",
+    "postexCityId": 159
+  },
+  {
+    "name": "Bhurbun (P.C. Hotel)",
+    "postexCode": "BPC",
+    "postexCityId": 160
+  },
+  {
+    "name": "Bhutala Janda Singh",
+    "postexCode": "BJS",
+    "postexCityId": 161
+  },
+  {
+    "name": "Bindhi",
+    "postexCode": "BNH",
+    "postexCityId": 162
+  },
+  {
+    "name": "Bonga Hayat",
+    "postexCode": "BHY",
+    "postexCityId": 163
+  },
+  {
+    "name": "Brhary",
+    "postexCode": "BRY",
+    "postexCityId": 164
+  },
+  {
+    "name": "Bringh",
+    "postexCode": "BRI",
+    "postexCityId": 165
+  },
+  {
+    "name": "Buchal Kalan",
+    "postexCode": "BKL",
+    "postexCityId": 166
+  },
+  {
+    "name": "Bucheke",
+    "postexCode": "BUC",
+    "postexCityId": 167
+  },
+  {
+    "name": "Buner",
+    "postexCode": "BUR",
+    "postexCityId": 168
+  },
+  {
+    "name": "C M H Skardu",
+    "postexCode": "CMS",
+    "postexCityId": 169
+  },
+  {
+    "name": "Cadet College Larkana",
+    "postexCode": "CCL",
+    "postexCityId": 170
+  },
+  {
+    "name": "Cadet College Sunny Bank",
+    "postexCode": "CCS",
+    "postexCityId": 171
+  },
+  {
+    "name": "Chahcian (AJK)",
+    "postexCode": "CAK",
+    "postexCityId": 172
+  },
+  {
+    "name": "Chak Jamal",
+    "postexCode": "CAJ",
+    "postexCityId": 173
+  },
+  {
+    "name": "Chak Jhumra",
+    "postexCode": "CJM",
+    "postexCityId": 174
+  },
+  {
+    "name": "Chak Parana",
+    "postexCode": "CPR",
+    "postexCityId": 175
+  },
+  {
+    "name": "Chak Swari (AJK)",
+    "postexCode": "CHS",
+    "postexCityId": 176
+  },
+  {
+    "name": "Chakdara",
+    "postexCode": "CHD",
+    "postexCityId": 177
+  },
+  {
+    "name": "Chaklala",
+    "postexCode": "CLL",
+    "postexCityId": 178
+  },
+  {
+    "name": "Chakri",
+    "postexCode": "CRI",
+    "postexCityId": 179
+  },
+  {
+    "name": "Chalkalan",
+    "postexCode": "CLN",
+    "postexCityId": 180
+  },
+  {
+    "name": "Chaman",
+    "postexCode": "CMN",
+    "postexCityId": 181
+  },
+  {
+    "name": "Chanan",
+    "postexCode": "CNN",
+    "postexCityId": 182
+  },
+  {
+    "name": "Changa Bangial",
+    "postexCode": "CBG",
+    "postexCityId": 183
+  },
+  {
+    "name": "Changa Manga",
+    "postexCode": "CHG",
+    "postexCityId": 184
+  },
+  {
+    "name": "Chani Goth",
+    "postexCode": "CNG",
+    "postexCityId": 185
+  },
+  {
+    "name": "Char Bagh",
+    "postexCode": "CBH",
+    "postexCityId": 186
+  },
+  {
+    "name": "Charsadda",
+    "postexCode": "CRS",
+    "postexCityId": 187
+  },
+  {
+    "name": "Chater Pari (AJK)",
+    "postexCode": "CPK",
+    "postexCityId": 188
+  },
+  {
+    "name": "Chawinda",
+    "postexCode": "CWD",
+    "postexCityId": 189
+  },
+  {
+    "name": "Chilas",
+    "postexCode": "CHL",
+    "postexCityId": 190
+  },
+  {
+    "name": "Chiniot",
+    "postexCode": "CHT",
+    "postexCityId": 191
+  },
+  {
+    "name": "Chirywala",
+    "postexCode": "CRY",
+    "postexCityId": 192
+  },
+  {
+    "name": "Chistian",
+    "postexCode": "CTN",
+    "postexCityId": 193
+  },
+  {
+    "name": "Chitral",
+    "postexCode": "CTL",
+    "postexCityId": 194
+  },
+  {
+    "name": "Chitran",
+    "postexCode": "CTR",
+    "postexCityId": 195
+  },
+  {
+    "name": "Choa Saidan Shah",
+    "postexCode": "CSS",
+    "postexCityId": 196
+  },
+  {
+    "name": "Chobara",
+    "postexCode": "CBR",
+    "postexCityId": 197
+  },
+  {
+    "name": "Chohar Khel",
+    "postexCode": "CKH",
+    "postexCityId": 198
+  },
+  {
+    "name": "Chondiko",
+    "postexCode": "CDK",
+    "postexCityId": 199
+  },
+  {
+    "name": "Chooke",
+    "postexCode": "CHK",
+    "postexCityId": 200
+  },
+  {
+    "name": "Chor",
+    "postexCode": "CHR",
+    "postexCityId": 201
+  },
+  {
+    "name": "Chota Lahore",
+    "postexCode": "CLH",
+    "postexCityId": 202
+  },
+  {
+    "name": "Chotala",
+    "postexCode": "CTH",
+    "postexCityId": 203
+  },
+  {
+    "name": "Choti Zerin",
+    "postexCode": "CZR",
+    "postexCityId": 204
+  },
+  {
+    "name": "Chowk Azam",
+    "postexCode": "CHA",
+    "postexCityId": 205
+  },
+  {
+    "name": "Chowk Pandori",
+    "postexCode": "CPN",
+    "postexCityId": 206
+  },
+  {
+    "name": "Chowk Sarwar Shaheed",
+    "postexCode": "CHM",
+    "postexCityId": 207
+  },
+  {
+    "name": "Chowki Samani (AJK)",
+    "postexCode": "CWK",
+    "postexCityId": 208
+  },
+  {
+    "name": "Chub Chouki",
+    "postexCode": "CHB",
+    "postexCityId": 209
+  },
+  {
+    "name": "Chund",
+    "postexCode": "CND",
+    "postexCityId": 210
+  },
+  {
+    "name": "Chunian",
+    "postexCode": "CHN",
+    "postexCityId": 211
+  },
+  {
+    "name": "Dadu",
+    "postexCode": "DDU",
+    "postexCityId": 212
+  },
+  {
+    "name": "Dadyal (AJK)",
+    "postexCode": "DDY",
+    "postexCityId": 213
+  },
+  {
+    "name": "Daira Din Pannah",
+    "postexCode": "DDP",
+    "postexCityId": 214
+  },
+  {
+    "name": "Dakhan",
+    "postexCode": "DKN",
+    "postexCityId": 215
+  },
+  {
+    "name": "Dakwala",
+    "postexCode": "DAK",
+    "postexCityId": 216
+  },
+  {
+    "name": "Dalbandin",
+    "postexCode": "DBN",
+    "postexCityId": 217
+  },
+  {
+    "name": "Dambalu",
+    "postexCode": "DMB",
+    "postexCityId": 218
+  },
+  {
+    "name": "Dandot Cement",
+    "postexCode": "DDT",
+    "postexCityId": 219
+  },
+  {
+    "name": "Daood Zai",
+    "postexCode": "DAD",
+    "postexCityId": 220
+  },
+  {
+    "name": "Darbello",
+    "postexCode": "DBO",
+    "postexCityId": 221
+  },
+  {
+    "name": "Dargai",
+    "postexCode": "DRG",
+    "postexCityId": 222
+  },
+  {
+    "name": "Darya Khan",
+    "postexCode": "DRK",
+    "postexCityId": 223
+  },
+  {
+    "name": "Darya Khan Mari",
+    "postexCode": "DKM",
+    "postexCityId": 224
+  },
+  {
+    "name": "Daska",
+    "postexCode": "DSK",
+    "postexCityId": 225
+  },
+  {
+    "name": "Daul Tala",
+    "postexCode": "DAU",
+    "postexCityId": 226
+  },
+  {
+    "name": "Daulatnagar",
+    "postexCode": "DGR",
+    "postexCityId": 227
+  },
+  {
+    "name": "Daur",
+    "postexCode": "DUR",
+    "postexCityId": 228
+  },
+  {
+    "name": "Dera Allah Yar",
+    "postexCode": "DAY",
+    "postexCityId": 229
+  },
+  {
+    "name": "Dera Murad Jamali",
+    "postexCode": "DMJ",
+    "postexCityId": 230
+  },
+  {
+    "name": "Dera Nawab",
+    "postexCode": "DNW",
+    "postexCityId": 231
+  },
+  {
+    "name": "Dewalay",
+    "postexCode": "DEW",
+    "postexCityId": 232
+  },
+  {
+    "name": "Dg Cement Factory",
+    "postexCode": "DGC",
+    "postexCityId": 233
+  },
+  {
+    "name": "DHAb Kalan",
+    "postexCode": "DHB",
+    "postexCityId": 234
+  },
+  {
+    "name": "DHAbjee",
+    "postexCode": "DBJ",
+    "postexCityId": 235
+  },
+  {
+    "name": "DHAdar",
+    "postexCode": "DHD",
+    "postexCityId": 236
+  },
+  {
+    "name": "DHAngre Bala",
+    "postexCode": "DNB",
+    "postexCityId": 237
+  },
+  {
+    "name": "Dhndhar",
+    "postexCode": "DDR",
+    "postexCityId": 238
+  },
+  {
+    "name": "Dhoro Naro",
+    "postexCode": "DRN",
+    "postexCityId": 239
+  },
+  {
+    "name": "Dhudial",
+    "postexCode": "DHU",
+    "postexCityId": 240
+  },
+  {
+    "name": "Digri",
+    "postexCode": "DIG",
+    "postexCityId": 241
+  },
+  {
+    "name": "Dijkot",
+    "postexCode": "DJK",
+    "postexCityId": 242
+  },
+  {
+    "name": "Dina",
+    "postexCode": "DIN",
+    "postexCityId": 243
+  },
+  {
+    "name": "Dinga",
+    "postexCode": "DNG",
+    "postexCityId": 244
+  },
+  {
+    "name": "Distt. Complex",
+    "postexCode": "CPX",
+    "postexCityId": 245
+  },
+  {
+    "name": "Doaba",
+    "postexCode": "DBA",
+    "postexCityId": 246
+  },
+  {
+    "name": "Dohri Adda",
+    "postexCode": "ADD",
+    "postexCityId": 247
+  },
+  {
+    "name": "Dokri",
+    "postexCode": "DOK",
+    "postexCityId": 248
+  },
+  {
+    "name": "Donga Bonga",
+    "postexCode": "DBG",
+    "postexCityId": 249
+  },
+  {
+    "name": "Dongi (AJK)",
+    "postexCode": "DON",
+    "postexCityId": 250
+  },
+  {
+    "name": "Daulatpur",
+    "postexCode": "DTP",
+    "postexCityId": 251
+  },
+  {
+    "name": "Dulle Wala",
+    "postexCode": "DLW",
+    "postexCityId": 252
+  },
+  {
+    "name": "Duniapur",
+    "postexCode": "DNP",
+    "postexCityId": 253
+  },
+  {
+    "name": "F.F.C. Plant",
+    "postexCode": "FFC",
+    "postexCityId": 254
+  },
+  {
+    "name": "Faqirwali",
+    "postexCode": "FQI",
+    "postexCityId": 255
+  },
+  {
+    "name": "Faroka",
+    "postexCode": "FRK",
+    "postexCityId": 256
+  },
+  {
+    "name": "Farooqabad",
+    "postexCode": "FQB",
+    "postexCityId": 257
+  },
+  {
+    "name": "Fata Agencies",
+    "postexCode": "FAT",
+    "postexCityId": 258
+  },
+  {
+    "name": "Fateh Jang",
+    "postexCode": "FTJ",
+    "postexCityId": 259
+  },
+  {
+    "name": "Fateh Pur",
+    "postexCode": "FTP",
+    "postexCityId": 260
+  },
+  {
+    "name": "Fateh Pur Kamal",
+    "postexCode": "FPK",
+    "postexCityId": 261
+  },
+  {
+    "name": "Fatehpur",
+    "postexCode": "FTH",
+    "postexCityId": 262
+  },
+  {
+    "name": "Fazil Pur",
+    "postexCode": "FZL",
+    "postexCityId": 263
+  },
+  {
+    "name": "Fazil Raho",
+    "postexCode": "FRO",
+    "postexCityId": 264
+  },
+  {
+    "name": "Ferouza",
+    "postexCode": "RRZ",
+    "postexCityId": 265
+  },
+  {
+    "name": "Feroz Watwan",
+    "postexCode": "FWW",
+    "postexCityId": 266
+  },
+  {
+    "name": "Fkpcl Power Plant",
+    "postexCode": "FPP",
+    "postexCityId": 267
+  },
+  {
+    "name": "Fouji Sugar Mill (2Km)",
+    "postexCode": "FSM",
+    "postexCityId": 268
+  },
+  {
+    "name": "Gadoon",
+    "postexCode": "GDN",
+    "postexCityId": 269
+  },
+  {
+    "name": "Gaggo Mandi",
+    "postexCode": "GGM",
+    "postexCityId": 270
+  },
+  {
+    "name": "Galewal",
+    "postexCode": "GLW",
+    "postexCityId": 271
+  },
+  {
+    "name": "Gambat",
+    "postexCode": "GBT",
+    "postexCityId": 272
+  },
+  {
+    "name": "Gamber",
+    "postexCode": "GAM",
+    "postexCityId": 273
+  },
+  {
+    "name": "Gangi Raho",
+    "postexCode": "GGR",
+    "postexCityId": 274
+  },
+  {
+    "name": "Garha More",
+    "postexCode": "GRH",
+    "postexCityId": 275
+  },
+  {
+    "name": "Garhi Khero",
+    "postexCode": "GHH",
+    "postexCityId": 276
+  },
+  {
+    "name": "Garhi Yaseen",
+    "postexCode": "GRY",
+    "postexCityId": 277
+  },
+  {
+    "name": "Garmala",
+    "postexCode": "GRM",
+    "postexCityId": 278
+  },
+  {
+    "name": "Garri Dupatta",
+    "postexCode": "GRR",
+    "postexCityId": 279
+  },
+  {
+    "name": "Gatwala 199 / Rb",
+    "postexCode": "GTW",
+    "postexCityId": 280
+  },
+  {
+    "name": "Ghakkar Mandi",
+    "postexCode": "GKR",
+    "postexCityId": 281
+  },
+  {
+    "name": "Ghar More",
+    "postexCode": "GHR",
+    "postexCityId": 282
+  },
+  {
+    "name": "Ghari Habibullah",
+    "postexCode": "GHB",
+    "postexCityId": 283
+  },
+  {
+    "name": "Gharibwal Cement",
+    "postexCode": "GRB",
+    "postexCityId": 284
+  },
+  {
+    "name": "Gharo",
+    "postexCode": "GRO",
+    "postexCityId": 285
+  },
+  {
+    "name": "Ghazi",
+    "postexCode": "GHZ",
+    "postexCityId": 286
+  },
+  {
+    "name": "Ghaziabad",
+    "postexCode": "GZD",
+    "postexCityId": 287
+  },
+  {
+    "name": "Ghika Gali",
+    "postexCode": "GKG",
+    "postexCityId": 288
+  },
+  {
+    "name": "Ghora Gali",
+    "postexCode": "GHO",
+    "postexCityId": 289
+  },
+  {
+    "name": "Ghour Ghusti",
+    "postexCode": "GGI",
+    "postexCityId": 290
+  },
+  {
+    "name": "Ghous Pur",
+    "postexCode": "GSP",
+    "postexCityId": 291
+  },
+  {
+    "name": "Golarchi",
+    "postexCode": "GLH",
+    "postexCityId": 292
+  },
+  {
+    "name": "Gondal",
+    "postexCode": "GON",
+    "postexCityId": 293
+  },
+  {
+    "name": "Goth Chandio",
+    "postexCode": "GCD",
+    "postexCityId": 294
+  },
+  {
+    "name": "Goth Machi",
+    "postexCode": "GMC",
+    "postexCityId": 295
+  },
+  {
+    "name": "Gujarpur",
+    "postexCode": "GJR",
+    "postexCityId": 296
+  },
+  {
+    "name": "Gulab Laghari",
+    "postexCode": "GLR",
+    "postexCityId": 297
+  },
+  {
+    "name": "Gulyana",
+    "postexCode": "GUL",
+    "postexCityId": 298
+  },
+  {
+    "name": "Gumbat",
+    "postexCode": "GMT",
+    "postexCityId": 299
+  },
+  {
+    "name": "Hajeera",
+    "postexCode": "HJR",
+    "postexCityId": 300
+  },
+  {
+    "name": "Haji Sawan",
+    "postexCode": "HSW",
+    "postexCityId": 301
+  },
+  {
+    "name": "Hakim Abad",
+    "postexCode": "HKM",
+    "postexCityId": 302
+  },
+  {
+    "name": "Hala",
+    "postexCode": "HAL",
+    "postexCityId": 303
+  },
+  {
+    "name": "Halani",
+    "postexCode": "HNI",
+    "postexCityId": 304
+  },
+  {
+    "name": "Hameed Abad",
+    "postexCode": "HMA",
+    "postexCityId": 305
+  },
+  {
+    "name": "Hameed Pur",
+    "postexCode": "HMP",
+    "postexCityId": 306
+  },
+  {
+    "name": "Hamlet",
+    "postexCode": "HMT",
+    "postexCityId": 307
+  },
+  {
+    "name": "Hangu",
+    "postexCode": "HNU",
+    "postexCityId": 308
+  },
+  {
+    "name": "Harappa",
+    "postexCode": "HPA",
+    "postexCityId": 309
+  },
+  {
+    "name": "Harnal",
+    "postexCode": "HRL",
+    "postexCityId": 310
+  },
+  {
+    "name": "Haseeb Waqas Mills",
+    "postexCode": "HWM",
+    "postexCityId": 311
+  },
+  {
+    "name": "Hasil Pur",
+    "postexCode": "HSL",
+    "postexCityId": 312
+  },
+  {
+    "name": "Hathian",
+    "postexCode": "HTN",
+    "postexCityId": 313
+  },
+  {
+    "name": "Hatia Bala",
+    "postexCode": "HTI",
+    "postexCityId": 314
+  },
+  {
+    "name": "Hatungu",
+    "postexCode": "HTU",
+    "postexCityId": 315
+  },
+  {
+    "name": "Haveli Lakha",
+    "postexCode": "HLK",
+    "postexCityId": 316
+  },
+  {
+    "name": "Hazara University",
+    "postexCode": "HZR",
+    "postexCityId": 317
+  },
+  {
+    "name": "Hazro",
+    "postexCode": "HZO",
+    "postexCityId": 318
+  },
+  {
+    "name": "Head Baloki Road",
+    "postexCode": "HBL",
+    "postexCityId": 319
+  },
+  {
+    "name": "Head Faqirian",
+    "postexCode": "HFQ",
+    "postexCityId": 320
+  },
+  {
+    "name": "Headmarala",
+    "postexCode": "HMR",
+    "postexCityId": 321
+  },
+  {
+    "name": "Hingorja",
+    "postexCode": "HNG",
+    "postexCityId": 322
+  },
+  {
+    "name": "Hub Chowki",
+    "postexCode": "HUB",
+    "postexCityId": 323
+  },
+  {
+    "name": "Hujra Shah Mukeem",
+    "postexCode": "HSM",
+    "postexCityId": 324
+  },
+  {
+    "name": "Hunza–Nagar",
+    "postexCode": "HUZ",
+    "postexCityId": 325
+  },
+  {
+    "name": "Husri",
+    "postexCode": "HSR",
+    "postexCityId": 326
+  },
+  {
+    "name": "Iqbal Abad",
+    "postexCode": "IQD",
+    "postexCityId": 327
+  },
+  {
+    "name": "Iqbal Nagar",
+    "postexCode": "IQN",
+    "postexCityId": 328
+  },
+  {
+    "name": "Islam Garh (AJK)",
+    "postexCode": "ISA",
+    "postexCityId": 329
+  },
+  {
+    "name": "Jabbi",
+    "postexCode": "JBB",
+    "postexCityId": 330
+  },
+  {
+    "name": "Jahanian",
+    "postexCode": "JHN",
+    "postexCityId": 331
+  },
+  {
+    "name": "Jalalpur Bhattian",
+    "postexCode": "JPB",
+    "postexCityId": 332
+  },
+  {
+    "name": "Jalalpur Jattan",
+    "postexCode": "JLP",
+    "postexCityId": 333
+  },
+  {
+    "name": "Jalalpurpirwala",
+    "postexCode": "JPR",
+    "postexCityId": 334
+  },
+  {
+    "name": "Jamal Din Wali",
+    "postexCode": "JDW",
+    "postexCityId": 335
+  },
+  {
+    "name": "Jampur",
+    "postexCode": "JMP",
+    "postexCityId": 336
+  },
+  {
+    "name": "Jamshoro",
+    "postexCode": "JAM",
+    "postexCityId": 337
+  },
+  {
+    "name": "Jan Pur",
+    "postexCode": "JNP",
+    "postexCityId": 338
+  },
+  {
+    "name": "Jandia Sher Khan",
+    "postexCode": "JSK",
+    "postexCityId": 339
+  },
+  {
+    "name": "Jatlan (AJK)",
+    "postexCode": "JTA",
+    "postexCityId": 340
+  },
+  {
+    "name": "Jatoi",
+    "postexCode": "JTI",
+    "postexCityId": 341
+  },
+  {
+    "name": "Jehangira",
+    "postexCode": "JHR",
+    "postexCityId": 342
+  },
+  {
+    "name": "Jetha Bhutta",
+    "postexCode": "JBU",
+    "postexCityId": 343
+  },
+  {
+    "name": "Jhabran Mandi",
+    "postexCode": "JMN",
+    "postexCityId": 344
+  },
+  {
+    "name": "Jhambir",
+    "postexCode": "JMB",
+    "postexCityId": 345
+  },
+  {
+    "name": "Jhatla",
+    "postexCode": "JHT",
+    "postexCityId": 346
+  },
+  {
+    "name": "Jhatt Patt",
+    "postexCode": "JPT",
+    "postexCityId": 347
+  },
+  {
+    "name": "Jhol",
+    "postexCode": "JHL",
+    "postexCityId": 348
+  },
+  {
+    "name": "Jhoor",
+    "postexCode": "JOO",
+    "postexCityId": 349
+  },
+  {
+    "name": "Jhuddo",
+    "postexCode": "JDU",
+    "postexCityId": 350
+  },
+  {
+    "name": "Joharabad",
+    "postexCode": "JRD",
+    "postexCityId": 351
+  },
+  {
+    "name": "Johi",
+    "postexCode": "JHI",
+    "postexCityId": 352
+  },
+  {
+    "name": "Jolian",
+    "postexCode": "JOL",
+    "postexCityId": 353
+  },
+  {
+    "name": "Juglot",
+    "postexCode": "JGL",
+    "postexCityId": 354
+  },
+  {
+    "name": "Kabirwala",
+    "postexCode": "KBR",
+    "postexCityId": 355
+  },
+  {
+    "name": "Kacha Khoo",
+    "postexCode": "KKO",
+    "postexCityId": 356
+  },
+  {
+    "name": "Kadhala",
+    "postexCode": "KDL",
+    "postexCityId": 357
+  },
+  {
+    "name": "Kahauta",
+    "postexCode": "KHT",
+    "postexCityId": 358
+  },
+  {
+    "name": "Kahri Sharif (AJK)",
+    "postexCode": "KRA",
+    "postexCityId": 359
+  },
+  {
+    "name": "Kairpur Nathin Shah",
+    "postexCode": "KNS",
+    "postexCityId": 360
+  },
+  {
+    "name": "Kakra Town (AJK)",
+    "postexCode": "KKR",
+    "postexCityId": 361
+  },
+  {
+    "name": "Kala",
+    "postexCode": "KAA",
+    "postexCityId": 362
+  },
+  {
+    "name": "Kala Dev",
+    "postexCode": "KAD",
+    "postexCityId": 363
+  },
+  {
+    "name": "Kala DHAka",
+    "postexCode": "KDH",
+    "postexCityId": 364
+  },
+  {
+    "name": "Kala Dub",
+    "postexCode": "KLD",
+    "postexCityId": 365
+  },
+  {
+    "name": "Kalash",
+    "postexCode": "KSH",
+    "postexCityId": 366
+  },
+  {
+    "name": "Kalat",
+    "postexCode": "KLT",
+    "postexCityId": 367
+  },
+  {
+    "name": "Kallar Kahar",
+    "postexCode": "KLR",
+    "postexCityId": 368
+  },
+  {
+    "name": "Kallar Syeddan",
+    "postexCode": "KSY",
+    "postexCityId": 369
+  },
+  {
+    "name": "Kalor Kot",
+    "postexCode": "KKT",
+    "postexCityId": 370
+  },
+  {
+    "name": "Kamra",
+    "postexCode": "KMA",
+    "postexCityId": 371
+  },
+  {
+    "name": "Kand Kot",
+    "postexCode": "KKK",
+    "postexCityId": 372
+  },
+  {
+    "name": "Kandhra",
+    "postexCode": "KNA",
+    "postexCityId": 373
+  },
+  {
+    "name": "Kandiaro",
+    "postexCode": "KRO",
+    "postexCityId": 374
+  },
+  {
+    "name": "Kangan Pur",
+    "postexCode": "KGN",
+    "postexCityId": 375
+  },
+  {
+    "name": "Kangra",
+    "postexCode": "KAN",
+    "postexCityId": 376
+  },
+  {
+    "name": "Kanju",
+    "postexCode": "KJU",
+    "postexCityId": 377
+  },
+  {
+    "name": "Kanyal",
+    "postexCode": "KYL",
+    "postexCityId": 378
+  },
+  {
+    "name": "Kapco Power Plant",
+    "postexCode": "KPP",
+    "postexCityId": 379
+  },
+  {
+    "name": "Karak",
+    "postexCode": "KRK",
+    "postexCityId": 380
+  },
+  {
+    "name": "Karam Pur",
+    "postexCode": "KMP",
+    "postexCityId": 381
+  },
+  {
+    "name": "Karianwala",
+    "postexCode": "KRW",
+    "postexCityId": 382
+  },
+  {
+    "name": "Karoondi",
+    "postexCode": "KDI",
+    "postexCityId": 383
+  },
+  {
+    "name": "Karoor Paka",
+    "postexCode": "KPC",
+    "postexCityId": 384
+  },
+  {
+    "name": "Karor Lal Easan",
+    "postexCode": "KLE",
+    "postexCityId": 385
+  },
+  {
+    "name": "Karyal",
+    "postexCode": "YAL",
+    "postexCityId": 386
+  },
+  {
+    "name": "Kas Chanatar",
+    "postexCode": "KCH",
+    "postexCityId": 387
+  },
+  {
+    "name": "Kashmore",
+    "postexCode": "KSM",
+    "postexCityId": 388
+  },
+  {
+    "name": "Kassowal",
+    "postexCode": "KSL",
+    "postexCityId": 389
+  },
+  {
+    "name": "Khaal",
+    "postexCode": "KAL",
+    "postexCityId": 390
+  },
+  {
+    "name": "Khadam Abad",
+    "postexCode": "KHA",
+    "postexCityId": 391
+  },
+  {
+    "name": "Khadan",
+    "postexCode": "KDN",
+    "postexCityId": 392
+  },
+  {
+    "name": "Khadiaro",
+    "postexCode": "KDR",
+    "postexCityId": 393
+  },
+  {
+    "name": "Khairpur",
+    "postexCode": "KHP",
+    "postexCityId": 394
+  },
+  {
+    "name": "Khairpur Meerus",
+    "postexCode": "KPM",
+    "postexCityId": 395
+  },
+  {
+    "name": "Khairpur Tamewali",
+    "postexCode": "KTM",
+    "postexCityId": 396
+  },
+  {
+    "name": "Khan Bela",
+    "postexCode": "KBL",
+    "postexCityId": 397
+  },
+  {
+    "name": "Khan Ghar",
+    "postexCode": "KGR",
+    "postexCityId": 398
+  },
+  {
+    "name": "Khan Mohd Ali Ujjan",
+    "postexCode": "KMU",
+    "postexCityId": 399
+  },
+  {
+    "name": "Khan Musalman",
+    "postexCode": "MUS",
+    "postexCityId": 400
+  },
+  {
+    "name": "Khan Pur Distt. Shikarpur",
+    "postexCode": "KSP",
+    "postexCityId": 401
+  },
+  {
+    "name": "Khandoo",
+    "postexCode": "KND",
+    "postexCityId": 402
+  },
+  {
+    "name": "Khanka Dogran",
+    "postexCode": "KKD",
+    "postexCityId": 403
+  },
+  {
+    "name": "Khanpur Dam",
+    "postexCode": "KDM",
+    "postexCityId": 404
+  },
+  {
+    "name": "Khanpur Mahar",
+    "postexCode": "KMR",
+    "postexCityId": 405
+  },
+  {
+    "name": "Khanpur Shomali",
+    "postexCode": "KSO",
+    "postexCityId": 406
+  },
+  {
+    "name": "Kharal Azeem",
+    "postexCode": "KAZ",
+    "postexCityId": 407
+  },
+  {
+    "name": "Kharala",
+    "postexCode": "KRL",
+    "postexCityId": 408
+  },
+  {
+    "name": "Kharan",
+    "postexCode": "KHN",
+    "postexCityId": 409
+  },
+  {
+    "name": "Khas Behaal",
+    "postexCode": "BEH",
+    "postexCityId": 410
+  },
+  {
+    "name": "Khipro",
+    "postexCode": "KPR",
+    "postexCityId": 411
+  },
+  {
+    "name": "Khoaza Khaila",
+    "postexCode": "KOZ",
+    "postexCityId": 412
+  },
+  {
+    "name": "Khohar",
+    "postexCode": "KOR",
+    "postexCityId": 413
+  },
+  {
+    "name": "Khora Khel",
+    "postexCode": "KKH",
+    "postexCityId": 414
+  },
+  {
+    "name": "Khoski",
+    "postexCode": "KSK",
+    "postexCityId": 415
+  },
+  {
+    "name": "Khudian Khas",
+    "postexCode": "KDK",
+    "postexCityId": 416
+  },
+  {
+    "name": "Khurrianwala",
+    "postexCode": "KHR",
+    "postexCityId": 417
+  },
+  {
+    "name": "Khuzdar",
+    "postexCode": "KZD",
+    "postexCityId": 418
+  },
+  {
+    "name": "Khwera",
+    "postexCode": "KHW",
+    "postexCityId": 419
+  },
+  {
+    "name": "Khyber Agency",
+    "postexCode": "KYB",
+    "postexCityId": 420
+  },
+  {
+    "name": "Kohat (Cement Factory )",
+    "postexCode": "KCF",
+    "postexCityId": 421
+  },
+  {
+    "name": "Kohistan",
+    "postexCode": "KOH",
+    "postexCityId": 422
+  },
+  {
+    "name": "Kot Bahadar",
+    "postexCode": "KBH",
+    "postexCityId": 423
+  },
+  {
+    "name": "Kot Chutta",
+    "postexCode": "KCT",
+    "postexCityId": 424
+  },
+  {
+    "name": "Kot Ghulam Mohd",
+    "postexCode": "KGH",
+    "postexCityId": 425
+  },
+  {
+    "name": "Kot Ghulam Muhammad",
+    "postexCode": "KGM",
+    "postexCityId": 426
+  },
+  {
+    "name": "Kot Jamal (AJK)",
+    "postexCode": "KJA",
+    "postexCityId": 427
+  },
+  {
+    "name": "Kot Mithan",
+    "postexCode": "KMT",
+    "postexCityId": 428
+  },
+  {
+    "name": "Kot Momin",
+    "postexCode": "KMM",
+    "postexCityId": 429
+  },
+  {
+    "name": "Kot Pindi Das",
+    "postexCode": "KPD",
+    "postexCityId": 430
+  },
+  {
+    "name": "Kot Radha Kishan",
+    "postexCode": "KRD",
+    "postexCityId": 431
+  },
+  {
+    "name": "Kot Samabah",
+    "postexCode": "KSB",
+    "postexCityId": 432
+  },
+  {
+    "name": "Kot Sarang",
+    "postexCode": "KSG",
+    "postexCityId": 433
+  },
+  {
+    "name": "Kot Sujan Singh",
+    "postexCode": "KSS",
+    "postexCityId": 434
+  },
+  {
+    "name": "Kot Sultan (Bahi Sadhu )",
+    "postexCode": "KTS",
+    "postexCityId": 435
+  },
+  {
+    "name": "Kotdeji",
+    "postexCode": "KJI",
+    "postexCityId": 436
+  },
+  {
+    "name": "Kotla Arab Ali Khan",
+    "postexCode": "KLA",
+    "postexCityId": 437
+  },
+  {
+    "name": "Kotli Behram",
+    "postexCode": "KTB",
+    "postexCityId": 438
+  },
+  {
+    "name": "Kotli Loharan",
+    "postexCode": "KLH",
+    "postexCityId": 439
+  },
+  {
+    "name": "Kotri",
+    "postexCode": "KTR",
+    "postexCityId": 440
+  },
+  {
+    "name": "Kuchlak",
+    "postexCode": "KCU",
+    "postexCityId": 441
+  },
+  {
+    "name": "Kulachi",
+    "postexCode": "LAC",
+    "postexCityId": 442
+  },
+  {
+    "name": "Kunb",
+    "postexCode": "KNB",
+    "postexCityId": 443
+  },
+  {
+    "name": "Kundian",
+    "postexCode": "KUN",
+    "postexCityId": 444
+  },
+  {
+    "name": "Kunjah",
+    "postexCode": "KJH",
+    "postexCityId": 445
+  },
+  {
+    "name": "Kunri",
+    "postexCode": "KNR",
+    "postexCityId": 446
+  },
+  {
+    "name": "Ladhana",
+    "postexCode": "LDH",
+    "postexCityId": 447
+  },
+  {
+    "name": "Laidher",
+    "postexCode": "LID",
+    "postexCityId": 448
+  },
+  {
+    "name": "Lakhra",
+    "postexCode": "LKR",
+    "postexCityId": 449
+  },
+  {
+    "name": "Lakki Marwat",
+    "postexCode": "LKI",
+    "postexCityId": 450
+  },
+  {
+    "name": "Lalian",
+    "postexCode": "LAL",
+    "postexCityId": 451
+  },
+  {
+    "name": "Lallian",
+    "postexCode": "LLI",
+    "postexCityId": 452
+  },
+  {
+    "name": "Lalliani",
+    "postexCode": "LLN",
+    "postexCityId": 453
+  },
+  {
+    "name": "Lalpir (Thermal Power)",
+    "postexCode": "LLP",
+    "postexCityId": 454
+  },
+  {
+    "name": "Lassa Nawab",
+    "postexCode": "LNW",
+    "postexCityId": 455
+  },
+  {
+    "name": "Lawrence Pur",
+    "postexCode": "LAW",
+    "postexCityId": 456
+  },
+  {
+    "name": "Liaqat Pur",
+    "postexCode": "LQR",
+    "postexCityId": 457
+  },
+  {
+    "name": "Lodhran",
+    "postexCode": "LOD",
+    "postexCityId": 458
+  },
+  {
+    "name": "Loralai",
+    "postexCode": "LRI",
+    "postexCityId": 459
+  },
+  {
+    "name": "Lota Sharif",
+    "postexCode": "LTS",
+    "postexCityId": 460
+  },
+  {
+    "name": "Lower Dir",
+    "postexCode": "DRL",
+    "postexCityId": 461
+  },
+  {
+    "name": "Lower Topa",
+    "postexCode": "LTP",
+    "postexCityId": 462
+  },
+  {
+    "name": "Machikey",
+    "postexCode": "KEY",
+    "postexCityId": 463
+  },
+  {
+    "name": "Madiji",
+    "postexCode": "DJI",
+    "postexCityId": 464
+  },
+  {
+    "name": "Mailsi",
+    "postexCode": "MSI",
+    "postexCityId": 465
+  },
+  {
+    "name": "Maitla Chowk",
+    "postexCode": "MCH",
+    "postexCityId": 466
+  },
+  {
+    "name": "Makhdoom Aali",
+    "postexCode": "MKD",
+    "postexCityId": 467
+  },
+  {
+    "name": "Makhdoom Rasheed",
+    "postexCode": "MRS",
+    "postexCityId": 468
+  },
+  {
+    "name": "Malakand",
+    "postexCode": "MKN",
+    "postexCityId": 469
+  },
+  {
+    "name": "Malakwal",
+    "postexCode": "MLK",
+    "postexCityId": 470
+  },
+  {
+    "name": "Malowal",
+    "postexCode": "MLW",
+    "postexCityId": 471
+  },
+  {
+    "name": "Mamu Kanjan",
+    "postexCode": "MMU",
+    "postexCityId": 472
+  },
+  {
+    "name": "Mana Wla",
+    "postexCode": "MWL",
+    "postexCityId": 473
+  },
+  {
+    "name": "Manawala",
+    "postexCode": "MAN",
+    "postexCityId": 474
+  },
+  {
+    "name": "Mandi Safdar Abad",
+    "postexCode": "MSA",
+    "postexCityId": 475
+  },
+  {
+    "name": "Mandi Usman Wala",
+    "postexCode": "MUW",
+    "postexCityId": 476
+  },
+  {
+    "name": "Mandian",
+    "postexCode": "MDI",
+    "postexCityId": 477
+  },
+  {
+    "name": "Mandra",
+    "postexCode": "MDR",
+    "postexCityId": 478
+  },
+  {
+    "name": "Mandranwala",
+    "postexCode": "MDW",
+    "postexCityId": 479
+  },
+  {
+    "name": "Manga Mandi",
+    "postexCode": "MGM",
+    "postexCityId": 480
+  },
+  {
+    "name": "Mangla (AJK)",
+    "postexCode": "MGL",
+    "postexCityId": 481
+  },
+  {
+    "name": "Mangla Cantt (AJK)",
+    "postexCode": "MGK",
+    "postexCityId": 482
+  },
+  {
+    "name": "Mangla Colony (AJK)",
+    "postexCode": "MGY",
+    "postexCityId": 483
+  },
+  {
+    "name": "Mangla Hemlet Ak",
+    "postexCode": "MHA",
+    "postexCityId": 484
+  },
+  {
+    "name": "Mangowal Gharbi",
+    "postexCode": "MGO",
+    "postexCityId": 485
+  },
+  {
+    "name": "Manik Laghari",
+    "postexCode": "MLR",
+    "postexCityId": 486
+  },
+  {
+    "name": "Mankera",
+    "postexCode": "MNK",
+    "postexCityId": 487
+  },
+  {
+    "name": "Mankyla Station",
+    "postexCode": "MKY",
+    "postexCityId": 488
+  },
+  {
+    "name": "Mansehra",
+    "postexCode": "MNA",
+    "postexCityId": 489
+  },
+  {
+    "name": "Mari",
+    "postexCode": "MRI",
+    "postexCityId": 490
+  },
+  {
+    "name": "Masar Camp",
+    "postexCode": "MCP",
+    "postexCityId": 491
+  },
+  {
+    "name": "Mastung",
+    "postexCode": "MTG",
+    "postexCityId": 492
+  },
+  {
+    "name": "Matiari",
+    "postexCode": "MTR",
+    "postexCityId": 493
+  },
+  {
+    "name": "Matli",
+    "postexCode": "MTI",
+    "postexCityId": 494
+  },
+  {
+    "name": "Matta",
+    "postexCode": "MAT",
+    "postexCityId": 495
+  },
+  {
+    "name": "Meher",
+    "postexCode": "MHR",
+    "postexCityId": 496
+  },
+  {
+    "name": "Mehrab Pur",
+    "postexCode": "MRB",
+    "postexCityId": 497
+  },
+  {
+    "name": "Mian Muhammad Town (AJK)",
+    "postexCode": "MTA",
+    "postexCityId": 498
+  },
+  {
+    "name": "Mian Wali Qureshain",
+    "postexCode": "MWQ",
+    "postexCityId": 499
+  },
+  {
+    "name": "Miani",
+    "postexCode": "MNI",
+    "postexCityId": 500
+  },
+  {
+    "name": "Mimora Kanyal",
+    "postexCode": "MMK",
+    "postexCityId": 501
+  },
+  {
+    "name": "Minchinabad",
+    "postexCode": "MND",
+    "postexCityId": 502
+  },
+  {
+    "name": "Mingora",
+    "postexCode": "MNG",
+    "postexCityId": 503
+  },
+  {
+    "name": "Mir Pur Methelo",
+    "postexCode": "MPM",
+    "postexCityId": 504
+  },
+  {
+    "name": "Miran Shah",
+    "postexCode": "MSH",
+    "postexCityId": 505
+  },
+  {
+    "name": "Mirpur Burro",
+    "postexCode": "MBU",
+    "postexCityId": 506
+  },
+  {
+    "name": "Mirwah Gorc Hani",
+    "postexCode": "MGC",
+    "postexCityId": 507
+  },
+  {
+    "name": "Mitha Tiwana",
+    "postexCode": "MTW",
+    "postexCityId": 508
+  },
+  {
+    "name": "Mithiani",
+    "postexCode": "MTN",
+    "postexCityId": 509
+  },
+  {
+    "name": "Mitthi",
+    "postexCode": "MHI",
+    "postexCityId": 510
+  },
+  {
+    "name": "Mohammadpur Diwan",
+    "postexCode": "MPD",
+    "postexCityId": 511
+  },
+  {
+    "name": "Mona Depu",
+    "postexCode": "MON",
+    "postexCityId": 512
+  },
+  {
+    "name": "More Aimanabad",
+    "postexCode": "AIM",
+    "postexCityId": 513
+  },
+  {
+    "name": "More Khunda",
+    "postexCode": "MKH",
+    "postexCityId": 514
+  },
+  {
+    "name": "Moreed Wala",
+    "postexCode": "MEE",
+    "postexCityId": 515
+  },
+  {
+    "name": "Moro",
+    "postexCode": "MRO",
+    "postexCityId": 516
+  },
+  {
+    "name": "Motra",
+    "postexCode": "MOT",
+    "postexCityId": 517
+  },
+  {
+    "name": "Much",
+    "postexCode": "MUH",
+    "postexCityId": 518
+  },
+  {
+    "name": "Muslam Kot",
+    "postexCode": "MKT",
+    "postexCityId": 519
+  },
+  {
+    "name": "Nakodar",
+    "postexCode": "NKR",
+    "postexCityId": 520
+  },
+  {
+    "name": "Narang Mandi",
+    "postexCode": "NGM",
+    "postexCityId": 521
+  },
+  {
+    "name": "Nasirabad",
+    "postexCode": "NSR",
+    "postexCityId": 522
+  },
+  {
+    "name": "Nathia Gali",
+    "postexCode": "NTH",
+    "postexCityId": 523
+  },
+  {
+    "name": "Naukot",
+    "postexCode": "NKT",
+    "postexCityId": 524
+  },
+  {
+    "name": "Nushki",
+    "postexCode": "NKI",
+    "postexCityId": 525
+  },
+  {
+    "name": "Nawabad",
+    "postexCode": "NWD",
+    "postexCityId": 526
+  },
+  {
+    "name": "Nawagay",
+    "postexCode": "NWG",
+    "postexCityId": 527
+  },
+  {
+    "name": "Nawan Shehr",
+    "postexCode": "NWN",
+    "postexCityId": 528
+  },
+  {
+    "name": "Naway Kali",
+    "postexCode": "NKL",
+    "postexCityId": 529
+  },
+  {
+    "name": "New Industrial Area",
+    "postexCode": "NIA",
+    "postexCityId": 530
+  },
+  {
+    "name": "Nindo",
+    "postexCode": "NND",
+    "postexCityId": 531
+  },
+  {
+    "name": "Nizamabad",
+    "postexCode": "NZM",
+    "postexCityId": 532
+  },
+  {
+    "name": "Nogran",
+    "postexCode": "NOG",
+    "postexCityId": 533
+  },
+  {
+    "name": "Nokhar",
+    "postexCode": "NOK",
+    "postexCityId": 534
+  },
+  {
+    "name": "Nonar",
+    "postexCode": "NNR",
+    "postexCityId": 535
+  },
+  {
+    "name": "Noor Colony",
+    "postexCode": "NCY",
+    "postexCityId": 536
+  },
+  {
+    "name": "Noor Kot",
+    "postexCode": "NOR",
+    "postexCityId": 537
+  },
+  {
+    "name": "Noorpur",
+    "postexCode": "NOP",
+    "postexCityId": 538
+  },
+  {
+    "name": "Noorpur Thal",
+    "postexCode": "NOO",
+    "postexCityId": 539
+  },
+  {
+    "name": "Noriabad",
+    "postexCode": "NRB",
+    "postexCityId": 540
+  },
+  {
+    "name": "Nowshera Kalan",
+    "postexCode": "NKN",
+    "postexCityId": 541
+  },
+  {
+    "name": "Nowshera Virkan",
+    "postexCode": "NVK",
+    "postexCityId": 542
+  },
+  {
+    "name": "Naushahro Feroze",
+    "postexCode": "NSF",
+    "postexCityId": 543
+  },
+  {
+    "name": "Nrtc (Telecom Staff College)",
+    "postexCode": "NRT",
+    "postexCityId": 544
+  },
+  {
+    "name": "Nudearo",
+    "postexCode": "NUD",
+    "postexCityId": 545
+  },
+  {
+    "name": "Odero Lal",
+    "postexCode": "ODL",
+    "postexCityId": 546
+  },
+  {
+    "name": "Old Hala",
+    "postexCode": "OHA",
+    "postexCityId": 547
+  },
+  {
+    "name": "Ooch Lower Dir",
+    "postexCode": "LDR",
+    "postexCityId": 548
+  },
+  {
+    "name": "P.O.F. (Factory & Colony)",
+    "postexCode": "POF",
+    "postexCityId": 549
+  },
+  {
+    "name": "Pabi",
+    "postexCode": "PAB",
+    "postexCityId": 550
+  },
+  {
+    "name": "Padedan",
+    "postexCode": "PDN",
+    "postexCityId": 551
+  },
+  {
+    "name": "Paharpur",
+    "postexCode": "PHR",
+    "postexCityId": 552
+  },
+  {
+    "name": "Pahrianwali Adda",
+    "postexCode": "PRI",
+    "postexCityId": 553
+  },
+  {
+    "name": "Pangrio",
+    "postexCode": "PGR",
+    "postexCityId": 554
+  },
+  {
+    "name": "Panjeri",
+    "postexCode": "PNJ",
+    "postexCityId": 555
+  },
+  {
+    "name": "Panoaqil",
+    "postexCode": "PNQ",
+    "postexCityId": 556
+  },
+  {
+    "name": "Papnakha",
+    "postexCode": "PPN",
+    "postexCityId": 557
+  },
+  {
+    "name": "Paroa",
+    "postexCode": "PRA",
+    "postexCityId": 558
+  },
+  {
+    "name": "Pasni",
+    "postexCode": "PSN",
+    "postexCityId": 559
+  },
+  {
+    "name": "Pasroor",
+    "postexCode": "PRR",
+    "postexCityId": 560
+  },
+  {
+    "name": "Pasroor Road And Villages",
+    "postexCode": "PRV",
+    "postexCityId": 561
+  },
+  {
+    "name": "Pathar Goth",
+    "postexCode": "PRG",
+    "postexCityId": 562
+  },
+  {
+    "name": "Patoki",
+    "postexCode": "PTI",
+    "postexCityId": 563
+  },
+  {
+    "name": "Patriata",
+    "postexCode": "PTT",
+    "postexCityId": 564
+  },
+  {
+    "name": "Peer Mahal",
+    "postexCode": "PML",
+    "postexCityId": 565
+  },
+  {
+    "name": "Pezu",
+    "postexCode": "PZU",
+    "postexCityId": 566
+  },
+  {
+    "name": "Phalia",
+    "postexCode": "PHL",
+    "postexCityId": 567
+  },
+  {
+    "name": "Phuladyn",
+    "postexCode": "PDY",
+    "postexCityId": 568
+  },
+  {
+    "name": "Pindi Bhatian",
+    "postexCode": "PBT",
+    "postexCityId": 569
+  },
+  {
+    "name": "Pindi Gheb",
+    "postexCode": "PGH",
+    "postexCityId": 570
+  },
+  {
+    "name": "Pindi Gujran",
+    "postexCode": "PGJ",
+    "postexCityId": 571
+  },
+  {
+    "name": "Pinyal",
+    "postexCode": "PNL",
+    "postexCityId": 572
+  },
+  {
+    "name": "Piplan",
+    "postexCode": "PPL",
+    "postexCityId": 573
+  },
+  {
+    "name": "Pir Baba",
+    "postexCode": "PBB",
+    "postexCityId": 574
+  },
+  {
+    "name": "Pir Jhundu",
+    "postexCode": "PJU",
+    "postexCityId": 575
+  },
+  {
+    "name": "Piran",
+    "postexCode": "BTK",
+    "postexCityId": 576
+  },
+  {
+    "name": "Pirjogoth",
+    "postexCode": "PJG",
+    "postexCityId": 577
+  },
+  {
+    "name": "Pirowal",
+    "postexCode": "PRW",
+    "postexCityId": 578
+  },
+  {
+    "name": "Pishin",
+    "postexCode": "PSI",
+    "postexCityId": 579
+  },
+  {
+    "name": "Pitaro",
+    "postexCode": "PTR",
+    "postexCityId": 580
+  },
+  {
+    "name": "Sudhanoti (AJK)",
+    "postexCode": "SUD",
+    "postexCityId": 581
+  },
+  {
+    "name": "PMA Kakul",
+    "postexCode": "PMA",
+    "postexCityId": 582
+  },
+  {
+    "name": "Poona",
+    "postexCode": "PON",
+    "postexCityId": 583
+  },
+  {
+    "name": "Poonch (AJK)",
+    "postexCode": "PNC",
+    "postexCityId": 584
+  },
+  {
+    "name": "Pul Khara",
+    "postexCode": "PKH",
+    "postexCityId": 585
+  },
+  {
+    "name": "Pull Manda (AJK)",
+    "postexCode": "PUL",
+    "postexCityId": 586
+  },
+  {
+    "name": "Pull No 14",
+    "postexCode": "P14",
+    "postexCityId": 587
+  },
+  {
+    "name": "Pungirayin",
+    "postexCode": "PUG",
+    "postexCityId": 588
+  },
+  {
+    "name": "Punjab Seed Corp. Pirowal",
+    "postexCode": "PIR",
+    "postexCityId": 589
+  },
+  {
+    "name": "Punjab Sugar Mills",
+    "postexCode": "PSM",
+    "postexCityId": 590
+  },
+  {
+    "name": "Punwan",
+    "postexCode": "PWN",
+    "postexCityId": 591
+  },
+  {
+    "name": "Punyam",
+    "postexCode": "PUM",
+    "postexCityId": 592
+  },
+  {
+    "name": "Puraan",
+    "postexCode": "PUR",
+    "postexCityId": 593
+  },
+  {
+    "name": "Qabal",
+    "postexCode": "QAB",
+    "postexCityId": 594
+  },
+  {
+    "name": "Qaboola Sharif",
+    "postexCode": "QBL",
+    "postexCityId": 595
+  },
+  {
+    "name": "Qadir Pur",
+    "postexCode": "QDP",
+    "postexCityId": 596
+  },
+  {
+    "name": "Qadir Pur Rawan",
+    "postexCode": "QPR",
+    "postexCityId": 597
+  },
+  {
+    "name": "Qaidabad",
+    "postexCode": "QDR",
+    "postexCityId": 598
+  },
+  {
+    "name": "Qamar Mashani",
+    "postexCode": "QMI",
+    "postexCityId": 599
+  },
+  {
+    "name": "Qamber Ali Khan",
+    "postexCode": "KAK",
+    "postexCityId": 600
+  },
+  {
+    "name": "Qasba Gujrat.",
+    "postexCode": "QGT",
+    "postexCityId": 601
+  },
+  {
+    "name": "Qazi Ahmed",
+    "postexCode": "QZA",
+    "postexCityId": 602
+  },
+  {
+    "name": "Qila Deedar Sing",
+    "postexCode": "QDS",
+    "postexCityId": 603
+  },
+  {
+    "name": "Qila Saib Singh",
+    "postexCode": "QSS",
+    "postexCityId": 604
+  },
+  {
+    "name": "Radhan",
+    "postexCode": "RDH",
+    "postexCityId": 605
+  },
+  {
+    "name": "Raiwind",
+    "postexCode": "RND",
+    "postexCityId": 606
+  },
+  {
+    "name": "Raj DHAni",
+    "postexCode": "RJD",
+    "postexCityId": 607
+  },
+  {
+    "name": "Raja Jang",
+    "postexCode": "RJG",
+    "postexCityId": 608
+  },
+  {
+    "name": "Raja Ram",
+    "postexCode": "RRM",
+    "postexCityId": 609
+  },
+  {
+    "name": "Rajanpur",
+    "postexCode": "RJP",
+    "postexCityId": 610
+  },
+  {
+    "name": "Rajana",
+    "postexCode": "RJN",
+    "postexCityId": 611
+  },
+  {
+    "name": "Rajar",
+    "postexCode": "RJR",
+    "postexCityId": 612
+  },
+  {
+    "name": "Raju Khanani",
+    "postexCode": "RKN",
+    "postexCityId": 613
+  },
+  {
+    "name": "Rajwal",
+    "postexCode": "RJW",
+    "postexCityId": 614
+  },
+  {
+    "name": "Ramak",
+    "postexCode": "RMK",
+    "postexCityId": 615
+  },
+  {
+    "name": "Rani Pur",
+    "postexCode": "RNP",
+    "postexCityId": 616
+  },
+  {
+    "name": "Rao Khan Wala",
+    "postexCode": "RKW",
+    "postexCityId": 617
+  },
+  {
+    "name": "Rashaki",
+    "postexCode": "RSH",
+    "postexCityId": 618
+  },
+  {
+    "name": "Rato Dearo",
+    "postexCode": "RTD",
+    "postexCityId": 619
+  },
+  {
+    "name": "Ratta",
+    "postexCode": "RTA",
+    "postexCityId": 620
+  },
+  {
+    "name": "Rawat",
+    "postexCode": "RWT",
+    "postexCityId": 621
+  },
+  {
+    "name": "Renala Khurd",
+    "postexCode": "RLK",
+    "postexCityId": 622
+  },
+  {
+    "name": "Risalpur",
+    "postexCode": "RSL",
+    "postexCityId": 623
+  },
+  {
+    "name": "Rohalanwali",
+    "postexCode": "RWI",
+    "postexCityId": 624
+  },
+  {
+    "name": "Rohian Wali",
+    "postexCode": "ROH",
+    "postexCityId": 625
+  },
+  {
+    "name": "Rohri",
+    "postexCode": "RHI",
+    "postexCityId": 626
+  },
+  {
+    "name": "Rojhan",
+    "postexCode": "RJH",
+    "postexCityId": 627
+  },
+  {
+    "name": "Rubwa",
+    "postexCode": "RWB",
+    "postexCityId": 628
+  },
+  {
+    "name": "Sadat Pur",
+    "postexCode": "SDP",
+    "postexCityId": 629
+  },
+  {
+    "name": "Sadoki",
+    "postexCode": "SDK",
+    "postexCityId": 630
+  },
+  {
+    "name": "Saeedabad",
+    "postexCode": "SAD",
+    "postexCityId": 631
+  },
+  {
+    "name": "Safdarabad",
+    "postexCode": "SFD",
+    "postexCityId": 632
+  },
+  {
+    "name": "Saghar",
+    "postexCode": "AGH",
+    "postexCityId": 633
+  },
+  {
+    "name": "Sagri",
+    "postexCode": "SRI",
+    "postexCityId": 634
+  },
+  {
+    "name": "Sahowala",
+    "postexCode": "SHO",
+    "postexCityId": 635
+  },
+  {
+    "name": "Saidu Sharif",
+    "postexCode": "SAS",
+    "postexCityId": 636
+  },
+  {
+    "name": "Sajawal",
+    "postexCode": "SJW",
+    "postexCityId": 637
+  },
+  {
+    "name": "Sakha Kot",
+    "postexCode": "SKH",
+    "postexCityId": 638
+  },
+  {
+    "name": "Sakrand",
+    "postexCode": "SKR",
+    "postexCityId": 639
+  },
+  {
+    "name": "Salar Wala",
+    "postexCode": "SLR",
+    "postexCityId": 640
+  },
+  {
+    "name": "Samandari",
+    "postexCode": "SMD",
+    "postexCityId": 641
+  },
+  {
+    "name": "Samani (AJK)",
+    "postexCode": "SMA",
+    "postexCityId": 642
+  },
+  {
+    "name": "Samaro",
+    "postexCode": "SMR",
+    "postexCityId": 643
+  },
+  {
+    "name": "Samlotha",
+    "postexCode": "SMT",
+    "postexCityId": 644
+  },
+  {
+    "name": "Sanawan",
+    "postexCode": "NAW",
+    "postexCityId": 645
+  },
+  {
+    "name": "Sanghar",
+    "postexCode": "SAN",
+    "postexCityId": 646
+  },
+  {
+    "name": "Sanghi (Pso Depot)",
+    "postexCode": "SGI",
+    "postexCityId": 647
+  },
+  {
+    "name": "Sangla Hill",
+    "postexCode": "SGH",
+    "postexCityId": 648
+  },
+  {
+    "name": "Sangoi",
+    "postexCode": "GOI",
+    "postexCityId": 649
+  },
+  {
+    "name": "Sanjhoro",
+    "postexCode": "SNJ",
+    "postexCityId": 650
+  },
+  {
+    "name": "Sanjwal",
+    "postexCode": "JWL",
+    "postexCityId": 651
+  },
+  {
+    "name": "Sarai Sidhu",
+    "postexCode": "SSU",
+    "postexCityId": 652
+  },
+  {
+    "name": "Saraye Gambila",
+    "postexCode": "SGA",
+    "postexCityId": 653
+  },
+  {
+    "name": "Saraye Norang",
+    "postexCode": "SNG",
+    "postexCityId": 654
+  },
+  {
+    "name": "Sardar Garh",
+    "postexCode": "SDG",
+    "postexCityId": 655
+  },
+  {
+    "name": "Sardaryab",
+    "postexCode": "CSD",
+    "postexCityId": 656
+  },
+  {
+    "name": "Sarhad",
+    "postexCode": "SRH",
+    "postexCityId": 657
+  },
+  {
+    "name": "Sari Alamgir",
+    "postexCode": "SAG",
+    "postexCityId": 658
+  },
+  {
+    "name": "Satyyana",
+    "postexCode": "STY",
+    "postexCityId": 659
+  },
+  {
+    "name": "Sawabi",
+    "postexCode": "SAW",
+    "postexCityId": 660
+  },
+  {
+    "name": "Swat",
+    "postexCode": "SWT",
+    "postexCityId": 661
+  },
+  {
+    "name": "Sayakh",
+    "postexCode": "SYK",
+    "postexCityId": 662
+  },
+  {
+    "name": "Sehja",
+    "postexCode": "SJA",
+    "postexCityId": 663
+  },
+  {
+    "name": "Sehwan Sharif",
+    "postexCode": "SWN",
+    "postexCityId": 664
+  },
+  {
+    "name": "Shabqadar",
+    "postexCode": "SBQ",
+    "postexCityId": 665
+  },
+  {
+    "name": "Shadad Kot",
+    "postexCode": "SHD",
+    "postexCityId": 666
+  },
+  {
+    "name": "Shadi Large",
+    "postexCode": "SLE",
+    "postexCityId": 667
+  },
+  {
+    "name": "Shadiwal",
+    "postexCode": "SDI",
+    "postexCityId": 668
+  },
+  {
+    "name": "Shah Jamal",
+    "postexCode": "SJM",
+    "postexCityId": 669
+  },
+  {
+    "name": "Shah Juina",
+    "postexCode": "SJN",
+    "postexCityId": 670
+  },
+  {
+    "name": "Shah Pur Chakar",
+    "postexCode": "SPC",
+    "postexCityId": 671
+  },
+  {
+    "name": "Shahaqeeq",
+    "postexCode": "SQQ",
+    "postexCityId": 672
+  },
+  {
+    "name": "Shahdad Pur",
+    "postexCode": "SPR",
+    "postexCityId": 673
+  },
+  {
+    "name": "Shahkot",
+    "postexCode": "SHK",
+    "postexCityId": 674
+  },
+  {
+    "name": "Shahpur Jahania",
+    "postexCode": "SAJ",
+    "postexCityId": 675
+  },
+  {
+    "name": "Shahpur Saddar",
+    "postexCode": "SHA",
+    "postexCityId": 676
+  },
+  {
+    "name": "Shakarganj Sugar Mills, Jhang",
+    "postexCode": "SSM",
+    "postexCityId": 677
+  },
+  {
+    "name": "Shakirila",
+    "postexCode": "SLA",
+    "postexCityId": 678
+  },
+  {
+    "name": "Sham Kot",
+    "postexCode": "SHM",
+    "postexCityId": 679
+  },
+  {
+    "name": "Shams Abad",
+    "postexCode": "SMS",
+    "postexCityId": 680
+  },
+  {
+    "name": "Shangla",
+    "postexCode": "SHG",
+    "postexCityId": 681
+  },
+  {
+    "name": "Sheedo",
+    "postexCode": "SHE",
+    "postexCityId": 682
+  },
+  {
+    "name": "Sher Sultan",
+    "postexCode": "STN",
+    "postexCityId": 683
+  },
+  {
+    "name": "Shergarh",
+    "postexCode": "SRG",
+    "postexCityId": 684
+  },
+  {
+    "name": "Shewa Adda",
+    "postexCode": "SHW",
+    "postexCityId": 685
+  },
+  {
+    "name": "Shimla Hill",
+    "postexCode": "SML",
+    "postexCityId": 686
+  },
+  {
+    "name": "Shorkot",
+    "postexCode": "SHR",
+    "postexCityId": 687
+  },
+  {
+    "name": "Shujabad",
+    "postexCode": "SHU",
+    "postexCityId": 688
+  },
+  {
+    "name": "Sibi",
+    "postexCode": "SBI",
+    "postexCityId": 689
+  },
+  {
+    "name": "Sihala",
+    "postexCode": "SIH",
+    "postexCityId": 690
+  },
+  {
+    "name": "Sikandarabad",
+    "postexCode": "SKD",
+    "postexCityId": 691
+  },
+  {
+    "name": "Silanwali",
+    "postexCode": "SIL",
+    "postexCityId": 692
+  },
+  {
+    "name": "Sindhri",
+    "postexCode": "SDR",
+    "postexCityId": 693
+  },
+  {
+    "name": "Siraj Raho",
+    "postexCode": "SJR",
+    "postexCityId": 694
+  },
+  {
+    "name": "Siraye Muhajir",
+    "postexCode": "SMJ",
+    "postexCityId": 695
+  },
+  {
+    "name": "Skardu",
+    "postexCode": "KDU",
+    "postexCityId": 696
+  },
+  {
+    "name": "Smaal Ind Estate. Daska",
+    "postexCode": "DKA",
+    "postexCityId": 697
+  },
+  {
+    "name": "Soaray",
+    "postexCode": "BNR",
+    "postexCityId": 698
+  },
+  {
+    "name": "Sobhodero",
+    "postexCode": "SOB",
+    "postexCityId": 699
+  },
+  {
+    "name": "Sohawa Only Main Gt Road",
+    "postexCode": "SWA",
+    "postexCityId": 700
+  },
+  {
+    "name": "Sui",
+    "postexCode": "SUI",
+    "postexCityId": 701
+  },
+  {
+    "name": "Sukasan",
+    "postexCode": "SSN",
+    "postexCityId": 702
+  },
+  {
+    "name": "Sultan Kot",
+    "postexCode": "SLK",
+    "postexCityId": 703
+  },
+  {
+    "name": "Sumbal",
+    "postexCode": "SUM",
+    "postexCityId": 704
+  },
+  {
+    "name": "Sumbrial",
+    "postexCode": "SMB",
+    "postexCityId": 705
+  },
+  {
+    "name": "Sunder Adda",
+    "postexCode": "SUN",
+    "postexCityId": 706
+  },
+  {
+    "name": "Surakhe",
+    "postexCode": "SRK",
+    "postexCityId": 707
+  },
+  {
+    "name": "Syed Wala",
+    "postexCode": "SYD",
+    "postexCityId": 708
+  },
+  {
+    "name": "Takht-E-Bhai",
+    "postexCode": "TBI",
+    "postexCityId": 709
+  },
+  {
+    "name": "Talagung",
+    "postexCode": "TLG",
+    "postexCityId": 710
+  },
+  {
+    "name": "Talhar",
+    "postexCode": "TLH",
+    "postexCityId": 711
+  },
+  {
+    "name": "Tall",
+    "postexCode": "TLL",
+    "postexCityId": 712
+  },
+  {
+    "name": "Talvandi",
+    "postexCode": "TAL",
+    "postexCityId": 713
+  },
+  {
+    "name": "Tanda",
+    "postexCode": "TND",
+    "postexCityId": 714
+  },
+  {
+    "name": "Tando Adam",
+    "postexCode": "TDM",
+    "postexCityId": 715
+  },
+  {
+    "name": "Tando Alam Khan",
+    "postexCode": "TLM",
+    "postexCityId": 716
+  },
+  {
+    "name": "Tando Allahyar",
+    "postexCode": "TDA",
+    "postexCityId": 717
+  },
+  {
+    "name": "Tando Bago",
+    "postexCode": "TDB",
+    "postexCityId": 718
+  },
+  {
+    "name": "Tando Ghulam Ali",
+    "postexCode": "TGA",
+    "postexCityId": 719
+  },
+  {
+    "name": "Tando Jam",
+    "postexCode": "TDJ",
+    "postexCityId": 720
+  },
+  {
+    "name": "Tando Jan Muhammad",
+    "postexCode": "TJM",
+    "postexCityId": 721
+  },
+  {
+    "name": "Tando Mohd Khan",
+    "postexCode": "TMK",
+    "postexCityId": 722
+  },
+  {
+    "name": "Tangi",
+    "postexCode": "TGI",
+    "postexCityId": 723
+  },
+  {
+    "name": "Tarbela Dam",
+    "postexCode": "TRB",
+    "postexCityId": 724
+  },
+  {
+    "name": "Tarnol",
+    "postexCode": "TNL",
+    "postexCityId": 725
+  },
+  {
+    "name": "Tatlay Vali",
+    "postexCode": "TTV",
+    "postexCityId": 726
+  },
+  {
+    "name": "Taunsa Sharif",
+    "postexCode": "TNS",
+    "postexCityId": 727
+  },
+  {
+    "name": "Taxla",
+    "postexCode": "TXL",
+    "postexCityId": 728
+  },
+  {
+    "name": "Thana",
+    "postexCode": "THN",
+    "postexCityId": 729
+  },
+  {
+    "name": "Thara",
+    "postexCode": "TRA",
+    "postexCityId": 730
+  },
+  {
+    "name": "Thatta (Sadiqabad)",
+    "postexCode": "TTA",
+    "postexCityId": 731
+  },
+  {
+    "name": "Theeng More (Allahabad)",
+    "postexCode": "TMR",
+    "postexCityId": 732
+  },
+  {
+    "name": "Thull",
+    "postexCode": "THL",
+    "postexCityId": 733
+  },
+  {
+    "name": "Tibba Sultanpura",
+    "postexCode": "TSP",
+    "postexCityId": 734
+  },
+  {
+    "name": "Tibi Qaisarani",
+    "postexCode": "TQS",
+    "postexCityId": 735
+  },
+  {
+    "name": "Timargarah",
+    "postexCode": "TMG",
+    "postexCityId": 736
+  },
+  {
+    "name": "Topi (Gik University Area Only)*",
+    "postexCode": "TOP",
+    "postexCityId": 737
+  },
+  {
+    "name": "Tranda Saway Khan",
+    "postexCode": "TSK",
+    "postexCityId": 738
+  },
+  {
+    "name": "Tranda Mohammad Panah",
+    "postexCode": "TMP",
+    "postexCityId": 739
+  },
+  {
+    "name": "Tulamba",
+    "postexCode": "TLB",
+    "postexCityId": 740
+  },
+  {
+    "name": "Ubaro",
+    "postexCode": "UBR",
+    "postexCityId": 741
+  },
+  {
+    "name": "Uch Power Station",
+    "postexCode": "UPS",
+    "postexCityId": 742
+  },
+  {
+    "name": "Uch Shrif",
+    "postexCode": "UCH",
+    "postexCityId": 743
+  },
+  {
+    "name": "Ugghi",
+    "postexCode": "UGI",
+    "postexCityId": 744
+  },
+  {
+    "name": "Uggoke",
+    "postexCode": "UGG",
+    "postexCityId": 745
+  },
+  {
+    "name": "Umerkot",
+    "postexCode": "UKT",
+    "postexCityId": 746
+  },
+  {
+    "name": "Upper Dir",
+    "postexCode": "UDR",
+    "postexCityId": 747
+  },
+  {
+    "name": "Usta Muhammad",
+    "postexCode": "USM",
+    "postexCityId": 748
+  },
+  {
+    "name": "Village Sial",
+    "postexCode": "VSL",
+    "postexCityId": 749
+  },
+  {
+    "name": "Wan Rahda Ram",
+    "postexCode": "WRR",
+    "postexCityId": 750
+  },
+  {
+    "name": "Wango",
+    "postexCode": "WGO",
+    "postexCityId": 751
+  },
+  {
+    "name": "Wapda Colony (AJK)",
+    "postexCode": "WPA",
+    "postexCityId": 752
+  },
+  {
+    "name": "Warbattan",
+    "postexCode": "WBT",
+    "postexCityId": 753
+  },
+  {
+    "name": "Warsak",
+    "postexCode": "WAR",
+    "postexCityId": 754
+  },
+  {
+    "name": "Wazirabad",
+    "postexCode": "WZD",
+    "postexCityId": 755
+  },
+  {
+    "name": "Yazman",
+    "postexCode": "YZN",
+    "postexCityId": 756
+  },
+  {
+    "name": "Zafarwal",
+    "postexCode": "ZFR",
+    "postexCityId": 757
+  },
+  {
+    "name": "Zahir Pir",
+    "postexCode": "ZPR",
+    "postexCityId": 758
+  },
+  {
+    "name": "Zhob",
+    "postexCode": "ZOB",
+    "postexCityId": 759
+  },
+  {
+    "name": "Nasarpur",
+    "postexCode": "NSP",
+    "postexCityId": 760
+  },
+  {
+    "name": "Bandhi",
+    "postexCode": "BND",
+    "postexCityId": 761
+  },
+  {
+    "name": "Mirpur Sakro",
+    "postexCode": "MPS",
+    "postexCityId": 762
+  },
+  {
+    "name": "Makli",
+    "postexCode": "MKL",
+    "postexCityId": 763
+  },
+  {
+    "name": "Kathore",
+    "postexCode": "KTH",
+    "postexCityId": 764
+  },
+  {
+    "name": "Mirpur Bathoro",
+    "postexCode": "MPB",
+    "postexCityId": 765
+  },
+  {
+    "name": "Bela",
+    "postexCode": "BEL",
+    "postexCityId": 766
+  },
+  {
+    "name": "Uthal",
+    "postexCode": "UTH",
+    "postexCityId": 767
+  },
+  {
+    "name": "Havelian",
+    "postexCode": "HAV",
+    "postexCityId": 768
+  },
+  {
+    "name": "Jafarabad",
+    "postexCode": "JFD",
+    "postexCityId": 769
+  },
+  {
+    "name": "Sharaqpur Sharif",
+    "postexCode": "SRQ",
+    "postexCityId": 770
+  },
+  {
+    "name": "Winder",
+    "postexCode": "WDR",
+    "postexCityId": 771
+  },
+  {
+    "name": "Darro",
+    "postexCode": "DRO",
+    "postexCityId": 772
+  },
+  {
+    "name": "Chuhar Jamali",
+    "postexCode": "CHJ",
+    "postexCityId": 773
+  },
+  {
+    "name": "Chenab Nagar",
+    "postexCode": "CNB",
+    "postexCityId": 774
+  },
+  {
+    "name": "Khidarwala",
+    "postexCode": "KDA",
+    "postexCityId": 775
+  },
+  {
+    "name": "Qamar Abad",
+    "postexCode": "QMA",
+    "postexCityId": 776
+  },
+  {
+    "name": "Sinjhoro",
+    "postexCode": "SJO",
+    "postexCityId": 777
+  },
+  {
+    "name": "Banguldero",
+    "postexCode": "BGE",
+    "postexCityId": 778
+  },
+  {
+    "name": "Qambar",
+    "postexCode": "QMB",
+    "postexCityId": 779
+  },
+  {
+    "name": "Shahdara Town",
+    "postexCode": "SHT",
+    "postexCityId": 780
+  },
+  {
+    "name": "Chowk Munda",
+    "postexCode": "CWM",
+    "postexCityId": 781
+  },
+  {
+    "name": "Mehmood Kot",
+    "postexCode": "MHK",
+    "postexCityId": 782
+  },
+  {
+    "name": "Ghouspur",
+    "postexCode": "GPR",
+    "postexCityId": 783
+  },
+  {
+    "name": "Chashma",
+    "postexCode": "CMA",
+    "postexCityId": 784
+  },
+  {
+    "name": "Daud Khel",
+    "postexCode": "DDK",
+    "postexCityId": 785
+  },
+  {
+    "name": "Liaquatabad",
+    "postexCode": "LQA",
+    "postexCityId": 786
+  },
+  {
+    "name": "Naya Lahore",
+    "postexCode": "NLH",
+    "postexCityId": 787
+  },
+  {
+    "name": "Aminpur Bangla",
+    "postexCode": "ABG",
+    "postexCityId": 788
+  },
+  {
+    "name": "Kml Via Ccw",
+    "postexCode": "KMC",
+    "postexCityId": 789
+  },
+  {
+    "name": "Noman Pora",
+    "postexCode": "NOM",
+    "postexCityId": 790
+  },
+  {
+    "name": "Harighel",
+    "postexCode": "HRG",
+    "postexCityId": 791
+  },
+  {
+    "name": "Arja",
+    "postexCode": "ARJ",
+    "postexCityId": 792
+  },
+  {
+    "name": "Dhirkot",
+    "postexCode": "DHK",
+    "postexCityId": 793
+  },
+  {
+    "name": "Chamankot",
+    "postexCode": "CMK",
+    "postexCityId": 794
+  },
+  {
+    "name": "Chunawala",
+    "postexCode": "CHU",
+    "postexCityId": 795
+  },
+  {
+    "name": "Qaimpur",
+    "postexCode": "QIM",
+    "postexCityId": 796
+  },
+  {
+    "name": "Islam Headworks",
+    "postexCode": "ISM",
+    "postexCityId": 797
+  },
+  {
+    "name": "Muhammad Panah Mor",
+    "postexCode": "MMR",
+    "postexCityId": 798
+  },
+  {
+    "name": "Jamalpur",
+    "postexCode": "JML",
+    "postexCityId": 799
+  },
+  {
+    "name": "Wahndo",
+    "postexCode": "WDO",
+    "postexCityId": 800
+  },
+  {
+    "name": "Gurmani Adda",
+    "postexCode": "GUR",
+    "postexCityId": 801
+  },
+  {
+    "name": "Anwarabad",
+    "postexCode": "ANW",
+    "postexCityId": 802
+  },
+  {
+    "name": "Sheikhoo Sugar Mills",
+    "postexCode": "SSG",
+    "postexCityId": 803
+  },
+  {
+    "name": "Adda One R",
+    "postexCode": "AOR",
+    "postexCityId": 804
+  },
+  {
+    "name": "Gamba Skardu",
+    "postexCode": "GMB",
+    "postexCityId": 805
+  },
+  {
+    "name": "Hussainabad",
+    "postexCode": "HUS",
+    "postexCityId": 806
+  },
+  {
+    "name": "Kachura",
+    "postexCode": "KCR",
+    "postexCityId": 807
+  },
+  {
+    "name": "Manthal",
+    "postexCode": "MTH",
+    "postexCityId": 808
+  },
+  {
+    "name": "Sadpara",
+    "postexCode": "SAP",
+    "postexCityId": 809
+  },
+  {
+    "name": "Olding",
+    "postexCode": "OLD",
+    "postexCityId": 810
+  },
+  {
+    "name": "Shigar",
+    "postexCode": "SHI",
+    "postexCityId": 811
+  },
+  {
+    "name": "Kharmang",
+    "postexCode": "KRM",
+    "postexCityId": 812
+  },
+  {
+    "name": "Khaplu",
+    "postexCode": "KPU",
+    "postexCityId": 813
+  },
+  {
+    "name": "Roundu",
+    "postexCode": "RDU",
+    "postexCityId": 814
+  },
+  {
+    "name": "Mehdiabad",
+    "postexCode": "MEH",
+    "postexCityId": 815
+  },
+  {
+    "name": "Daghoni Balgar",
+    "postexCode": "DAG",
+    "postexCityId": 816
+  },
+  {
+    "name": "Keris",
+    "postexCode": "KRS",
+    "postexCityId": 817
+  },
+  {
+    "name": "Dambodas",
+    "postexCode": "DMD",
+    "postexCityId": 818
+  },
+  {
+    "name": "Sermik",
+    "postexCode": "SRM",
+    "postexCityId": 819
+  },
+  {
+    "name": "Haranpur",
+    "postexCode": "HNP",
+    "postexCityId": 820
+  },
+  {
+    "name": "Chak Hamid",
+    "postexCode": "CME",
+    "postexCityId": 821
+  },
+  {
+    "name": "Chak Ali Shah",
+    "postexCode": "CAS",
+    "postexCityId": 822
+  },
+  {
+    "name": "DHAryala Jalap",
+    "postexCode": "DJP",
+    "postexCityId": 823
+  },
+  {
+    "name": "Kariala Jalib",
+    "postexCode": "KJB",
+    "postexCityId": 824
+  },
+  {
+    "name": "Pinanwal",
+    "postexCode": "PNW",
+    "postexCityId": 825
+  },
+  {
+    "name": "Chak Jani",
+    "postexCode": "CJI",
+    "postexCityId": 826
+  },
+  {
+    "name": "Pindi Said Pur",
+    "postexCode": "PSP",
+    "postexCityId": 827
+  },
+  {
+    "name": "Saghar Pur",
+    "postexCode": "SGP",
+    "postexCityId": 828
+  },
+  {
+    "name": "Dheri Araian",
+    "postexCode": "DAR",
+    "postexCityId": 829
+  },
+  {
+    "name": "Jalalpur Sharif",
+    "postexCode": "JLS",
+    "postexCityId": 830
+  },
+  {
+    "name": "Jutana",
+    "postexCode": "JUT",
+    "postexCityId": 831
+  },
+  {
+    "name": "Sauwal",
+    "postexCode": "SAU",
+    "postexCityId": 832
+  },
+  {
+    "name": "Golpur",
+    "postexCode": "GOL",
+    "postexCityId": 833
+  },
+  {
+    "name": "Tobah",
+    "postexCode": "TBH",
+    "postexCityId": 834
+  },
+  {
+    "name": "Saroba",
+    "postexCode": "SRB",
+    "postexCityId": 835
+  },
+  {
+    "name": "Lilla",
+    "postexCode": "LLA",
+    "postexCityId": 836
+  },
+  {
+    "name": "Chak Shadi",
+    "postexCode": "CSH",
+    "postexCityId": 837
+  },
+  {
+    "name": "Bansra Gali",
+    "postexCode": "BNS",
+    "postexCityId": 838
+  },
+  {
+    "name": "Barian",
+    "postexCode": "BAN",
+    "postexCityId": 839
+  },
+  {
+    "name": "Chitta More",
+    "postexCode": "CTA",
+    "postexCityId": 840
+  },
+  {
+    "name": "Liaqat National Bagh Aka Company Bagh",
+    "postexCode": "LNB",
+    "postexCityId": 841
+  },
+  {
+    "name": "Darya Gali",
+    "postexCode": "DYG",
+    "postexCityId": 842
+  },
+  {
+    "name": "Dewal",
+    "postexCode": "DWL",
+    "postexCityId": 843
+  },
+  {
+    "name": "Gharial Camp",
+    "postexCode": "GHC",
+    "postexCityId": 844
+  },
+  {
+    "name": "Kali Mitti",
+    "postexCode": "KMI",
+    "postexCityId": 845
+  },
+  {
+    "name": "Kashmir Point",
+    "postexCode": "KPT",
+    "postexCityId": 846
+  },
+  {
+    "name": "Kuldana",
+    "postexCode": "KUL",
+    "postexCityId": 847
+  },
+  {
+    "name": "Lower Bazar",
+    "postexCode": "LBZ",
+    "postexCityId": 848
+  },
+  {
+    "name": "New Murree",
+    "postexCode": "NRE",
+    "postexCityId": 849
+  },
+  {
+    "name": "Phagwari",
+    "postexCode": "PGW",
+    "postexCityId": 850
+  },
+  {
+    "name": "Pindi Point",
+    "postexCode": "PPT",
+    "postexCityId": 851
+  },
+  {
+    "name": "Sehr Bagla",
+    "postexCode": "SBG",
+    "postexCityId": 852
+  },
+  {
+    "name": "Tret",
+    "postexCode": "TRT",
+    "postexCityId": 853
+  },
+  {
+    "name": "Akwal",
+    "postexCode": "AKW",
+    "postexCityId": 854
+  },
+  {
+    "name": "Bilalabad",
+    "postexCode": "BLL",
+    "postexCityId": 855
+  },
+  {
+    "name": "Chinji",
+    "postexCode": "CNJ",
+    "postexCityId": 856
+  },
+  {
+    "name": "DHArabi",
+    "postexCode": "DRB",
+    "postexCityId": 857
+  },
+  {
+    "name": "Danda Shah Bilawal",
+    "postexCode": "DSB",
+    "postexCityId": 858
+  },
+  {
+    "name": "Jabbi Shah Dilawar",
+    "postexCode": "JSD",
+    "postexCityId": 859
+  },
+  {
+    "name": "Jasial",
+    "postexCode": "JSI",
+    "postexCityId": 860
+  },
+  {
+    "name": "Kot Qazi",
+    "postexCode": "KQZ",
+    "postexCityId": 861
+  },
+  {
+    "name": "Lawa",
+    "postexCode": "LWA",
+    "postexCityId": 862
+  },
+  {
+    "name": "Mamdot",
+    "postexCode": "MMD",
+    "postexCityId": 863
+  },
+  {
+    "name": "Murat",
+    "postexCode": "MRT",
+    "postexCityId": 864
+  },
+  {
+    "name": "Multan Khurd",
+    "postexCode": "MTK",
+    "postexCityId": 865
+  },
+  {
+    "name": "Murali",
+    "postexCode": "MUR",
+    "postexCityId": 866
+  },
+  {
+    "name": "Nakka Kahut",
+    "postexCode": "NKK",
+    "postexCityId": 867
+  },
+  {
+    "name": "Pira Fatehal",
+    "postexCode": "PFT",
+    "postexCityId": 868
+  },
+  {
+    "name": "Pachnand",
+    "postexCode": "PCH",
+    "postexCityId": 869
+  },
+  {
+    "name": "Sangwala",
+    "postexCode": "SGW",
+    "postexCityId": 870
+  },
+  {
+    "name": "Tehi",
+    "postexCode": "TEH",
+    "postexCityId": 871
+  },
+  {
+    "name": "Tamman",
+    "postexCode": "TMN",
+    "postexCityId": 872
+  },
+  {
+    "name": "Thoa Mehram Khan",
+    "postexCode": "THM",
+    "postexCityId": 873
+  }
+]

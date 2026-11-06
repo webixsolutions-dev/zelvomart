@@ -8,14 +8,20 @@ import { useShop } from "@store/lib/store";
 export function MobileBottomNav() {
   const pathname = usePathname();
   const { cartCount, ready, setCartOpen } = useShop();
-  const is = (p: string) => (p === "/" ? pathname === "/" : pathname.startsWith(p));
+  if (/^\/(cart|checkout|pay|order-confirmed)(\/|$)/.test(pathname))
+    return null;
+  const is = (p: string) =>
+    p === "/" ? pathname === "/" : pathname.startsWith(p);
   return (
     <nav className="bottom-nav" aria-label="Quick navigation">
       <Link href="/" className={is("/") ? "active" : ""}>
         <House size={20} />
         Home
       </Link>
-      <Link href="/shop/" className={is("/shop") || is("/product-category") ? "active" : ""}>
+      <Link
+        href="/shop/"
+        className={is("/shop") || is("/product-category") ? "active" : ""}
+      >
         <LayoutGrid size={20} />
         Shop
       </Link>

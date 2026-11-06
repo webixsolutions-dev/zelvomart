@@ -33,11 +33,12 @@ import { runInBackground } from "../lib/background";
 import { runJobsNow } from "../lib/job-runner";
 import { runAdvanceSweep } from "../lib/advance-sweep";
 import { runCronQueue } from "../lib/cron-queue";
-import { paymentPath } from "../lib/advance-payment";
+import { codToCollect, paymentPath } from "../lib/advance-payment";
 import { replayCutoff, replayRetentionDays } from "../lib/replay-retention";
 import { timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
 import { cityByName } from "../lib/cities";
+import { addressSuggestions } from "../lib/address-suggestions";
 import { adsEnvironment } from "../lib/ads-policy";
 import {
   allowRequest,
@@ -53,6 +54,15 @@ import {
 } from "../http/shared";
 
 export function registerPublicRoutes(app: Express) {
+  app.get("/api/checkout/address-suggestions", async (req, res) => {
+    setNoStore(res);
+    if (!(await allowRequest(req, res, "address-suggestions", 40, 60_000))) return;
+    const city = String(req.query.city || "").trim();
+    const query = String(req.query.q || "").trim();
+    // Suggestions are optional: a map outage must never stop a manually entered delivery address.
+    const suggestions = await addressSuggestions(city, query).catch(() => []);
+    res.json({ suggestions });
+  });
   const cronAuthorized = (req: any) => {
     const expected = process.env.CRON_SECRET || "";
     const authorization = String(req.get("authorization") || "");
@@ -483,12 +493,30 @@ export function registerPublicRoutes(app: Express) {
         orderNumber,
         OR: [{ phone: { endsWith: phone.slice(-10) } }, { phone: { endsWith: phone.slice(-11) } }],
       },
-      select: { orderNumber: true, status: true, postexTracking: true, createdAt: true, total: true, city: true },
+      select: {
+        orderNumber: true,
+        status: true,
+        postexTracking: true,
+        createdAt: true,
+        total: true,
+        city: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        advanceReceived: true,
+        advanceRefunded: true,
+      },
     });
     if (!order) return res.status(404).json({ error: "NOT_FOUND" });
     const city = await cityByName(order.city);
     res.json({
-      ...order,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      postexTracking: order.postexTracking,
+      createdAt: order.createdAt,
+      city: order.city,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      dueOnDelivery: codToCollect(order),
       deliveryEstimate: `${city?.deliveryMinDays ?? 2}–${city?.deliveryMaxDays ?? 7} working days`,
       total: Number(order.total),
       trackingUrl: order.postexTracking ? postexTrackingUrl(order.postexTracking) : null,

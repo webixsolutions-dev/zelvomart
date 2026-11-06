@@ -9,7 +9,7 @@ export const site = {
   name: "Zelvomart",
   tagline: "Everyday things, chosen better.",
   description:
-    "Zelvomart is an online store in Pakistan for home, decor, beauty, tech, fashion, fitness and kids’ products. Order online or on WhatsApp, pay on delivery.",
+    "Zelvomart is an online store in Pakistan for home, decor, beauty, tech, fashion, fitness and kids’ products. Order online or on WhatsApp, with cash on delivery and optional advance payment.",
   url: SITE_ORIGIN,
   locale: "en_PK",
   currency: "PKR",

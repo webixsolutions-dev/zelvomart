@@ -393,7 +393,9 @@ function OrderResult({ order }: { order: TrackedOrder }) {
               <dt>
                 <Banknote size={16} /> Payment
               </dt>
-              <dd>Cash on Delivery</dd>
+              <dd>{order.paymentMethod === "ADVANCE_EASYPAISA"
+                ? order.paymentStatus === "VERIFIED" ? "Paid in advance" : "Advance payment"
+                : "Cash on delivery"}</dd>
             </div>
           </dl>
           <a className={`btn wa-outline ${s.ask}`} href={ask} target="_blank" rel="noopener noreferrer">
@@ -424,8 +426,8 @@ function OrderResult({ order }: { order: TrackedOrder }) {
             ))}
           </ul>
           <p className={s.total}>
-            <span>{delivered ? "Order total" : "Total due on delivery"}</span>
-            <strong>{money(order.total)}</strong>
+            <span>{delivered ? "Order total" : "Due on delivery"}</span>
+            <strong>{money(delivered ? order.total : order.dueOnDelivery ?? order.total)}</strong>
           </p>
         </div>
       </div>

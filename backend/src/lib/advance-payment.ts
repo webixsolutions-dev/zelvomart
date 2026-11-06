@@ -40,7 +40,7 @@ export const ADVANCE_DEFAULTS: AdvanceSettings = {
   qrImageUrl: "",
   discount: 200,
   minSubtotal: 0,
-  firstReminderMinutes: 30,
+  firstReminderMinutes: 60,
   reminderHours: 2,
   expiryHours: 24,
   verificationHours: "9am – 9pm",
@@ -200,14 +200,21 @@ export function verifyOutcome(amountReceived: number, total: Money): "VERIFIED" 
 }
 
 export const REFUND_REASONS = {
-  CUSTOMER_CANCELLED: "Customer cancelled before dispatch",
+  CUSTOMER_CANCELLED: "Customer requested cancellation",
   COULD_NOT_SHIP: "We could not ship the order",
   OVERPAID: "Customer paid more than the order total",
   OTHER: "Other",
 } as const;
 export type RefundReason = keyof typeof REFUND_REASONS;
 
-type RefundOrder = { total: Money; deliveryFee?: Money; advanceReceived?: Money; advanceRefunded?: Money };
+type RefundOrder = {
+  total: Money;
+  deliveryFee?: Money;
+  advanceReceived?: Money;
+  advanceRefunded?: Money;
+  status?: string;
+  dispatched?: boolean;
+};
 
 /** What can still be refunded: received − refunds already recorded. */
 export function refundableAmount(order: RefundOrder) {
@@ -216,13 +223,17 @@ export function refundableAmount(order: RefundOrder) {
 
 /**
  * The amount the refund form starts with (staff can change it, never above the refundable amount):
- * - customer cancelled before dispatch: paid − delivery charges (the refund policy);
+ * - customer cancelled before dispatch: everything paid back; after dispatch: paid minus delivery charges;
  * - we could not ship: everything back;
  * - overpaid: only what is above the order total.
  */
 export function suggestedRefund(reason: RefundReason, order: RefundOrder) {
   const refundable = refundableAmount(order);
-  if (reason === "CUSTOMER_CANCELLED") return Math.max(0, refundable - rupees(order.deliveryFee));
+  if (reason === "CUSTOMER_CANCELLED") {
+    const dispatched =
+      order.dispatched || ["IN_TRANSIT", "DELIVERED", "SETTLED", "RETURNED"].includes(order.status || "");
+    return dispatched ? Math.max(0, refundable - rupees(order.deliveryFee)) : refundable;
+  }
   if (reason === "OVERPAID") return Math.min(refundable, Math.max(0, refundable - rupees(order.total)));
   return refundable;
 }

@@ -14,6 +14,7 @@ import { CouponBox } from "@store/components/shop/CouponBox";
 import { ProductGrid } from "@store/components/product/ProductGrid";
 import { SectionHead } from "@store/components/ui/SectionHead";
 import { PageIntro } from "@store/components/home/Blocks";
+import { CheckoutDock } from "@store/components/shop/CheckoutDock";
 
 /** Next steps offered on the empty cart. */
 const emptyCategories = ["home-living", "beauty", "tech", "kids"];
@@ -143,6 +144,7 @@ export function CartView() {
           </div>
         </section>
       )}
+      {cart.length > 0 && <CheckoutDock total={payable} label="Proceed to checkout" href="/checkout/" />}
     </>
   );
 }

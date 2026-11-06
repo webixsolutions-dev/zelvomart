@@ -9,7 +9,7 @@ export default function Page() {
   return (
     <div className="checkout-page">
       <Breadcrumbs items={[{ label: "Cart", href: "/cart/" }, { label: "Checkout" }]} />
-      <PageIntro eyebrow="Secure checkout" title="Checkout" sub="Two quick steps. No account needed, no advance payment." />
+      <PageIntro eyebrow="Secure checkout" title="Checkout" sub="Your details, your payment choice. No account needed." />
       <CheckoutView />
     </div>
   );
