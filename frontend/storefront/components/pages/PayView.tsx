@@ -246,7 +246,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
   );
 
   return (
-    <section className="section pt-sm">
+    <section className="section pt-sm" data-replay-mask>
       <div className={`container ${styles.narrow}`}>
         {info.demo && (
           <p className={styles.demo} role="note">

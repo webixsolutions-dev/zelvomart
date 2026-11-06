@@ -152,6 +152,8 @@ export function toDesignProduct(stored: ApiProduct, defaultBundlePercent = 5): P
     price: Number(p.price),
     ...(p.onSale && regular > Number(p.price) ? { compare: regular } : {}),
     image,
+    ...(p.videoUrl ? { videoUrl: p.videoUrl } : {}),
+    ...(p.videoThumbnail ? { videoThumbnail: p.videoThumbnail } : {}),
     gallery: galleryImages.map((item, i) => ({ src: item.src, alt: alts[i], ...(item.title ? { title: item.title } : {}) })),
     ...(named ? { badge: named } : isBestseller ? { badge: "Bestseller" as const } : isNew ? { badge: "New in" as const } : {}),
     isNew,

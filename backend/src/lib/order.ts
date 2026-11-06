@@ -50,16 +50,73 @@ function decimal(value: number) {
   return new Prisma.Decimal(value.toFixed(2));
 }
 
+type SavedCheckout = Prisma.OrderGetPayload<{ include: { items: true } }>;
+
+async function retriedOrder(existing: SavedCheckout, input: CheckoutInput) {
+  const text = (value: unknown) => String(value || "").trim();
+  const bundleProducts = input.cart.filter((item) => item.bundleSize === 2).map((item) => item.productId);
+  const enabledBundles = bundleProducts.length
+    ? new Set(
+        (
+          await prisma.product.findMany({
+            where: { id: { in: bundleProducts }, bundleEnabled: true },
+            select: { id: true },
+          })
+        ).map((item) => item.id),
+      )
+    : new Set<string>();
+  const bundlePercent = bundleProducts.length ? await getSetting<number>("store.bundleDefaultDiscountPercent", 5) : 0;
+  const cart = input.cart.map((item) => {
+    const bundled = item.bundleSize === 2 && enabledBundles.has(item.productId);
+    return [
+      item.productId,
+      item.variantId || "",
+      item.quantity * (bundled ? 2 : 1),
+      bundled && Number(bundlePercent) > 0,
+    ].join(":");
+  });
+  const saved = existing.items.map((item) =>
+    [item.productId, item.variantId || "", item.quantity, Number(item.bundleDiscount) > 0].join(":"),
+  );
+  const same =
+    text(existing.fullName) === text(input.fullName) &&
+    existing.phone.replace(/\D/g, "").slice(-10) === input.phone.replace(/\D/g, "").slice(-10) &&
+    text(existing.email).toLowerCase() === text(input.email).toLowerCase() &&
+    text(existing.city).toLowerCase() === text(input.city).toLowerCase() &&
+    text(existing.address) === text(input.address) &&
+    text(existing.notes)
+      .replace(/(?:^|\n)City entered as free text; review before booking\.$/, "")
+      .trim() === text(input.orderNotes) &&
+    text(existing.couponCode).toUpperCase() === text(input.couponCode).toUpperCase() &&
+    existing.paymentMethod === input.paymentMethod &&
+    JSON.stringify(cart.sort()) === JSON.stringify(saved.sort());
+  if (!same) throw new Error("CHECKOUT_KEY_REUSED");
+  return Object.assign(existing, {
+    payToken: existing.paymentMethod === "ADVANCE_EASYPAISA" ? paymentToken(existing.orderNumber) : undefined,
+  });
+}
+
 export async function createOrder(input: CheckoutInput, options: { dispatchJobs?: boolean } = {}) {
+  try {
+    return await createOrderAttempt(input, options);
+  } catch (error) {
+    // PostgreSQL's unique key waits for the winning transaction. Its collision rolls back stock, coupons and jobs.
+    // Recover the saved result instead of telling the shopper that a successful checkout failed.
+    const existing = await prisma.order.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+      include: { items: true },
+    });
+    if (existing) return retriedOrder(existing, input);
+    throw error;
+  }
+}
+
+async function createOrderAttempt(input: CheckoutInput, options: { dispatchJobs?: boolean }) {
   const existing = await prisma.order.findUnique({
     where: { idempotencyKey: input.idempotencyKey },
     include: { items: true },
   });
-  if (existing)
-    return Object.assign(existing, {
-      // A retried checkout gets the same payment link (the token is derived from the order number).
-      payToken: existing.paymentMethod === "ADVANCE_EASYPAISA" ? paymentToken(existing.orderNumber) : undefined,
-    });
+  if (existing) return retriedOrder(existing, input);
 
   const [deliveryRule, paymentMethods, bundleDiscount, tiktokOn] = await Promise.all([
     getSetting<any>("store.delivery", {}),

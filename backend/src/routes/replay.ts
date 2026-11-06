@@ -1,4 +1,5 @@
 import { privateSafeUrl } from "../lib/url-privacy";
+import { getSetting } from "../lib/settings";
 import {
   storeReplayChunk,
   replayChunkUrl,
@@ -50,6 +51,8 @@ function replayStorageMissing(res: express.Response) {
 
 export function registerReplayRoutes(app: Express) {
   app.post("/api/session-replays/start", async (req, res) => {
+    const enabled = await getSetting("tracking.sessionReplayEnabled", true);
+    if (enabled === false || String(enabled) === "false") return res.status(403).json({ error: "REPLAY_DISABLED" });
     if (replayStorageMissing(res)) return;
     void maybeCleanupOldSessionReplays();
     if (!allowReplayTraffic(req, res, "replay-start", 60)) return;
@@ -83,7 +86,7 @@ export function registerReplayRoutes(app: Express) {
       campaign,
       lastSeenAt: now,
       lastUrl,
-      referrer: req.body.referrer ? String(req.body.referrer).slice(0, 4000) : undefined,
+      referrer: req.body.referrer ? privateSafeUrl(String(req.body.referrer)).slice(0, 4000) : undefined,
       device: req.body.device ? String(req.body.device).slice(0, 40) : undefined,
       viewport: req.body.viewport ? String(req.body.viewport).slice(0, 40) : undefined,
       status: "ACTIVE",
@@ -101,7 +104,7 @@ export function registerReplayRoutes(app: Express) {
         campaign,
         landingUrl,
         lastUrl,
-        referrer: req.body.referrer ? String(req.body.referrer).slice(0, 4000) : null,
+        referrer: req.body.referrer ? privateSafeUrl(String(req.body.referrer)).slice(0, 4000) : null,
         device: req.body.device ? String(req.body.device).slice(0, 40) : null,
         viewport: req.body.viewport ? String(req.body.viewport).slice(0, 40) : null,
         status: "ACTIVE",
@@ -121,6 +124,8 @@ export function registerReplayRoutes(app: Express) {
   });
 
   app.post("/api/session-replays/chunk", async (req, res) => {
+    const enabled = await getSetting("tracking.sessionReplayEnabled", true);
+    if (enabled === false || String(enabled) === "false") return res.status(403).json({ error: "REPLAY_DISABLED" });
     if (replayStorageMissing(res)) return;
     if (!allowReplayTraffic(req, res, "replay-chunks", 180)) return;
     const sessionId = String(req.body.sessionId || ""),

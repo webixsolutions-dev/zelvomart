@@ -99,6 +99,103 @@ for (const c of cases) {
   console.log(`PASS: ${c.name} → delivery Rs ${body.deliveryFee}, total Rs ${body.total}`);
 }
 
+// Concurrent requests and a retry after the last stock item was sold must recover the one saved order.
+{
+  const product = await prisma.product.create({
+    data: {
+      title: "Retry stock",
+      slug: "retry-stock",
+      sku: "RETRY-STOCK",
+      price: 1200,
+      status: "PUBLISHED",
+      stock: 1,
+      trackStock: true,
+    },
+  });
+  await prisma.coupon.create({ data: { code: "RETRY100", type: "FIXED", amount: 100, active: true } });
+  const payload = {
+    idempotencyKey: randomUUID(),
+    fullName: "Retry Customer",
+    phone: "03007771234",
+    city: "Unlisted Test Town",
+    address: "House 15, Street 4",
+    orderNotes: "Please call",
+    paymentMethod: "COD",
+    couponCode: "RETRY100",
+    cart: [{ productId: product.id, quantity: 1, bundleSize: 1 }],
+  };
+  const post = (body = payload) =>
+    fetch(base + "/api/orders", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const responses = await Promise.all([post(), post()]);
+  const bodies = (await Promise.all(responses.map((response) => response.json()))) as any[];
+  assert.deepEqual(
+    responses.map((response) => response.status),
+    [201, 201],
+    JSON.stringify(bodies),
+  );
+  assert.equal(bodies[0].id, bodies[1].id);
+  assert.equal(await prisma.order.count({ where: { idempotencyKey: payload.idempotencyKey } }), 1);
+  assert.equal((await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).stock, 0);
+  assert.equal((await prisma.coupon.findUniqueOrThrow({ where: { code: "RETRY100" } })).usedCount, 1);
+  assert.equal(await prisma.job.count({ where: { orderId: bodies[0].id, name: "customer-order-email" } }), 1);
+  assert.equal((await post()).status, 201, "retry works even though stock is now zero");
+  const mismatch = await post({ ...payload, address: "A different delivery address" });
+  assert.equal(mismatch.status, 400);
+  assert.equal(((await mismatch.json()) as any).error, "CHECKOUT_KEY_REUSED");
+  const original = prisma.order.findUnique;
+  prisma.order.findUnique = async () => {
+    throw new Error("prisma private/path INTERNAL_QUERY");
+  };
+  try {
+    const failed = await post();
+    assert.equal(failed.status, 503);
+    assert.deepEqual(await failed.json(), { error: "ORDER_TEMPORARILY_UNAVAILABLE" });
+  } finally {
+    prisma.order.findUnique = original;
+  }
+  console.log("PASS: simultaneous checkout, stock, coupon and jobs are idempotent; database errors stay private");
+}
+
+// The scheduled recording switch also stops already-open clients from uploading more snapshots.
+{
+  const { setSetting } = await import("../src/lib/settings");
+  await setSetting("tracking.sessionReplayEnabled", false);
+  for (const route of ["start", "chunk"]) {
+    const result = await fetch(`${base}/api/session-replays/${route}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
+    assert.equal(result.status, 403);
+    assert.deepEqual(await result.json(), { error: "REPLAY_DISABLED" });
+  }
+  console.log("PASS: disabled recording rejects new sessions and chunks");
+}
+
+{
+  const eventId = randomUUID();
+  const result = await fetch(`${base}/api/events`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0 browser fixture" },
+    body: JSON.stringify({
+      eventName: "PageView",
+      eventId,
+      sourceUrl: "https://www.zelvomart.com/pay/ZM-1/?t=PRIVATE_PAYMENT&key=CONFIRM_SECRET&utm_source=test",
+      params: { href: "/pay/ZM-1/?t=PRIVATE_PAYMENT" },
+    }),
+  });
+  assert.equal(result.status, 200);
+  const event = await prisma.eventLog.findFirstOrThrow({ where: { eventId } });
+  for (const secret of ["PRIVATE_PAYMENT", "CONFIRM_SECRET"])
+    assert.equal(JSON.stringify(event).includes(secret), false);
+  assert.ok(event.sourceUrl?.includes("utm_source=test"));
+  console.log("PASS: stored event metadata and raw payload both redact private payment credentials");
+}
+
 server.close();
 await prisma.$disconnect();
 await socket.stop();

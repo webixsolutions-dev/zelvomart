@@ -205,10 +205,31 @@ function storefrontTotal(subtotal: number, coupon: number, advance: Record<strin
 {
   const r = await order("ADVANCE_EASYPAISA", 1);
   const row = await prisma.order.findUniqueOrThrow({ where: { orderNumber: r.body.orderNumber } });
+  await prisma.order.update({
+    where: { id: row.id },
+    data: { settlementRef: "INTERNAL_SETTLEMENT", clientIp: "192.0.2.1", possibleDuplicate: true },
+  });
   const c = (await (await fetch(`${base}/api/orders/confirmation/${row.orderNumber}?key=${row.id}`)).json()) as any;
   assert.equal(c.payPath, r.body.payPath);
-  assert.equal("paymentTokenHash" in c, false);
-  console.log("ok - confirmation carries the link, not the hash");
+  for (const field of [
+    "paymentTokenHash",
+    "idempotencyKey",
+    "settlementRef",
+    "clientIp",
+    "possibleDuplicate",
+    "test",
+    "staffCreated",
+    "blocklistedAtOrder",
+    "firstTouch",
+    "lastTouch",
+    "notes",
+  ])
+    assert.equal(field in c, false, `confirmation excludes ${field}`);
+  assert.equal("stockReduced" in c.items[0], false);
+  assert.equal(c.fullName, row.fullName);
+  assert.equal(c.purchaseEligible, !row.test && !row.staffCreated && !row.blocklistedAtOrder);
+  assert.equal((await fetch(`${base}/api/orders/confirmation/${row.orderNumber}?key=wrong`)).status, 404);
+  console.log("ok - customer confirmation carries delivery details and payment link, without internal fields");
 }
 
 // Checkout offer: demo off production; hidden in production on demo values.

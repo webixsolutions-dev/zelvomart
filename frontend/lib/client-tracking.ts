@@ -1,5 +1,5 @@
 "use client";
-import {privateSafeUrl} from "./url-privacy";
+import {privateSafeUrl, privatePaymentPath} from "./url-privacy";
 
 import {tiktokProperties} from "./tracking-payload";
 import {adsAllowed,staffDevice,trackingSettingEnabled} from "./tracking-policy";
@@ -28,8 +28,9 @@ export async function trackStoreEvent(
   const eventId = options.eventId || crypto.randomUUID();
   if(staffDevice())return eventId;
   // Meta/TikTok only on NEXT_PUBLIC_SITE_URL's exact host (lib/ads-policy.ts); the pixels are not loaded elsewhere.
-  if(adsAllowed()&&adsHostAllowed(location.host)&&!eventName.startsWith("Replay")){
+  if(!privatePaymentPath(location.pathname)&&adsAllowed()&&adsHostAllowed(location.host)&&!eventName.startsWith("Replay")){
     const deliver=(platform:'meta'|'tiktok',attempt=0)=>{
+      if(privatePaymentPath(location.pathname))return;
       if(!trackingSettingEnabled(platform==='meta'?'tracking.metaPixelEnabled':'tracking.tiktokPixelEnabled'))return;
       try{
         if(platform==='meta'&&window.fbq){if(options.metaUserData)window.__zmMetaInit?.(options.metaUserData);window.fbq('track',eventName,params,{eventID:eventId});options.onMetaDelivered?.();return;}

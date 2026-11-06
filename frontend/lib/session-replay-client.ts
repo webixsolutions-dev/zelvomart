@@ -68,7 +68,7 @@ export function getReplayLandingUrl() {
   if (typeof window === "undefined") return "";
   try {
     const existing = window.sessionStorage.getItem(LANDING_URL_KEY);
-    if (existing) return existing;
+    if (existing) return privateSafeUrl(existing);
     const value = privateSafeUrl(window.location.href);
     window.sessionStorage.setItem(LANDING_URL_KEY, value);
     return value;

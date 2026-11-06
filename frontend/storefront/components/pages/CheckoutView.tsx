@@ -88,6 +88,7 @@ export function CheckoutView() {
   const [termsError, setTermsError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rateLimited, setRateLimited] = useState("");
+  const submittingRef = useRef(false);
   const paymentHeading = useRef<HTMLButtonElement>(null);
   useCheckoutTracking(form);
   useEffect(() => {
@@ -185,7 +186,7 @@ export function CheckoutView() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (submitting) return;
+    if (submittingRef.current) return;
     if (!paymentOpen) {
       continueToPayment();
       return;
@@ -196,6 +197,7 @@ export function CheckoutView() {
       focusInvalid();
       return;
     }
+    submittingRef.current = true;
     setSubmitting(true);
     setRateLimited("");
     try {
@@ -219,6 +221,7 @@ export function CheckoutView() {
         `/order-confirmed/?id=${encodeURIComponent(order.id)}&key=${encodeURIComponent(order.key || "")}`,
       );
     } catch (cause) {
+      submittingRef.current = false;
       setSubmitting(false);
       if (cause instanceof CheckoutRateLimited) setRateLimited(cause.message);
       else

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ArrowRight, ShieldCheck, ShoppingBag, Trash2, X } from "lucide-react";
 import { getProductById, type Product } from "@store/lib/catalog";
 import { listUrl, useProducts } from "@store/lib/catalog-client";
@@ -14,13 +14,21 @@ import { QtyStepper } from "@store/components/shop/QtyStepper";
 
 export function CartDrawer() {
   const { cart, cartOpen, setCartOpen, setQty, removeLine, subtotal, shipping, total, addToCart, cartCount } = useShop();
+  const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
-    document.body.classList.toggle("no-scroll", cartOpen);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setCartOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [cartOpen, setCartOpen]);
+    if (!cartOpen) return;
+    const element = dialog.current;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overflow = document.body.style.overflow;
+    element?.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      element?.close();
+      document.body.style.overflow = overflow;
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, [cartOpen]);
 
   const inCart = new Set(cart.map((l) => l.id));
   const buyable = (p: Product) => p.inStock !== false && (!p.variants?.options.length || p.variants.options.some((o) => !o.soldOut));
@@ -30,13 +38,26 @@ export function CartDrawer() {
 
   return (
     <>
-      <div className={`drawer-backdrop ${cartOpen ? "show" : ""}`} onClick={() => setCartOpen(false)} aria-hidden="true" />
-      <aside className={`side-drawer right cart-drawer ${cartOpen ? "open" : ""}`} aria-label="Shopping cart" aria-hidden={!cartOpen}>
+      <dialog ref={dialog} className={`side-drawer right cart-drawer ${cartOpen ? "open" : ""}`} aria-label="Shopping cart"
+        onKeyDown={event => {
+          if (event.key !== "Tab") return;
+          const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]')).filter(element => element.getClientRects().length > 0);
+          const first = controls[0], last = controls[controls.length - 1];
+          if (!first) { event.preventDefault(); return; }
+          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }}
+        onCancel={event => { event.preventDefault(); setCartOpen(false); }}
+        onClick={event => {
+          if (event.target !== event.currentTarget) return;
+          const bounds = event.currentTarget.getBoundingClientRect();
+          if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setCartOpen(false);
+        }}>
         <div className="drawer-head">
           <h2>
             Your Cart <span>({cartCount})</span>
           </h2>
-          <button className="icon-btn" type="button" aria-label="Close cart" onClick={() => setCartOpen(false)}>
+          <button className="icon-btn" type="button" aria-label="Close cart" onClick={() => setCartOpen(false)} autoFocus>
             <X size={22} />
           </button>
         </div>
@@ -126,7 +147,7 @@ export function CartDrawer() {
             </div>
           </>
         )}
-      </aside>
+      </dialog>
     </>
   );
 }
