@@ -14,10 +14,10 @@ export async function GET() {
   const u = (path: string) => `${site.url}${path}`;
   const body = `# ${site.name}
 
-> ${site.name} is an online store based in ${site.city}, selling everyday products in seven categories. Every order is checked before dispatch and delivered across Pakistan with Cash on Delivery.
+> ${site.name} is an online store based in ${site.city}, selling everyday products in seven categories. Every order is checked before dispatch and delivered across Pakistan with Cash on Delivery or optional advance payment.
 
 - Based in: ${site.city}
-- Payment: Cash on Delivery
+- Payment: Cash on Delivery; optional advance payment via bank apps, Easypaisa, JazzCash or Raast when offered at checkout
 - Delivery: across Pakistan, Rs. ${site.shipping.flatFee} per order, free above Rs. ${site.shipping.freeOver.toLocaleString("en-PK")}
 - Order online, or on WhatsApp ${site.phoneDisplay}
 - Email: ${site.email}

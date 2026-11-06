@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { jsonLd } from "@/lib/json-ld";
 import { Manrope } from "next/font/google";
 import "@store/styles/globals.css";
+import "@store/styles/checkout.css";
 import { site } from "@store/lib/site";
 import { ShopProvider } from "@store/lib/store";
 import { AnnouncementBar } from "@store/components/layout/AnnouncementBar";
@@ -9,6 +10,7 @@ import { Header } from "@store/components/layout/Header";
 import { Footer } from "@store/components/layout/Footer";
 import { LazyCartDrawer } from "@store/components/layout/LazyCartDrawer";
 import { MobileBottomNav } from "@store/components/layout/MobileBottomNav";
+import { RouteScrollReset } from "@store/components/layout/RouteScrollReset";
 import { Toaster } from "@store/components/layout/Toaster";
 // Platform providers (non-visual): settings bootstrap, Meta/TikTok pixels, GA4, tracking events and session replays.
 import { Suspense } from "react";
@@ -31,7 +33,7 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: "Zelvomart — Online Shopping in Pakistan | Cash on Delivery",
+    default: "Zelvomart — Online Shopping in Pakistan | COD & Advance Payment",
     template: "%s | Zelvomart",
   },
   description: site.description,
@@ -99,7 +101,7 @@ const orgJsonLd = () => ({
     availableLanguage: ["en", "ur"],
   },
   currenciesAccepted: "PKR",
-  paymentAccepted: "Cash",
+  paymentAccepted: "Cash on Delivery, Easypaisa, JazzCash, Raast, Bank transfer",
 });
 
 export const revalidate = 300;
@@ -128,6 +130,7 @@ export default async function RootLayout({
       <body>
         <CatalogBridge settings={store.settings}>
           <ShopProvider>
+            <RouteScrollReset />
             <a href="#main" className="skip-link">
               Skip to content
             </a>

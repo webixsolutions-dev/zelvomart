@@ -14,7 +14,7 @@ export const privacyPolicy: PolicyDocument = {
     },
     {
       "heading": "Information We Collect",
-      "body": "When you place an order, contact us or leave a review, we may collect your name, mobile number, delivery address, city and email address. When you browse the website, we also collect basic technical information such as your device type, browser, pages visited and the website or ad that brought you here. We don’t ask for or store card or bank details.",
+      "body": "When you place an order, contact us or leave a review, we may collect your name, mobile number, delivery address, city and email address. If you use address suggestions at checkout, the area or street text and city are sent to our map search provider (Photon, using OpenStreetMap data) to suggest nearby locations. Your name, phone number and email are not included in that lookup. You can always type your address without choosing a suggestion. When you browse the website, we also collect basic technical information such as your device type, browser, pages visited and the website or ad that brought you here. We don’t ask for or store card or bank details.",
       "icon": "database"
     },
     {

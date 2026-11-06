@@ -54,9 +54,11 @@ export function advanceOrderEmailBlock(
   expiryHours: number,
 ) {
   return [
-    `<p><strong>Advance payment by Easypaisa / Raast:</strong> send exactly <strong>${escapeHtml(money(order.total))}</strong> within ${escapeHtml(expiryHours)} hours, then add your payment proof on the payment page.</p>`,
-    button(paymentLink(order.orderNumber), "Pay now and add proof"),
-    `<p style="font-size:13px">Changed your mind? On the same page you can choose Cash on Delivery instead (the advance discount is removed).</p>`,
+    `<p>Pay <strong>${escapeHtml(money(order.total))}</strong> from your bank app, Easypaisa or JazzCash, then add your receipt. The account name will appear as <strong>Zelvomart</strong>.</p>`,
+    button(paymentLink(order.orderNumber), "Pay now & keep my saving"),
+    `<p><a href="${escapeHtml(paymentLink(order.orderNumber) + "&method=cod")}" style="display:inline-block;padding:12px 20px;border:1px solid #287bb5;color:#287bb5;border-radius:8px;text-decoration:none;font-weight:700">Choose cash on delivery</a></p>`,
+    `<p style="font-size:13px;color:#64748b">Choosing cash on delivery removes the advance payment saving. Your payment window is ${escapeHtml(expiryHours)} hours.</p>`,
+    `<p style="font-size:13px"><a href="${escapeHtml(SITE_ORIGIN + "/refund_returns/")}">Full refund if cancelled before dispatch</a>.</p>`,
     SAFETY,
   ].join("");
 }
@@ -277,10 +279,8 @@ export async function sendAdvanceReminderEmail(orderId: string) {
   const { expiryHours } = await loadAdvanceSettings();
   const html = `
     <h2>Your order is waiting for payment</h2>
-    <p>Hi ${escapeHtml(firstName(order.fullName))}, order <strong>${escapeHtml(order.orderNumber)}</strong> is reserved for you. Send exactly <strong>${escapeHtml(money(order.total))}</strong> and add your proof, or choose Cash on Delivery instead on the same page.</p>
-    ${button(paymentLink(order.orderNumber), "Pay now or switch to COD")}
-    <p style="font-size:13px">The payment link stays open for ${escapeHtml(expiryHours)} hours after you ordered. Your order is not cancelled automatically.</p>
-    ${SAFETY}`;
+    <p>Hi ${escapeHtml(firstName(order.fullName))}, you can still complete order <strong>${escapeHtml(order.orderNumber)}</strong>. Choose how you would like to pay.</p>
+    ${advanceOrderEmailBlock(order, expiryHours)}`;
   return deliverEmail(
     {
       ...emailIdentity("orders"),

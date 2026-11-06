@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banknote, CircleHelp, Copy, Download, QrCode, ShieldCheck, Smartphone, TriangleAlert, X } from "lucide-react";
+import { Banknote, CircleCheck, CircleHelp, Copy, Download, QrCode, ShieldCheck, Smartphone, TriangleAlert, X } from "lucide-react";
 import { isIosDevice, isMobileDevice } from "@store/lib/device";
 import { money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
@@ -57,10 +57,10 @@ function TrustBlock({ info, supportLink }: { info: PayInfo; supportLink: string 
     <>
       <p>
         <ShieldCheck size={16} aria-hidden="true" /> <strong>Why pay in advance?</strong>{" "}
-        {info.advanceDiscount > 0 ? `You save ${money(info.advanceDiscount)} and your order is packed first.` : "Your order is packed first."}
+        {info.advanceDiscount > 0 ? `You save ${money(info.advanceDiscount)} on this order.` : "Pay directly from your bank app or wallet."}
       </p>
       <p>If we can&apos;t ship your order for any reason, you get the full amount back to the same account.</p>
-      <p>If you cancel after paying and before dispatch, we refund your payment minus delivery charges.</p>
+      <p>Cancel before dispatch for a full refund. After dispatch, applicable courier charges are deducted.</p>
       <div className={styles.trustLinks}>
         <a className={styles.textLink} href={info.refundPolicyPath} target="_blank" rel="noopener noreferrer">
           Refund policy
@@ -117,7 +117,8 @@ async function copyText(text: string) {
 }
 
 export function PayView({ orderNumber }: { orderNumber: string }) {
-  const token = useSearchParams().get("t") || "";
+  const params = useSearchParams();
+  const token = params.get("t") || "";
   const [info, setInfo] = useState<PayInfo | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [tab, setTab] = useState<"till" | "qr">("till");
@@ -127,6 +128,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
   const [message, setMessage] = useState("");
   const [proofOpen, setProofOpen] = useState(false);
   const [proofSent, setProofSent] = useState(false);
+  const [codChoiceDismissed, setCodChoiceDismissed] = useState(false);
   /** Read after load (not during render), so server and first client render match. */
   const [device, setDevice] = useState<"ios" | "mobile" | "desktop" | null>(null);
   useEffect(() => {
@@ -181,7 +183,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
 
   async function switchToCod() {
     if (!info || switching) return;
-    if (!window.confirm("Pay cash on delivery instead? The advance payment discount will be removed.")) return;
+
     setSwitching(true);
     setMessage("");
     try {
@@ -258,15 +260,22 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
             <h1 className={styles.title}>{isCod ? "Cash on Delivery" : info.firstName ? `Thanks, ${info.firstName}` : "Complete your payment"}</h1>
           </div>
           <span className={`${styles.badge} ${isCod ? styles.badgeCod : ""}`}>{isCod ? "Pay on delivery" : BADGES[info.paymentStatus] || "Awaiting payment"}</span>
-          <button className={styles.helpBtn} type="button" onClick={() => setHelp(true)} aria-label="How to pay">
-            <CircleHelp size={20} />
-          </button>
+
         </header>
 
         {message && (
           <p className={styles.notice} role="status">
             {message}
           </p>
+        )}
+
+        {!isCod && info.canSwitchToCod && !codChoiceDismissed && params.get("method") === "cod" && (
+          <div className={styles.card}>
+            <h2>Prefer cash on delivery?</h2>
+            <p>Pay <strong>{money(info.total + info.advanceDiscount)}</strong> when your parcel arrives. The advance payment saving will be removed.</p>
+            <button type="button" className="btn block" disabled={switching} onClick={() => void switchToCod()}><Banknote size={18} />{switching ? "Updating your order…" : "Confirm cash on delivery"}</button>
+            <button type="button" className={styles.linkBtn} onClick={() => setCodChoiceDismissed(true)}>Keep my advance payment saving</button>
+          </div>
         )}
 
         {isCod ? (
@@ -286,15 +295,10 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
               <button type="button" className={styles.copy} onClick={() => copy(String(Math.round(info.total)), "Amount")}>
                 <Copy size={15} /> Copy amount
               </button>
-              <small lang="ur-Latn">Bilkul yehi raqam bhejein: {amount}</small>
+
             </div>
-            <p className={styles.merchant}>
-              Merchant name in your app: <strong>{info.accountName}</strong>. If you see any other name, don&apos;t pay and{" "}
-              <a className={styles.textLink} href={helpLink} target="_blank" rel="noopener noreferrer">
-                message us on WhatsApp
-              </a>
-              .
-            </p>
+            <p className={styles.merchant}>The account name will appear as <strong>{info.accountName}</strong>.</p>
+            <div className={styles.paymentHelpRow}><span>Pay using your bank app or wallet</span><button type="button" className={styles.textLink} onClick={() => setHelp(true)}><CircleHelp size={16} /> How to pay</button></div>
 
             <div className={styles.tabs} role="tablist" aria-label="How to pay">
               <button role="tab" type="button" aria-selected={tab === "till"} className={tab === "till" ? styles.active : ""} onClick={() => setTab("till")}>
@@ -363,7 +367,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
             <div className={styles.actions}>
               {!proofOpen && (
                 <button className="btn block lg" type="button" onClick={() => setProofOpen(true)} disabled={!info.canSubmitProof}>
-                  I&apos;ve paid – add proof
+                  <CircleCheck size={18} aria-hidden="true" /> I&apos;ve paid – add proof
                 </button>
               )}
               {proofOpen && (
@@ -371,11 +375,7 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
                   Trouble uploading? Send it on WhatsApp
                 </a>
               )}
-              {info.canSwitchToCod && (
-                <button type="button" className={styles.linkBtn} disabled={switching} onClick={() => void switchToCod()}>
-                  {switching ? "Switching…" : "Pay on delivery instead"}
-                </button>
-              )}
+
             </div>
           </>
         ) : toFix ? (
@@ -417,9 +417,9 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
           </div>
         )}
 
-        <aside className={styles.trust} aria-label="Why pay in advance">
+        {!isCod && <aside className={styles.trust} aria-label="Why pay in advance">
           <TrustBlock info={info} supportLink={supportLink} />
-        </aside>
+        </aside>}
       </div>
 
       {help && (
@@ -434,23 +434,20 @@ export function PayView({ orderNumber }: { orderNumber: string }) {
             <ol className={styles.steps}>
               <li>
                 Copy the amount and the Till ID (or save the QR).
-                <small lang="ur-Latn">Raqam aur Till ID copy karein (ya QR save karein).</small>
               </li>
               <li>
                 Open Easypaisa, JazzCash or your bank app and pay exactly {amount} to {info.accountName}.
-                <small lang="ur-Latn">App kholein aur bilkul {amount} {info.accountName} ko bhejein.</small>
               </li>
               <li>
                 Take a screenshot of the receipt and note the TID (transaction ID).
-                <small lang="ur-Latn">Receipt ka screenshot lein aur TID likh lein.</small>
               </li>
               <li>
                 Tap &ldquo;I&apos;ve paid – add proof&rdquo;. We check the payment before dispatch.
-                <small lang="ur-Latn">&ldquo;I&apos;ve paid&rdquo; dabayein. Dispatch se pehle hum payment check karte hain.</small>
               </li>
             </ol>
             <div className={styles.trust}>
               <TrustBlock info={info} supportLink={supportLink} />
+              {info.canSwitchToCod && <details className={styles.otherOptions}><summary>Other payment options</summary><p>Prefer cash on delivery? Your total will be {money(info.total + info.advanceDiscount)}, without the advance saving.</p><button type="button" className="btn secondary block" disabled={switching} onClick={() => { setHelp(false); void switchToCod(); }}>{switching ? "Updating…" : "Choose cash on delivery"}</button></details>}
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import type { Express, Request } from "express";
 import { randomBytes } from "node:crypto";
 import { Resend } from "resend";
-import { emailIdentity, offerBcc } from "./lib/email-delivery";
+import { emailIdentity, emailLayout, offerBcc } from "./lib/email-delivery";
 import { prisma } from "./lib/db";
 import { requireAuth, type AuthedRequest } from "./lib/auth";
 import { consumeRateLimit, requestIp } from "./lib/rate-limit";
@@ -309,6 +309,11 @@ export async function sendRecoveryOfferEmail(id: string, actorId: string | null)
         text:
           fill(templates.email, values) +
           `\n\nUnsubscribe: ${SITE_ORIGIN}/api/store-proxy/api/recovery/unsubscribe?token=${cart.restoreToken}`,
+        html: emailLayout(
+          `<div style="white-space:pre-line">${fill(templates.email, values).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>` +
+            `<p style="margin-top:22px"><a href="${values.cart_link.replace(/&/g, "&amp;")}" style="display:inline-block;background:#287bb5;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:700">Return to your cart</a></p>` +
+            `<p style="font-size:12px"><a href="${SITE_ORIGIN}/api/store-proxy/api/recovery/unsubscribe?token=${cart.restoreToken}">Unsubscribe from cart offers</a></p>`,
+        ),
       },
       { idempotencyKey: `cart-offer-${cart.id}` },
     );

@@ -143,7 +143,17 @@ test("verify: the full amount (or more) verifies, less is a partial", () => {
 test("refund: never above received − refunded; prefill follows the reason", () => {
   const order = { total: 589, deliveryFee: 150, advanceReceived: 589, advanceRefunded: 0 };
   assert.equal(refundableAmount(order), 589);
-  assert.equal(suggestedRefund("CUSTOMER_CANCELLED", order), 439, "paid − delivery charges");
+  assert.equal(suggestedRefund("CUSTOMER_CANCELLED", order), 589, "full refund before dispatch");
+  assert.equal(
+    suggestedRefund("CUSTOMER_CANCELLED", { ...order, status: "IN_TRANSIT" }),
+    439,
+    "after dispatch: paid minus delivery",
+  );
+  assert.equal(
+    suggestedRefund("CUSTOMER_CANCELLED", { ...order, status: "CANCELLED", dispatched: true }),
+    439,
+    "dispatch history survives cancellation",
+  );
   assert.equal(suggestedRefund("COULD_NOT_SHIP", order), 589, "everything back");
   assert.equal(suggestedRefund("OVERPAID", { ...order, advanceReceived: 700 }), 111);
   assert.equal(suggestedRefund("OVERPAID", order), 0);
@@ -153,7 +163,16 @@ test("refund: never above received − refunded; prefill follows the reason", ()
     519,
     "ZM-10018 as stored: refunded but kept → the courier collects the refunded part",
   );
-  assert.equal(suggestedRefund("CUSTOMER_CANCELLED", { ...order, advanceReceived: 100 }), 0, "never below 0");
+  assert.equal(
+    suggestedRefund("CUSTOMER_CANCELLED", { ...order, advanceReceived: 100 }),
+    100,
+    "partial payment is fully refundable before dispatch",
+  );
+  assert.equal(
+    suggestedRefund("CUSTOMER_CANCELLED", { ...order, advanceReceived: 100, dispatched: true }),
+    0,
+    "never below 0 after courier charges",
+  );
 });
 
 test("settings: production refuses to enable advance payment on demo values", () => {
@@ -182,7 +201,7 @@ test("settings: production refuses to enable advance payment on demo values", ()
       () => validateSettingsUpdate({ "payments.advance": { ...real, firstReminderMinutes: 30 } }),
       "30 minutes, then 2 hours",
     );
-    assert.equal(normalizeAdvanceSettings({}).firstReminderMinutes, 30, "default 30 minutes");
+    assert.equal(normalizeAdvanceSettings({}).firstReminderMinutes, 60, "first reminder after one hour");
   } finally {
     if (before === undefined) delete process.env.APP_ENV;
     else process.env.APP_ENV = before;

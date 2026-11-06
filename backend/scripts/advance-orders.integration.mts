@@ -546,7 +546,8 @@ await setAdvance({});
     const first = sent.find((m) => m.to === "buyer@example.com" || m.to?.[0] === "buyer@example.com");
     assert.match(first.subject, new RegExp(`Complete your payment • ${r.body.orderNumber}`));
     assert.ok(first.html.includes(`/pay/${r.body.orderNumber}/?t=${r.body.payToken}`), "pay link in the email");
-    assert.match(first.html, /Cash on Delivery instead/);
+    assert.match(first.html, /Choose cash on delivery/);
+    assert.match(first.html, /method=cod/);
 
     // Proof: team "Advance payment to verify", customer "Payment received – we are verifying", and the Purchase.
     // Orders placed outside the storefront are test orders (no Purchase); treat this one as a real order.
@@ -733,6 +734,18 @@ await setAdvance({});
   assert.deepEqual([p1After.status, Number(p1After.amountReceived)], ["VERIFIED", o1.body.total]);
   const orderDetail = await asAgent(`/api/admin/orders/${v.id}`);
   assert.equal(orderDetail.body.codToCollect, 0, "courier collects nothing after verify");
+  const trackedResponse = await fetch(`${base}/api/orders/track`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ orderNumber: v.orderNumber, phone: v.phone }),
+  });
+  assert.equal(trackedResponse.status, 200);
+  const tracked = (await trackedResponse.json()) as any;
+  assert.deepEqual(
+    [tracked.paymentMethod, tracked.paymentStatus, tracked.dueOnDelivery],
+    ["ADVANCE_EASYPAISA", "VERIFIED", 0],
+  );
+  assert.equal(tracked.advanceReceived, undefined, "tracker exposes the delivery balance, not the payment ledger");
   assert.equal(orderDetail.body.paymentProofs[0].status, "VERIFIED");
   assert.equal((await asAgent(`/api/admin/payments/${p1.id}/verify`, full(o1.body.total))).status, 409, "once");
   // Verified: confirming is allowed now, and the confirmation email is not sent twice (verify already sent it).
@@ -840,8 +853,8 @@ await setAdvance({});
   assert.equal(refundDetail.body.order.refundable, o1.body.total);
   assert.equal(
     refundDetail.body.refundSuggestions.CUSTOMER_CANCELLED,
-    o1.body.total - Number(v.deliveryFee),
-    "prefill: paid − delivery charges",
+    o1.body.total,
+    "prefill: full payment before dispatch",
   );
   // Refunded and cancelled (the default): no booking, nothing collected, one refund email.
   assert.equal(

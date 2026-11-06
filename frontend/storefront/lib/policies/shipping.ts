@@ -3,7 +3,7 @@ import type { PolicyDocument } from "./types";
 export const shippingPolicy: PolicyDocument = {
   "slug": "shipping-policy",
   "title": "Shipping Policy",
-  "subtitle": "Delivery areas, timelines, and how Cash on Delivery works.",
+  "subtitle": "Delivery areas, charges, timelines and payment choices.",
   "icon": "truck",
   "sections": [
     {
@@ -31,7 +31,7 @@ export const shippingPolicy: PolicyDocument = {
     },
     {
       "heading": "Cash on Delivery",
-      "body": "We currently operate on a Cash on Delivery (COD) basis. You pay in cash to our courier partner at the time of delivery — nothing is charged in advance.",
+      "body": "You can choose Cash on Delivery and pay the courier when your parcel arrives. Advance payment is also available when shown at checkout; the payment page explains how to pay from your bank app, Easypaisa or JazzCash.",
       "icon": "cash",
       "tone": "primary"
     },

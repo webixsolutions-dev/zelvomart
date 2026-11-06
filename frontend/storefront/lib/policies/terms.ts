@@ -26,7 +26,7 @@ export const termsPolicy: PolicyDocument = {
     },
     {
       "heading": "Payment",
-      "body": "We currently operate on a Cash on Delivery (COD) basis only. Payment is made in cash to our courier partner at the time your order is delivered.",
+      "body": "Choose Cash on Delivery or an available advance payment option at checkout. For COD, pay the courier in cash when your parcel arrives. For advance payment, use your bank app, Easypaisa or JazzCash and follow the payment instructions shown after placing your order. Any advance payment saving is shown before you confirm.",
       "icon": "cash",
       "half": true
     },

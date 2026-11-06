@@ -8,7 +8,7 @@ import { memo, MEMO_TTL_MS } from "./memo";
 export async function cityByName(name: string) {
   const all = await memo("cities:byName", MEMO_TTL_MS, async () => {
     const rows = await prisma.city.findMany();
-    return new Map(rows.map((row) => [row.name, row]));
+    return new Map(rows.map((row) => [row.name.trim().toLowerCase(), row]));
   });
-  return all.get(name) ?? null;
+  return all.get(name.trim().toLowerCase()) ?? null;
 }

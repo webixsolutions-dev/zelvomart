@@ -311,6 +311,7 @@ export function registerAdminPaymentsRoutes(app: Express) {
           advanceRefunded: true,
           createdAt: true,
           paymentVerifiedAt: true,
+          statusHistory: { select: { to: true } },
         },
       }),
       prisma.paymentProof.findMany({
@@ -392,7 +393,15 @@ export function registerAdminPaymentsRoutes(app: Express) {
       rejectReasons: REJECT_REASONS,
       refundReasons: REFUND_REASONS,
       refundSuggestions: Object.fromEntries(
-        (Object.keys(REFUND_REASONS) as RefundReason[]).map((reason) => [reason, suggestedRefund(reason, order)]),
+        (Object.keys(REFUND_REASONS) as RefundReason[]).map((reason) => [
+          reason,
+          suggestedRefund(reason, {
+            ...order,
+            dispatched: order.statusHistory.some((entry) =>
+              ["IN_TRANSIT", "DELIVERED", "SETTLED", "RETURNED"].includes(entry.to),
+            ),
+          }),
+        ]),
       ),
       history: history.map((entry) => ({ ...entry, user: entry.user?.name || null })),
     });

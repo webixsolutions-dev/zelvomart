@@ -16,6 +16,9 @@ export type TrackedOrder = {
   city: string;
   lines: TrackedLine[];
   total: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  dueOnDelivery?: number;
   courier: string;
   trackingNumber?: string;
   trackingUrl?: string;
@@ -99,6 +102,9 @@ export async function findOrder(number: string, phone: string): Promise<TrackedO
     city: cityName(String(o.city || "")),
     lines: Array.isArray(o.items) ? o.items : [],
     total: Number(o.total || 0),
+    paymentMethod: o.paymentMethod,
+    paymentStatus: o.paymentStatus,
+    dueOnDelivery: Number.isFinite(Number(o.dueOnDelivery)) ? Number(o.dueOnDelivery) : undefined,
     courier: site.shipping.courier,
     trackingNumber: o.postexTracking || undefined,
     trackingUrl: typeof o.trackingUrl === "string" && o.trackingUrl.startsWith("https://") ? o.trackingUrl : undefined,
