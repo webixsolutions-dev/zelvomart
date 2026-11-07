@@ -62,7 +62,6 @@ function variantBuyable(v: ApiVariant) {
 
 const HIDDEN_KEYS = new Set(["stockstatus", "gallery", "gtin", "downloadable", "virtual", "images", "weight", "length", "width", "height"]);
 
-/** The design shows one option row; the first visible attribute of the variations drives it. */
 function designVariants(p: ApiProduct): Product["variants"] {
   const variants = (p.variants || []).filter((v) => v.active !== false && v.enabled !== false);
   if (!variants.length) {
@@ -83,11 +82,24 @@ function designVariants(p: ApiProduct): Product["variants"] {
       : undefined;
   }
   const attributeNames = Object.keys(variants[0].attributes || {});
+  const configured = (p.catalogMeta?.attributes || []).filter(
+    ({ name, visible, forVariations }) => name && visible !== false && forVariations !== false
+      && variants.every((v) => {
+        const value = v.attributes?.[name];
+        return typeof value === "string" && value.trim();
+      }),
+  );
+  const groups = configured.map(({ name, valuesText }) => {
+    const actual = [...new Set(variants.map((v) => v.attributes[name!].trim()))];
+    const ordered = (valuesText || "").split("|").map((value) => value.trim());
+    return { name: name!, values: [...new Set([...ordered.filter((value) => actual.includes(value)), ...actual])] };
+  });
   const label =
-    attributeNames.find((name) => /colou?r/i.test(name)) ||
+    groups[0]?.name || attributeNames.find((name) => /colou?r/i.test(name)) ||
     attributeNames.find((name) => !HIDDEN_KEYS.has(name.toLowerCase())) ||
     "Option";
-  const isSize = /size/i.test(label);
+  const isSize = /^ml$/i.test(label) || /size/i.test(label);
+  const multi = groups.length > 1;
   const shortName = (v: ApiVariant) => String(v.attributes?.[label] || v.name || "").trim() || v.sku;
   // "Red Small" and "Red Large" both read "Red" on the colour row: those show every visible attribute, so they stay apart.
   const counts = new Map<string, number>();
@@ -100,13 +112,19 @@ function designVariants(p: ApiProduct): Product["variants"] {
       .map(([, value]) => String(value).trim())
       .join(" / ") || String(v.name || "").trim() || v.sku;
   const options: Variant[] = variants.map((v) => {
-    const name = (counts.get(shortName(v)) || 0) > 1 ? fullName(v) : shortName(v);
+    const attributes = multi
+      ? Object.fromEntries(groups.map((group) => [group.name, v.attributes[group.name].trim()]))
+      : undefined;
+    const name = attributes
+      ? Object.values(attributes).join(" / ")
+      : (counts.get(shortName(v)) || 0) > 1 ? fullName(v) : shortName(v);
     const price = v.pricing?.price ?? (v.priceOverride != null ? Number(v.priceOverride) : undefined);
     const compare = v.pricing?.onSale && v.pricing.regularPrice > v.pricing.price ? v.pricing.regularPrice : undefined;
     return {
       name,
       id: v.id,
       sku: v.sku,
+      ...(attributes ? { attributes } : {}),
       ...(isSize ? {} : { swatch: swatchFor(name) }),
       ...(v.imageUrl ? { imageUrl: v.imageUrl } : {}),
       ...(v.images?.length ? { images: v.images } : {}),
@@ -115,7 +133,11 @@ function designVariants(p: ApiProduct): Product["variants"] {
       ...(compare != null ? { compare: Number(compare) } : {}),
     };
   });
-  return { label, kind: isSize ? "size" : "colour", options };
+  if (groups.length === 1) {
+    const order = new Map(groups[0].values.map((value, i) => [value, i]));
+    options.sort((a, b) => (order.get(a.name) ?? Infinity) - (order.get(b.name) ?? Infinity));
+  }
+  return { label, kind: isSize ? "size" : "colour", options, ...(multi ? { groups } : {}) };
 }
 
 type DesignBadge = NonNullable<Product["badge"]>;

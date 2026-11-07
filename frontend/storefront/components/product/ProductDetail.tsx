@@ -73,6 +73,7 @@ export function ProductDetail({ slug }: { slug: string }) {
   const tabs = useMemo(() => resolveProductTabs(p), [p]);
 
   const options = p.variants?.options ?? [];
+  const groups = p.variants?.groups;
   const sizeLayout = !!p.variants && isSize(p.variants.label, p.variants.kind);
   const imageSwatches = !sizeLayout && options.some((o) => o.imageUrl);
 
@@ -126,6 +127,20 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   const wished = ready && isWished(p.id);
   const selected: Variant | undefined = options.find((o) => optionKey(o) === variantKey);
+  const buyableOptions = groups ? options.filter((option) => !option.soldOut) : [];
+  const selectOption = (option: Variant) => {
+    setVariant(optionKey(option));
+    setGalleryIndex(0);
+    setVideoPlaying(false);
+  };
+  const selectAttribute = (name: string, value: string) => {
+    const matches = buyableOptions.filter((option) => option.attributes?.[name] === value);
+    const next = matches.find((option) =>
+      groups?.every((group) => group.name === name
+        || option.attributes?.[group.name] === selected?.attributes?.[group.name]),
+    ) ?? matches[0];
+    if (next) selectOption(next);
+  };
   const variant = selected?.name;
   // Every price on this page comes from the selected variation (else the product): main price, bundle offer,
   // total, sticky bar and WhatsApp text. The cart and the server use the same numbers.
@@ -315,7 +330,32 @@ export function ProductDetail({ slug }: { slug: string }) {
             </ul>
             <hr className="pd-divider" />
 
-            {p.variants && (
+            {groups ? groups.map(({ name, values }) => (
+              <div className="pd-variant" key={name} role="group" aria-label={name}>
+                <p className="pd-label">
+                  {name}: <strong>{selected?.attributes?.[name]}</strong>
+                </p>
+                <div className="pd-sizes">
+                  {values.map((value) => {
+                    const active = selected?.attributes?.[name] === value;
+                    const available = buyableOptions.some((option) => option.attributes?.[name] === value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        className={available ? (active ? "active" : "") : "sold-out"}
+                        aria-pressed={active}
+                        disabled={!available}
+                        aria-label={available ? value : `${value}, sold out`}
+                        onClick={() => selectAttribute(name, value)}
+                      >
+                        {value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )) : p.variants && (
               <div className="pd-variant">
                 <p className="pd-label">
                   {p.variants.label}: <strong>{variant}</strong>
@@ -330,7 +370,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                         aria-pressed={variantKey === optionKey(o)}
                         disabled={o.soldOut}
                         aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
-                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); setVideoPlaying(false); }}
+                        onClick={() => selectOption(o)}
                       >
                         <span className="pd-swatch-img">
                           <Image src={o.imageUrl || o.images?.[0] || p.image} alt="" width={64} height={64} sizes="64px" />
@@ -349,7 +389,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                         aria-pressed={variantKey === optionKey(o)}
                         disabled={o.soldOut}
                         aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
-                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); setVideoPlaying(false); }}
+                        onClick={() => selectOption(o)}
                       >
                         {o.name}
                       </button>
@@ -365,7 +405,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                         aria-pressed={variantKey === optionKey(o)}
                         disabled={o.soldOut}
                         aria-label={o.soldOut ? `${o.name}, sold out` : o.name}
-                        onClick={() => { setVariant(optionKey(o)); setGalleryIndex(0); setVideoPlaying(false); }}
+                        onClick={() => selectOption(o)}
                       >
                         <span style={{ background: o.swatch }} />
                         {o.name}

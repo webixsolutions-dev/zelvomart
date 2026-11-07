@@ -44,6 +44,8 @@ export type Variant = {
   /** Backend variant id and SKU, sent with the order. */
   id?: string;
   sku?: string;
+  /** Customer-facing values that identify a combination across multiple selectors. */
+  attributes?: Record<string, string>;
   /** Variant price when it differs from the product price. */
   price?: number;
   /** Regular price of the variant when it is on sale (shown struck through). */
@@ -75,7 +77,12 @@ export type Product = {
   specs: [string, string][];
   inBox: string[];
   /** `kind` picks the layout; when omitted, labels containing "size" show size chips and everything else colour options. */
-  variants?: { label: string; kind?: "colour" | "size"; options: Variant[] };
+  variants?: {
+    label: string;
+    kind?: "colour" | "size";
+    options: Variant[];
+    groups?: { name: string; values: string[] }[];
+  };
   /** "Choose your bundle" (Buy 1 / Buy 2) shows only when this is on. */
   bundleEnabled?: boolean;
   /** Discount on the Buy 2 bundle, in percent. */
