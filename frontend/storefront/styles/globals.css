@@ -1778,7 +1778,7 @@ em {
   aspect-ratio: 9 / 16;
   overflow: hidden;
   border-radius: 18px;
-  background: #111418;
+  background: var(--wash);
 }
 /* Self-hosted video tile (components/home/VideoTile.tsx): the poster sits on top until the video plays. */
 .video-tile {
@@ -1795,6 +1795,7 @@ em {
   display: block;
 }
 .video-tile-poster {
+  background: var(--wash);
   transition: opacity 0.35s ease;
 }
 .video-tile.is-playing .video-tile-poster {
@@ -2167,6 +2168,7 @@ em {
 .trending-board .product-grid {
   gap: 14px;
 }
+.trending-board .product-card, .archive-results .product-card { animation: none; }
 .trending-head {
   margin-bottom: 20px;
 }
@@ -7805,9 +7807,6 @@ body:has(.product-page) {
 .btn.pd-order:hover {
   background: var(--blue-strong);
 }
-.pd-order-spinner { width: 15px; height: 15px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: pd-order-spin .7s linear infinite; }
-@keyframes pd-order-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .pd-order-spinner { animation-duration: 1.6s; } }
 .pd-order-note {
   margin: 8px 0 14px;
   text-align: center;

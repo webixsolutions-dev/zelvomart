@@ -3,6 +3,7 @@ import { ArrowRight, Banknote, ClipboardCheck, MousePointerClick, PackageCheck, 
 import { categories, type CategoryId, categoryPath } from "@store/lib/catalog";
 import { site } from "@store/lib/site";
 import { waLink } from "@store/lib/format";
+import { CategoryLink } from "@store/components/ui/CategoryLink";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 
 export function TrustStrip() {
@@ -59,7 +60,7 @@ export function CategoryGrid() {
       {categoryCards.map((card) => {
         const category = categories.find((c) => c.id === card.id)!;
         return (
-          <Link className="category-card" href={categoryPath(category.id)} key={category.id}>
+          <CategoryLink className="category-card" href={categoryPath(category.id)} key={category.id}>
             <span className="category-media">
               <FillImage
                 src={category.image}
@@ -77,7 +78,7 @@ export function CategoryGrid() {
               </span>
               <span className="btn category-shop">Shop Now</span>
             </span>
-          </Link>
+          </CategoryLink>
         );
       })}
     </div>

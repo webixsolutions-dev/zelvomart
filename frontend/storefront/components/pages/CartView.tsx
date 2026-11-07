@@ -7,6 +7,7 @@ import { categoryPath, getCategory, getProductById } from "@store/lib/catalog";
 import { listUrl, useProducts } from "@store/lib/catalog-client";
 import { money } from "@store/lib/format";
 import { BUNDLE_PIECES, bundleLabel, bundlePrice, lineTotal, unitPrice, useShop } from "@store/lib/store";
+import { CartCheckNotice } from "@store/components/shop/CartCheckNotice";
 import { CartNotes } from "@store/components/shop/CartNotes";
 import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { QtyStepper } from "@store/components/shop/QtyStepper";
@@ -20,11 +21,11 @@ import { CheckoutDock } from "@store/components/shop/CheckoutDock";
 const emptyCategories = ["home-living", "beauty", "tech", "kids"];
 
 export function CartView() {
-  const { cart, ready, setQty, removeLine, subtotal, shipping, coupon, discount, payable, clearCart } = useShop();
+  const { cart, ready, cartCheck, setQty, removeLine, subtotal, shipping, coupon, discount, payable, clearCart } = useShop();
   const inCart = new Set(cart.map((l) => l.id));
   const suggestions = (useProducts(listUrl("bestsellers", 8)) || []).filter((p) => !inCart.has(p.id)).slice(0, 4);
 
-  if (!ready) return <div className="container skeleton-block" />;
+  if (!ready || cartCheck !== "ready") return <div className="container section"><CartCheckNotice /></div>;
 
   return (
     <>
@@ -39,6 +40,7 @@ export function CartView() {
                 <ShoppingBag size={30} />
               </span>
               <h1>Your cart is empty</h1>
+              <CartNotes />
               <p>Your next useful find is waiting.</p>
               <Link href="/shop/" className="btn lg">
                 Start shopping <ArrowRight size={16} />

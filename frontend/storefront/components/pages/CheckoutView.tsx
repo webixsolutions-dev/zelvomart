@@ -33,6 +33,7 @@ import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { advanceQuote, useAdvanceOffer } from "@store/lib/payments";
 import { AddressInput } from "@store/components/shop/AddressInput";
 import { CheckoutDock } from "@store/components/shop/CheckoutDock";
+import { CartCheckNotice } from "@store/components/shop/CartCheckNotice";
 import { OrderSummary } from "@store/components/shop/OrderSummary";
 
 type Form = {
@@ -70,6 +71,7 @@ export function CheckoutView() {
   const {
     cart,
     ready,
+    cartCheck,
     subtotal,
     shipping,
     payable,
@@ -95,17 +97,18 @@ export function CheckoutView() {
     router.prefetch("/order-confirmed/");
   }, [router]);
 
-  if (!ready) return <div className="container skeleton-block" />;
+  const pricingReady = ready && cartCheck === "ready";
   const method = offer.available ? pay : "cod";
   const quote = advanceQuote(offer, subtotal, payable);
   const advanceOff = method === "advance" ? quote.discount : 0;
   const total = payable - advanceOff;
   const actionLabel = paymentOpen ? "Place order" : "Continue to payment";
 
-  if (!cart.length && !submitting)
+  if (ready && !cart.length && !submitting)
     return (
       <div className="container">
         <div className="empty-state">
+          <CartNotes />
           <ShoppingBag size={30} />
           <h2>Your cart is empty.</h2>
           <p>Add a few products to check out.</p>
@@ -191,7 +194,7 @@ export function CheckoutView() {
       continueToPayment();
       return;
     }
-    if (!checkDetails()) return;
+    if (!pricingReady || !checkDetails()) return;
     setTermsError(!terms);
     if (!terms) {
       focusInvalid();
@@ -242,6 +245,8 @@ export function CheckoutView() {
           noValidate
           aria-busy={submitting}
         >
+          <CartNotes />
+          {!pricingReady && <CartCheckNotice />}
           {submitting && (
             <div className="checkout-placing" role="status" aria-live="polite">
               <LoaderCircle size={30} className="checkout-placing-spin" />
@@ -535,11 +540,11 @@ export function CheckoutView() {
               <button
                 className="btn block lg"
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !pricingReady}
               >
                 <Lock size={16} />
                 Place order{" "}
-                — {money(total)}
+                {pricingReady ? `— ${money(total)}` : null}
               </button>
               <p className="checkout-final-note">
                 {method === "advance"
@@ -570,22 +575,25 @@ export function CheckoutView() {
           id="checkout-order-summary"
         >
           <h3>Your order</h3>
-          <CartNotes />
-          <OrderSummary advanceDiscount={advanceOff} />
-          <FreeShippingMeter subtotal={subtotal} free={shipping === 0} />
+          {pricingReady && (
+            <>
+              <OrderSummary advanceDiscount={advanceOff} />
+              <FreeShippingMeter subtotal={subtotal} free={shipping === 0} />
+            </>
+          )}
           <p className="checkout-summary-note">
             <ShieldCheck size={16} /> Your total includes delivery and all
             savings.
           </p>
         </aside>
       </div>
-      <CheckoutDock
+      {pricingReady && <CheckoutDock
         total={total}
         advanceDiscount={advanceOff}
         label={actionLabel}
         form="checkout-form"
         busy={submitting}
-      />
+      />}
     </section>
   );
 }

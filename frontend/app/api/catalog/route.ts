@@ -15,6 +15,14 @@ export async function GET(request: Request) {
   let items;
   if (ids != null) {
     const wanted = ids.split(",").map((id) => id.trim()).filter(Boolean).slice(0, 50);
+    if (url.searchParams.get("fresh") === "1") {
+      try {
+        const { items } = await loadCards({ ids: wanted, limit: Math.max(1, wanted.length) }, { fresh: true });
+        return Response.json({ items }, { headers: { "cache-control": "private, no-store" } });
+      } catch {
+        return Response.json({ error: "CART_CATALOG_UNAVAILABLE" }, { status: 503, headers: { "cache-control": "private, no-store" } });
+      }
+    }
     items = (await loadCards({ ids: wanted, limit: Math.max(1, wanted.length) })).items;
   } else if (list === "bestsellers") {
     items = (await loadCards({ tag: "bestsellers", limit })).items;

@@ -32,6 +32,18 @@ export function fetchProducts(url: string): Promise<Product[]> {
 /** URL for one of the small lists: bestsellers, upsell (in stock, up to Rs 2,000). */
 export const listUrl = (list: "bestsellers" | "upsell", limit: number) => `/api/catalog?list=${list}&limit=${limit}`;
 export const idsUrl = (ids: string[]) => `/api/catalog?ids=${[...new Set(ids)].sort().map(encodeURIComponent).join(",")}`;
+
+export async function fetchCartProducts(ids: string[], signal: AbortSignal): Promise<Product[]> {
+  const batches = [];
+  for (let start = 0; start < ids.length; start += 50) batches.push(ids.slice(start, start + 50));
+  return (await Promise.all(batches.map(async (batch) => {
+    const response = await fetch(`${idsUrl(batch)}&fresh=1`, { signal, cache: "no-store" });
+    if (!response.ok) throw new Error("CART_CATALOG_UNAVAILABLE");
+    const data: { items?: Product[] } = await response.json();
+    if (!Array.isArray(data.items)) throw new Error("CART_CATALOG_UNAVAILABLE");
+    return data.items;
+  }))).flat();
+}
 export const searchUrl = (q: string, limit: number) => `/api/catalog?q=${encodeURIComponent(q.trim())}&limit=${limit}`;
 
 /** Products for `url` (null while loading). `url` null = nothing to load. */

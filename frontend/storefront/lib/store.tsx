@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { getProductById, upsertProducts, type Product, type Variant } from "./catalog";
-import { fetchProducts, idsUrl } from "./catalog-client";
+import { fetchProducts, idsUrl, fetchCartProducts } from "./catalog-client";
 import { site } from "./site";
 import { cartDeliveryFee } from "./delivery";
 import { trackStoreEvent, readCookie } from "@/lib/client-tracking";
@@ -24,7 +24,7 @@ export const PLACED_ORDER_KEY = "zm_placed_order";
  * whole bundles only, so its `qty` is 2, 4, 6 … and the API receives `qty / 2` bundles of size 2.
  * `variantId` is the variation's stable id; `variant` is its name, kept for display only.
  */
-export type CartLine = { key: string; id: string; variantId?: string; variant?: string; qty: number; bundle?: number };
+export type CartLine = { key: string; id: string; variantId?: string; variant?: string; qty: number; bundle?: number; savedPrice?: number; savedName?: string };
 
 /** Most pieces one cart line may hold (10 bundles = 20 pieces). The API checks the same number (backend validators.ts). */
 export const MAX_LINE_PIECES = 20;
@@ -91,12 +91,10 @@ export { backendLine as cartLineForApi };
  * bundles (odd counts rounded up), at most MAX_LINE_PIECES, sold-out items taken out. Every change returns a note
  * the customer sees before checkout — nothing is changed silently.
  */
-function normalizeLine(l: CartLine): { line: CartLine | null; note?: string } {
-  const p = getProductById(l.id);
-  if (!p) return { line: l };
-  const option = findVariant(p, l);
-  const label = p.name + (option ? ` (${option.name})` : l.variant ? ` (${l.variant})` : "");
-  if (p.inStock === false || option?.soldOut) return { line: null, note: `${label} is sold out, so it was taken out of your cart.` };
+function normalizeLine(l: CartLine, p: Product | undefined): { line: CartLine | null; note?: string } {
+  const option = p && findVariant(p, l);
+  const label = (p?.name || l.savedName || "A saved item") + (option ? ` (${option.name})` : l.variant ? ` (${l.variant})` : "");
+  if (p?.inStock === false || option?.soldOut) return { line: null, note: `${label} is sold out, so it was taken out of your cart.` };
   let qty = Math.max(1, Math.floor(Number(l.qty) || 1));
   const notes: string[] = [];
   if (l.bundle && qty % BUNDLE_PIECES) {
@@ -110,16 +108,16 @@ function normalizeLine(l: CartLine): { line: CartLine | null; note?: string } {
   const variantId = option?.id ?? l.variantId;
   const variant = option?.name ?? l.variant;
   const key = lineKey(l.id, option ?? (variantId || variant ? { id: variantId, name: variant || "" } : undefined), l.bundle);
-  return { line: { key, id: l.id, ...(variantId ? { variantId } : {}), ...(variant ? { variant } : {}), qty, ...(l.bundle ? { bundle: l.bundle } : {}) }, note: notes.join(" ") || undefined };
+  return { line: { ...l, key, variantId, variant, qty }, note: notes.join(" ") || undefined };
 }
 
 /** Normalizes every line and merges lines that now share a key. */
-function normalizeCart(lines: CartLine[]): { cart: CartLine[]; notes: string[] } {
+function normalizeCart(lines: CartLine[], lookup = getProductById): { cart: CartLine[]; notes: string[] } {
   const notes: string[] = [];
   const out: CartLine[] = [];
   for (const raw of Array.isArray(lines) ? lines : []) {
     if (!raw || typeof raw.id !== "string") continue;
-    const { line, note } = normalizeLine(raw);
+    const { line, note } = normalizeLine(raw, lookup(raw.id));
     if (note) notes.push(note);
     if (!line) continue;
     const same = out.find((l) => l.key === line.key);
@@ -130,6 +128,30 @@ function normalizeCart(lines: CartLine[]): { cart: CartLine[]; notes: string[] }
     } else same.qty += line.qty;
   }
   return { cart: out, notes };
+}
+
+function refreshSavedLines(lines: CartLine[], ids: string[], products: Product[]) {
+  const byId = new Map(products.map((product) => [product.id, product]));
+  const wanted = new Set(ids);
+  const notes: string[] = [];
+  const refreshed = lines.flatMap((line) => {
+    if (!wanted.has(line.id)) return [line];
+    const product = byId.get(line.id);
+    const label = product?.name || line.savedName || getProductById(line.id)?.name || "A saved item";
+    const variant = product && findVariant(product, line);
+    if (!product || product.inStock === false || variant?.soldOut || (product.variants?.options.length && !variant)) {
+      notes.push(`${label}${line.variant ? ` (${line.variant})` : ""} is no longer available and was removed from your cart.`);
+      return [];
+    }
+    const bundle = line.bundle && product.bundleEnabled ? product.bundleDiscountPercent : undefined;
+    const savedPrice = unitPrice(product, { ...line, bundle });
+    if (line.savedPrice !== undefined && line.savedPrice !== savedPrice) {
+      notes.push(`The price of ${label}${line.variant ? ` (${line.variant})` : ""} changed. The updated price is shown below.`);
+    }
+    return [{ ...line, bundle, savedPrice, savedName: label }];
+  });
+  const normalized = normalizeCart(refreshed, (id) => byId.get(id));
+  return { cart: normalized.cart, notes: [...notes, ...normalized.notes] };
 }
 
 function parseJsonCookie(name: string) {
@@ -196,6 +218,8 @@ type Ctx = {
   /** Changes when cart/wishlist products finish loading. */
   catalogVersion: number;
   cart: CartLine[];
+  cartCheck: "ready" | "checking" | "unavailable";
+  retryCartCheck: () => void;
   wishlist: string[];
   orders: Order[];
   cartCount: number;
@@ -262,6 +286,9 @@ export function shippingFor(lines: Pick<CartLine, "id">[], subtotal: number) {
 export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [savedCartIds, setSavedCartIds] = useState<string[]>([]);
+  const [cartCheck, setCartCheck] = useState<Ctx["cartCheck"]>("checking");
+  const [cartCheckAttempt, setCartCheckAttempt] = useState(0);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
@@ -279,8 +306,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Older carts kept the variant name and any bundle quantity; they are brought up to the current rules once, with a note.
-    const loaded = normalizeCart(read<CartLine[]>("zlv-cart-v2", []));
+    const loaded = normalizeCart(read<CartLine[]>("zlv-cart-v2", []), () => undefined);
     setCart(loaded.cart);
+    const ids = [...new Set(loaded.cart.map((line) => line.id))];
+    setSavedCartIds(ids);
+    if (!ids.length) setCartCheck("ready");
     if (loaded.notes.length) setCartNotes(loaded.notes);
     setWishlist(read("zlv-wishlist-v2", []));
     setCoupon(read<AppliedCoupon | null>("zlv-coupon-v1", null));
@@ -295,7 +325,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [wishlist, ready]);
   // Every cart change is synced to the backend (account cart / abandoned-cart recovery), as before.
   useEffect(() => {
-    if (!ready || !cart.length) return;
+    if (!ready || !cart.length || cartCheck !== "ready") return;
     const timer = setTimeout(() => {
       void fetch("/api/account/cart", {
         method: "POST",
@@ -304,7 +334,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }).catch(() => undefined);
     }, 1800);
     return () => clearTimeout(timer);
-  }, [cart, ready]);
+  }, [cart, ready, cartCheck]);
 
   // Recovery link from the abandoned-cart message: /cart/?restore=<token>[&coupon=CODE]
   useEffect(() => {
@@ -324,8 +354,10 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
             return { key: "", id: i.productId, ...(i.variantId ? { variantId: i.variantId } : {}), qty, ...(bundle ? { bundle } : {}) };
           },
         );
-        const { cart: lines, notes } = normalizeCart(restored);
+        const { cart: lines, notes } = normalizeCart(restored, () => undefined);
         setCart(lines);
+        setSavedCartIds([...new Set(lines.map((line) => line.id))]);
+        setCartCheck(lines.length ? "checking" : "ready");
         write("zlv-cart-v2", lines);
         // The checkout page shows these notes before the order is placed.
         if (notes.length) sessionStorage.setItem("zm_cart_notes", JSON.stringify(notes));
@@ -343,24 +375,44 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const cartRef = useRef(cart);
   cartRef.current = cart;
 
-  // Pages no longer carry the whole catalog: products in the cart or wishlist that this page has not loaded are
-  // fetched by id (one small cached request), then the cart is checked again (sold out, bundle sizes, 20-piece cap).
+  const checkingSavedCart = cartCheck !== "ready" && cart.some((line) => savedCartIds.includes(line.id));
+
+  const retryCartCheck = useCallback(() => {
+    setCartCheck("checking");
+    setCartCheckAttempt((attempt) => attempt + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!savedCartIds.length) return;
+    const controller = new AbortController();
+    void fetchCartProducts(savedCartIds, controller.signal).then((products) => {
+      if (controller.signal.aborted) return;
+      const { notes } = refreshSavedLines(cartRef.current, savedCartIds, products);
+      upsertProducts(products);
+      setCart((lines) => refreshSavedLines(lines, savedCartIds, products).cart);
+      addNotes(notes);
+      setCatalogVersion((version) => version + 1);
+      setCartCheck("ready");
+    }).catch(() => {
+      if (!controller.signal.aborted) setCartCheck("unavailable");
+    });
+    return () => controller.abort();
+  }, [savedCartIds, cartCheckAttempt, addNotes]);
+
+  // Wishlist cards can use the cached catalog. Saved cart products are checked separately above.
   useEffect(() => {
     if (!ready) return;
-    const missing = [...new Set([...cart.map((l) => l.id), ...wishlist])].filter((id) => !getProductById(id));
+    const missing = wishlist.filter((id) => !getProductById(id) && !savedCartIds.includes(id));
     if (!missing.length) return;
     let live = true;
     void fetchProducts(idsUrl(missing)).then((items) => {
       if (!live || !items.length) return;
       setCatalogVersion((v) => v + 1);
-      const checked = normalizeCart(cartRef.current);
-      setCart(checked.cart);
-      addNotes(checked.notes);
     });
     return () => {
       live = false;
     };
-  }, [cart, wishlist, ready, addNotes]);
+  }, [wishlist, ready, savedCartIds]);
   // POST /api/checkout/coupon prices the coupon on the real cart; the discount it returns is what we show.
   const applyCoupon = useCallback<Ctx["applyCoupon"]>(async (raw) => {
     const code = raw.trim().toUpperCase();
@@ -396,11 +448,12 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ready || !couponCode) return;
     if (!cart.length) return;
+    if (cartCheck !== "ready") return;
     void applyCoupon(couponCode).then((r) => {
       if (!r.ok) setCoupon(null);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartSignature, ready]);
+  }, [cartSignature, ready, cartCheck]);
 
   const notify = useCallback((t: Omit<Toast, "id">) => {
     const id = ++toastId.current;
@@ -409,6 +462,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addToCart = useCallback<Ctx["addToCart"]>((p, opts = {}) => {
+    if (!ready) return false;
     // The card's product goes into the browser catalog, so the cart can show and price it right away.
     upsertProducts([p]);
     const options = p.variants?.options ?? [];
@@ -430,7 +484,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       const found = lines.find((l) => l.key === key);
       const q = Math.min(MAX_LINE_PIECES, opts.setQuantity ? qty : (found?.qty ?? 0) + qty);
       if (found) return lines.map((l) => (l.key === key ? { ...l, qty: q } : l));
-      return [...lines, { key, id: p.id, ...(option?.id ? { variantId: option.id } : {}), ...(option ? { variant: option.name } : {}), qty: q, ...(bundle ? { bundle } : {}) }];
+      return [...lines, { key, id: p.id, variantId: option?.id, variant: option?.name, qty: q, bundle, savedPrice: unitPrice(p, { variantId: option?.id, variant: option?.name, bundle }), savedName: p.name }];
     });
     if (!opts.silent) setCartOpen(true);
     const pieces = Math.max(added, 0) || next;
@@ -444,7 +498,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       currency: "PKR",
     }).catch(() => undefined);
     return true;
-  }, [addNotes, notify]);
+  }, [addNotes, notify, ready]);
 
   const setQty = useCallback((key: string, qty: number) => {
     const line = cartRef.current.find((l) => l.key === key);
@@ -472,7 +526,11 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
   }, [addNotes]);
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback(() => {
+    setCart([]);
+    setSavedCartIds([]);
+    setCartCheck("ready");
+  }, []);
 
   const toggleWish = useCallback(
     (id: string) => {
@@ -592,7 +650,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   /** Called by the thank-you page once it shows the order: empties the cart and forgets the checkout's coupon and key. */
   const completeOrder = useCallback(() => {
     checkoutAttempt.current = null;
-    setCart([]);
+    clearCart();
     write("zlv-cart-v2", []);
     setCoupon(null);
     setCartNotes([]);
@@ -600,12 +658,14 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem("zm_checkout_idempotency");
       sessionStorage.removeItem("zm_checkout_coupon");
     } catch {}
-  }, []);
+  }, [clearCart]);
 
   const value: Ctx = {
     ready,
     catalogVersion,
     cart,
+    cartCheck: checkingSavedCart ? cartCheck : "ready",
+    retryCartCheck,
     wishlist,
     orders,
     cartCount: cart.reduce((s, l) => s + l.qty, 0),

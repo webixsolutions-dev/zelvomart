@@ -103,15 +103,26 @@ const nextConfig: NextConfig = {
       process.env.NEXT_PUBLIC_API_URL ||
       "http://localhost:4000"
     ).replace(/\/$/, "");
-    return [
-      // Product sitemaps past the first 1,000 products (Yoast names: product-sitemap2.xml, 3 …).
-      { source: "/product-sitemap:page(\\d+).xml", destination: "/sitemaps/products/:page" },
-      {
-        source: "/feeds/:platform(meta|tiktok|google).xml",
-        destination: `${api}/api/feed/:platform.xml`,
-      },
-      { source: "/uploads/:path*", destination: `${api}/uploads/:path*` },
-    ];
+    return {
+      // Keep the plain listings pre-renderable and preserve the public URL for real filter requests.
+      // UTM, fbclid, and other ad parameters alone still use the pre-rendered page.
+      beforeFiles: ["page", "sort", "min", "max", "stock", "category"].flatMap((key) =>
+        ["/shop", "/product-category/:slug"].map((source) => ({
+          source,
+          has: [{ type: "query" as const, key }],
+          destination: `/store-listing-results${source}`,
+        })),
+      ),
+      afterFiles: [
+        // Product sitemaps past the first 1,000 products (Yoast names: product-sitemap2.xml, 3 …).
+        { source: "/product-sitemap:page(\\d+).xml", destination: "/sitemaps/products/:page" },
+        {
+          source: "/feeds/:platform(meta|tiktok|google).xml",
+          destination: `${api}/api/feed/:platform.xml`,
+        },
+        { source: "/uploads/:path*", destination: `${api}/uploads/:path*` },
+      ],
+    };
   },
 };
 
