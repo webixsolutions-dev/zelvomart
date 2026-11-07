@@ -9,27 +9,31 @@ export const PRODUCT_TAB_DEFS = [
     key: "shippingProcess",
     title: "Shipping Process",
     content:
-      "<p><strong>Order confirmation.</strong> We verify the order by call or WhatsApp before it leaves.</p><p><strong>Dispatch.</strong> Parcels are handed to our delivery partners and packed for the journey.</p><p><strong>Timeline.</strong> Major cities usually take 2–4 working days. Other cities usually take 3–5 working days.</p><p><strong>Delivery charge.</strong> {delivery_fee} per order. The whole order ships free when the total is above {free_delivery_over}. Products with free shipping turned on ship free on their own.</p>",
+      "<p><strong>Order confirmation.</strong> We confirm your order by phone or WhatsApp.</p><p><strong>Dispatch.</strong> We typically hand your parcel to the courier within 24–48 hours of order confirmation.</p><p><strong>Delivery estimate.</strong> Delivery usually takes 2–7 working days, depending on your location.</p><p><strong>Delivery charge.</strong> {delivery_fee} per order. The whole order ships free when the total is above {free_delivery_over}. Products with free shipping turned on ship free on their own.</p>",
   },
   {
     key: "generalFaq",
     title: "General FAQ",
     content:
-      "<p><strong>Can I check the product before paying?</strong><br/>Riders in major cities can let you inspect the parcel. We also offer a 7-day replacement window.</p><p><strong>What if I receive a damaged product?</strong><br/>Share photos on WhatsApp within 7 days and we will arrange a replacement.</p><p><strong>When is shipping free?</strong><br/>Shipping is free on an order above {free_delivery_over}, and on any product whose free-shipping option is turned on. Otherwise delivery is {delivery_fee}.</p>",
+      '<p><strong>What if my item arrives damaged, defective, or incorrect?</strong><br/>Contact us on WhatsApp within 7 days of delivery. Include your order details and a continuous video showing the full parcel opening, from the sealed package through to the item. We’ll review your claim under our <a href="/refund_returns/">Refund &amp; Return Policy</a>.</p><p><strong>When is shipping free?</strong><br/>Shipping is free on an order above {free_delivery_over}, and on any product whose free-shipping option is turned on. Otherwise delivery is {delivery_fee}.</p>',
   },
 ] as const;
 
 export type ProductTabKey = (typeof PRODUCT_TAB_DEFS)[number]["key"];
 
 /**
- * The default text shipped before the delivery placeholders existed. A tab saved with exactly this text was never
- * edited by hand, so it is shown as today's default (with live delivery amounts) instead of the old fixed "Rs 8,000".
+ * Recognize previously shipped defaults, including the version saved before delivery placeholders were added.
+ * Exact matches get today’s copy. Custom content and deliberately empty sections keep their saved values.
  */
-const LEGACY_DEFAULT_CONTENT: Partial<Record<ProductTabKey, string>> = {
-  shippingProcess:
+const LEGACY_DEFAULT_CONTENT: Partial<Record<ProductTabKey, readonly string[]>> = {
+  shippingProcess: [
+    "<p><strong>Order confirmation.</strong> We verify the order by call or WhatsApp before it leaves.</p><p><strong>Dispatch.</strong> Parcels are handed to our delivery partners and packed for the journey.</p><p><strong>Timeline.</strong> Major cities usually take 2–4 working days. Other cities usually take 3–5 working days.</p><p><strong>Delivery charge.</strong> {delivery_fee} per order. The whole order ships free when the total is above {free_delivery_over}. Products with free shipping turned on ship free on their own.</p>",
     "<p><strong>Order confirmation.</strong> We verify the order by call or WhatsApp before it leaves.</p><p><strong>Dispatch.</strong> Parcels are handed to our delivery partners and packed for the journey.</p><p><strong>Timeline.</strong> Major cities usually take 2–4 working days. Other cities usually take 3–5 working days.</p><p><strong>Free shipping.</strong> The whole order ships free when the total is above Rs 8,000. Products with free shipping turned on ship free on their own.</p>",
-  generalFaq:
+  ],
+  generalFaq: [
+    "<p><strong>Can I check the product before paying?</strong><br/>Riders in major cities can let you inspect the parcel. We also offer a 7-day replacement window.</p><p><strong>What if I receive a damaged product?</strong><br/>Share photos on WhatsApp within 7 days and we will arrange a replacement.</p><p><strong>When is shipping free?</strong><br/>Shipping is free on an order above {free_delivery_over}, and on any product whose free-shipping option is turned on. Otherwise delivery is {delivery_fee}.</p>",
     "<p><strong>Can I check the product before paying?</strong><br/>Riders in major cities can let you inspect the parcel. We also offer a 7-day replacement window.</p><p><strong>What if I receive a damaged product?</strong><br/>Share photos on WhatsApp within 7 days and we will arrange a replacement.</p><p><strong>When is shipping free?</strong><br/>Shipping is free on an order above Rs 8,000, and on any product whose free-shipping option is turned on.</p>",
+  ],
 };
 
 /** Saved text, or today's default when the saved text is still the old built-in default. */
@@ -38,7 +42,9 @@ const sameHtml = (a: string, b?: string) => {
   return b !== undefined && norm(a) === norm(b);
 };
 function currentContent(key: ProductTabKey, saved: string) {
-  return sameHtml(saved, LEGACY_DEFAULT_CONTENT[key]) ? PRODUCT_TAB_DEFS.find((tab) => tab.key === key)!.content : saved;
+  return LEGACY_DEFAULT_CONTENT[key]?.some((legacy) => sameHtml(saved, legacy))
+    ? PRODUCT_TAB_DEFS.find((tab) => tab.key === key)!.content
+    : saved;
 }
 
 export type ResolvedProductTab = {
@@ -98,7 +104,7 @@ export function resolveProductTabs(globalValue: unknown, catalogMeta: unknown): 
 
   return PRODUCT_TAB_DEFS.map((def) => {
     const overridden = overrides[def.key].override;
-    const html = overridden ? overrides[def.key].content : globalTabs[def.key].content;
+    const html = overridden ? currentContent(def.key, overrides[def.key].content) : globalTabs[def.key].content;
     return {
       key: def.key,
       title: globalTabs[def.key].title,
@@ -129,7 +135,7 @@ export function resolveStoreProductTabs(globalValue: unknown, catalogMeta: unkno
     const stored = saved[def.key];
     const title = String(stored?.title || "").trim() || def.title;
     const storeHtml = stored && typeof stored.content === "string" ? currentContent(def.key, stored.content) : def.content;
-    const html = overrides[def.key].override ? overrides[def.key].content : storeHtml;
+    const html = overrides[def.key].override ? currentContent(def.key, overrides[def.key].content) : storeHtml;
     return { key: def.key, title, html };
   }).filter((tab) => hasText(tab.html));
 }

@@ -12,7 +12,6 @@ import { discountPct, money, waLink } from "@store/lib/format";
 import { site } from "@store/lib/site";
 import { BUNDLE_PIECES, MAX_LINE_PIECES, bundleLabel, useShop } from "@store/lib/store";
 import { useViewContent } from "@store/lib/orders";
-import { deliverBy, shortDate } from "@store/lib/delivery";
 import { resolveProductTabs } from "@store/lib/productTabs";
 import { sanitizeDescriptionHtml } from "@store/lib/sanitize-description";
 import { approvedReviews, reviewSummary } from "@store/lib/reviews";
@@ -115,11 +114,8 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [tab, setTab] = useState(tabs[0]?.id ?? "description");
   const [openRows, setOpenRows] = useState<string[]>(["description"]);
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
-  const [eta, setEta] = useState<string | null>(null);
 
-  // The date depends on today, so it is worked out in the browser, not at build time.
   useEffect(() => {
-    setEta(shortDate(deliverBy()));
     router.prefetch("/checkout/");
   }, [router]);
   useEffect(() => {
@@ -419,7 +415,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                 <QtyStepper value={qty} step={bundle === 2 ? BUNDLE_PIECES : 1} label={bundle === 2 ? "by one bundle" : "quantity"} onChange={setQty} />
                 <span className={`pd-stock ${inStock ? "" : "out"}`}>
                   <span className="dot" aria-hidden="true" />
-                  {inStock ? "In stock · Ships within 24 hours" : "Out of stock"}
+                  {inStock ? "In stock · Typically dispatched within 24–48 hours of order confirmation" : "Out of stock"}
                 </span>
                 <span className="pd-total">
                   <small>Total{bundlePct ? ` · ${bundleLabel(qty)}` : ""}</small>
@@ -440,6 +436,10 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {ordering ? "Opening checkout…" : "Order now"}
               </button>
               <p className="pd-order-note">Pay when your parcel arrives · Delivered by {site.shipping.courier}</p>
+              <p className="pd-order-note">
+                For eligible returns, record a continuous unboxing video. See our{" "}
+                <Link href="/refund_returns/" className="link-cta">Refund &amp; Return Policy</Link>.
+              </p>
               <div className="pd-buy-secondary">
                 <a className="btn wa-outline" href={waLink(site.whatsappNumber, waText)} target="_blank" rel="noopener noreferrer">
                   <WhatsAppIcon /> Order on WhatsApp
@@ -453,7 +453,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                 <p className="pd-eta">
                   <Truck size={18} />
                   <span>
-                    Order now — get it by <strong suppressHydrationWarning>{eta ?? `within ${site.shipping.estimate}`}</strong>
+                    Estimated delivery <strong>{site.shipping.estimate}</strong>, depending on your location.
                   </span>
                 </p>
                 <ol ref={stepsRef} className={`pd-steps${stepsPlaying ? " is-playing" : ""}`}>
@@ -469,7 +469,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                       <PackageCheck size={12} />
                     </span>
                     <strong>Dispatched</strong>
-                    <small>1–2 days</small>
+                    <small>Typically within 1–2 days of confirmation</small>
                   </li>
                   <li>
                     <span className="pd-step-dot" aria-hidden="true">
@@ -477,7 +477,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                     </span>
                     <strong>Delivered</strong>
                     <small>
-                      {site.shipping.minDays}–{site.shipping.maxDays} days
+                      {site.shipping.estimate}
                     </small>
                   </li>
                 </ol>
