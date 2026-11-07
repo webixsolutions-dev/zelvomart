@@ -9,6 +9,7 @@ import { site } from "@store/lib/site";
 import { waLink } from "@store/lib/format";
 import { useShop } from "@store/lib/store";
 import { Logo } from "@store/components/ui/Logo";
+import { CategoryLink } from "@store/components/ui/CategoryLink";
 import { CategoryIcon } from "@store/components/ui/CategoryIcon";
 import { WhatsAppIcon } from "@store/components/ui/BrandIcons";
 import { SearchBox } from "./SearchBox";
@@ -71,7 +72,7 @@ export function Header() {
               </span>
               <span className="only-desktop">Wishlist</span>
             </Link>
-            <button className="head-action cart-btn" type="button" onClick={() => setCartOpen(true)} aria-label={`Open cart, ${cartCount} items`}>
+            <button className="head-action cart-btn" type="button" onClick={() => setCartOpen(true)} aria-label={ready ? `Open cart, ${cartCount} items` : "Open cart"}>
               <span className="badge-wrap">
                 <ShoppingBag size={21} />
                 {ready && cartCount > 0 && <b className="count">{cartCount}</b>}
@@ -83,10 +84,10 @@ export function Header() {
         <nav className="nav-row only-desktop" aria-label="Categories">
           <div className="container nav-row-inner">
             {categories.map((c) => (
-              <Link key={c.id} href={categoryPath(c.id)} className={active(categoryPath(c.id)) ? "active" : ""}>
+              <CategoryLink key={c.id} href={categoryPath(c.id)} className={active(categoryPath(c.id)) ? "active" : ""}>
                 <CategoryIcon id={c.id} size={17} />
                 {c.name}
-              </Link>
+              </CategoryLink>
             ))}
             <Link href="/new-arrivals/" className={`nav-new ${active("/new-arrivals/") ? "active" : ""}`}>
               <Sparkle size={16} />
@@ -116,12 +117,12 @@ export function Header() {
           <ul className="drawer-cats">
             {categories.map((c) => (
               <li key={c.id}>
-                <Link href={categoryPath(c.id)}>
+                <CategoryLink href={categoryPath(c.id)}>
                   <span className="drawer-cat-ico">
                     <CategoryIcon id={c.id} />
                   </span>
                   {c.name}
-                </Link>
+                </CategoryLink>
               </li>
             ))}
           </ul>

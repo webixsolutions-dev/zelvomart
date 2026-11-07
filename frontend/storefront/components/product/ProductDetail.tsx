@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Check, ChevronDown, Heart, PackageCheck, Play, ShoppingBag, Truck } from "lucide-react";
 import { parseVideoUrl } from "@/lib/product-video";
 import { getCategory, getProduct, categoryPath, type Variant } from "@store/lib/catalog";
@@ -105,7 +105,7 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [galleryScrollable, setGalleryScrollable] = useState(false);
   const [galleryDragging, setGalleryDragging] = useState(false);
   const [qty, setQtyState] = useState(1);
-  const [ordering, setOrdering] = useState(false);
+  const [ordering, openCheckout] = useTransition();
   const [bundle, setBundle] = useState<1 | 2>(1);
   const [variantKey, setVariant] = useState<string | undefined>(() => {
     const first = options.find((o) => o.sku === variantSku && !o.soldOut) || options.find((o) => !o.soldOut);
@@ -434,11 +434,10 @@ export function ProductDetail({ slug }: { slug: string }) {
                 onClick={() => {
                   if (ordering) return;
                   if (!addToCart(p, { ...cartOpts, silent: true, setQuantity: true })) return;
-                  setOrdering(true);
-                  router.push("/checkout/");
+                  openCheckout(() => router.push("/checkout/"));
                 }}
               >
-                {ordering ? <><span className="pd-order-spinner" aria-hidden="true" />Preparing checkout…</> : "Order now"}
+                {ordering ? "Opening checkout…" : "Order now"}
               </button>
               <p className="pd-order-note">Pay when your parcel arrives · Delivered by {site.shipping.courier}</p>
               <div className="pd-buy-secondary">

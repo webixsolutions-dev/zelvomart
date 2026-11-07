@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { jsonLd as serializeJsonLd } from "@/lib/json-ld";
 import { notFound } from "next/navigation";
 import { getCategory, categoryPath, type Product } from "@store/lib/catalog";
@@ -55,8 +56,6 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const slug = (await params).slug;
   const [, p] = await Promise.all([loadStore(), loadProduct(slug)]);
   if (!p) notFound();
-  // "You may also like": 4 cards from the same category (one small query), not the whole catalog.
-  const related = await loadRelated(p);
   const cat = getCategory(p.category)!;
   const url = `${site.url}/product/${p.slug}/`;
   const [minDays, maxDays] = transitDays();
@@ -155,16 +154,25 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       <ProductBridge product={p}>
         <ProductDetail slug={p.slug} />
       </ProductBridge>
-      <section className="section pd-related">
-        <div className="container">
-          <SectionHead eyebrow="Keep exploring" title="You may also like" sub={`More from ${cat.name}, plus customer favourites.`} href={categoryPath(cat.id)} linkLabel={`Shop ${cat.short}`} />
-          <ProductGrid items={related} />
-        </div>
-      </section>
+      <Suspense fallback={null}>
+        <RelatedProducts product={p} category={cat} />
+      </Suspense>
       <meta property="og:type" content="product" />
       <meta property="product:price:amount" content={String(p.price)} />
       <meta property="product:price:currency" content="PKR" />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
     </div>
+  );
+}
+
+async function RelatedProducts({ product, category }: { product: NonNullable<Awaited<ReturnType<typeof loadProduct>>>; category: NonNullable<ReturnType<typeof getCategory>> }) {
+  const related = await loadRelated(product);
+  return (
+  <section className="section pd-related">
+    <div className="container">
+      <SectionHead eyebrow="Keep exploring" title="You may also like" sub={`More from ${category.name}, plus customer favourites.`} href={categoryPath(category.id)} linkLabel={`Shop ${category.short}`} />
+      <ProductGrid items={related} />
+    </div>
+  </section>
   );
 }

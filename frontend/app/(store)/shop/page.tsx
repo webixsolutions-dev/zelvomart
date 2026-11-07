@@ -1,25 +1,11 @@
-import type { Metadata } from "next";
-import { collections } from "@store/lib/catalog";
-import { CollectionArchive } from "@store/components/shop/ArchivePage";
-import { bannerOg, shareMeta } from "@store/lib/seo";
-import { collectionListing, listingMeta } from "@store/lib/archive-page";
+import { ShopListing, shopMetadata } from "@store/components/shop/ArchiveRoutes";
 
-const c = collections["shop"];
-const PATH = "/shop/";
-type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+export const revalidate = 300;
 
-// 24 products per page; ?page=2 … are their own pages (canonical to themselves), filtered views canonicalise to the page.
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const meta = await listingMeta(PATH, await searchParams, c.seoTitle, { collection: "shop" });
-  return {
-    title: { absolute: meta.title },
-    description: c.seoDescription,
-    alternates: { canonical: meta.canonical },
-    ...shareMeta({ title: meta.title, description: c.seoDescription, path: meta.canonical, image: bannerOg(c.banner, c.title) }),
-  };
+export function generateMetadata() {
+  return shopMetadata();
 }
 
-export default async function Page({ searchParams }: Props) {
-  const { params, data } = await collectionListing("shop", PATH, await searchParams);
-  return <CollectionArchive k="shop" data={data} params={params} basePath={PATH} />;
+export default function Page() {
+  return <ShopListing />;
 }

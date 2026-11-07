@@ -10,12 +10,12 @@ type Search = Record<string, string | string[] | undefined>;
  * Loads one listing page and keeps its URL clean: ?page=1 redirects to the plain URL (301) and a page past the end
  * goes to the last page, so there is never an empty grid at a numbered URL.
  */
-async function listing(basePath: string, sp: Search, scope: { collection?: CollectionKey; category?: CategoryId }) {
+async function listing(basePath: string, sp: Search, scope: { collection?: CollectionKey; category?: CategoryId }, opts?: { strict?: boolean }) {
   const params = parseArchiveParams(sp);
   // The proxy already answers ?page=1 with a 301 (proxy.ts); this is the fallback when it did not run.
   const rawPage = Array.isArray(sp.page) ? sp.page[0] : sp.page;
   if (rawPage != null && params.page === 1) permanentRedirect(archiveHref(basePath, params));
-  const [, data] = await Promise.all([loadStore(), loadCards(archiveCardQuery(params, scope))]);
+  const [, data] = await Promise.all([loadStore(), loadCards(archiveCardQuery(params, scope), opts)]);
   // Past the last page: show the last page itself (its canonical points there too), never an empty grid.
   if (data.total > 0 && params.page > data.totalPages) {
     const last = { ...params, page: data.totalPages };
@@ -24,13 +24,13 @@ async function listing(basePath: string, sp: Search, scope: { collection?: Colle
   return { params, data };
 }
 
-export function collectionListing(k: CollectionKey, basePath: string, sp: Search) {
-  return listing(basePath, sp, { collection: k });
+export function collectionListing(k: CollectionKey, basePath: string, sp: Search, opts?: { strict?: boolean }) {
+  return listing(basePath, sp, { collection: k }, opts);
 }
 
 /** A category page; when the category has no products at all, the "coming soon" block data instead. */
-export async function categoryListing(id: CategoryId, basePath: string, sp: Search) {
-  const { params, data } = await listing(basePath, sp, { category: id });
+export async function categoryListing(id: CategoryId, basePath: string, sp: Search, opts?: { strict?: boolean }) {
+  const { params, data } = await listing(basePath, sp, { category: id }, opts);
   let soon: { others: CategoryId[]; picks: Awaited<ReturnType<typeof loadCards>>["items"] } | null = null;
   if (!data.total && !hasRefinements(params)) {
     const [counts, best] = await Promise.all([loadCategoryCounts(), loadCards({ tag: "bestsellers", limit: 4 })]);

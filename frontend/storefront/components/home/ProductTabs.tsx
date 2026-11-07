@@ -37,8 +37,8 @@ export function ProductTabs({ tabs }: { tabs: Tab[] }) {
           View all {tab.label.toLowerCase()} <ArrowRight size={14} />
         </Link>
       </div>
-      <div role="tabpanel" key={tab.key} className="tab-panel trending-board">
-        <ProductGrid items={tab.items.slice(0, 4)} cols={4} />
+      <div role="tabpanel" className="trending-board">
+        <ProductGrid items={tab.items.slice(0, 4)} cols={4} eagerCount={4} />
       </div>
     </div>
   );

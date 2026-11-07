@@ -9,6 +9,8 @@ export function backendBase() {
 }
 
 type NextFetchInit = RequestInit & {
+  fast?: boolean;
+  allowStale?: boolean;
   next?: {
     revalidate?: number | false;
     tags?: string[];
@@ -33,12 +35,11 @@ class HttpError extends Error {
 const retryable = (error: unknown) => !(error instanceof HttpError) || error.status >= 500;
 
 /**
- * Server-side GET to the backend. Each attempt gives up after 5 s; a failed attempt is retried once.
- * If both fail, the last good answer for the same path is returned (and the failure logged); with none,
- * the error is thrown and the caller shows its own empty or error state. Never invented data.
+ * Server-side backend request. GETs normally allow one retry and can use the last successful answer.
+ * Fast reads have a 2.5 s budget, and callers that require current data can disable the stale fallback.
  */
 export async function apiFetch<T>(path: string, init: NextFetchInit = {}): Promise<T> {
-  const { cache, next, signal, ...rest } = init;
+  const { cache, next, signal, fast, allowStale = true, ...rest } = init;
   // Local development should always reflect admin/database changes immediately.
   // Production still uses Next.js caching + tag/path revalidation.
   const noStore = cache === 'no-store' || process.env.NODE_ENV !== 'production';
@@ -47,7 +48,7 @@ export async function apiFetch<T>(path: string, init: NextFetchInit = {}): Promi
   const url = `${backendBase()}${path}`;
 
   const attempt = async () => {
-    const timeout = AbortSignal.timeout(TIMEOUT_MS);
+    const timeout = AbortSignal.timeout(fast ? 2500 : TIMEOUT_MS);
     const response = await fetch(url, {
       ...rest,
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
@@ -66,11 +67,11 @@ export async function apiFetch<T>(path: string, init: NextFetchInit = {}): Promi
     try {
       data = await attempt();
     } catch (error) {
-      if (!idempotent || !retryable(error) || signal?.aborted) throw error;
+      if (fast || !idempotent || !retryable(error) || signal?.aborted) throw error;
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       data = await attempt();
     }
-    if (method === 'GET') {
+    if (method === 'GET' && allowStale) {
       lastGood.delete(path);
       lastGood.set(path, data);
       if (lastGood.size > LAST_GOOD_LIMIT) lastGood.delete(lastGood.keys().next().value as string);
@@ -79,11 +80,11 @@ export async function apiFetch<T>(path: string, init: NextFetchInit = {}): Promi
   } catch (error) {
     if (!retryable(error)) throw error;
     const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-    if (method === 'GET' && lastGood.has(path)) {
-      console.error(`[apiFetch] ${path} failed twice (${reason}); serving the last good answer.`);
+    if (method === 'GET' && allowStale && lastGood.has(path)) {
+      console.error(`[apiFetch] ${path} failed (${reason}); serving the last good answer.`);
       return lastGood.get(path) as T;
     }
-    console.error(`[apiFetch] ${path} failed twice (${reason}); no earlier answer to fall back on.`);
+    console.error(`[apiFetch] ${path} failed (${reason}); no cached fallback used.`);
     throw error;
   }
 }

@@ -106,15 +106,8 @@ const orgJsonLd = () => ({
 
 export const revalidate = 300;
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [publicSettings, store] = await Promise.all([
-    loadPublicSettings().catch(() => null),
-    loadStore(),
-  ]);
+async function StoreTracking() {
+  const publicSettings = await loadPublicSettings().catch(() => null);
   const settings = publicSettings || {};
   // No answer from the backend at all (and no earlier one): load no pixels or recorder rather than guess.
   const enabled = (key: string) =>
@@ -125,6 +118,17 @@ export default async function RootLayout({
   const adsLive = adsEnvironment(process.env.APP_ENV, settings["app.env"]) && !!adsSiteHost();
   const pixelId = String(settings["tracking.metaPixelId"] || "");
   const tiktokPixelId = String(settings["tracking.tiktokPixelId"] || "");
+  return (
+    <>
+      {enabled("tracking.sessionReplayEnabled") ? <SessionReplayProvider /> : null}
+      {adsLive && enabled("tracking.metaPixelEnabled") ? <MetaPixelScript pixelId={pixelId} /> : null}
+      {adsLive && enabled("tracking.tiktokPixelEnabled") ? <TikTokPixelScript pixelId={tiktokPixelId} /> : null}
+    </>
+  );
+}
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const store = await loadStore();
   return (
     <html lang="en-PK" className={manrope.variable}>
       <body>
@@ -150,16 +154,8 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <TrackingProvider />
           <GoogleAnalytics />
-          {enabled("tracking.sessionReplayEnabled") ? (
-            <SessionReplayProvider />
-          ) : null}
-          {adsLive && enabled("tracking.metaPixelEnabled") ? (
-            <MetaPixelScript pixelId={pixelId} />
-          ) : null}
+          <StoreTracking />
         </Suspense>
-        {adsLive && enabled("tracking.tiktokPixelEnabled") ? (
-          <TikTokPixelScript pixelId={tiktokPixelId} />
-        ) : null}
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, type NextFetchEvent } from "next/server";
 import { storefrontRedirect } from "./storefront/lib/redirects";
 
 const SESSION_COOKIE = "zelvomart_admin_session";
@@ -47,11 +47,23 @@ async function loadRedirects() {
   }
 }
 
-async function findRedirect(pathname: string) {
+async function findRedirect(pathname: string, event: NextFetchEvent) {
   const stale = Date.now() - redirectLoadedAt > REDIRECT_TTL_MS;
   if (stale && !redirectLoading) redirectLoading = loadRedirects();
-  // First request of a fresh instance waits for the map; later refreshes happen in the background.
-  if (!redirectMap && redirectLoading) await redirectLoading;
+  if (redirectLoading) {
+    event.waitUntil(redirectLoading);
+    if (!redirectMap) {
+      // A cold redirect lookup can otherwise hold up an already-built landing page.
+      const landing = pathname === "/" || /^\/(shop|checkout|product-category\/[^/]+)\/?$/.test(pathname);
+      if (landing) {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([redirectLoading, new Promise<void>((resolve) => { timer = setTimeout(resolve, 200); })]);
+        clearTimeout(timer);
+      } else {
+        await redirectLoading;
+      }
+    }
+  }
   if (!redirectMap) return null;
   const withSlash = pathname.endsWith("/") ? pathname : `${pathname}/`;
   return redirectMap.get(withSlash) || redirectMap.get(pathname) || null;
@@ -59,6 +71,7 @@ async function findRedirect(pathname: string) {
 
 /** Paginated listings: shop, the three collections and every category page. */
 const LISTING_PATH = /^\/(shop|new-arrivals|bestsellers|deals-and-offers|product-category\/[^/]+)\/?$/;
+const LISTING_RESULTS = "/store-listing-results";
 
 const withSlash = (path: string) => (path.endsWith("/") || /\.[a-z0-9]+$/i.test(path) ? path : `${path}/`);
 
@@ -70,7 +83,7 @@ function withQuery(target: URL, request: NextRequest) {
   return target;
 }
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const pathname = request.nextUrl.pathname;
   if (pathname === "/admin/login") return NextResponse.next();
 
@@ -89,7 +102,10 @@ export async function proxy(request: NextRequest) {
   if (request.method === "GET" || request.method === "HEAD") {
     const replacement = storefrontRedirect(pathname);
     if (replacement) return NextResponse.redirect(withQuery(new URL(replacement, request.url), request), 301);
-    const hit = await findRedirect(pathname);
+    if (pathname === LISTING_RESULTS || pathname.startsWith(`${LISTING_RESULTS}/`)) {
+      return new NextResponse(null, { status: 404 });
+    }
+    const hit = await findRedirect(pathname, event);
     if (hit) {
       const target = new URL(hit.destination, request.url);
       if (target.origin === request.nextUrl.origin) target.pathname = withSlash(target.pathname);

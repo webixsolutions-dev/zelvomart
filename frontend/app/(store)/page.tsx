@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { jsonLd } from "@/lib/json-ld";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -41,8 +42,7 @@ const websiteJsonLd = {
 export const revalidate = 300;
 
 export default async function HomePage() {
-  // Only the rows the page shows: 8 bestsellers, 8 new arrivals, 8 deals (not the whole catalog).
-  const [, { best, fresh, deals }] = await Promise.all([loadStore(), loadHomeLists()]);
+  await loadStore();
 
   return (
     <>
@@ -63,17 +63,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="section home-trending">
-        <div className="container">
-          <ProductTabs
-            tabs={[
-              { key: "best", label: "Bestsellers", href: "/bestsellers/", items: best },
-              { key: "new", label: "New In", href: "/new-arrivals/", items: fresh.slice(0, 8) },
-              { key: "deals", label: "On Sale", href: "/deals-and-offers/", items: deals },
-            ]}
-          />
-        </div>
-      </section>
+      <Suspense fallback={<section className="section home-trending" aria-hidden="true" />}>
+        <HomeTrending />
+      </Suspense>
 
       <div className="home-deals">
         <Hero
@@ -156,5 +148,22 @@ export default async function HomePage() {
       </section>
 
     </>
+  );
+}
+
+async function HomeTrending() {
+  const { best, fresh, deals } = await loadHomeLists();
+  return (
+  <section className="section home-trending">
+    <div className="container">
+      <ProductTabs
+        tabs={[
+          { key: "best", label: "Bestsellers", href: "/bestsellers/", items: best },
+          { key: "new", label: "New In", href: "/new-arrivals/", items: fresh.slice(0, 8) },
+          { key: "deals", label: "On Sale", href: "/deals-and-offers/", items: deals },
+        ]}
+      />
+    </div>
+  </section>
   );
 }

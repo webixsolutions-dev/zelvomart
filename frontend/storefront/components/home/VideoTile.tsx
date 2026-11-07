@@ -33,6 +33,7 @@ export function VideoTile({
   const video = useRef<HTMLVideoElement>(null);
   const [armed, setArmed] = useState(false); // src set
   const [playing, setPlaying] = useState(false);
+  const frame = useRef<number | null>(null);
   const [needsTap, setNeedsTap] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -77,6 +78,26 @@ export function VideoTile({
     }
   }
 
+  const showVideo = (v: HTMLVideoElement) => {
+    if (typeof v.requestVideoFrameCallback !== "function") {
+      setPlaying(true);
+      return;
+    }
+    if (frame.current != null) v.cancelVideoFrameCallback(frame.current);
+    frame.current = v.requestVideoFrameCallback(() => {
+      frame.current = null;
+      if (!v.paused) setPlaying(true);
+    });
+  };
+
+  const showPoster = (v: HTMLVideoElement) => {
+    if (frame.current != null) {
+      v.cancelVideoFrameCallback(frame.current);
+      frame.current = null;
+    }
+    setPlaying(false);
+  };
+
   const start = () => {
     setNeedsTap(false);
     setArmed(true);
@@ -97,9 +118,9 @@ export function VideoTile({
         playsInline
         preload="none"
         aria-label={title}
-        onPlaying={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onError={() => setFailed(true)}
+        onPlaying={(event) => showVideo(event.currentTarget)}
+        onPause={(event) => showPoster(event.currentTarget)}
+        onError={(event) => { showPoster(event.currentTarget); setFailed(true); }}
       />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="video-tile-poster" src={poster} alt={title} width={width} height={height} loading="lazy" decoding="async" />

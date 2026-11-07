@@ -28,16 +28,17 @@ export function slimProduct(p: Product): Product {
   return { ...rest, description: "", descriptionHtml: "", highlights: p.highlights.slice(0, 4), specs: [], idealFor: [], inBox: [] };
 }
 
-async function bundleDefault() {
+const bundleDefault = cache(async (fresh = false) => {
   try {
     const s = await apiFetch<Record<string, unknown>>(`/api/settings/public?keys=store.bundleDefaultDiscountPercent`, {
-      next: { revalidate: REVALIDATE, tags: ["settings"] },
+      ...(fresh ? { cache: "no-store", fast: true, allowStale: false } : { next: { revalidate: REVALIDATE, tags: ["settings"] } }),
     });
     return Number(s["store.bundleDefaultDiscountPercent"] ?? 5);
-  } catch {
+  } catch (error) {
+    if (fresh) throw error;
     return 5;
   }
-}
+});
 
 export type CardQuery = {
   category?: CategoryId;
@@ -76,13 +77,13 @@ export function cardQueryString(q: CardQuery) {
  * under the "products" tag; searches pass the shopper's IP (for the per-IP limit) and are not cached.
  * Backend unreachable: an empty page, never invented products.
  */
-export async function loadCards(q: CardQuery, opts: { clientIp?: string } = {}): Promise<CardPage> {
+export async function loadCards(q: CardQuery, opts: { clientIp?: string; strict?: boolean; fresh?: boolean } = {}): Promise<CardPage> {
   if (q.ids && !q.ids.length) return { items: [], total: 0, page: q.page || 1, totalPages: 1 };
-  return cardsByQuery(cardQueryString(q), q.search ? opts.clientIp || "" : "", q.page || 1);
+  return cardsByQuery(cardQueryString(q), q.search ? opts.clientIp || "" : "", q.page || 1, !!opts.strict, !!opts.fresh);
 }
 
 // One request per distinct card query per page render: the page and its metadata (generateMetadata) share it.
-const cardsByQuery = cache(async (query: string, clientIp: string, page: number): Promise<CardPage> => {
+const cardsByQuery = cache(async (query: string, clientIp: string, page: number, strict: boolean, fresh: boolean): Promise<CardPage> => {
   const empty = { items: [], total: 0, page, totalPages: 1 };
   const search = new URLSearchParams(query).has("search");
   const proxySecret = process.env.STORE_PROXY_SECRET || process.env.REVALIDATION_SECRET;
@@ -95,14 +96,17 @@ const cardsByQuery = cache(async (query: string, clientIp: string, page: number)
               cache: "no-store",
               headers: clientIp && proxySecret ? { "x-zm-client-ip": clientIp, "x-zm-proxy-secret": proxySecret } : {},
             }
-          : { next: { revalidate: REVALIDATE, tags: ["products"] } },
+          : fresh
+            ? { cache: "no-store", fast: true, allowStale: false }
+            : { next: { revalidate: REVALIDATE, tags: ["products"] }, allowStale: !strict },
       ),
-      bundleDefault(),
+      bundleDefault(fresh),
     ]);
     const items = (res.items || []).map((p) => slimProduct(toDesignProduct(p, pct)));
     upsertProducts(items);
     return { items, total: Number(res.total || 0), page: Number(res.page || 1), totalPages: Number(res.totalPages || 1) };
-  } catch {
+  } catch (error) {
+    if (strict || fresh) throw error;
     return empty;
   }
 });
@@ -148,7 +152,7 @@ export async function loadCategoryCounts(): Promise<Record<string, number>> {
 }
 
 /** One product with everything its page shows. */
-export async function loadProduct(slug: string): Promise<Product | null> {
+export const loadProduct = cache(async (slug: string): Promise<Product | null> => {
   try {
     const [p, pct] = await Promise.all([
       apiFetch<ApiProduct>(`/api/products/slug/${encodeURIComponent(slug)}`, {
@@ -164,7 +168,7 @@ export async function loadProduct(slug: string): Promise<Product | null> {
   } catch {
     return null;
   }
-}
+});
 
 /**
  * The public settings the store layout needs (pixel IDs and on/off switches, session recording) from
@@ -173,6 +177,7 @@ export async function loadProduct(slug: string): Promise<Product | null> {
  */
 export async function loadPublicSettings(): Promise<Record<string, unknown>> {
   const result = await apiFetch<{ settings?: Record<string, unknown> }>(`/api/store/bootstrap`, {
+    fast: true,
     next: { revalidate: 30, tags: ["store", "categories", "settings"] },
   });
   return result.settings || {};
@@ -181,10 +186,16 @@ export async function loadPublicSettings(): Promise<Record<string, unknown>> {
 /** Phone, email, WhatsApp, delivery charge and per-city delivery days from Admin → Settings / Cities. */
 export async function loadStoreSettings(): Promise<StoreSettings> {
   const out: StoreSettings = {};
-  try {
-    const s = await apiFetch<Record<string, any>>(`/api/settings/public?keys=store.info,store.delivery,store.productTabs`, {
-      next: { revalidate: REVALIDATE, tags: ["settings"] },
-    });
+  const [settings, cities] = await Promise.allSettled([
+    apiFetch<Record<string, any>>(`/api/settings/public?keys=store.info,store.delivery,store.productTabs`, {
+      fast: true, next: { revalidate: REVALIDATE, tags: ["settings"] },
+    }),
+    apiFetch<{ name: string; deliveryMinDays: number; deliveryMaxDays: number; active: boolean }[]>(`/api/cities`, {
+      fast: true, next: { revalidate: REVALIDATE, tags: ["settings", "cities"] },
+    }),
+  ]);
+  if (settings.status === "fulfilled") {
+    const s = settings.value;
     const info = s["store.info"] || {};
     const delivery = s["store.delivery"] || {};
     if (info.phone) out.phone = String(info.phone);
@@ -195,18 +206,11 @@ export async function loadStoreSettings(): Promise<StoreSettings> {
     if (Number(delivery.freeAbove) > 0) out.freeOver = Number(delivery.freeAbove);
     const tabs = s["store.productTabs"];
     out.productTabs = tabs && typeof tabs === "object" ? withMediaUrls(tabs) : null;
-  } catch {
-    // keep the design values
   }
-  try {
-    const rows = await apiFetch<{ name: string; deliveryMinDays: number; deliveryMaxDays: number; active: boolean }[]>(`/api/cities`, {
-      next: { revalidate: REVALIDATE, tags: ["settings"] },
-    });
+  if (cities.status === "fulfilled") {
     out.cities = Object.fromEntries(
-      rows.filter((c) => c.active !== false).map((c) => [c.name.trim().toLowerCase(), [c.deliveryMinDays, c.deliveryMaxDays] as [number, number]]),
+      cities.value.filter((c) => c.active !== false).map((c) => [c.name.trim().toLowerCase(), [c.deliveryMinDays, c.deliveryMaxDays] as [number, number]]),
     );
-  } catch {
-    // the 2–7 working-day fallback stays
   }
   return out;
 }
@@ -225,11 +229,11 @@ export async function loadSettings() {
  * What every storefront page needs from the backend: the store settings (phone, delivery amounts, cities).
  * Products are no longer loaded here: each page loads only the products it shows (loadCards, loadProduct).
  */
-export async function loadStore() {
+export const loadStore = cache(async () => {
   const settings = await loadStoreSettings();
   applyStoreSettings(settings);
   return { settings };
-}
+});
 
 export type SeoIndex = {
   /** Published products that are not noindex. `images`: absolute URLs, main image first, at most 10. */

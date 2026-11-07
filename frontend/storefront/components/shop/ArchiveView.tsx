@@ -144,11 +144,19 @@ export function ArchiveView({
 
   const priceActive = params.min > 0 || params.max < PRICE_CAP;
   const categoryActive = !lockedCategory && Boolean(params.category);
+  // Cached default routes share their shell across query strings. A document navigation
+  // lets the server select the filtered route while keeping the public URL.
+  const serverListing = basePath === "/shop/" || Boolean(lockedCategory);
+  const PageLink = serverListing ? "a" : Link;
   const activeCount = (categoryActive ? 1 : 0) + (priceActive ? 1 : 0) + (params.stock ? 1 : 0);
 
   /** Open the listing with changed params (filters reset the page to 1) and keep the grid in view. */
   const go = (change: Partial<ArchiveParams>, keepPage = false) => {
     const href = archiveHref(basePath, params, keepPage ? change : { ...change, page: 1 });
+    if (serverListing) {
+      window.location.assign(`${href}#product-results`);
+      return;
+    }
     startTransition(() => router.push(href, { scroll: false }));
     top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -219,7 +227,7 @@ export function ArchiveView({
   }
 
   return (
-    <div className="archive-wrap" ref={top} style={{ scrollMarginTop: 96 }}>
+    <div className="archive-wrap" id="product-results" ref={top} style={{ scrollMarginTop: 96 }}>
       <aside className="sidebar" aria-label="Filters">
         <div className="sidebar-head">
           <h3>Filter</h3>
@@ -281,9 +289,9 @@ export function ArchiveView({
         )}
 
         {items.length ? (
-          <div style={pending ? { opacity: 0.55, transition: "opacity .15s" } : undefined}>
-            {/* The first row on a phone (two columns) loads at once; nothing is preloaded. */}
-            <ProductGrid items={items} cols={3} eagerCount={2} />
+          <div className="archive-results" style={pending ? { opacity: 0.55, transition: "opacity .15s" } : undefined}>
+            {/* Load the first visible row on mobile and desktop without waiting for a scroll. */}
+            <ProductGrid items={items} cols={3} eagerCount={3} />
           </div>
         ) : (
           <div className="empty-state">
@@ -298,9 +306,9 @@ export function ArchiveView({
         {totalPages > 1 && (
           <nav className="pagination" aria-label="Pagination">
             {params.page > 1 && (
-              <Link href={archiveHref(basePath, params, { page: params.page - 1 })} scroll={false} onClick={() => top.current?.scrollIntoView({ behavior: "smooth" })} rel="prev" aria-label="Previous page">
+              <PageLink href={archiveHref(basePath, params, { page: params.page - 1 }) + "#product-results"} rel="prev" aria-label="Previous page">
                 ‹ Prev
-              </Link>
+              </PageLink>
             )}
             {pageWindow(params.page, totalPages).map((n, i) =>
               n == null ? (
@@ -308,23 +316,21 @@ export function ArchiveView({
                   …
                 </span>
               ) : (
-                <Link
+                <PageLink
                   key={n}
-                  href={archiveHref(basePath, params, { page: n })}
-                  scroll={false}
-                  onClick={() => top.current?.scrollIntoView({ behavior: "smooth" })}
+                  href={archiveHref(basePath, params, { page: n }) + "#product-results"}
                   className={params.page === n ? "current" : ""}
                   aria-current={params.page === n ? "page" : undefined}
                   aria-label={`Page ${n}`}
                 >
                   {n}
-                </Link>
+                </PageLink>
               ),
             )}
             {params.page < totalPages && (
-              <Link href={archiveHref(basePath, params, { page: params.page + 1 })} scroll={false} onClick={() => top.current?.scrollIntoView({ behavior: "smooth" })} rel="next" aria-label="Next page">
+              <PageLink href={archiveHref(basePath, params, { page: params.page + 1 }) + "#product-results"} rel="next" aria-label="Next page">
                 Next ›
-              </Link>
+              </PageLink>
             )}
           </nav>
         )}

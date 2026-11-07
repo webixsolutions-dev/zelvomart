@@ -1,5 +1,6 @@
 "use client";
 
+import { CartCheckNotice } from "@store/components/shop/CartCheckNotice";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
@@ -13,7 +14,7 @@ import { FreeShippingMeter } from "@store/components/shop/FreeShippingMeter";
 import { QtyStepper } from "@store/components/shop/QtyStepper";
 
 export function CartDrawer() {
-  const { cart, cartOpen, setCartOpen, setQty, removeLine, subtotal, shipping, total, addToCart, cartCount } = useShop();
+  const { cart, cartCheck, cartOpen, setCartOpen, setQty, removeLine, subtotal, shipping, total, addToCart, cartCount } = useShop();
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function CartDrawer() {
           </button>
         </div>
 
-        {cart.length === 0 ? (
+        {cartCheck !== "ready" ? <CartCheckNotice /> : cart.length === 0 ? (
           <div className="drawer-empty">
             <span className="empty-ico">
               <ShoppingBag size={30} />
