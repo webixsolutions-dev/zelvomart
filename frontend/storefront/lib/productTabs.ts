@@ -19,7 +19,11 @@ export function resolveProductTabs(p: Product): ProductTab[] {
   const rows: [string, string][] = [
     ...(cat ? ([["Category", cat.name]] as [string, string][]) : []),
     ...p.specs,
-    ...(p.variants ? ([[`${p.variants.label} options`, p.variants.options.map((o) => o.name).join(", ")]] as [string, string][]) : []),
+    ...(p.variants?.groups
+      ? p.variants.groups.map(({ name, values }): [string, string] => [`${name} options`, values.join(", ")])
+      : p.variants
+        ? [[`${p.variants.label} options`, p.variants.options.map((o) => o.name).join(", ")] as [string, string]]
+        : []),
     ["SKU", p.sku],
   ];
   const amounts = { freeOver: site.shipping.freeOver, flatFee: site.shipping.flatFee };
