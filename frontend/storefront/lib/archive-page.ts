@@ -32,7 +32,7 @@ export function collectionListing(k: CollectionKey, basePath: string, sp: Search
 export async function categoryListing(id: CategoryId, basePath: string, sp: Search, opts?: { strict?: boolean }) {
   const { params, data } = await listing(basePath, sp, { category: id }, opts);
   let soon: { others: CategoryId[]; picks: Awaited<ReturnType<typeof loadCards>>["items"] } | null = null;
-  if (!data.total && !hasRefinements(params)) {
+  if (!data.unavailable && !data.total && !hasRefinements(params)) {
     const [counts, best] = await Promise.all([loadCategoryCounts(), loadCards({ tag: "bestsellers", limit: 4 })]);
     const picks = best.items.length ? best.items : (await loadCards({ limit: 4 })).items;
     soon = { others: categories.filter((c) => c.id !== id && (counts[c.id] || 0) > 0).map((c) => c.id), picks };

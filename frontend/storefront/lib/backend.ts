@@ -55,7 +55,7 @@ export type CardQuery = {
   ids?: string[];
   exclude?: string;
 };
-export type CardPage = { items: Product[]; total: number; page: number; totalPages: number };
+export type CardPage = { items: Product[]; total: number; page: number; totalPages: number; unavailable?: boolean };
 
 /** The backend query string for a card list (GET /api/products?view=card&…). */
 export function cardQueryString(q: CardQuery) {
@@ -85,6 +85,7 @@ export async function loadCards(q: CardQuery, opts: { clientIp?: string; strict?
 // One request per distinct card query per page render: the page and its metadata (generateMetadata) share it.
 const cardsByQuery = cache(async (query: string, clientIp: string, page: number, strict: boolean, fresh: boolean): Promise<CardPage> => {
   const empty = { items: [], total: 0, page, totalPages: 1 };
+  const build = process.env.NEXT_PHASE === "phase-production-build";
   const search = new URLSearchParams(query).has("search");
   const proxySecret = process.env.STORE_PROXY_SECRET || process.env.REVALIDATION_SECRET;
   try {
@@ -98,7 +99,7 @@ const cardsByQuery = cache(async (query: string, clientIp: string, page: number,
             }
           : fresh
             ? { cache: "no-store", fast: true, allowStale: false }
-            : { next: { revalidate: REVALIDATE, tags: ["products"] }, allowStale: !strict },
+            : { next: { revalidate: REVALIDATE, tags: ["products"] }, fast: strict && build, allowStale: !strict },
       ),
       bundleDefault(fresh),
     ]);
@@ -106,8 +107,10 @@ const cardsByQuery = cache(async (query: string, clientIp: string, page: number,
     upsertProducts(items);
     return { items, total: Number(res.total || 0), page: Number(res.page || 1), totalPages: Number(res.totalPages || 1) };
   } catch (error) {
-    if (strict || fresh) throw error;
-    return empty;
+    if (fresh || (strict && !build)) throw error;
+    // A preview can build without a reachable catalog. Keep its layout usable and let ISR refresh
+    // the page when the backend is available. Runtime refresh failures keep the last published page.
+    return strict ? { ...empty, unavailable: true } : empty;
   }
 });
 

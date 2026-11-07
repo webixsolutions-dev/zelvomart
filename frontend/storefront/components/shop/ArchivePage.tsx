@@ -19,7 +19,7 @@ export function CollectionArchive({ k, data, params, basePath }: { k: Collection
       <Hero size="short" priority desktop={c.banner} mobile={c.bannerMobile} mobileImageFull breadcrumbs={[{ label: c.title }]} eyebrow={c.eyebrow} title={c.title} sub={c.sub} />
       <section className="section pt-sm">
         <div className="container">
-          <ArchiveView items={data.items} total={data.total} totalPages={data.totalPages} params={params} basePath={basePath} name={c.title} />
+          {data.unavailable ? <CatalogUnavailable /> : <ArchiveView items={data.items} total={data.total} totalPages={data.totalPages} params={params} basePath={basePath} name={c.title} />}
           <CollectionAbout name={c.title} text={c.sub} />
         </div>
       </section>
@@ -64,7 +64,7 @@ export function CategoryArchive({
       />
       <section className="section pt-sm">
         <div className="container">
-          {soon ? (
+          {data.unavailable ? <CatalogUnavailable /> : soon ? (
             <CategoryComingSoon id={id} others={soon.others} picks={soon.picks} />
           ) : (
             <ArchiveView
@@ -86,6 +86,15 @@ export function CategoryArchive({
         </div>
       </section>
     </>
+  );
+}
+
+function CatalogUnavailable() {
+  return (
+    <div className="empty-state" role="status">
+      <h2>Products are temporarily unavailable</h2>
+      <p>Please check back shortly or contact us on WhatsApp below.</p>
+    </div>
   );
 }
 
